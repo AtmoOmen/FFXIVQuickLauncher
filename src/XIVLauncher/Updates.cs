@@ -152,7 +152,19 @@ namespace XIVLauncher
                                           MessageBoxImage.Error, showOfficialLauncher: true);
                 }
 
-                Environment.Exit(1);
+                if (App.Settings.EnableSkipUpdate.GetValueOrDefault(false))
+                {
+                    var result = CustomMessageBox.Show("无法检查更新，是否继续使用当前版本?",
+                                                       "XIVLauncherCN",
+                                                       MessageBoxButton.YesNo,
+                                                       MessageBoxImage.Question,
+                                                       showDiscordLink: false,
+                                                       showHelpLinks: false);
+
+                    if (result == MessageBoxResult.Yes) this.OnUpdateCheckFinished?.Invoke(true);
+                    else Environment.Exit(1);
+                }
+                else Environment.Exit(1);
             }
 
             ServicePointManager.SecurityProtocol = SecurityProtocolType.SystemDefault;

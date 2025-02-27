@@ -30,6 +30,7 @@ namespace XIVLauncher.Windows
             ForceNorthAmericaCheckbox.IsChecked = App.Settings.ForceNorthAmerica ?? false;
             EnableBeta.IsChecked = App.Settings.EnableBeta ?? false;
             EnableDebugLog.IsChecked = LogInit.LevelSwitch.MinimumLevel == LogEventLevel.Verbose;
+            EnableSkipUpdate.IsChecked = App.Settings.EnableSkipUpdate ?? false;
         }
 
         private void Save()
@@ -40,6 +41,7 @@ namespace XIVLauncher.Windows
             App.Settings.ForceNorthAmerica = ForceNorthAmericaCheckbox.IsChecked == true;
             App.Settings.EnableBeta = EnableBeta.IsChecked == true;
             App.Settings.EnableDebugLog = EnableDebugLog.IsChecked == true;
+            App.Settings.EnableSkipUpdate = EnableSkipUpdate.IsChecked == true;
             if (EnableDebugLog.IsChecked == true)
             {
                 LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
