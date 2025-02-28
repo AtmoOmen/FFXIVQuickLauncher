@@ -29,7 +29,7 @@ namespace XIVLauncher.Windows
             TreatNonZeroExitCodeAsFailureCheckbox.IsChecked = App.Settings.TreatNonZeroExitCodeAsFailure ?? false;
             ForceNorthAmericaCheckbox.IsChecked = App.Settings.ForceNorthAmerica ?? false;
             EnableBeta.IsChecked = App.Settings.EnableBeta ?? false;
-            EnableDebugLog.IsChecked = LogInit.LevelSwitch.MinimumLevel == LogEventLevel.Verbose;
+            EnableVerboseLog.IsChecked = LogInit.LevelSwitch.MinimumLevel == LogEventLevel.Verbose;
         }
 
         private void Save()
@@ -39,8 +39,8 @@ namespace XIVLauncher.Windows
             App.Settings.TreatNonZeroExitCodeAsFailure = TreatNonZeroExitCodeAsFailureCheckbox.IsChecked == true;
             App.Settings.ForceNorthAmerica = ForceNorthAmericaCheckbox.IsChecked == true;
             App.Settings.EnableBeta = EnableBeta.IsChecked == true;
-            App.Settings.EnableDebugLog = EnableDebugLog.IsChecked == true;
-            if (EnableDebugLog.IsChecked == true)
+            App.Settings.EnableVerboseLog = EnableVerboseLog.IsChecked == true;
+            if (EnableVerboseLog.IsChecked == true)
             {
                 LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
             }

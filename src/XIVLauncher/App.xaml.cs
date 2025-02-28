@@ -143,10 +143,12 @@ namespace XIVLauncher
                        .UseTypeParser(new CommonJsonParser<PreserveWindowPosition.WindowPlacement>())
                        .Build();
 
-            if (Settings.EnableDebugLog.GetValueOrDefault(false)) {
-                Settings.EnableDebugLog = false;
+            if (Settings.EnableVerboseLog.GetValueOrDefault(false)) {
                 LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
             }
+
+            Settings.EnableVerboseLog = false;
+            Log.Information($"Current log level is {LogInit.LevelSwitch.MinimumLevel}");
 
             if (string.IsNullOrEmpty(Settings.AcceptLanguage))
             {
