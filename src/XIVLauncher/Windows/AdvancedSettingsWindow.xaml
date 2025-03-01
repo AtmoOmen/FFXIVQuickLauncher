@@ -44,10 +44,10 @@
                       Content="{Binding ForceNorthAmericaLoc}"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
             <CheckBox x:Name="EnableBeta"
-                      Content="接受测试版更新"
+                      Content="接收Beta版更新"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
-            <CheckBox x:Name="EnableDebugLog"
-                      Content="将Log等级调整为Debug"
+            <CheckBox x:Name="EnableVerboseLog"
+                      Content="将Log等级调整为Verbose"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
             <CheckBox x:Name="EnableSkipUpdate"
                       Content="允许跳过启动器更新"

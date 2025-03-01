@@ -29,27 +29,20 @@ namespace XIVLauncher.Windows
             TreatNonZeroExitCodeAsFailureCheckbox.IsChecked = App.Settings.TreatNonZeroExitCodeAsFailure ?? false;
             ForceNorthAmericaCheckbox.IsChecked = App.Settings.ForceNorthAmerica ?? false;
             EnableBeta.IsChecked = App.Settings.EnableBeta ?? false;
-            EnableDebugLog.IsChecked = LogInit.LevelSwitch.MinimumLevel == LogEventLevel.Verbose;
             EnableSkipUpdate.IsChecked = App.Settings.EnableSkipUpdate ?? false;
+            EnableVerboseLog.IsChecked = LogInit.LevelSwitch.MinimumLevel == LogEventLevel.Verbose;
         }
 
         private void Save()
         {
-            App.Settings.UniqueIdCacheEnabled = UidCacheCheckBox.IsChecked == true;
-            App.Settings.ExitLauncherAfterGameExit = ExitLauncherAfterGameExitCheckbox.IsChecked == true;
+            App.Settings.UniqueIdCacheEnabled          = UidCacheCheckBox.IsChecked                      == true;
+            App.Settings.ExitLauncherAfterGameExit     = ExitLauncherAfterGameExitCheckbox.IsChecked     == true;
             App.Settings.TreatNonZeroExitCodeAsFailure = TreatNonZeroExitCodeAsFailureCheckbox.IsChecked == true;
-            App.Settings.ForceNorthAmerica = ForceNorthAmericaCheckbox.IsChecked == true;
-            App.Settings.EnableBeta = EnableBeta.IsChecked == true;
-            App.Settings.EnableDebugLog = EnableDebugLog.IsChecked == true;
-            App.Settings.EnableSkipUpdate = EnableSkipUpdate.IsChecked == true;
-            if (EnableDebugLog.IsChecked == true)
-            {
-                LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
-            }
-            else
-            {
-                LogInit.LevelSwitch.MinimumLevel = LogInit.GetDefaultLevel();
-            }
+            App.Settings.ForceNorthAmerica             = ForceNorthAmericaCheckbox.IsChecked             == true;
+            App.Settings.EnableBeta                    = EnableBeta.IsChecked                            == true;
+            App.Settings.EnableSkipUpdate              = EnableSkipUpdate.IsChecked                      == true;
+            App.Settings.EnableVerboseLog              = EnableVerboseLog.IsChecked                      == true;
+            LogInit.LevelSwitch.MinimumLevel           = this.EnableVerboseLog.IsChecked == true ? LogEventLevel.Verbose : LogInit.GetDefaultLevel();
         }
 
         private void CloseButton_OnClick(object sender, RoutedEventArgs e)

@@ -58,7 +58,7 @@ namespace XIVLauncher.Settings
         bool? ShowWeGameTokenLogin { get; set; }
         CredType? CredType { get; set; }
         bool? EnableSkipUpdate { get; set; }
-        bool? EnableDebugLog { get; set; }
+        bool? EnableVerboseLog { get; set; }
         #endregion
     }
 }

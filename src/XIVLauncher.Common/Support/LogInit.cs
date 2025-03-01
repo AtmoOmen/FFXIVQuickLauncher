@@ -76,7 +76,7 @@ public static class LogInit
         config.MinimumLevel.ControlledBy(LevelSwitch);
 
         if (parsed.Verbose)
-            LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Verbose);
+            LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 
         Log.Logger = config.CreateLogger();
     }
