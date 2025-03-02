@@ -1,4 +1,4 @@
-# XIVLauncher [![Actions Status](https://img.shields.io/github/actions/workflow/status/ottercorp/FFXIVQuickLauncher/ci-workflow.yml?branch=CN)](https://github.com/ottercorp/FFXIVQuickLauncher/actions) [![Discord Shield](https://discordapp.com/api/guilds/581875019861328007/widget.png?style=shield)](https://discord.gg/HqvSXkGj) [![Crowdin](https://badges.crowdin.net/ffxivquicklauncher/localized.svg)](https://crowdin.com/project/ffxivquicklauncher) [![GitHub all releases](https://img.shields.io/github/downloads/ottercorp/FFXIVQuickLauncher/total)](https://github.com/ottercorp/FFXIVQuickLauncher/releases/latest) [![GitHub release (latest by date)](https://img.shields.io/github/v/release/ottercorp/FFXIVQuickLauncher)](https://github.com/ottercorp/FFXIVQuickLauncher/releases/latest) <a href="https://github.com/ottercorp/FFXIVQuickLauncher/releases"><img src="https://github.com/ottercorp/FFXIVQuickLauncher/raw/CN/src/XIVLauncher/Resources/logo.png" alt="XL logo" width="100" align="right"/></a>
+# XIVLauncher [![Actions Status](https://img.shields.io/github/actions/workflow/status/AtmoOmen/FFXIVQuickLauncher/ci-workflow.yml?branch=CN)](https://github.com/AtmoOmen/FFXIVQuickLauncher/actions) [![Discord Shield](https://discordapp.com/api/guilds/1258981591124938762/widget.png?style=shield)](https://discord.gg/dailyroutines) [![Crowdin](https://badges.crowdin.net/ffxivquicklauncher/localized.svg)](https://crowdin.com/project/ffxivquicklauncher) [![GitHub all releases](https://img.shields.io/github/downloads/AtmoOmen/FFXIVQuickLauncher/total)](https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest) [![GitHub release (latest by date)](https://img.shields.io/github/v/release/AtmoOmen/FFXIVQuickLauncher)](https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest) <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases"><img src="https://github.com/AtmoOmen/FFXIVQuickLauncher/raw/CN/src/XIVLauncher/Resources/logo.png" alt="XL logo" width="100" align="right"/></a>
 
 XIVLauncher（简写为 XL）是用于最终幻想14的一个多功能启动器，包含各种可用的附加组件和游戏增强功能。
 
@@ -22,7 +22,7 @@ FF14 原版启动器已经很老了，这导致它运行缓慢且不支持保存
 
 ## 如何安装
 
-[在 GitHub Release 页面下载最新的「Setup.exe」](https://github.com/ottercorp/FFXIVQuickLauncher/releases/latest)并运行 XIVLauncher 将会启动并添加至您的开始菜单。 如果您想要卸载 XL，您可以使用 Windows 应用程序菜单或者右键开始菜单中的 XIVLauncher。
+[在 GitHub Release 页面下载最新的「Setup.exe」](https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest)并运行 XIVLauncher 将会启动并添加至您的开始菜单。 如果您想要卸载 XL，您可以使用 Windows 应用程序菜单或者右键开始菜单中的 XIVLauncher。
 
 ⚠ <b>注意！</b> 如果您在安装过程中遇到错误或启动器无法正常工作，请先确保您已在<b>杀毒软件</b>中排除了 XIVLauncher。 许多付费杀毒软件会将 XIVLauncher 误认为病毒。 您可以自行在 VirusTotal 上查看病毒检测报告。 如果您需要任何帮助，请[查阅常见问题](https://goatcorp.github.io/faq/xl_troubleshooting#q-how-do-i-whitelist-xivlauncher-and-dalamud-so-my-antivirus-leaves-them-alone)或加入我们的 Discord 服务器。
 
