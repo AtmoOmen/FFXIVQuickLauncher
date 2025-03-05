@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Management;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 using CheapLoc;
@@ -234,10 +235,15 @@ namespace XIVLauncher
 
         public static IEnumerable<int> GetGameProcessIds()
         {
-            return Process.GetProcesses()
+            var prcesses = Process.GetProcesses()
             .Where(p => p.ProcessName == "ffxiv_dx11")
-            .Where(p => !p.MainWindowTitle.Contains("FINAL FANTASY XIV") && !p.HasExited)
-            .Select(p => p.Id);
+            .Where(p => !p.MainWindowTitle.Contains("FINAL FANTASY XIV"));
+            if (PlatformHelpers.IsElevated())
+            {
+                prcesses = prcesses.Where(p => !p.HasExited);
+            }
+
+            return prcesses.Select(p => p.Id);
         }
     }
 }
