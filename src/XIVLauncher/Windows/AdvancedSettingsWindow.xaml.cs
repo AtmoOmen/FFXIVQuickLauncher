@@ -1,7 +1,12 @@
+using System;
+using System.IO;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using System.Windows;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Support;
 using XIVLauncher.Windows.ViewModel;
 
