@@ -52,16 +52,16 @@ public class IndexUpdateCommand
     }
 
     private readonly TempSettings settings;
-    private readonly string? username;
-    private readonly string? password;
-    private readonly string? otp;
-    private readonly bool noVerifyOldPatchHash;
-    private readonly bool noVerifyNewPatchHash;
+    private readonly string?      username;
+    private readonly string?      password;
+    private readonly string?      otp;
+    private readonly bool         noVerifyOldPatchHash;
+    private readonly bool         noVerifyNewPatchHash;
 
     private static readonly HttpClient Client = new(new HttpClientHandler
     {
-        UseCookies = false,
-        MaxConnectionsPerServer = 65535,
+        UseCookies              = false,
+        MaxConnectionsPerServer = 65535
     });
 
     private IndexUpdateCommand(ParseResult parseResult)
@@ -95,12 +95,12 @@ public class IndexUpdateCommand
 
         //await ApplyBootPatch(bootPatchList, cancellationToken);
 
-        var gamePatchListFile = new FileInfo(Path.Combine(this.settings.GamePath.FullName, "gamelist.json"));
+        var              gamePatchListFile = new FileInfo(Path.Combine(this.settings.GamePath.FullName, "gamelist.json"));
         PatchListEntry[] gamePatchList;
 
         // 随机挑选一个服务器，别被抠抠搜搜的盛趣发现了 :(
         var areas = await SdoArea.Get();
-        var area = areas[new Random().Next(areas.Length)];
+        var area  = areas[new Random().Next(areas.Length)];
 
         var lr = await la.CheckGameUpdate(area, this.settings.GamePath, false);
         gamePatchList = lr.PendingPatches;
@@ -109,7 +109,7 @@ public class IndexUpdateCommand
         var indexSources = gamePatchList.GroupBy(x => x.GetRepoName() switch
         {
             "ffxiv" => 0,
-            var y => int.Parse(y.Substring(2)),
+            var y   => int.Parse(y.Substring(2))
         }).ToDictionary(x => x.Key, x => x.ToArray());
         //indexSources[-1] = bootPatchList;
 
@@ -120,7 +120,7 @@ public class IndexUpdateCommand
 
         await Task.WhenAll(
             Task.Run(async () => await this.DownloadAndVerifyPatchFiles(fileCompletions, gamePatchList, cancellationToken), cancellationToken),
-            Task.Run(async () => await this.IndexPatchFiles(fileCompletions, indexSources, cancellationToken), cancellationToken));
+            Task.Run(async () => await this.IndexPatchFiles(fileCompletions, indexSources, cancellationToken),              cancellationToken));
         return 0;
     }
 
@@ -128,9 +128,9 @@ public class IndexUpdateCommand
     {
         using var zpStore = new SqexFileStreamStore();
 
-        var zpConfig = new ZiPatchConfig(Path.Combine(this.settings.GamePath.FullName, "boot")) { Store = zpStore };
-        var bootVerPath = Path.Combine(zpConfig.GamePath, "ffxivboot.ver");
-        var bootBckPath = Path.Combine(zpConfig.GamePath, "ffxivboot.bck");
+        var zpConfig        = new ZiPatchConfig(Path.Combine(this.settings.GamePath.FullName, "boot")) { Store = zpStore };
+        var bootVerPath     = Path.Combine(zpConfig.GamePath, "ffxivboot.ver");
+        var bootBckPath     = Path.Combine(zpConfig.GamePath, "ffxivboot.bck");
         var bootVerExpected = Path.GetFileNameWithoutExtension(bootPatchList.Last().Url).Substring(1);
 
         if (File.Exists(bootVerPath) && File.Exists(bootBckPath) && File.ReadAllText(bootVerPath) == bootVerExpected && File.ReadAllText(bootBckPath) == bootVerExpected)
@@ -139,21 +139,21 @@ public class IndexUpdateCommand
         foreach (var i in Enumerable.Range(0, bootPatchList.Length))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var patch = bootPatchList[i];
-            var uri = new Uri(patch.Url);
+            var patch     = bootPatchList[i];
+            var uri       = new Uri(patch.Url);
             var localPath = new FileInfo(Path.Combine(this.settings.GamePath.FullName, EnsureRelativePath(uri.LocalPath)));
 
             if (!localPath.Exists || localPath.Length != patch.Length)
             {
-                Log.Information("[{index}/{total}] Downloading: {path}", i + 1, bootPatchList.Length, patch.Url);
-                var fd = new FileDownloader(Client, patch.Url, localPath.FullName, null, cancellationToken, 8);
+                Log.Information("[{index}/{total}] 正在下载: {path}", i + 1, bootPatchList.Length, patch.Url);
+                var fd    = new FileDownloader(Client, patch.Url, localPath.FullName, null, cancellationToken, 8);
                 var dtask = fd.Download();
 
                 while (!dtask.IsCompleted)
                 {
                     await Task.WhenAny(dtask, Task.Delay(5000, new()));
                     Log.Information(
-                        "Downloaded {curr:##,###} bytes out of {total:##,###} bytes ({percentage:F2}%): {speed:##,###}b/s",
+                        "已下载: {curr:##,###} 字节, 总: {total:##,###} 字节 ({percentage:F2}%): {speed:##,###}b/s",
                         fd.DownloadedLength,
                         fd.TotalLength,
                         fd.TotalLength == 0 ? 0 : fd.DownloadedLength * 100 / fd.TotalLength,
@@ -161,53 +161,53 @@ public class IndexUpdateCommand
                 }
             }
 
-            Log.Information("[{index}/{total}] Applying: {path}", i + 1, bootPatchList.Length, Path.GetFileName(patch.Url));
+            Log.Information("[{index}/{total}] 正在应用: {path}", i + 1, bootPatchList.Length, Path.GetFileName(patch.Url));
 
             using var ziPatch = new ZiPatchFile(localPath.OpenRead());
             foreach (var chunk in ziPatch.GetChunks())
                 chunk.ApplyChunk(zpConfig);
         }
 
-        File.WriteAllText(bootVerPath, bootVerExpected);
+        File.WriteAllText(bootVerPath,                               bootVerExpected);
         File.WriteAllText(Path.ChangeExtension(bootVerPath, ".bck"), bootVerExpected);
     }
 
     private async Task DownloadAndVerifyPatchFiles(
         IReadOnlyDictionary<PatchListEntry, TaskCompletionSource<PatchListEntry>> fileCompletions,
-        IReadOnlyList<PatchListEntry> gamePatchList,
-        CancellationToken cancellationToken)
+        IReadOnlyList<PatchListEntry>                                             gamePatchList,
+        CancellationToken                                                         cancellationToken)
     {
         foreach (var i in Enumerable.Range(0, gamePatchList.Count))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var patch = gamePatchList[i];
-            var uri = new Uri(patch.Url);
+            var patch     = gamePatchList[i];
+            var uri       = new Uri(patch.Url);
             var localPath = new FileInfo(Path.Combine(this.settings.GamePath.FullName, EnsureRelativePath(uri.LocalPath)));
             if (!localPath.Directory.Exists)
                 localPath.Directory.Create();
             if (patch.HashType != "sha1")
-                throw new NotSupportedException($"HashType \"{patch.HashType}\" is not supported for: {uri}");
+                throw new NotSupportedException($"不支持 HashType \"{patch.HashType}\": {uri}");
 
             var downloadRequired = !localPath.Exists || localPath.Length != patch.Length;
 
             if (!downloadRequired && !this.noVerifyOldPatchHash)
             {
-                Log.Information("[{index}/{total}]: Verifying: {path}", i + 1, gamePatchList.Count, patch.Url);
+                Log.Information("[{index}/{total}]: 正在验证: {path}", i + 1, gamePatchList.Count, patch.Url);
                 downloadRequired = !await CheckPatchHashAsync(localPath, patch, cancellationToken);
             }
 
             if (downloadRequired)
             {
-                Log.Information("[{index}/{total}]: Downloading: {path}", i + 1, gamePatchList.Count, patch.Url);
-                var fd = new FileDownloader(Client, patch.Url, localPath.FullName, null, cancellationToken, 8);
+                Log.Information("[{index}/{total}]: 正在下载: {path}", i + 1, gamePatchList.Count, patch.Url);
+                var fd    = new FileDownloader(Client, patch.Url, localPath.FullName, null, cancellationToken, 8);
                 var dtask = fd.Download();
 
                 while (!dtask.IsCompleted)
                 {
                     await Task.WhenAny(dtask, Task.Delay(5000, new()));
                     Log.Information(
-                        "Downloaded {curr:##,###} bytes out of {total:##,###} bytes ({percentage:F2}%): {speed:##,###}b/s",
+                        "已下载: {curr:##,###} 字节, 总: {total:##,###} 字节 ({percentage:F2}%): {speed:##,###}b/s",
                         fd.DownloadedLength,
                         fd.TotalLength,
                         fd.TotalLength == 0 ? 0 : fd.DownloadedLength * 100 / fd.TotalLength,
@@ -218,7 +218,7 @@ public class IndexUpdateCommand
                 await dtask;
 
                 if (!this.noVerifyNewPatchHash && !await CheckPatchHashAsync(localPath, patch, cancellationToken))
-                    throw new IOException("Downloaded file did not pass hash check");
+                    throw new IOException("已下载的文件未通过哈希检测");
             }
 
             fileCompletions[patch].SetResult(patch);
@@ -227,20 +227,20 @@ public class IndexUpdateCommand
 
     private async Task IndexPatchFiles(
         IReadOnlyDictionary<PatchListEntry, TaskCompletionSource<PatchListEntry>> fileCompletions,
-        Dictionary<int, PatchListEntry[]> indexSources,
-        CancellationToken cancellationToken)
+        Dictionary<int, PatchListEntry[]>                                         indexSources,
+        CancellationToken                                                         cancellationToken)
     {
         foreach (var (expac, patches) in indexSources.Select(x => (x.Key, x.Value)))
         {
             var expacName = expac switch
             {
                 -1 => "boot",
-                0 => "ffxiv",
-                _ => $"ex{expac}",
+                0  => "ffxiv",
+                _  => $"ex{expac}"
             };
-            var patchFilePaths = patches.Select(x => Path.Combine(this.settings.GamePath.FullName, EnsureRelativePath(new Uri(x.Url).LocalPath))).ToList();
-            var firstPatchFileIndex = patchFilePaths.Count - 1;
-            IndexedZiPatchIndex? patchIndex = null;
+            var                  patchFilePaths      = patches.Select(x => Path.Combine(this.settings.GamePath.FullName, EnsureRelativePath(new Uri(x.Url).LocalPath))).ToList();
+            var                  firstPatchFileIndex = patchFilePaths.Count - 1;
+            IndexedZiPatchIndex? patchIndex          = null;
 
             Log.Information("[{expac}]: Finding most recent reusable patch index", expacName);
 
@@ -251,10 +251,7 @@ public class IndexUpdateCommand
                 if (!File.Exists(indexPath))
                     continue;
 
-                try
-                {
-                    patchIndex = new(new BinaryReader(new DeflateStream(new FileStream(indexPath, FileMode.Open, FileAccess.Read), CompressionMode.Decompress)));
-                }
+                try { patchIndex = new(new BinaryReader(new DeflateStream(new FileStream(indexPath, FileMode.Open, FileAccess.Read), CompressionMode.Decompress))); }
                 catch (Exception e)
                 {
                     Log.Warning(e, "Failed to read; ignoring {f}", Path.GetFileName(indexPath));
@@ -286,7 +283,7 @@ public class IndexUpdateCommand
                 continue;
             }
 
-            var sources = new List<Stream>();
+            var sources    = new List<Stream>();
             var patchFiles = new List<ZiPatchFile>();
             patchIndex ??= new(expac);
 
@@ -339,7 +336,7 @@ public class IndexUpdateCommand
     private static async Task<bool> CheckPatchHashAsync(FileInfo localPath, PatchListEntry patch, CancellationToken cancellationToken)
     {
         using var sha1 = SHA1.Create();
-        using var f = localPath.OpenRead();
+        using var f    = localPath.OpenRead();
 
         var buf = ArrayPool<byte>.Shared.Rent(65536);
 
@@ -362,18 +359,12 @@ public class IndexUpdateCommand
 
                 sha1.TransformFinalBlock([], 0, 0);
 
-                if (string.Join("", sha1.Hash.Select(x => x.ToString("x2"))) != patch.Hashes[j])
-                {
-                    return false;
-                }
+                if (string.Join("", sha1.Hash.Select(x => x.ToString("x2"))) != patch.Hashes[j]) return false;
             }
 
             return true;
         }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buf);
-        }
+        finally { ArrayPool<byte>.Shared.Return(buf); }
     }
 
     private static bool TryReadPatchListEntries(FileInfo path, out PatchListEntry[] entries)
@@ -391,10 +382,7 @@ public class IndexUpdateCommand
                 return true;
             }
         }
-        catch (Exception e)
-        {
-            Log.Information(e, $"Ignoring file: {path}");
-        }
+        catch (Exception e) { Log.Information(e, $"Ignoring file: {path}"); }
 
         return false;
     }
@@ -432,13 +420,13 @@ public class IndexUpdateCommand
             this.PatchPath = patchPath;
         }
 
-        public string AcceptLanguage => "en-US";
-        public ClientLanguage? ClientLanguage => Common.ClientLanguage.English;
-        public bool? KeepPatches => true;
-        public DirectoryInfo PatchPath { get; }
-        public DirectoryInfo GamePath => this.PatchPath;
-        public AcquisitionMethod? PatchAcquisitionMethod => AcquisitionMethod.NetDownloader;
-        public long SpeedLimitBytes { get; set; }
-        public int DalamudInjectionDelayMs => 0;
+        public string             AcceptLanguage          => "en-US";
+        public ClientLanguage?    ClientLanguage          => Common.ClientLanguage.English;
+        public bool?              KeepPatches             => true;
+        public DirectoryInfo      PatchPath               { get; }
+        public DirectoryInfo      GamePath                => this.PatchPath;
+        public AcquisitionMethod? PatchAcquisitionMethod  => AcquisitionMethod.NetDownloader;
+        public long               SpeedLimitBytes         { get; set; }
+        public int                DalamudInjectionDelayMs => 0;
     }
 }

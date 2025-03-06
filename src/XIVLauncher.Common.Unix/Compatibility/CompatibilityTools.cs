@@ -34,7 +34,7 @@ public class CompatibilityTools
 #endif
     private const string WINE_XIV_RELEASE_NAME = "wine-xiv-staging-fsync-git-8.5.r4.g4211bac7";
 
-    private const string SD_WINE_XIV_RELEASE_URL = "https://s3.ffxiv.wang/xlcore/deps/wine/ubuntu/wine-xiv-staging-fsync-git-ubuntu-8.5.r4.g4211bac7.tar.xz";
+    private const string SD_WINE_XIV_RELEASE_URL = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/wine/wine-xiv-staging-fsync-git-ubuntu-8.5.r4.g4211bac7.tar.xz";
     private const string SD_WINE_XIV_RELEASE_NAME = "wine-xiv-staging-fsync-git-8.5.r4.g4211bac7";
 
     public bool IsToolReady { get; private set; }

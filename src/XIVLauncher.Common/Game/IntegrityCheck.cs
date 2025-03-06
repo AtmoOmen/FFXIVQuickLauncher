@@ -49,11 +49,15 @@ public static class IntegrityCheck
 
         if (onlyIndex)
         {
-            var localIntegrityAll = await RunIntegrityCheckAsync(gamePath, progress).ConfigureAwait(false);
-            SaveToJson(localIntegrityAll);
+            _ = Task.Run(async () =>
+            {
+                var localIntegrityAll = await RunIntegrityCheckAsync(gamePath, progress).ConfigureAwait(false);
+                SaveToJson(localIntegrityAll);
+            });
         }
         
         var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex).ConfigureAwait(false);
+        if (!onlyIndex) SaveToJson(localIntegrity);
 
         var report = "";
         var failed = false;
