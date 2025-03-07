@@ -33,6 +33,14 @@ public static class IntegrityCheck
         ReferenceNotFound,
         ReferenceFetchFailure
     }
+    
+    public static async Task<string> GenerateIntegrityAsync(IProgress<IntegrityCheckProgress> progress, DirectoryInfo gamePath)
+    {
+        var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress).ConfigureAwait(false);
+        SaveToJson(localIntegrity, out var path);
+
+        return path;
+    }
 
     public static async Task<(CompareResult compareResult, string report, IntegrityCheckResult remoteIntegrity)>
         CompareIntegrityAsync(IProgress<IntegrityCheckProgress> progress, DirectoryInfo gamePath, bool onlyIndex = false)
@@ -46,18 +54,8 @@ public static class IntegrityCheck
                 return (CompareResult.ReferenceNotFound, null, null);
             return (CompareResult.ReferenceFetchFailure, null, null);
         }
-
-        if (onlyIndex)
-        {
-            _ = Task.Run(async () =>
-            {
-                var localIntegrityAll = await RunIntegrityCheckAsync(gamePath, progress).ConfigureAwait(false);
-                SaveToJson(localIntegrityAll);
-            });
-        }
         
         var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex).ConfigureAwait(false);
-        if (!onlyIndex) SaveToJson(localIntegrity);
 
         var report = "";
         var failed = false;
@@ -159,7 +157,7 @@ public static class IntegrityCheck
         }
     }
     
-    private static void SaveToJson(IntegrityCheckResult result)
+    private static void SaveToJson(IntegrityCheckResult result, out string savedPath)
     {
         var jsonObject = new
         {
@@ -177,5 +175,7 @@ public static class IntegrityCheck
 
         var filePath = Path.Combine(directoryName, fileName);
         File.WriteAllText(filePath, json);
+        
+        savedPath = filePath;
     }
 }

@@ -303,6 +303,34 @@ namespace XIVLauncher.Windows
             window.ShowDialog();
         }
 
+        private void GenerateIntegrityCheck_OnClick(object sender, RoutedEventArgs e)
+        {
+            var window   = new IntegrityCheckProgressWindow();
+            var progress = new Progress<IntegrityCheck.IntegrityCheckProgress>();
+            progress.ProgressChanged += (sender, checkProgress) => window.UpdateProgress(checkProgress);
+            
+            var gamePath = new DirectoryInfo(ViewModel.GamePath);
+
+            if (Repository.Ffxiv.IsBaseVer(gamePath))
+            {
+                CustomMessageBox.Show(Loc.Localize("IntegrityCheckBase", "The game is not installed to the path you specified.\nPlease install the game before running an integrity check."), "XIVLauncherCN", parentWindow: Window.GetWindow(this));
+                return;
+            }
+            
+            Task.Run(async () => await IntegrityCheck.GenerateIntegrityAsync(progress, gamePath)).ContinueWith(task =>
+            {
+                window.Dispatcher.Invoke(() => window.Close());
+
+                this.Dispatcher.Invoke(() =>
+                {
+                    CustomMessageBox.Show("已完成游戏客户端哈希数据生成, 相关文件保存在:\n" + 
+                                          $"{task.Result}", "XIVLauncherCN", parentWindow: Window.GetWindow(this));
+                });
+            });
+
+            window.ShowDialog();
+        }
+
         private void LauncherLanguageCombo_SelectionChanged(object sender, RoutedEventArgs e)
         {
             if (LauncherLanguageNoticeTextBlock != null)

@@ -21,16 +21,20 @@
                 <StackPanel Margin="10,10,0,0">
                     <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top"
                                Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding GamePathLoc}" />
+                    <components:FolderEntry
+                        Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}"
+                        Description="Select a folder" Width="500" VerticalAlignment="Center"
+                        HorizontalAlignment="Left" TextChanged="GamePathEntry_OnTextChanged"
+                        Foreground="{DynamicResource MaterialDesignBody}" Margin="0,5,0,0" />
                     <StackPanel Orientation="Horizontal">
-                        <components:FolderEntry
-                            Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}"
-                            Description="Select a folder" Width="500" VerticalAlignment="Center"
-                            HorizontalAlignment="Left" TextChanged="GamePathEntry_OnTextChanged"
-                            Foreground="{DynamicResource MaterialDesignBody}" Margin="0,5,0,0" />
                         <Button HorizontalAlignment="Left" Click="RunIntegrityCheck_OnClick"
                                 IsEnabled="{Binding IsRunIntegrityCheckPossible}"
                                 ToolTip="{Binding RunIntegrityCheckTooltipLoc}" Margin="10,5,0,0"
                                 Content="{Binding RunIntegrityCheckLoc}" />
+                        <Button HorizontalAlignment="Left" Click="GenerateIntegrityCheck_OnClick"
+                                IsEnabled="{Binding IsRunIntegrityCheckPossible}"
+                                ToolTip="点击后, 会开始遍历并生成游戏客户端文件的 Hash 数据, 并保存到 gameHashes 文件夹下" Margin="10,5,0,0"
+                                Content="生成客户端 Hash 数据" />
                     </StackPanel>
 
                     <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top"
