@@ -1044,7 +1044,7 @@
     "description": "SettingsControlViewModel.SetupLoc"
   },
   "PatchAcquisitionMethod": {
-    "message": "请选择用于下载更新包的方法。我们建议您选择「ARIA(HTTP)」。",
+    "message": "下载更新包的方式, 建议选择「ARIA(HTTP)」:",
     "description": "SettingsControlViewModel.SetupLoc"
   },
   "SettingsAbout": {
