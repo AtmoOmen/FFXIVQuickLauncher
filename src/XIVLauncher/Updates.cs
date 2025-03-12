@@ -86,6 +86,14 @@ internal class Updates
             }
             catch (Exception ex) { Log.Warning(ex, "GitHub 速率限制检查失败, 继续尝试更新"); }
 
+            // 游戏进程
+            if (System.Diagnostics.Process.GetProcessesByName("ffxiv_dx11").Length > 0)
+            {
+                Log.Information("游戏正在运行, 跳过启动器更新检查");
+                this.OnUpdateCheckFinished?.Invoke(true);
+                return;
+            }
+
             var updateOptions = new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
             var updateSource  = new GithubSource(UpdateUrl, null, true);
             var mgr           = new UpdateManager(updateSource, updateOptions);
