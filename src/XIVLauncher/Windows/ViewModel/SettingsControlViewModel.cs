@@ -1,12 +1,12 @@
+using CheapLoc;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Windows;
-using CheapLoc;
 using XIVLauncher.Common;
+using XIVLauncher.Support;
 
 namespace XIVLauncher.Windows.ViewModel
 {
@@ -89,15 +89,15 @@ namespace XIVLauncher.Windows.ViewModel
             get => _launcherLanguage;
             set
             {
-                LauncherLanguageNoticeVisiable = App.Settings.LauncherLanguage == value ? Visibility.Hidden : Visibility.Visible;
+                LauncherLanguageNoticeVisiable = App.Settings.LauncherLanguage != value;
                 _launcherLanguage = value;
                 OnPropertyChanged(nameof(LauncherLanguage));
             }
         }
 
-        public Visibility _launcherLanguageNoticeVisiable = Visibility.Hidden;
+        public bool _launcherLanguageNoticeVisiable = false;
 
-        public Visibility LauncherLanguageNoticeVisiable
+        public bool LauncherLanguageNoticeVisiable
         {
             get => _launcherLanguageNoticeVisiable;
             set
@@ -299,22 +299,5 @@ namespace XIVLauncher.Windows.ViewModel
         public string OpenAdvancedSettingsTipLoc { get; private set; }
 
         public string PluginDisabledTagLoc { get; private set; }
-    }
-
-    /// <summary>
-    /// Generic combined data class.
-    /// </summary>
-    /// <typeparam name="TValueType">The type of value.</typeparam>
-    public class GenericCombinedData<TValueType>
-    {
-        /// <summary>
-        /// Gets or sets the name displayed.
-        /// </summary>
-        public string Display { get; set; }
-
-        /// <summary>
-        /// Gets or sets the value.
-        /// </summary>
-        public TValueType Value { get; set; }
     }
 }

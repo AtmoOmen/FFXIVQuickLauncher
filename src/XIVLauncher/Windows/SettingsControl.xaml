@@ -108,7 +108,7 @@
                         VerticalAlignment="Top"
                         Foreground="OrangeRed"
                         Text="{Binding LauncherLanguageNoticeLoc}"
-                        Visibility="{Binding LauncherLanguageNoticeVisiable}" />
+                        Visibility="{c:Binding LauncherLanguageNoticeVisiable, FalseToVisibility=Hidden}" />
 
                     <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top"
                                Foreground="{DynamicResource MaterialDesignBody}" Text="请选择自动登录密码的加密方式" />
