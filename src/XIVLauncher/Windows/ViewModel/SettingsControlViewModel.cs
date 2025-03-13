@@ -107,6 +107,19 @@ namespace XIVLauncher.Windows.ViewModel
             }
         }
 
+        private string _gitHubToken = App.Settings.GitHubToken;
+
+        public string GitHubToken
+        {
+            get => _gitHubToken;
+            set
+            {
+                _gitHubToken = value;
+                App.Settings.GitHubToken = value;
+                OnPropertyChanged(nameof(GitHubToken));
+            }
+        }
+
         private void SetupLoc()
         {
             OpenPluginsFolderLoc = Loc.Localize("OpenPluginsFolder", "Open Plugins Folder");
