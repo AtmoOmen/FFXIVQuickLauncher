@@ -65,7 +65,7 @@ namespace XIVLauncher.Windows
 
             LanguageComboBox.SelectedIndex = (int)App.Settings.Language.GetValueOrDefault(ClientLanguage.English);
             ViewModel.LauncherLanguage = App.Settings.LauncherLanguage.GetValueOrDefault(LauncherLanguage.English);
-            ViewModel.LauncherLanguageNoticeVisiable = Visibility.Hidden;
+            ViewModel.LauncherLanguageNoticeVisiable = false;
             AddonListView.ItemsSource = App.Settings.AddonList ??= new List<AddonEntry>();
             AskBeforePatchingCheckBox.IsChecked = App.Settings.AskBeforePatchInstall;
             KeepPatchesCheckBox.IsChecked = App.Settings.KeepPatches;
