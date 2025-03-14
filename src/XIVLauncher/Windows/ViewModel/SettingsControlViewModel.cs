@@ -128,13 +128,16 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 using var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-                httpClient.DefaultRequestHeaders.Authorization = new("Bearer", _gitHubToken);
+                if (!string.IsNullOrWhiteSpace(_gitHubToken))
+                {
+                    httpClient.DefaultRequestHeaders.Authorization = new("Bearer", _gitHubToken);
+                }
                 var response = await httpClient.GetAsync("https://api.github.com/rate_limit");
                 var json = await response.Content.ReadAsStringAsync();
                 dynamic rateLimit = JObject.Parse(json);
                 if (!response.IsSuccessStatusCode)
                 {
-                    CustomMessageBox.Show($"GitHub Token 校验失败, 请检查你的 Token 是否正确\n{rateLimit.message}", "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    CustomMessageBox.Show($"获取 GitHub API 额度失败, 请检查你的 Token 是否正确\n{rateLimit.message}", "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -143,11 +146,12 @@ namespace XIVLauncher.Windows.ViewModel
 
                 int resetTimestamp = rateLimit.resources.core.reset;
                 var resetTime = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
-                CustomMessageBox.Show($"当前 Token 的可用额度:{remaining}, 总额度:{limit}, 刷新时间: {resetTime:HH:mm:ss}", "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Information);
+                var tokenOutput = string.IsNullOrWhiteSpace(_gitHubToken) ? "未设置 Token, 当前 IP " : "当前 Token ";
+                CustomMessageBox.Show($"{tokenOutput}的可用额度: {remaining}, 总额度: {limit}, 刷新时间: {resetTime:HH:mm:ss}", "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                CustomMessageBox.Show("GitHub Token 校验失败\n" + ex.ToString(), "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error);
+                CustomMessageBox.Show("获取 GitHub API 额度失败\n" + ex.ToString(), "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

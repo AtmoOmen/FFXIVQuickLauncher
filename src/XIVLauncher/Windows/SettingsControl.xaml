@@ -249,7 +249,7 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <TextBox
-                            Width="500"
+                            Width="400"
                             Margin="10,10,0,0"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
@@ -264,7 +264,7 @@
                             HorizontalAlignment="Left"
                             VerticalAlignment="Center"
                             Click="{s:Action IdentifyToken}"
-                            Content="校验" />
+                            Content="查询额度" />
                     </StackPanel>
                 </StackPanel>
 
