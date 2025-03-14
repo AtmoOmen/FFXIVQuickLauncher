@@ -107,14 +107,11 @@ namespace XIVLauncher.Windows.ViewModel
             }
         }
 
-        private string _gitHubToken = App.Settings.GitHubToken;
-
         public string GitHubToken
         {
-            get => _gitHubToken;
+            get => App.Settings.GitHubToken;
             set
             {
-                _gitHubToken = value;
                 App.Settings.GitHubToken = value;
                 OnPropertyChanged(nameof(GitHubToken));
             }
