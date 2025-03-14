@@ -134,7 +134,6 @@ namespace XIVLauncher.Windows.ViewModel
                 dynamic rateLimit = JObject.Parse(json);
                 if (!response.IsSuccessStatusCode)
                 {
-                    var aa = rateLimit.message;
                     CustomMessageBox.Show($"GitHub Token 校验失败, 请检查你的 Token 是否正确\n{rateLimit.message}", "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
