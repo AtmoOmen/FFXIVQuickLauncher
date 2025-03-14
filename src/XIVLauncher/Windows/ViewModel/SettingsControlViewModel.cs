@@ -1,10 +1,13 @@
 using CheapLoc;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using XIVLauncher.Common;
 using XIVLauncher.Support;
 
@@ -116,6 +119,36 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 _gitHubToken = value;
                 OnPropertyChanged(nameof(GitHubToken));
+            }
+        }
+
+        public async void IdentifyToken()
+        {
+            try
+            {
+                using var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+                httpClient.DefaultRequestHeaders.Authorization = new("Bearer", _gitHubToken);
+                var response = await httpClient.GetAsync("https://api.github.com/rate_limit");
+                var json = await response.Content.ReadAsStringAsync();
+                dynamic rateLimit = JObject.Parse(json);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var aa = rateLimit.message;
+                    CustomMessageBox.Show($"GitHub Token 校验失败, 请检查你的 Token 是否正确\n{rateLimit.message}", "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                int remaining = rateLimit.resources.core.remaining;
+                int limit = rateLimit.resources.core.limit;
+
+                int resetTimestamp = rateLimit.resources.core.reset;
+                var resetTime = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
+                CustomMessageBox.Show($"当前 Token 的可用额度:{remaining}, 总额度:{limit}, 刷新时间: {resetTime:HH:mm:ss}", "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                CustomMessageBox.Show("GitHub Token 校验失败\n" + ex.ToString(), "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

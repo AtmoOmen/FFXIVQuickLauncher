@@ -9,9 +9,11 @@
     xmlns:dragablz="http://dragablz.net/winfx/xaml/dragablz"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:s="https://github.com/canton7/Stylet"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
     d:DataContext="{d:DesignInstance viewModel:SettingsControlViewModel}"
+    s:View.ActionTarget="{Binding}"
     Background="{DynamicResource MaterialDesignPaper}"
     TextElement.FontWeight="Medium"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
@@ -245,17 +247,25 @@
                             <ComboBoxItem>ARIA(HTTP)</ComboBoxItem>
                         </ComboBox>
                     </StackPanel>
-                    <TextBox
-                        Width="500"
-                        Margin="10,10,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        materialDesign:HintAssist.Hint="启动器更新用 GitHub Access Token"
-                        materialDesign:HintAssist.IsFloating="True"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="{Binding GitHubToken}"
-                        ToolTip="建议填入不包含任何权限的 Token"
-                        ToolTipService.InitialShowDelay="0" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox
+                            Width="500"
+                            Margin="10,10,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            materialDesign:HintAssist.Hint="启动器更新用 GitHub Access Token"
+                            materialDesign:HintAssist.IsFloating="True"
+                            Foreground="{DynamicResource MaterialDesignBody}"
+                            Text="{Binding GitHubToken}"
+                            ToolTip="建议填入不包含任何权限的 Token"
+                            ToolTipService.InitialShowDelay="0" />
+                        <Button
+                            Margin="10,10,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Click="{s:Action IdentifyToken}"
+                            Content="校验" />
+                    </StackPanel>
                 </StackPanel>
 
             </TabItem>
