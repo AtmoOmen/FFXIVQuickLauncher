@@ -142,6 +142,7 @@ namespace XIVLauncher.Windows
             SettingsDismissed?.Invoke(this, null);
 
             App.Settings.SpeedLimitBytes = (long)(SpeedLimiterUpDown.Value * BYTES_TO_MB);
+            App.Settings.GitHubToken = ViewModel.GitHubToken;
 
             App.Settings.IsFt = this.IsFreeTrialCheckbox.IsChecked == true;
             App.Settings.CredType = (CredType)AccountStorageEncryptCombox.SelectedIndex;
