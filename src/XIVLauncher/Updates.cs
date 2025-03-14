@@ -64,7 +64,8 @@ internal class Updates
             {
                 using var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-                httpClient.DefaultRequestHeaders.Authorization = new("Bearer", App.Settings.GitHubToken);
+                if (!string.IsNullOrWhiteSpace(App.Settings.GitHubToken)) 
+                    httpClient.DefaultRequestHeaders.Authorization = new("Bearer", App.Settings.GitHubToken);
                 var response = await httpClient.GetAsync("https://api.github.com/rate_limit");
                 response.EnsureSuccessStatusCode();
 

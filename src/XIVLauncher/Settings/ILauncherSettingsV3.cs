@@ -45,7 +45,6 @@ namespace XIVLauncher.Settings
         bool? TreatNonZeroExitCodeAsFailure { get; set; }
         bool? ExitLauncherAfterGameExit { get; set; }
         bool? IsFt { get; set; }
-        string DalamudRolloutBucket { get; set; }
         bool? AutoStartSteam { get; set; }
         bool? ForceNorthAmerica { get; set; }
 

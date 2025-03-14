@@ -204,15 +204,13 @@ namespace XIVLauncher
                                                         new DirectoryInfo(Path.Combine(Paths.RoamingPath, "runtime")),
                                                         new DirectoryInfo(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
                                                         UniqueIdCache,
-                                                        Settings.DalamudRolloutBucket);
+                                                        Settings.GitHubToken);
 
                     if (this._dalamudRunnerOverride != null)
                     {
                         DalamudUpdater.RunnerOverride = this._dalamudRunnerOverride;
                     }
-
-                    Settings.DalamudRolloutBucket = DalamudUpdater.RolloutBucket;
-
+                    
                     var dalamudWindowThread = new Thread(DalamudOverlayThreadStart);
                     dalamudWindowThread.SetApartmentState(ApartmentState.STA);
                     dalamudWindowThread.IsBackground = true;

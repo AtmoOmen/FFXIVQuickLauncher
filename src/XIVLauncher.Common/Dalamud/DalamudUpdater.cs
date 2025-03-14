@@ -25,6 +25,7 @@ public class DalamudUpdater
     private readonly DirectoryInfo   addonDirectory;
     private readonly DirectoryInfo   assetDirectory;
     private readonly IUniqueIdCache? cache;
+    private readonly string?         githubToken;
 
     private readonly TimeSpan defaultTimeout = TimeSpan.FromMinutes(1);
 
@@ -36,7 +37,6 @@ public class DalamudUpdater
     public        FileInfo?               RunnerOverride      { get; set; }
     public        DirectoryInfo           AssetDirectory      { get; private set; }
     public        IDalamudLoadingOverlay? Overlay             { get; set; }
-    public        string?                 RolloutBucket       { get; }
     public static string                  OnlineHash          { get; private set; } = string.Empty;
     public static string                  Version             { get; private set; } = string.Empty;
 
@@ -56,21 +56,14 @@ public class DalamudUpdater
         NoIntegrity // fail with error message
     }
 
-    public DalamudUpdater(
-        DirectoryInfo addonDirectory, DirectoryInfo runtimeDirectory, DirectoryInfo assetDirectory, IUniqueIdCache? cache, string? dalamudRolloutBucket)
+    public DalamudUpdater(DirectoryInfo addonDirectory, DirectoryInfo runtimeDirectory, DirectoryInfo assetDirectory, IUniqueIdCache? cache,
+                          string? githubToken)
     {
-        this.addonDirectory  = addonDirectory;
-        this.Runtime         = runtimeDirectory;
-        this.assetDirectory  = assetDirectory;
-        this.cache           = cache;
-
-        this.RolloutBucket = dalamudRolloutBucket;
-
-        if (this.RolloutBucket == null)
-        {
-            var rng = new Random();
-            this.RolloutBucket = rng.Next(0, 9) >= 7 ? "Canary" : "Control";
-        }
+        this.addonDirectory = addonDirectory;
+        this.Runtime        = runtimeDirectory;
+        this.assetDirectory = assetDirectory;
+        this.cache          = cache;
+        this.githubToken    = githubToken;
     }
 
     public void Run(bool overrideForceProxy = false)
@@ -309,10 +302,12 @@ public class DalamudUpdater
         }
     }
     
-    public static async Task GetDalamudVersionInfoAsync()
+    public async Task GetDalamudVersionInfoAsync()
     {
         using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; MyApp/1.0)");
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+        if (!string.IsNullOrWhiteSpace(this.githubToken)) 
+            httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
 
         try
         {
@@ -363,14 +358,15 @@ public class DalamudUpdater
 
     private async Task DownloadDalamud(DirectoryInfo addonPath)
     {
-        const string REPO_API                 = "https://api.github.com/repos/AtmoOmen/Dalamud/releases/latest";
-        const string USER_AGENT               = "Mozilla/5.0 (compatible; MyApp/1.0)";
+        const string REPO_API = "https://api.github.com/repos/AtmoOmen/Dalamud/releases/latest";
 
         if (addonPath.Exists) addonPath.Delete(true);
         addonPath.Create();
 
         using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(USER_AGENT);
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+        if (!string.IsNullOrWhiteSpace(this.githubToken)) 
+            httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
 
         try
         {

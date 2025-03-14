@@ -1,3 +1,3 @@
-* 新增机制: 若当前游戏正在运行时, 则直接跳过 XIVLauncherCN (Soil) 的更新检查
+* 支持填入 Github Access Token (路径: 设置 - 更新 - 启动器更新用 Github Access Token)
 
 注: 本软件并不对 Windows 以外的平台提供任何支持, 如有需要请使用原版 XIVLauncherCN
