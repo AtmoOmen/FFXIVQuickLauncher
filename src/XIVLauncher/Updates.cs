@@ -1,15 +1,14 @@
 #nullable enable
-
+using CheapLoc;
+using Newtonsoft.Json.Linq;
+using Serilog;
 using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
-using CheapLoc;
-using Newtonsoft.Json.Linq;
-using Serilog;
 using Velopack;
-using Velopack.Sources;
+using XIVLauncher.Support;
 using XIVLauncher.Windows;
 
 namespace XIVLauncher;
@@ -64,7 +63,7 @@ internal class Updates
             {
                 using var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-                if (!string.IsNullOrWhiteSpace(App.Settings.GitHubToken)) 
+                if (!string.IsNullOrWhiteSpace(App.Settings.GitHubToken))
                     httpClient.DefaultRequestHeaders.Authorization = new("Bearer", App.Settings.GitHubToken);
                 var response = await httpClient.GetAsync("https://api.github.com/rate_limit");
                 response.EnsureSuccessStatusCode();
@@ -78,7 +77,7 @@ internal class Updates
                     int resetTimestamp = rateLimit.resources.core.reset;
                     var resetTime      = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
                     CustomMessageBox.Show($"当前 IP 的 GitHub API 调用额度已用尽, 下次刷新时间: {resetTime:HH:mm:ss}\n" +
-                                          $"请耐心等待或更换你的网络环境\n"                                           + 
+                                          $"请在设置中填写 GitHub Access Token 或耐心等待 / 更换你的网络环境\n" +
                                           $"如果你不清楚如何更换网络环境, 请勿询问并立刻卸载本软件, 多谢配合",
                                           "XIVLauncherCN",
                                           MessageBoxButton.OK,
@@ -97,7 +96,7 @@ internal class Updates
             }
 
             var updateOptions = new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
-            var updateSource  = new GithubSource(UpdateUrl, App.Settings.GitHubToken, true);
+            var updateSource  = new GitHubSource(UpdateUrl, App.Settings.GitHubToken, true);
             var mgr           = new UpdateManager(updateSource, updateOptions);
 
             var newRelease = await mgr.CheckForUpdatesAsync();
