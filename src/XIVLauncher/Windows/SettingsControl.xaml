@@ -250,10 +250,12 @@
                         Margin="10,10,0,0"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
-                        materialDesign:HintAssist.Hint="GitHub Access Token"
+                        materialDesign:HintAssist.Hint="更新用GitHub Access Token"
                         materialDesign:HintAssist.IsFloating="True"
                         Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="{Binding GitHubToken}" />
+                        Text="{Binding GitHubToken}"
+                        ToolTip="建议填入不包含任何权限的Token"
+                        ToolTipService.InitialShowDelay="0" />
                 </StackPanel>
 
             </TabItem>
