@@ -64,6 +64,7 @@ internal class Updates
             {
                 using var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+                httpClient.DefaultRequestHeaders.Authorization = new("Bearer", App.Settings.GitHubToken);
                 var response = await httpClient.GetAsync("https://api.github.com/rate_limit");
                 response.EnsureSuccessStatusCode();
 
@@ -95,7 +96,7 @@ internal class Updates
             }
 
             var updateOptions = new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
-            var updateSource  = new GithubSource(UpdateUrl, null, true);
+            var updateSource  = new GithubSource(UpdateUrl, App.Settings.GitHubToken, true);
             var mgr           = new UpdateManager(updateSource, updateOptions);
 
             var newRelease = await mgr.CheckForUpdatesAsync();

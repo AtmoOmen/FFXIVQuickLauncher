@@ -37,6 +37,7 @@ namespace XIVLauncher.Settings
         bool? HasComplainedAboutNoOtp { get; set; }
         string LastVersion { get; set; }
         AcquisitionMethod? PatchAcquisitionMethod { get; set; }
+        string GitHubToken { get; set; }
         bool? HasShownAutoLaunchDisclaimer { get; set; }
         string AcceptLanguage { get; set; }
         DpiAwareness? DpiAwareness { get; set; }

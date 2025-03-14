@@ -245,6 +245,17 @@
                             <ComboBoxItem>ARIA(HTTP)</ComboBoxItem>
                         </ComboBox>
                     </StackPanel>
+                    <TextBox
+                        Width="500"
+                        Margin="10,10,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        materialDesign:HintAssist.Hint="更新用GitHub Access Token"
+                        materialDesign:HintAssist.IsFloating="True"
+                        Foreground="{DynamicResource MaterialDesignBody}"
+                        Text="{Binding GitHubToken}"
+                        ToolTip="建议填入不包含任何权限的Token"
+                        ToolTipService.InitialShowDelay="0" />
                 </StackPanel>
 
             </TabItem>
