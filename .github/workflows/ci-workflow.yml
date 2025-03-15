@@ -57,16 +57,8 @@ jobs:
           mkdir Releases
           dotnet tool install -g vpk
           vpk download github --repoUrl https://github.com/${{ github.repository }}
-          vpk pack -u XIVLauncherCN -v $refver -p .\bin\win-x64 -o .\Releases -e XIVLauncherCN.exe --channel $channel --packAuthors OmenCorp --releaseNotes .\XIVLauncher\Resources\CHANGELOG.txt --icon .\XIVLauncher\Resources\dalamud_icon.ico --splashImage .\XIVLauncher\Resources\logo.png --framework net8.0-x64-desktop
+          vpk pack -u XIVLauncherCN -v $refver -p .\bin\win-x64 -o .\Releases -e XIVLauncherCN.exe --channel $channel --packAuthors OmenCorp --releaseNotes .\XIVLauncher\Resources\CHANGELOG.txt --icon .\XIVLauncher\Resources\dalamud_icon.ico --splashImage .\XIVLauncher\Resources\logo.png --framework net8.0-x64-desktop --noInst
           vpk upload github --repoUrl https://github.com/${{ github.repository }} --channel $channel --publish --releaseName "Release $refver" --token ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Delete installer
-        uses: mknejp/delete-release-assets@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref }}
-          assets: '*.exe'
-          
 
   build:
     name: Build on Windows
