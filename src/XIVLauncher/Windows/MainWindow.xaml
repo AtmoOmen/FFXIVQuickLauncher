@@ -153,13 +153,14 @@
                                     x:Name="QueueButton"
                                     Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
                                     Focusable="False"
-                                    ToolTip="注入现有的游戏进程"
+                                    ToolTip="注入器模式切换"
                                     Margin="0" Height="77" Width="77"
-                                    Command="{Binding Path=InjectGameCommand}" Cursor="Hand">
+                                    Command="{Binding Path=InjectModeSwitchCommand}" Cursor="Hand">
                                     <StackPanel Orientation="Vertical"
                                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                                        <materialDesign:PackIcon Kind="Injection"
-                                                                 Height="Auto" Width="Auto" />
+                                        <materialDesign:PackIcon 
+                                            Kind="{Binding ModeSwitchIcon}"
+                                            Height="Auto" Width="Auto" />
                                     </StackPanel>
                                 </Button>
 
@@ -310,7 +311,7 @@
                                                 Click="FastLoginCheckBox_OnClick"
                                                 ToolTip="缓存登录信息,类PC叨鱼快速登录"
                                                 IsChecked="{Binding IsFastLogin}" />
-                                            
+
                                             <CheckBox
                                                 Visibility="Hidden"
                                                 DockPanel.Dock="Top"
@@ -406,7 +407,7 @@
                                                         </Menu>
                                                     </materialDesign:PopupBox.PopupContent>
                                                 </materialDesign:PopupBox>
-                                                                                               
+
                                                 <Button HorizontalAlignment="Left"
                                                         Visibility="Visible"
                                                         x:Name="AccountSwitcherButton" Margin="0 0 0 0"
@@ -438,7 +439,7 @@
                                                     Stretch="Uniform"
                                                     Source="{Binding QrCodeBitmapImage}"
                                                     />
-                                            
+
                                             <Button HorizontalAlignment="Center"
                                                         Visibility="Visible"
                                                         x:Name="BackToMain" Margin="0 0 0 0"
@@ -463,8 +464,61 @@
                                         </DockPanel>
 
                                     </materialDesign:TransitionerSlide>
+
+                                    <materialDesign:TransitionerSlide>
+                                        <materialDesign:TransitionerSlide.BackwardWipe>
+                                            <materialDesign:SlideWipe />
+                                        </materialDesign:TransitionerSlide.BackwardWipe>
+                                        <DockPanel
+                                                Margin="30,18,30,18">
+                                            <ComboBox
+                                                DockPanel.Dock="Top"
+                                                x:Name="ProcessSelection"
+                                                HorizontalAlignment="Stretch"
+                                                Margin="0,10,0,0"
+                                                Height="24"
+                                                VerticalAlignment="Top"
+                                                ItemsSource="{Binding FfxivProcessCollection}"
+                                                SelectedItem="{Binding SelectedProcess}"
+                                                materialDesign:HintAssist.Hint="选择要注入的进程"
+                                                >
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <materialDesign:PackIcon 
+                                                                Kind="Forbid"
+                                                                Height="16" Width="16" 
+                                                                Visibility="{Binding HasInjected, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                            <TextBlock Text="{Binding DisplayName}" Margin="0,0,5,0"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+  
+                                            <StackPanel Orientation="Horizontal"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Bottom"
+                                                        Margin="0,0,0,10" DockPanel.Dock="Bottom">
+                                                <Button
+                                                    x:Name="InjectButton"
+                                                    Content="带到前台"
+                                                    Click="InjectButton_Click"
+                                                    Margin="0,0,10,0" Width="90"
+                                                    ToolTip="{Binding LoginTooltipLoc}">
+                                                </Button>
+                                                <Button
+                                                    x:Name="BringUp"
+                                                    Content="注入"
+                                                    Command="{Binding Path=InjectGameCommand}"
+                                                    Margin="0,0,0,0" Width="90"
+                                                    ToolTip="{Binding LoginTooltipLoc}">
+                                                </Button>
+                                            </StackPanel>
+                                        </DockPanel>
+
+                                    </materialDesign:TransitionerSlide>
                                 </materialDesign:Transitioner>
-                                    
+
                             </materialDesign:Card>
                         </Grid>
 

@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using CheapLoc;
 using Microsoft.Win32;
+using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Game.Patch;
 using XIVLauncher.Common.Util;
@@ -244,6 +245,47 @@ namespace XIVLauncher
             }
 
             return prcesses.Select(p => p.Id);
+        }
+
+        public static IEnumerable<Process> GetGameProcess()
+        {
+            var prcesses = Process.GetProcesses()
+            .Where(p => p.ProcessName == "ffxiv_dx11")
+            //.Where(p => p.ProcessName == "Notepad")
+            .Where(p => !p.MainWindowTitle.Contains("FINAL FANTASY XIV"));
+            if (PlatformHelpers.IsElevated())
+            {
+                prcesses = prcesses.Where(p => !p.HasExited);
+            }
+
+            return prcesses;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        public static void BringProcessMainWindowToFront(int pid)
+        {
+            try
+            {
+                var process = Process.GetProcessById(pid);
+                if (process != null)
+                {
+                    var hWnd = process.MainWindowHandle;
+                    if (hWnd != IntPtr.Zero)
+                    {
+                        ShowWindow(hWnd, 9);
+                        SetForegroundWindow(hWnd);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Fail to bring {pid} to front,{ex}");
+            }
+
         }
     }
 }

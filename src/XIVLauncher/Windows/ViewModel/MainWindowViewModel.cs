@@ -86,6 +86,7 @@ namespace XIVLauncher.Windows.ViewModel
             LoginRepairCommand = new SyncCommand(GetLoginFunc(AfterLoginAction.Repair), () => !IsLoggingIn);
             LoginCancelCommand = new SyncCommand(GetLoginFunc(AfterLoginAction.CancelLogin));
             LoginForceQRCommand = new SyncCommand(GetLoginFunc(AfterLoginAction.ForceQR));
+            InjectModeSwitchCommand = new SyncCommand(obj => { this.SwitchMode(); });
             InjectGameCommand = new SyncCommand(obj => { this.TryInjectGame(); });
             var frontierUrl = Updates.UpdateLease?.FrontierUrl;
 #if DEBUG || RELEASENOUPDATE
@@ -103,7 +104,8 @@ namespace XIVLauncher.Windows.ViewModel
 
             // Grey out world status icon while deferred check is running
             WorldStatusIconColor = new SolidColorBrush(Color.FromRgb(38, 38, 38));
-
+            ModeSwitchIcon = MaterialDesignThemes.Wpf.PackIconKind.Injection;
+            this.FfxivProcessCollection = new ObservableCollection<FfxivProcess>();
             //this.loginStatusTask = Launcher.GetLoginStatus();
             //this.loginStatusTask.ContinueWith((resultTask) =>
             //{
@@ -221,6 +223,7 @@ namespace XIVLauncher.Windows.ViewModel
             Logining = 0,
             MainPage = 1,
             ScanQrCode = 2,
+            InjectMode = 3
         }
         public void SwitchCard(LoginCard i)
         {
@@ -229,6 +232,11 @@ namespace XIVLauncher.Windows.ViewModel
                 {
                     this.CancelLogin();
                     this.LoginCardTransitionerIndex = (int)i;
+                    ModeSwitchIcon = (i == LoginCard.InjectMode) ? MaterialDesignThemes.Wpf.PackIconKind.Login : MaterialDesignThemes.Wpf.PackIconKind.Injection;
+                    if ((LoginCardTransitionerIndex == (int)LoginCard.InjectMode))
+                    {
+                        RefreshFfxivProcess();
+                    }
                 }
                 );
         }
@@ -1387,11 +1395,85 @@ namespace XIVLauncher.Windows.ViewModel
             Environment.Exit(0);
         }
 
+        public void SwitchMode()
+        {
+            this.SwitchCard((LoginCardTransitionerIndex == (int)LoginCard.InjectMode) ? LoginCard.MainPage : LoginCard.InjectMode);
+        }
+
+        public class ProcessInfo
+        {
+            public string ProcessName { get; set; }
+            public int ProcessId { get; set; }
+        }
+        public void RefreshFfxivProcess()
+        {
+            if (!PlatformHelpers.IsElevated())
+            {
+                Log.Error($"当前XLCN并非管理器权限");
+                var proc = new ProcessStartInfo
+                {
+                    UseShellExecute = true,
+                    WorkingDirectory = Environment.CurrentDirectory,
+                    FileName = Process.GetCurrentProcess().MainModule.FileName,
+                    Verb = "runas",
+                    Arguments = "--inject"
+                };
+
+                Process.Start(proc);
+                Environment.Exit(0);
+            }
+            this.loginCts = new CancellationTokenSource();
+            Task.Run(() =>
+            {
+                while (true)
+                {
+                    if (loginCts.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    var currentSelectedProcessId = SelectedProcess?.ProcessId;
+                    var newProcesses = AppUtil.GetGameProcess();
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
+                        for (int i = FfxivProcessCollection.Count - 1; i >= 0; i--)
+                        {
+                            if (!newProcesses.Any(p => p.Id == FfxivProcessCollection[i].ProcessId))
+                            {
+                                FfxivProcessCollection.RemoveAt(i);
+                                Log.Verbose($"Refreshing Processes...(Remove)");
+                            }
+                        }
+
+                        foreach (var newProcess in newProcesses)
+                        {
+                            if (!FfxivProcessCollection.Any(p => p.ProcessId == newProcess.Id))
+                            {
+                                FfxivProcessCollection.Add(new FfxivProcess(newProcess));
+                                Log.Verbose($"Refreshing Processes...(Add)");
+                            }
+                        }
+
+                        if (currentSelectedProcessId.HasValue)
+                        {
+                            SelectedProcess = FfxivProcessCollection.FirstOrDefault(p => p.ProcessId == currentSelectedProcessId.Value);
+                        }
+                    });
+
+                    Log.Verbose($"Refreshing Processes...");
+                    Thread.Sleep(1000);
+                };
+            });
+        }
+
         bool IsInjecting = false;
         public void TryInjectGame()
         {
             if (this.IsInjecting)
                 return;
+            if (SelectedProcess == null)
+            {
+                return;
+            }
             //if (username == null) username = string.Empty;
             if (_window.Dispatcher != Dispatcher.CurrentDispatcher)
             {
@@ -1420,18 +1502,34 @@ namespace XIVLauncher.Windows.ViewModel
                         Environment.Exit(0);
                     }
 
-                    if (InjectGame())
+                    var gamePid = SelectedProcess?.ProcessId;
+                    if (gamePid == null)
+                        return;
+                    if (SelectedProcess.HasInjected)
                     {
                         var dialog = CustomMessageBox.Builder
-                            .NewFrom("注入完成,是否退出XIVLauncherCN?")
-                            .WithButtons(MessageBoxButton.YesNo)
-                            .WithCaption("XIVLauncherCN")
-                            .WithParentWindow(_window)
-                            .Show();
-                        if (dialog == MessageBoxResult.Yes)
+                        .NewFrom("当前选择的进程已经注入了")
+                        .WithButtons(MessageBoxButton.OK)
+                        .WithCaption("XIVLauncherCN")
+                        .WithParentWindow(_window)
+                        .Show();
+                    }
+                    else
+                    {
+                        if (InjectGame(gamePid.Value))
                         {
-                            Log.CloseAndFlush();
-                            Environment.Exit(0);
+                            SelectedProcess.HasInjected = true;
+                            var dialog = CustomMessageBox.Builder
+                                .NewFrom("注入完成,是否退出XIVLauncherCN?")
+                                .WithButtons(MessageBoxButton.YesNo)
+                                .WithCaption("XIVLauncherCN")
+                                .WithParentWindow(_window)
+                                .Show();
+                            if (dialog == MessageBoxResult.Yes)
+                            {
+                                Log.CloseAndFlush();
+                                Environment.Exit(0);
+                            }
                         }
                     }
                 }
@@ -1446,16 +1544,8 @@ namespace XIVLauncher.Windows.ViewModel
                 Activate();
             });
         }
-        public bool InjectGame(bool noThird = false, bool noPlugins = false)
+        public bool InjectGame(int gamePid, bool noThird = false, bool noPlugins = false)
         {
-            var pidList = AppUtil.GetGameProcessIds();
-            if (pidList.Count() == 0)
-            {
-                CustomMessageBox.Show($"没有找到对应的游戏进程, 请检查后重试", "注入失败");
-                return false;
-            }
-
-            var gamePid = pidList.First();
             var gameExePath = Process.GetProcessById(gamePid).MainModule?.FileName;
             var gameExeFolder = Path.GetDirectoryName(gameExePath);
             var gamePath = (new DirectoryInfo(gameExeFolder!)).Parent;
@@ -1947,6 +2037,7 @@ namespace XIVLauncher.Windows.ViewModel
 
         public ICommand LoginForceQRCommand { get; set; }
 
+        public ICommand InjectModeSwitchCommand { get; set; }
         public ICommand InjectGameCommand { get; set; }
 
         #endregion
@@ -2127,6 +2218,58 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 _qrCodeBitmapImage = value;
                 OnPropertyChanged(nameof(QrCodeBitmapImage));
+            }
+        }
+
+        private MaterialDesignThemes.Wpf.PackIconKind _modeSwitchIcon;
+        public MaterialDesignThemes.Wpf.PackIconKind ModeSwitchIcon
+        {
+            get => _modeSwitchIcon;
+            set
+            {
+                _modeSwitchIcon = value;
+                OnPropertyChanged(nameof(ModeSwitchIcon));
+            }
+        }
+
+        public class FfxivProcess
+        {
+            public string DisplayName { get; set; }
+            public bool HasInjected { get; set; }
+            public int ProcessId;
+            public FfxivProcess(Process p)
+            {
+                this.DisplayName = $"{p.Id} ({p.StartTime})";
+                this.ProcessId = p.Id;
+                this.HasInjected = DetectDalamud(p);
+                //this.HasInjected = true;
+            }
+
+            public static bool DetectDalamud(Process p)
+            {
+                return p.Modules.Cast<ProcessModule>().Any(m => m.ModuleName.Contains("Dalamud.dll"));
+            }
+        }
+
+        private ObservableCollection<FfxivProcess> _ffxivProcessCollection;
+        public ObservableCollection<FfxivProcess> FfxivProcessCollection
+        {
+            get => _ffxivProcessCollection;
+            set
+            {
+                _ffxivProcessCollection = value;
+                OnPropertyChanged(nameof(FfxivProcessCollection));
+            }
+        }
+
+        private FfxivProcess _selectedProcess;
+        public FfxivProcess SelectedProcess
+        {
+            get => _selectedProcess;
+            set
+            {
+                _selectedProcess = value;
+                OnPropertyChanged(nameof(SelectedProcess));
             }
         }
 
