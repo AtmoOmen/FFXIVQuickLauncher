@@ -55,13 +55,13 @@ public class GitHubSource : Velopack.Sources.GithubSource
             }
         });
 
-        if (latestLocalRelease == null)
+        if (latestLocalRelease is not null && releasesList.Any(v => v.Item1 is not null && v.Item1 == latestLocalRelease.Version))
         {
-            releasesList = releasesList.Take(1);
+            releasesList = releasesList.Where(v => v.Item1 != null && v.Item1 >= latestLocalRelease.Version);
         }
         else
         {
-            releasesList = releasesList.Where(v => v.Item1 != null && v.Item1 >= latestLocalRelease.Version);
+            releasesList = releasesList.Take(1);
         }
 
         var jsonList = releasesList.Select(async Task<(GithubRelease, string?)> (r) =>
