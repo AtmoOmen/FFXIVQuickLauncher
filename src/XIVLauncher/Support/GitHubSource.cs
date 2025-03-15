@@ -105,10 +105,13 @@ public class GitHubSource : Velopack.Sources.GithubSource
         };
     }
 
+    // copy from Velopack
     public static string GetVeloReleaseIndexName(string channel)
     {
         return $"releases.{channel ?? VelopackRuntimeInfo.SystemOs.GetOsShortName()}.json";
     }
+
+    // copy from Velopack
     public static string RemoveByteOrderMarkerIfPresent(byte[] content)
     {
         byte[] output = { };
@@ -162,6 +165,7 @@ public class GitHubSource : Velopack.Sources.GithubSource
 
 }
 
+// copy from Velopack
 internal static class LoggerExtensions
 {
     public static void Trace(this ILogger logger, string message)
