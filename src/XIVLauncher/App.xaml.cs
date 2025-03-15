@@ -230,7 +230,7 @@ namespace XIVLauncher
                 }
                 if (InjectMode)
                 {
-                    _mainWindow.Model.InjectGameCommand.Execute(null);
+                    _mainWindow.Model.InjectModeSwitchCommand.Execute(null);
                 }
             });
         }

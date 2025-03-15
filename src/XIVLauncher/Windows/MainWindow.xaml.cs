@@ -797,5 +797,14 @@ namespace XIVLauncher.Windows
             });
 
         }
+
+        private void InjectButton_Click(object sender, RoutedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (Model.SelectedProcess != null)
+                    AppUtil.BringProcessMainWindowToFront(Model.SelectedProcess.ProcessId);
+            });
+        }
     }
 }
