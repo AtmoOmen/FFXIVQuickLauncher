@@ -306,8 +306,6 @@ public class DalamudUpdater
     {
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-        if (!string.IsNullOrWhiteSpace(this.githubToken)) 
-            httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
 
         try
         {
@@ -321,7 +319,7 @@ public class DalamudUpdater
             var version = jsonDoc.RootElement.GetProperty("tag_name").GetString();
             if (string.IsNullOrWhiteSpace(version))
                 throw new NullReferenceException("[DUPDATE] 未能找到对应的版本信息");
-            Version = version;
+            Version = version!;
             
             var assets  = jsonDoc.RootElement.GetProperty("assets");
             foreach (var asset in assets.EnumerateArray())
