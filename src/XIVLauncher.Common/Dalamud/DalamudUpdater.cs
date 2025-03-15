@@ -56,8 +56,8 @@ public class DalamudUpdater
         NoIntegrity // fail with error message
     }
 
-    public DalamudUpdater(DirectoryInfo addonDirectory, DirectoryInfo runtimeDirectory, DirectoryInfo assetDirectory, IUniqueIdCache? cache,
-                          string? githubToken)
+    public DalamudUpdater(
+        DirectoryInfo addonDirectory, DirectoryInfo runtimeDirectory, DirectoryInfo assetDirectory, IUniqueIdCache? cache, string? githubToken)
     {
         this.addonDirectory = addonDirectory;
         this.Runtime        = runtimeDirectory;
@@ -311,7 +311,8 @@ public class DalamudUpdater
 
         try
         {
-            var response = await httpClient.GetAsync("https://api.github.com/repos/AtmoOmen/Dalamud/releases/latest");
+            var response = await httpClient.GetAsync(
+                               "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json");
             response.EnsureSuccessStatusCode();
 
             var       json    = await response.Content.ReadAsStringAsync();
@@ -320,7 +321,7 @@ public class DalamudUpdater
             var version = jsonDoc.RootElement.GetProperty("tag_name").GetString();
             if (string.IsNullOrWhiteSpace(version))
                 throw new NullReferenceException("[DUPDATE] 未能找到对应的版本信息");
-            Version = version!;
+            Version = version;
             
             var assets  = jsonDoc.RootElement.GetProperty("assets");
             foreach (var asset in assets.EnumerateArray())
