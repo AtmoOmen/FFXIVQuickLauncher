@@ -7,18 +7,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using Velopack;
 using Velopack.Sources;
 
 namespace XIVLauncher.Support;
 
-public class GitHubSource(string repoUrl, string? accessToken, bool prerelease, IFileDownloader? downloader = null) : 
+public class GitHubSource(string repoUrl, string? accessToken, bool prerelease, IFileDownloader? downloader = null) :
     GithubSource(repoUrl, accessToken, prerelease, downloader)
 {
-    private static readonly SemaphoreSlim Semaphore = new(Environment.ProcessorCount, Environment.ProcessorCount);
-
     public override async Task<VelopackAssetFeed> GetReleaseFeed(ILogger logger, string channel, Guid? stagingId = null, VelopackAsset? latestLocalRelease = null)
     {
         var releases = await GetReleases(Prerelease).ConfigureAwait(false);
@@ -71,16 +68,8 @@ public class GitHubSource(string repoUrl, string? accessToken, bool prerelease, 
                 return (r.Item2, null);
             }
 
-            try
-            {
-                await Semaphore.WaitAsync().ConfigureAwait(false); // 限制并发下载
-                var releaseBytes = await Downloader.DownloadBytes(assetUrl, Authorization, "application/octet-stream").ConfigureAwait(false);
-                return (r.Item2, RemoveByteOrderMarkerIfPresent(releaseBytes));
-            }
-            finally
-            {
-                Semaphore.Release();
-            }
+            var releaseBytes = await Downloader.DownloadBytes(assetUrl, Authorization, "application/octet-stream").ConfigureAwait(false);
+            return (r.Item2, RemoveByteOrderMarkerIfPresent(releaseBytes));
         }).ToList();
 
         foreach (var j in jsonList)
@@ -103,22 +92,22 @@ public class GitHubSource(string repoUrl, string? accessToken, bool prerelease, 
             Assets = entries.Cast<VelopackAsset>().ToArray(),
         };
     }
-    
+
     protected override async Task<GithubRelease[]> GetReleases(bool includePrereleases)
     {
         // https://docs.github.com/en/rest/reference/releases
-        const int perPage        = 5;
-        const int page           = 1;
-        var       releasesPath   = $"repos{RepoUri.AbsolutePath}/releases?per_page={perPage}&page={page}";
-        var       baseUri        = GetApiBaseUrl(RepoUri);
-        var       getReleasesUri = new Uri(baseUri, releasesPath);
-        var       response       = await Downloader.DownloadString(getReleasesUri.ToString(), Authorization, "application/vnd.github.v3+json").ConfigureAwait(false);
-        var       releases       = JsonConvert.DeserializeObject<List<GithubRelease>>(response);
+        const int perPage = 5;
+        const int page = 1;
+        var releasesPath = $"repos{RepoUri.AbsolutePath}/releases?per_page={perPage}&page={page}";
+        var baseUri = GetApiBaseUrl(RepoUri);
+        var getReleasesUri = new Uri(baseUri, releasesPath);
+        var response = await Downloader.DownloadString(getReleasesUri.ToString(), Authorization, "application/vnd.github.v3+json").ConfigureAwait(false);
+        var releases = JsonConvert.DeserializeObject<List<GithubRelease>>(response);
         return releases == null ? [] : releases.OrderByDescending(d => d.PublishedAt).Where(x => includePrereleases || !x.Prerelease).ToArray();
     }
 
     // copy from Velopack
-    public static string GetVeloReleaseIndexName(string channel) 
+    public static string GetVeloReleaseIndexName(string channel)
         => $"releases.{channel ?? VelopackRuntimeInfo.SystemOs.GetOsShortName()}.json";
 
     // copy from Velopack
