@@ -1,3 +1,6 @@
+using CheapLoc;
+using MaterialDesignThemes.Wpf;
+using Serilog;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -9,9 +12,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using CheapLoc;
-using MaterialDesignThemes.Wpf;
-using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
@@ -53,6 +53,16 @@ namespace XIVLauncher.Windows
             else
             {
                 ShowInTaskbar = true;
+            }
+
+            if (_builder.ShowInputTextBox)
+            {
+                InputTextBox.Visibility = Visibility.Visible;
+                InputTextBox.Text = _builder.InputTextBoxText ?? string.Empty;
+            }
+            else
+            {
+                InputTextBox.Visibility = Visibility.Collapsed;
             }
 
             Title = builder.Caption;
@@ -201,6 +211,10 @@ namespace XIVLauncher.Windows
                 MessageBoxButton.YesNo => MessageBoxResult.Yes,
                 _ => throw new NotImplementedException(),
             };
+            if (_builder.ShowInputTextBox)
+            {
+                _builder.InputTextBoxText = InputTextBox.Text;
+            }
             Close();
         }
 
@@ -326,6 +340,8 @@ namespace XIVLauncher.Windows
             internal Window ParentWindow = null;
             internal bool OverrideTopMostFromParentWindow = true;
             internal float YesCountDownSeconds = 0;
+            internal bool ShowInputTextBox = false;
+            internal string InputTextBoxText = string.Empty;
 
             public Builder() { }
             public Builder WithText(string text) { Text = text; return this; }
@@ -352,6 +368,12 @@ namespace XIVLauncher.Windows
             public Builder WithShowNewGitHubIssue(bool showNewGitHubIssue = true) { ShowNewGitHubIssue = showNewGitHubIssue; return this; }
             public Builder WithParentWindow(Window window) { ParentWindow = window; return this; }
             public Builder WithParentWindow(Window window, bool overrideTopMost) { ParentWindow = window; OverrideTopMostFromParentWindow = overrideTopMost; return this; }
+            public Builder WithInputTextBox(string text, bool showInputTextBox = true)
+            {
+                ShowInputTextBox = showInputTextBox;
+                InputTextBoxText = text;
+                return this;
+            }
 
             public Builder WithExceptionText()
             {

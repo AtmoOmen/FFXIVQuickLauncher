@@ -85,7 +85,26 @@ internal class Updates
                     Environment.Exit(1);
                 }
             }
-            catch (Exception ex) { Log.Warning(ex, "GitHub 速率限制检查失败, 继续尝试更新"); }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "GitHub 速率限制检查失败, 继续尝试更新");
+                if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode is HttpStatusCode.Unauthorized && !string.IsNullOrWhiteSpace(App.Settings.GitHubToken))
+                {
+                    var builder = new CustomMessageBox.Builder()
+                        .WithCaption("XIVLauncherCN")
+                        .WithText($"当前配置的 GitHub Token 已失效, 请重新配置或删除 Token\n原 Token: {App.Settings.GitHubToken}")
+                        .WithButtons(MessageBoxButton.OK)
+                        .WithImage(MessageBoxImage.Error)
+                        .WithShowHelpLinks()
+                        .WithShowDiscordLink()
+                        .WithInputTextBox(App.Settings.GitHubToken);
+
+                    if (builder.Show() == MessageBoxResult.OK)
+                    {
+                        App.Settings.GitHubToken = builder.InputTextBoxText;
+                    }
+                }
+            }
 
             // 游戏进程
             if (System.Diagnostics.Process.GetProcessesByName("ffxiv_dx11").Length > 0)
