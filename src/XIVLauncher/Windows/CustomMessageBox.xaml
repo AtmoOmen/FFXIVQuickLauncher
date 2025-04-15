@@ -40,7 +40,7 @@
                 <TextBox
                     x:Name="InputTextBox"
                     Margin="0,10,0,0"
-                    Padding="4"
+                    Padding="4,4,10,4"
                     VerticalAlignment="Center"
                     Foreground="{DynamicResource MaterialDesignBody}" />
             </StackPanel>
