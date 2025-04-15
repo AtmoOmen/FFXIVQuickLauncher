@@ -87,6 +87,7 @@ internal class Updates
             }
             catch (Exception ex)
             {
+                Log.Warning(ex, "GitHub 速率限制检查失败, 继续尝试更新");
                 if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode is HttpStatusCode.Unauthorized && !string.IsNullOrWhiteSpace(App.Settings.GitHubToken))
                 {
                     var builder = new CustomMessageBox.Builder()
@@ -102,10 +103,6 @@ internal class Updates
                     {
                         App.Settings.GitHubToken = builder.InputTextBoxText;
                     }
-                }
-                else
-                {
-                    Log.Warning(ex, "GitHub 速率限制检查失败, 继续尝试更新");
                 }
             }
 
