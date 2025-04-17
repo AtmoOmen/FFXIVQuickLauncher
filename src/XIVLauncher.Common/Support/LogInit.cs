@@ -93,7 +93,7 @@ public static class LogInit
     private class SeTestSidMaskingOperator : RegexMaskingOperator
     {
         private const string TEST_SID_PATTERN =
-            "(?:DEV\\.TestSID=\\S+)";
+            "(?:DEV\\.TestSID=\\S+)|(ULS21-[a-z0-9]+)";
 
         public SeTestSidMaskingOperator()
             : base(TEST_SID_PATTERN, RegexOptions.IgnoreCase | RegexOptions.Compiled)

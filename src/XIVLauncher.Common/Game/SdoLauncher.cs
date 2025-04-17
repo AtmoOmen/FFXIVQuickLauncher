@@ -773,7 +773,12 @@ namespace XIVLauncher.Common.Game
                 return new LoginResult { PendingPatches = null, State = LoginState.NeedsPatchBoot, OauthLogin = null };
 
             if (!resp.Headers.TryGetValues("X-Patch-Unique-Id", out var uidVals))
+            {
+                Log.Error($"RequestUri:{request.RequestUri}");
+                Log.Error($"Content:{request.Content}");
+                Log.Error($"Response:{text}");
                 throw new InvalidResponseException("Could not get X-Patch-Unique-Id.", text);
+            }
 
             var uid = uidVals.First();
 
