@@ -56,14 +56,14 @@ internal class Updates
 #endif
         // GitHub requires TLS 1.2, we need to hardcode this for Windows 7
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
         try
         {
             try
             {
                 using var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-                if (!string.IsNullOrWhiteSpace(App.Settings.GitHubToken))
+                var hasToken = !string.IsNullOrWhiteSpace(App.Settings.GitHubToken);
+                if (hasToken)
                     httpClient.DefaultRequestHeaders.Authorization = new("Bearer", App.Settings.GitHubToken);
                 var response = await httpClient.GetAsync("https://api.github.com/rate_limit");
                 response.EnsureSuccessStatusCode();
@@ -75,15 +75,28 @@ internal class Updates
                 if (remaining == 0)
                 {
                     int resetTimestamp = rateLimit.resources.core.reset;
-                    var resetTime      = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
-                    CustomMessageBox.Show($"当前 IP 的 GitHub API 调用额度已用尽, 下次刷新时间: {resetTime:HH:mm:ss}\n" +
-                                          $"请在设置中填写 GitHub Access Token 或耐心等待 / 更换你的网络环境\n" +
-                                          $"如果你不清楚如何更换网络环境, 请勿询问并立刻卸载本软件, 多谢配合",
-                                          "XIVLauncherCN",
-                                          MessageBoxButton.OK,
-                                          MessageBoxImage.Error);
+                    var resetTime = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
+
+                    var builder = new CustomMessageBox.Builder()
+                        .WithCaption("XIVLauncherCN")
+                        .WithText($"当前 {(hasToken ? "Token" : "IP")} 的 GitHub API 调用额度已用尽, 下次刷新时间: {resetTime:HH:mm:ss}\n" +
+                                  $"请{(hasToken ? "更换" : "填写")} GitHub Access Token 或耐心等待 / 更换你的网络环境\n" +
+                                  $"如果你不清楚如何更换网络环境, 请勿询问并立刻卸载本软件, 多谢配合\n" +
+                                  $"GitHub Token:")
+                        .WithButtons(MessageBoxButton.OK)
+                        .WithImage(MessageBoxImage.Error)
+                        .WithShowHelpLinks()
+                        .WithShowDiscordLink()
+                        .WithInputTextBox(App.Settings.GitHubToken);
+                    if (builder.Show() == MessageBoxResult.OK && App.Settings.GitHubToken != builder.InputTextBoxText)
+                    {
+                        App.Settings.GitHubToken = builder.InputTextBoxText;
+                    }
+                    else
+                    {
                     Environment.Exit(1);
                 }
+            }
             }
             catch (Exception ex)
             {
