@@ -40,7 +40,7 @@ public class DalamudUpdater
     public static string                  OnlineHash          { get; private set; } = string.Empty;
     public static string                  Version             { get; private set; } = string.Empty;
 
-    public const string RuntimeVersion = "8.0.3";
+    public const string RuntimeVersion = "9.0.2";
 
     public FileInfo Runner
     {
