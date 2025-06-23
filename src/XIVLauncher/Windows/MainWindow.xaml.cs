@@ -221,14 +221,13 @@ namespace XIVLauncher.Windows
 
             // Set the default Dalamud injection method
             App.Settings.InGameAddonLoadMethod ??= EnvironmentSettings.IsWine
-                ? DalamudLoadMethod.DllInject
-                : DalamudLoadMethod.EntryPoint;
+                                                       ? DalamudLoadMethod.DllInject
+                                                       : DalamudLoadMethod.EntryPoint;
 
             // Clean up invalid addons
             if (App.Settings.AddonList != null)
                 App.Settings.AddonList = App.Settings.AddonList.Where(x => !string.IsNullOrEmpty(x.Addon.Path)).ToList();
-
-
+            
             App.Settings.AskBeforePatchInstall ??= true;
 
             App.Settings.DpiAwareness ??= DpiAwareness.Unaware;
@@ -285,21 +284,17 @@ namespace XIVLauncher.Windows
             }
 
             App.Settings.VersionUpgradeLevel = versionLevel;
-
-
         }
 
         public void Initialize()
         {
-#if DEBUG
             var fakeStartMenuItem = new MenuItem
             {
-                Header = "Fake start"
+                Header = "假启动 (调试用)"
             };
             fakeStartMenuItem.Click += FakeStart_OnClick;
 
             LoginContextMenu.Items.Add(fakeStartMenuItem);
-#endif
 
             this.SetDefaults();
 
