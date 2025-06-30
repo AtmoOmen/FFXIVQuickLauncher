@@ -71,8 +71,7 @@ namespace XIVLauncher.Common.Game
         private const int QRCodeExpirationTime = 300 * 1000;// ms
         private const int SlideExpirationTime = 30 * 1000;// ms
         private const int AutoLoginKeepDays = 30;
-        //public DcTraveler DcTraveler;
-        public Func<string, DcTraveler> CreateDcTraveler;
+
         public async Task<LoginResult> LoginBySid(string sndaId, string sid)
         {
             var oath = new OauthLoginResult
@@ -115,7 +114,6 @@ namespace XIVLauncher.Common.Game
 
             var sndaId = result.Data.SndaId;
             var tgt = result.Data.Tgt;
-            this.CreateDcTraveler = (nSessionId) => { return new DcTraveler(nSessionId, () => this.GetSessionId(tgt, guid), () => this.GetDcTravelSessionId(tgt, guid)); };
             var sessionId = await GetSessionId(tgt, guid);
 
             var oath = new OauthLoginResult
@@ -140,7 +138,6 @@ namespace XIVLauncher.Common.Game
         {
             var guid = await this.GetGuid();
             var (sndaId, tgt, autoLoginSessionKey) = await ThirdPartyLogin(account, token, autoLogin, AutoLoginKeepDays);
-            this.CreateDcTraveler = (nSessionId) => { return new DcTraveler(nSessionId, () => this.GetSessionId(tgt, guid), () => this.GetDcTravelSessionId(tgt, guid)); };
             var sessionId = await GetSessionId(tgt, guid);
 
             var oath = new OauthLoginResult
@@ -183,7 +180,6 @@ namespace XIVLauncher.Common.Game
             if (autoLogin)
                 (tgt, autoLoginSessionKey) = await AccountGroupLogin(tgt, sndaId, AutoLoginKeepDays);
 
-            this.CreateDcTraveler = (nSessionId) => { return new DcTraveler(nSessionId, () => this.GetSessionId(tgt, guid), () => this.GetDcTravelSessionId(tgt, guid)); };
             var sessionId = await GetSessionId(tgt, guid);
 
             var oath = new OauthLoginResult
@@ -211,7 +207,6 @@ namespace XIVLauncher.Common.Game
             var (pushMsgSerialNum, pushMsgSessionKey, expiration) = await SendPushMessage(account);
             showVerificationCode?.Invoke(pushMsgSerialNum);
             var (sndaId, tgt, autoLoginSessionKey) = await WaitingForSlideOnDaoyuApp(pushMsgSessionKey, pushMsgSerialNum, guid, expiration, cts, autoLogin, AutoLoginKeepDays);
-            this.CreateDcTraveler = (nSessionId) => { return new DcTraveler(nSessionId, () => this.GetSessionId(tgt, guid), () => this.GetDcTravelSessionId(tgt, guid)); };
             var sessionId = await GetSessionId(tgt, guid);
 
             var oath = new OauthLoginResult
@@ -250,7 +245,6 @@ namespace XIVLauncher.Common.Game
 
             try
             {
-                this.CreateDcTraveler = (nSessionId) => { return new DcTraveler(nSessionId, () => this.GetSessionId(tgt, guid), () => this.GetDcTravelSessionId(tgt, guid)); };
                 var sessionId = await GetSessionId(tgt, guid);
                 var oath = new OauthLoginResult
                 {
@@ -283,17 +277,13 @@ namespace XIVLauncher.Common.Game
 
         }
 
-        public async Task<string> GetSessionId(string tgt, string guid)
+        private async Task<string> GetSessionId(string tgt, string guid)
         {
             var promotionResult = await GetPromotionInfo(tgt);
+
             return await SsoLogin(tgt, guid);
         }
 
-        public async Task<string> GetDcTravelSessionId(string tgt, string guid)
-        {
-            var promotionResult = await GetPromotionInfo(tgt, "https://ff14bjz.sdo.com/RegionKanTelepo");
-            return await SsoLogin(tgt, guid);
-        }
 
         public enum SdoLoginState
         {
@@ -452,15 +442,10 @@ namespace XIVLauncher.Common.Game
             return result.Data.Ticket;
         }
 
-        private async Task<SdoLoginResult> GetPromotionInfo(string tgt, string serviceUrl = null)
+        private async Task<SdoLoginResult> GetPromotionInfo(string tgt)
         {
-            // /authen/getPromotion.json 激活ticket的登录权限
-            var paras = new List<string>() { $"tgt={tgt}" };
-            if (serviceUrl != null)
-            {
-                paras.Add($"serviceUrl=${serviceUrl}");
-            }
-            var result = await this.GetJsonAsSdoClient("getPromotionInfo.json", paras, tgt);
+            // /authen/getPromotion.json 不知道为什么要有,但就是有
+            var result = await this.GetJsonAsSdoClient("getPromotionInfo.json", new List<string>() { $"tgt={tgt}" }, tgt);
             if (result.ReturnCode != 0)
                 throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
             return result;
@@ -674,7 +659,7 @@ namespace XIVLauncher.Common.Game
             return result;
         }
 
-        public Process? LaunchGameSdo(IGameRunner runner, string sessionId, string sndaId, int dcTravelPort, string areaId, string lobbyHost, string gmHost, string dbHost,
+        public Process? LaunchGameSdo(IGameRunner runner, string sessionId, string sndaId, string areaId, string lobbyHost, string gmHost, string dbHost,
                                       string additionalArguments, DirectoryInfo gamePath, bool encryptArguments, DpiAwareness dpiAwareness)
         {
             Log.Information(
@@ -693,8 +678,7 @@ namespace XIVLauncher.Common.Game
                                   .Append("resetConfig", "0")
                                   .Append("DEV.MaxEntitledExpansionID", "1")
                                   .Append("DEV.TestSID", sessionId)
-                                  .Append("XL.SndaId", sndaId)
-                                  .Append("XL.DcTraveler", $"{dcTravelPort}");
+                                  .Append("XL.SndaId", sndaId);
 
             // This is a bit of a hack; ideally additionalArguments would be a dictionary or some KeyValue structure
             if (!string.IsNullOrEmpty(additionalArguments))

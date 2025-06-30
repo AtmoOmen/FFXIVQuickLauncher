@@ -117,7 +117,6 @@ namespace XIVLauncher.Accounts
         public string AutoLoginSessionKey { get; set; }
         public string Password { get; set; }
         public string TestSID { get; set; }
-        public string NSessionId { get; set; }
 
         [Ignore]
         public bool IsWeGame => (this.AccountType != XivAccountType.Sdo);
