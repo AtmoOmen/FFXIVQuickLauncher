@@ -239,6 +239,9 @@ namespace XIVLauncher.Windows
             App.Settings.UniqueIdCacheEnabled = false;
             //App.Settings.EncryptArguments = false;
             App.Settings.EnableBeta ??= false;
+#if !XL_NOAUTOUPDATE
+            App.Settings.EnableBeta = false;
+#endif
 
             App.Settings.AutoStartSteam ??= false;
 

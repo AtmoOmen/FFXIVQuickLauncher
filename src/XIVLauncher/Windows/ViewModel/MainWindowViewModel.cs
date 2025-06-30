@@ -30,6 +30,7 @@ using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Patch;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Game.Patch.PatchList;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Common.Windows;
@@ -283,6 +284,7 @@ namespace XIVLauncher.Windows.ViewModel
             });
         }
 
+        public DcTravelListener dcTravelListener { get; private set; } = null;
         public const string PresudoPassword = "********假的密码********";
         private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
         {
@@ -336,6 +338,7 @@ namespace XIVLauncher.Windows.ViewModel
             // TODO: 太jb乱了，得重构
             var finalLoginType = loginType;
             var serect = string.Empty;
+            var nSessionId = string.Empty;
             inputPassword = (inputPassword == PresudoPassword) ? string.Empty : inputPassword?.Trim();
 
             var accountType = loginType switch
@@ -358,6 +361,7 @@ namespace XIVLauncher.Windows.ViewModel
                         else if (savedAccount != null)
                         {
                             serect = await AccountManager.Decrypt(savedAccount.Password);
+                            nSessionId = await AccountManager.CredProvider.Decrypt(savedAccount.NSessionId);
                         }
                         ArgumentException.ThrowIfNullOrEmpty(username, "静态登录用户名");
                         ArgumentException.ThrowIfNullOrEmpty(serect, "静态登录密码");
@@ -427,6 +431,7 @@ namespace XIVLauncher.Windows.ViewModel
                         if (inputPassword.IsNullOrEmpty())
                         {
                             serect = await AccountManager.CredProvider.Decrypt(savedAccount.AutoLoginSessionKey);
+                            nSessionId = await AccountManager.CredProvider.Decrypt(savedAccount.NSessionId);
                             finalLoginType = LoginType.AutoLoginSession;
                         }
                         if (serect.IsNullOrEmpty())
@@ -440,6 +445,7 @@ namespace XIVLauncher.Windows.ViewModel
                         if (savedAccount != null && doingAutoLogin)
                         {
                             serect = await AccountManager.Decrypt(savedAccount.AutoLoginSessionKey);
+                            nSessionId = await AccountManager.CredProvider.Decrypt(savedAccount.NSessionId);
                             finalLoginType = LoginType.AutoLoginSession;
                         }
                         if (serect.IsNullOrEmpty())
@@ -469,8 +475,11 @@ namespace XIVLauncher.Windows.ViewModel
                 }
             }
 
-
-            var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, action).ConfigureAwait(false);
+            //var dc = new DcTraveler(nSessionId, null, null);
+            //await dc.GetValidCookie();
+            //var groupList = await dc.QueryGroupListTravelSource();
+            //var orders = await dc.QueryMigrationOrders();
+            var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, true, nSessionId, action).ConfigureAwait(false);
 
             if (loginResult == null)
                 return;
@@ -486,6 +495,7 @@ namespace XIVLauncher.Windows.ViewModel
                 action = AfterLoginAction.UpdateOnly;
             }
 
+            DcTraveler dcTraveler = null;
             if (action != AfterLoginAction.UpdateOnly)
             {
                 if (loginResult.State == Launcher.LoginState.Ok)
@@ -509,13 +519,25 @@ namespace XIVLauncher.Windows.ViewModel
 
                     if (doingAutoLogin && accountToSave.AccountType != XivAccountType.WeGameSid)
                     {
+                        dcTraveler = Launcher.CreateDcTraveler(nSessionId);
+                        await dcTraveler.GetValidCookie();
+                        nSessionId = dcTraveler.GetNSessionIdFromCookie();
+                        accountToSave.NSessionId = nSessionId;
+                        loginResult.DcTravelPort = ApiHelpers.GetAvailablePort();
+#if !DEBUG
+                        var encrypt = false;
+#else
+                        var encrypt = false;
+#endif
+                        this.dcTravelListener = new DcTravelListener(dcTraveler, loginResult.DcTravelPort, encrypt);
+                        Log.Information($"[DcTravel] use port:{loginResult.DcTravelPort}");
+                        this.dcTravelListener.StartAsync();
                         accountToSave.AutoLoginSessionKey = await AccountManager.Encrypt(loginResult.OauthLogin.AutoLoginSessionKey);
                         if (finalLoginType == LoginType.SdoStatic)
                         {
                             accountToSave.Password = await AccountManager.Encrypt(serect);
                         }
                     }
-
                     if (accountToSave.AccountType == XivAccountType.WeGameSid)
                     {
                         accountToSave.TestSID = await AccountManager.Encrypt(serect);
@@ -527,8 +549,6 @@ namespace XIVLauncher.Windows.ViewModel
                     AccountManager.Save();
                 }
             }
-
-
             Log.Information("[LR] {State} {NumPatches} {Playable}",
                         loginResult.State,
                         loginResult.PendingPatches?.Length,
@@ -637,6 +657,8 @@ namespace XIVLauncher.Windows.ViewModel
             string username,
             string serect,
             bool autoLogin,
+            bool useDcTraveler,
+            string nSessionId,
             AfterLoginAction action
             )
         {
@@ -678,13 +700,15 @@ namespace XIVLauncher.Windows.ViewModel
                         {
                             Log.Information($"叨鱼确认码:{code}");
                             this.LoginMessage = $"确认码: {code}";
-                        }).ConfigureAwait(false);
+                        }
+                        ).ConfigureAwait(false);
 
                     case LoginType.SdoQrCode:
                         return await Launcher.LoginByScanQrCode(autoLogin, this.loginCts, (qrBytes) =>
                         {
                             this.QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes);
-                        }).ConfigureAwait(false);
+                        }
+                        ).ConfigureAwait(false);
 
                     case LoginType.WeGameToken:
                         return await Launcher.LoginByWeGameToken(username, token: serect, autoLogin).ConfigureAwait(false);
@@ -1461,7 +1485,8 @@ namespace XIVLauncher.Windows.ViewModel
 
                     Log.Verbose($"Refreshing Processes...");
                     Thread.Sleep(1000);
-                };
+                }
+                ;
             });
         }
 
@@ -1721,6 +1746,7 @@ namespace XIVLauncher.Windows.ViewModel
             var launched = this.Launcher.LaunchGameSdo(gameRunner,
                                                        loginResult.OauthLogin.SessionId,
                                                        loginResult.OauthLogin.SndaId,
+                                                       loginResult.DcTravelPort,
                                                        Area.Areaid,
                                                        Area.AreaLobby,
                                                        Area.AreaGm,
@@ -1792,7 +1818,7 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 Log.Error(ex, "Could not shut down Steam");
             }
-
+            this.dcTravelListener?.Stop();
             return gameProcess;
         }
 
