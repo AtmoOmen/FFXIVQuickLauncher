@@ -3,7 +3,7 @@
         <Product>XIVLauncherCN (Soil)</Product>
         <AssemblyTitle>XIVLauncherCN (Soil)</AssemblyTitle>
         <Description>Custom launcher for the most critically acclaimed MMO's CN server.</Description>
-        <VersionPrefix>1.2.7</VersionPrefix>
+        <VersionPrefix>1.2.8</VersionPrefix>
     </PropertyGroup>
 
     <PropertyGroup>
