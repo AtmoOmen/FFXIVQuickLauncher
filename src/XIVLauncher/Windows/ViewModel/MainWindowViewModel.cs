@@ -534,7 +534,7 @@ namespace XIVLauncher.Windows.ViewModel
                         nSessionId = dcTraveler.GetNSessionIdFromCookie();
                         //accountToSave.NSessionId = nSessionId;
                         
-                        if (App.Settings.EnableDcTravel && App.Settings.InGameAddonEnabled)
+                        if (App.Settings.InGameAddonEnabled)
                         {
 #if !DEBUG
                             var encrypt = false;
