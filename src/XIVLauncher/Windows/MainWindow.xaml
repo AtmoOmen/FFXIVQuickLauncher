@@ -246,8 +246,7 @@
                                             <materialDesign:FadeWipe />
                                         </materialDesign:TransitionerSlide.BackwardWipe>
 
-                                        <DockPanel
-                                            Margin="30,0,30,0" Height="204">
+                                        <DockPanel Height="204" Margin="20,0,20,0">
                                             <ComboBox
                                                 DockPanel.Dock="Top"
                                                 x:Name="LoginTypeSelection"
@@ -259,29 +258,93 @@
                                                 SelectedValuePath="LoginType"
                                                 DisplayMemberPath="DisplayName"
                                                 SelectionChanged="LoginTypeSelection_OnSelectionChanged"
-                                                materialDesign:HintAssist.Hint="选择登录方式"
-                                            >
-                                            </ComboBox>
-                                            <ComboBox
-                                                DockPanel.Dock="Top"
+                                                materialDesign:HintAssist.Hint="选择登录方式" />
+                                            <ListBox
                                                 x:Name="ServerSelection"
-                                                HorizontalAlignment="Stretch"
                                                 Margin="0,8,0,0"
-                                                Height="24"
+                                                HorizontalAlignment="Stretch"
                                                 VerticalAlignment="Top"
-                                                ItemsSource="{Binding Path=SdoAreas}"  
-                                                SelectedItem="{Binding Path=Area}"  
-                                                SelectedValuePath="Areaid"
-                                                DisplayMemberPath="AreaName"
-                                                SelectionChanged="ServerSelection_OnSelectionChanged"
                                                 materialDesign:HintAssist.Hint="选择服务器"
-                                            >
-                                            </ComboBox>
+                                                DockPanel.Dock="Top"
+                                                ItemsSource="{Binding Path=SdoAreas}"
+                                                SelectedIndex="{Binding Path=AreaIndex, Mode=OneWayToSource}"
+                                                SelectedItem="{Binding Path=Area}"
+                                                SelectedValuePath="Areaid">
+                                                <!--  完全移除ScrollViewer  -->
+                                                <ListBox.Template>
+                                                    <ControlTemplate TargetType="ListBox">
+                                                        <Border>
+                                                            <ItemsPresenter />
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </ListBox.Template>
+                                                <ListBox.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                                        <!--  横向排列并自动换行  -->
+                                                    </ItemsPanelTemplate>
+                                                </ListBox.ItemsPanel>
+                                                <ListBox.ItemContainerStyle>
+                                                    <Style TargetType="ListBoxItem">
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="ListBoxItem">
+                                                                    <Border Background="{TemplateBinding Background}">
+                                                                        <Grid>
+                                                                            <!--  内容区域  -->
+                                                                            <ContentPresenter />
+                                                                            <!--  选中状态的亮线  -->
+                                                                            <Border
+                                                                                Name="SelectionIndicator"
+                                                                                Height="2"
+                                                                                VerticalAlignment="Bottom"
+                                                                                Background="{DynamicResource PrimaryHueMidBrush}"
+                                                                                Opacity="0" />
+                                                                        </Grid>
+                                                                        <VisualStateManager.VisualStateGroups>
+                                                                            <VisualStateGroup Name="SelectionStates">
+                                                                                <VisualState Name="Unselected">
+                                                                                    <Storyboard>
+                                                                                        <DoubleAnimation
+                                                                                            Storyboard.TargetName="SelectionIndicator"
+                                                                                            Storyboard.TargetProperty="Opacity"
+                                                                                            To="0"
+                                                                                            Duration="0:0:0.2" />
+                                                                                    </Storyboard>
+                                                                                </VisualState>
+                                                                                <VisualState Name="Selected">
+                                                                                    <Storyboard>
+                                                                                        <DoubleAnimation
+                                                                                            Storyboard.TargetName="SelectionIndicator"
+                                                                                            Storyboard.TargetProperty="Opacity"
+                                                                                            To="1"
+                                                                                            Duration="0:0:0.2" />
+                                                                                    </Storyboard>
+                                                                                </VisualState>
+                                                                            </VisualStateGroup>
+                                                                        </VisualStateManager.VisualStateGroups>
+                                                                    </Border>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Style>
+                                                </ListBox.ItemContainerStyle>
+                                                <!--  自定义项模板  -->
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock
+                                                            Margin="5.8"
+                                                            VerticalAlignment="Center"
+                                                            FontSize="14"
+                                                            Text="{Binding AreaName}" />
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
                                             <TextBox
                                                 DockPanel.Dock="Top"
                                                 x:Name="LoginUsername"
                                                 HorizontalAlignment="Stretch"
-                                                Margin="0,8,0,0"
+                                                Margin="0,5,0,0"
                                                 Height="24"
                                                 TextWrapping="Wrap"
                                                 VerticalAlignment="Top"

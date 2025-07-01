@@ -58,7 +58,17 @@ namespace XIVLauncher.Windows.ViewModel
         public Action ReloadHeadlines;
 
         public string Password { get; set; }
-        public SdoArea[] SdoAreas { get; set; }
+
+        private SdoArea[] _sdoAreas;
+        public SdoArea[] SdoAreas
+        {
+            get => _sdoAreas;
+            set
+            {
+                _sdoAreas = value;
+                OnPropertyChanged(nameof(SdoAreas));
+            }
+        }
 
         public enum AfterLoginAction
         {
@@ -2119,6 +2129,11 @@ namespace XIVLauncher.Windows.ViewModel
                 _guiLoginType = value;
                 OnPropertyChanged(nameof(GuiLoginType));
             }
+        }
+
+        public int AreaIndex
+        {
+            set => App.Settings.SelectedServer = value;
         }
 
         private SdoArea _area;

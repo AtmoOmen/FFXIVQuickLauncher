@@ -127,9 +127,8 @@ namespace XIVLauncher.Windows
             }
             Dispatcher.Invoke(() =>
             {
-                Model.SdoAreas = areas.ToArray();
-                ServerSelection.ItemsSource = Model.SdoAreas;
-                ServerSelection.SelectedIndex = 0;
+                Model.SdoAreas = [.. areas];
+                Model.Area = Model.SdoAreas[0];
             });
         }
 
@@ -698,13 +697,6 @@ namespace XIVLauncher.Windows
             {
                 Log.Error(ex, "Couldn't restore window position");
             }
-        }
-
-        private void ServerSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (this.DataContext != null)
-                ((MainWindowViewModel)this.DataContext).Area = (SdoArea)((ComboBox)sender).SelectedItem;
-            App.Settings.SelectedServer = ((ComboBox)sender).SelectedIndex;
         }
 
         private void LoginTypeSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
