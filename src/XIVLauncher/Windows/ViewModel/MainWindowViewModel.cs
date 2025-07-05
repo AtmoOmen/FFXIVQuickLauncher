@@ -515,7 +515,7 @@ namespace XIVLauncher.Windows.ViewModel
                 if (loginResult.State == Launcher.LoginState.Ok)
                 //if (true)
                 {
-                    if (App.Settings.EnableDcTravel && App.Settings.InGameAddonEnabled && loginType != LoginType.WeGameSid)
+                    if (App.Settings.InGameAddonEnabled && loginType != LoginType.WeGameSid)
                     {
                         dcTraveler = Launcher.CreateDcTraveler(null);
                         await dcTraveler.GetValidCookie();
