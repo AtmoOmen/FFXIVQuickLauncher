@@ -59,10 +59,7 @@ namespace XIVLauncher.Settings
         CredType? CredType { get; set; }
         bool? EnableSkipUpdate { get; set; }
         bool? EnableVerboseLog { get; set; }
-
-        bool EnableDcTravel { get; set; }
-
-        bool? HasAgreeDcTravelUsage { get; set; }
+        
         #endregion
     }
 }

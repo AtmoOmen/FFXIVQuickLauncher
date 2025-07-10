@@ -215,7 +215,7 @@
                                 <TextBlock Foreground="DarkGray" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,2,0,0">
                                     <Run Text="为游戏内超域传送提供支持, 可以在登录界面右键移动角色所在大区" />
                                     <LineBreak />
-                                    <Run Text="需同时启用 Dalamud, 并安装 DcTravel 插件" />
+                                    <Run Text="需同时启用 Dalamud, 并安装 DCTravelX 插件" />
                                 </TextBlock>
                             </StackPanel>
                         </StackPanel>
