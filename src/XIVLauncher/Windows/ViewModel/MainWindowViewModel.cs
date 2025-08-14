@@ -5,7 +5,6 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.CommandLine;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
@@ -15,13 +14,11 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using XIVLauncher.Accounts;
@@ -493,6 +490,11 @@ namespace XIVLauncher.Windows.ViewModel
             //var groupList = await dc.QueryGroupListTravelSource();
             //var orders = await dc.QueryMigrationOrders();
             var dcTraveler = new DcTraveler(string.Empty);
+            dcTraveler.SetSdoAreaFunc = (string name) =>
+            {
+                App.AccountManager.CurrentAccount.AreaName = name;
+                App.AccountManager.Save();
+            };
             var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, dcTraveler, action).ConfigureAwait(false);
 
             if (loginResult == null)
