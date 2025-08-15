@@ -47,6 +47,7 @@ namespace XIVLauncher.Common.Game
         public Func<Task<string>> RefreshGameSessionByGuidFunc;
         public Func<Task<string>> RefreshDcTravelSessionIdFunc;
         public Func<Task<string>> RefreshGameSessionIdByAutoLoginFunc;
+        public Action<string>? SetSdoAreaFunc = null;
         private bool isInitialized = false;
         public readonly CancellationTokenSource KeepAliveCts;
         public DcTraveler(string nSessionId)
@@ -116,6 +117,12 @@ namespace XIVLauncher.Common.Game
                     throw;
             }
             throw new Exception("获取新游戏登录凭据失败");
+        }
+
+        [HttpRpc]
+        public void SetSdoArea(string name)
+        {
+            SetSdoAreaFunc?.Invoke(name);
         }
 
         #region 初始化 认证
