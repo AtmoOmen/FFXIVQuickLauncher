@@ -80,23 +80,44 @@ internal class Updates
                     var builder = new CustomMessageBox.Builder()
                         .WithCaption("XIVLauncherCN")
                         .WithText($"当前 {(hasToken ? "Token" : "IP")} 的 GitHub API 调用额度已用尽, 下次刷新时间: {resetTime:HH:mm:ss}\n" +
-                                  $"请{(hasToken ? "更换" : "填写")} GitHub Access Token 或耐心等待 / 更换你的网络环境\n" +
+                                  $"请{(hasToken ? "更换" : "填写")} GitHub Access Token 或耐心等待 / 更换你的网络环境 / 点击取消跳过检查\n" +
                                   $"如果你不清楚如何更换网络环境, 请勿询问并立刻卸载本软件, 多谢配合\n" +
                                   $"GitHub Token:")
-                        .WithButtons(MessageBoxButton.OK)
+                        .WithButtons(MessageBoxButton.OKCancel)
                         .WithImage(MessageBoxImage.Error)
                         .WithShowHelpLinks()
                         .WithShowDiscordLink()
                         .WithInputTextBox(App.Settings.GitHubToken);
-                    if (builder.Show() == MessageBoxResult.OK && App.Settings.GitHubToken != builder.InputTextBoxText)
+                    var result = builder.Show();
+                    if (result == MessageBoxResult.OK && App.Settings.GitHubToken != builder.InputTextBoxText)
                     {
                         App.Settings.GitHubToken = builder.InputTextBoxText;
                     }
+                    else if (result == MessageBoxResult.Cancel)
+                    {
+                        builder = new CustomMessageBox.Builder()
+                            .WithCaption("XIVLauncherCN")
+                            .WithText($"跳过检查更新可能导致异常行为，请确认是否跳过")
+                            .WithButtons(MessageBoxButton.YesNo)
+                            .WithShowHelpLinks()
+                            .WithShowDiscordLink()
+                            .WithImage(MessageBoxImage.Error);
+                        if (builder.Show() == MessageBoxResult.Yes)
+                        {
+                            Log.Information("用户选择跳过检查更新");
+                            this.OnUpdateCheckFinished?.Invoke(true);
+                            return;
+                        }
+                        else
+                        {
+                            Environment.Exit(1);
+                        }
+                    }
                     else
                     {
-                    Environment.Exit(1);
+                        Environment.Exit(1);
+                    }
                 }
-            }
             }
             catch (Exception ex)
             {
