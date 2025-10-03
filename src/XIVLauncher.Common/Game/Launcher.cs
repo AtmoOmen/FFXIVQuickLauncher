@@ -29,23 +29,21 @@ namespace XIVLauncher.Common.Game;
 
 public partial class Launcher
 {
-    private readonly ISteam? steam;
-    private readonly byte[]? overriddenSteamTicket;
+    private readonly ISteam?        steam;
+    private readonly byte[]?        overriddenSteamTicket;
     private readonly IUniqueIdCache uniqueIdCache;
-    private readonly ISettings settings;
-    private readonly HttpClient client;
-    private readonly string frontierUrlTemplate;
+    private readonly ISettings      settings;
+    private readonly HttpClient     client;
+    private readonly HttpClient     loginClient;
+    private readonly string         frontierUrlTemplate;
 
     public Launcher(ISteam? steam, IUniqueIdCache uniqueIdCache, ISettings settings, string frontierUrl)
     {
-        this.steam = steam;
+        this.steam         = steam;
         this.uniqueIdCache = uniqueIdCache;
-        this.settings = settings;
-
+        this.settings      = settings;
         //this.frontierUrlTemplate = frontierUrl ?? throw new Exception("Frontier URL template is null, this is now required");
-
         ServicePointManager.Expect100Continue = false;
-
 #if NET6_0_OR_GREATER && !WIN32
         var sslOptions = new SslClientAuthenticationOptions()
         {
@@ -63,8 +61,12 @@ public partial class Launcher
                 TlsCipherSuite.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
             })
         };
-
         var handler = new SocketsHttpHandler
+        {
+            UseCookies = false,
+            SslOptions = sslOptions,
+        };
+        var loginHandler = new SocketsHttpHandler
         {
             UseCookies = false,
             SslOptions = sslOptions,
@@ -74,9 +76,14 @@ public partial class Launcher
         {
             UseCookies = false,
         };
+        var loginHandler = new HttpClientHandler
+        {
+            UseCookies = false,
+        };
 #endif
 
-        this.client = new HttpClient(handler);
+        this.client      = new HttpClient(handler);
+        this.loginClient = new HttpClient(loginHandler);
     }
 
     public Launcher(byte[] overriddenSteamTicket, IUniqueIdCache uniqueIdCache, ISettings settings, string frontierUrl)

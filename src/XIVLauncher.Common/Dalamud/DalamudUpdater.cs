@@ -2,16 +2,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
@@ -40,7 +38,7 @@ public class DalamudUpdater
     public static string                  OnlineHash          { get; private set; } = string.Empty;
     public static string                  Version             { get; private set; } = string.Empty;
 
-    public const string RuntimeVersion = "9.0.2";
+    public const string RuntimeVersion = "9.0.3";
 
     public FileInfo Runner
     {
@@ -423,8 +421,12 @@ public class DalamudUpdater
         try
         {
             // 微软 .NET 运行时下载链接
-            var dotnetRuntimeUrl  = $"https://dotnetcli.azureedge.net/dotnet/Runtime/{version}/dotnet-runtime-{version}-win-x64.zip";
-            var desktopRuntimeUrl = $"https://dotnetcli.azureedge.net/dotnet/WindowsDesktop/{version}/windowsdesktop-runtime-{version}-win-x64.zip";
+            var packageBaseAddress = await IsGoogleReachableAsync()
+                                         ? "https://api.nuget.org/v3-flatcontainer"
+                                         : "https://repo.huaweicloud.com/artifactory/api/nuget/v3/nuget-remote";
+
+            var dotnetUrl = $"{packageBaseAddress}/microsoft.netcore.app.runtime.win-x64/{version}/microsoft.netcore.app.runtime.win-x64.{version}.nupkg";
+            var desktopUrl = $"{packageBaseAddress}/microsoft.windowsdesktop.app.runtime.win-x64/{version}/microsoft.windowsdesktop.app.runtime.win-x64.{version}.nupkg";
 
             var downloadPath = PlatformHelpers.GetTempFileName();
 
@@ -433,13 +435,20 @@ public class DalamudUpdater
 
             // 下载 .NET 运行时
             Log.Verbose("[DUPDATE] 正在下载 .NET 运行时 v{Version}...", version);
-            await this.DownloadFile(dotnetRuntimeUrl, downloadPath, this.defaultTimeout).ConfigureAwait(false);
-            ZipFile.ExtractToDirectory(downloadPath, runtimePath.FullName);
+            var dotnetVersion = version.Split('.')[0];
+            await this.DownloadNuGet(dotnetUrl, downloadPath, this.defaultTimeout).ConfigureAwait(false);
+            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version), "runtimes/win-x64/native/");
+            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version), $"runtimes/win-x64/lib/net{dotnetVersion}.0/");
 
             // 下载 Windows Desktop 运行时
             Log.Verbose("[DUPDATE] 正在下载 .NET 桌面运行时 v{Version}...", version);
-            await this.DownloadFile(desktopRuntimeUrl, downloadPath, this.defaultTimeout).ConfigureAwait(false);
-            ZipFile.ExtractToDirectory(downloadPath, runtimePath.FullName);
+            await this.DownloadNuGet(desktopUrl, downloadPath, this.defaultTimeout).ConfigureAwait(false);
+            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", version), "runtimes/win-x64/native/");
+            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", version), $"runtimes/win-x64/lib/net{dotnetVersion}.0/");
+
+            Directory.CreateDirectory(Path.Combine(runtimePath.FullName, "host", "fxr", version));
+            File.Move(Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version, "hostfxr.dll"), 
+                      Path.Combine(runtimePath.FullName, "host", "fxr", version, "hostfxr.dll"));
 
             File.Delete(downloadPath);
         }
@@ -552,12 +561,103 @@ public class DalamudUpdater
     
     public async Task DownloadFile(string url, string path, TimeSpan timeout)
     {
-        if (this.forceProxy && url.Contains("/File/Get/")) url = url.Replace("/File/Get/", "/File/GetProxy/");
+        if (this.forceProxy && url.Contains("/File/Get/")) 
+            url = url.Replace("/File/Get/", "/File/GetProxy/");
 
         using var downloader = new HttpClientDownloadWithProgress(url, path);
         downloader.ProgressChanged += this.ReportOverlayProgress;
 
         await downloader.Download(timeout).ConfigureAwait(false);
+    }
+    
+    public async Task DownloadNuGet(string url, string path, TimeSpan timeout)
+    {
+        using var downloader = new HttpClientDownloadWithProgress(url, path);
+        downloader.ProgressChanged += this.ReportOverlayProgress;
+
+        await downloader.Download(timeout, true).ConfigureAwait(false);
+    }
+    
+    public static void ExtractSpecificDirectory(string zipPath, string extractPath, string directoryToExtract)
+    {
+        using var archive = ZipFile.OpenRead(zipPath);
+
+        foreach (var entry in archive.Entries)
+        {
+            if (entry.FullName.StartsWith(directoryToExtract, StringComparison.OrdinalIgnoreCase))
+            {
+                var destinationPath      = Path.Combine(extractPath, entry.FullName[directoryToExtract.Length..]);
+                var destinationDirectory = Path.GetDirectoryName(destinationPath);
+                if (!string.IsNullOrEmpty(destinationDirectory))
+                {
+                    Directory.CreateDirectory(destinationDirectory);
+                }
+                if (!string.IsNullOrEmpty(entry.Name))
+                {
+                    entry.ExtractToFile(destinationPath, true);
+                }
+            }
+        }
+    }
+
+    public static async Task<bool> IsGoogleReachableAsync()
+    {
+        const string GOOGLE_URL = "https://www.google.com";
+        const string HUAWEI_URL = "https://www.huaweicloud.com/";
+
+        var googleTask = GetConnectionTimeAsync(GOOGLE_URL);
+        var huaweiTask = GetConnectionTimeAsync(HUAWEI_URL);
+
+        await Task.WhenAll(googleTask, huaweiTask);
+
+        var googleResult = await googleTask;
+        var huaweiResult = await huaweiTask;
+
+        Log.Information("谷歌连接耗时: {GoogleTime:F2} ms, 状态: {GoogleStatus}",
+                        googleResult.Elapsed.TotalMilliseconds, googleResult.IsSuccess ? "成功" : "失败");
+
+        Log.Information("华为云连接耗时: {HuaweiTime:F2} ms, 状态: {HuaweiStatus}",
+                        huaweiResult.Elapsed.TotalMilliseconds, huaweiResult.IsSuccess ? "成功" : "失败");
+        
+        if (!googleResult.IsSuccess)
+        {
+            Log.Warning("无法连接到谷歌");
+            return false;
+        }
+
+        if (huaweiResult.IsSuccess && huaweiResult.Elapsed < googleResult.Elapsed)
+        {
+            Log.Information("华为云连接速度 ({HuaweiTime:F2} ms) 快于 Google ({GoogleTime:F2} ms)",
+                            huaweiResult.Elapsed.TotalMilliseconds, googleResult.Elapsed.TotalMilliseconds);
+            return false;
+        }
+
+        Log.Information("Google 连接成功且速度不慢于华为云");
+        return true;
+
+        async Task<(bool IsSuccess, TimeSpan Elapsed)> GetConnectionTimeAsync(string url)
+        {
+            var stopwatch = new Stopwatch();
+
+            try
+            {
+                using var client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(3);
+
+                stopwatch.Start();
+                using var response = await client.GetAsync(url);
+                stopwatch.Stop();
+
+                return (response.IsSuccessStatusCode, stopwatch.Elapsed);
+            }
+            catch
+            {
+                if (stopwatch.IsRunning)
+                    stopwatch.Stop();
+
+                return (false, stopwatch.Elapsed);
+            }
+        }
     }
 
     #endregion

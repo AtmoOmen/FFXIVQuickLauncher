@@ -422,7 +422,7 @@ namespace XIVLauncher.Common.Game
             qrCodeExpiration.CancelAfter(QRCodeExpirationTime);
 
             var request = this.GetSdoHttpRequestMessage(HttpMethod.Get, "getCodeKey.json", new List<string>() { $"maxsize=89" });
-            var response = await this.client.SendAsync(request);
+            var response = await this.loginClient.SendAsync(request);
             var cookies = response.Headers.SingleOrDefault(header => header.Key == "Set-Cookie").Value;
             var codeKey = cookies.FirstOrDefault(x => x.StartsWith("CODEKEY="))?.Split(';')[0];
             codeKey = codeKey?.Split('=')[1];
@@ -672,8 +672,7 @@ namespace XIVLauncher.Common.Game
         private async Task<SdoLoginResult> GetJsonAsSdoClient(string endPoint, List<string> para, string tgt = null)
         {
             var request = this.GetSdoHttpRequestMessage(HttpMethod.Get, endPoint, para, tgt);
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls11;
-            var response = await this.client.SendAsync(request);
+            var response = await this.loginClient.SendAsync(request);
             var reply = await response.Content.ReadAsStringAsync();
             var cookies = response.Headers.SingleOrDefault(header => header.Key == "Set-Cookie").Value;
 
@@ -689,10 +688,17 @@ namespace XIVLauncher.Common.Game
                 }
             }
 
-            var result = JsonConvert.DeserializeObject<SdoLoginResult>(reply);
-            Log.Information($"{endPoint}:ErrorType={result.ErrorType}:ReturnCode={result.ReturnCode}:FailReason:{result.Data.FailReason}:NextAction={result.Data.NextAction}");
-            Log.Debug($"GetJsonAsSdoClient({endPoint}):\n{result.ToLog()}");
-            return result;
+            try
+            {
+                var result = JsonConvert.DeserializeObject<SdoLoginResult>(reply);
+                Log.Information($"{endPoint}:ErrorType={result.ErrorType}:ReturnCode={result.ReturnCode}:FailReason:{result.Data.FailReason}:NextAction={result.Data.NextAction}");
+                Log.Debug($"GetJsonAsSdoClient({endPoint}):\n{result.ToLog()}");
+                return result;
+            }
+            catch (JsonReaderException ex)
+            {
+                throw new JsonReaderException($"{ex.Message}\n {reply}");
+            }
         }
 
         public Process? LaunchGameSdo(IGameRunner runner, string sessionId, string sndaId, int dcTravelPort, string areaId, string lobbyHost, string gmHost, string dbHost, string areasInfo,

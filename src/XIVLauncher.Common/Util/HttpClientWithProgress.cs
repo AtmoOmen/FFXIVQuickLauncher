@@ -23,7 +23,7 @@ public class HttpClientDownloadWithProgress : IDisposable
         this.destinationFilePath = destinationFilePath;
     }
 
-    public async Task Download(TimeSpan? timeout = null)
+    public async Task Download(TimeSpan? timeout = null, bool isNuGet = false)
     {
         timeout ??= TimeSpan.FromMinutes(10);
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
@@ -33,7 +33,13 @@ public class HttpClientDownloadWithProgress : IDisposable
         this.httpClient.DefaultRequestHeaders.Add("accept-encoding", "gzip, deflate, br");
         
         var request = new HttpRequestMessage(HttpMethod.Get, this.downloadUrl);
-        if (downloadUrl.Contains("github"))
+        if (isNuGet)
+        {
+            request.Headers.Add("User-Agent",             "NuGet VS VSIX/6.14.0 (WINDOWS, Community/17.0)");
+            request.Headers.Add("X-NuGet-Client-Version", "6.14.0");
+            request.Headers.Add("X-NuGet-Session-Id",     Guid.NewGuid().ToString("D"));
+        }
+        else if (downloadUrl.Contains("github"))
             request.Headers.Add("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 Edg/130.0.0.0");
         
         using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
