@@ -91,10 +91,6 @@ public partial class Launcher
             UseCookies = true,
             CookieContainer = loginCookies,
         };
-        var loginHandler = new HttpClientHandler
-        {
-            UseCookies = false,
-        };
 #endif
 
         this.client = new HttpClient(handler);

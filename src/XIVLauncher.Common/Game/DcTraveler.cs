@@ -394,11 +394,14 @@ namespace XIVLauncher.Common.Game
         [HttpRpc]
         public async Task<int> QueryTravelQueueTime(int areaId, int groupId)
         {
-            //https://ff14bjz.sdo.com/api/orderserivce/travelQueueTime?appId=100001900&migrationType=4&targetArea=8&targetGroupId=1
-            var data = await GetRequestData("api/orderserivce/travelQueueTime", ApiType.Travel, new Dictionary<string, string>() { { "appId", "100001900" }, { "migrationType", "4" }, { "targetArea", $"{areaId}" }, { "targetGroupId", $"{groupId}" } });
-            if (data["resultCode"].GetValue<int>() != 0)
-                throw new DcTraveleApiException($"Failed to query travel queue time, resultCode: {data["resultCode"].GetValue<int>()}, message: {data["resultMessage"].GetValue<string>()}");
-            return data["minutes"].GetValue<int>();
+            // 拂晓可能觉得没用所以删掉/回炉改造了？据反馈也不是很准。目前 25/10/11 在官网也抓不到这个请求了
+            return 0;
+            
+            // https://ff14bjz.sdo.com/api/orderserivce/travelQueueTime?appId=100001900&migrationType=4&targetArea=8&targetGroupId=1
+            // var data = await GetRequestData("api/orderserivce/travelQueueTime", ApiType.Travel, new Dictionary<string, string>() { { "appId", "100001900" }, { "migrationType", "4" }, { "targetArea", $"{areaId}" }, { "targetGroupId", $"{groupId}" } });
+            // if (data["resultCode"].GetValue<int>() != 0)
+            //     throw new DcTraveleApiException($"Failed to query travel queue time, resultCode: {data["resultCode"].GetValue<int>()}, message: {data["resultMessage"].GetValue<string>()}");
+            // return data["minutes"].GetValue<int>();
         }
         [HttpRpc]
         public async Task<string> TravelOrder(Group targetGroup, Group sourceGroup, Character character)
