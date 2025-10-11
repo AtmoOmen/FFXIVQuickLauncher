@@ -32,16 +32,18 @@ public partial class Launcher
     private readonly ISteam?        steam;
     private readonly byte[]?        overriddenSteamTicket;
     private readonly IUniqueIdCache uniqueIdCache;
-    private readonly ISettings      settings;
-    private readonly HttpClient     client;
-    private readonly HttpClient     loginClient;
-    private readonly string         frontierUrlTemplate;
+    private readonly ISettings settings;
+    private readonly HttpClient client;
+    private readonly HttpClient loginClient;
+    private readonly CookieContainer loginCookies;
+    private readonly string frontierUrlTemplate;
 
     public Launcher(ISteam? steam, IUniqueIdCache uniqueIdCache, ISettings settings, string frontierUrl)
     {
         this.steam         = steam;
         this.uniqueIdCache = uniqueIdCache;
-        this.settings      = settings;
+        this.settings = settings;
+        this.loginCookies = new CookieContainer();
         //this.frontierUrlTemplate = frontierUrl ?? throw new Exception("Frontier URL template is null, this is now required");
         ServicePointManager.Expect100Continue = false;
 #if NET6_0_OR_GREATER && !WIN32
@@ -63,7 +65,14 @@ public partial class Launcher
         };
         var handler = new SocketsHttpHandler
         {
-            UseCookies = false,
+            UseCookies = true,
+            CookieContainer = loginCookies,
+            SslOptions = sslOptions,
+        };
+        var loginHandler = new SocketsHttpHandler
+        {
+            UseCookies = true,
+            CookieContainer = loginCookies,
             SslOptions = sslOptions,
         };
         var loginHandler = new SocketsHttpHandler
@@ -74,7 +83,13 @@ public partial class Launcher
 #else
         var handler = new HttpClientHandler
         {
-            UseCookies = false,
+            UseCookies = true,
+            CookieContainer = loginCookies,
+        };
+        var loginHandler = new HttpClientHandler
+        {
+            UseCookies = true,
+            CookieContainer = loginCookies,
         };
         var loginHandler = new HttpClientHandler
         {
@@ -82,7 +97,7 @@ public partial class Launcher
         };
 #endif
 
-        this.client      = new HttpClient(handler);
+        this.client = new HttpClient(handler);
         this.loginClient = new HttpClient(loginHandler);
     }
 
