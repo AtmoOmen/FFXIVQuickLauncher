@@ -73,7 +73,7 @@ namespace XIVLauncher.Common.Game.Patch
         public long Speed { get; private set; }
         public Exception LastException { get; private set; }
 
-        private const string BASE_URL = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/patchInfo/";
+        private const string BASE_URL = "https://raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/patchInfo/";
 
         public enum VerifyState
         {

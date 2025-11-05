@@ -12,7 +12,7 @@ namespace XIVLauncher.Common.Game;
 
 public static class IntegrityCheck
 {
-    public const string INTEGRITY_CHECK_BASE_URL = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/integrity/";
+    public const string INTEGRITY_CHECK_BASE_URL = "https://raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/integrity/";
 
     public class IntegrityCheckResult
     {

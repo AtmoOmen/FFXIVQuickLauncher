@@ -308,7 +308,7 @@ public class DalamudUpdater
         try
         {
             var response = await httpClient.GetAsync(
-                               "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json");
+                               "https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json");
             response.EnsureSuccessStatusCode();
 
             var       json    = await response.Content.ReadAsStringAsync();
@@ -329,8 +329,7 @@ public class DalamudUpdater
 
                     var downloadPath = PlatformHelpers.GetTempFileName();
 
-                    using (var fileResponse = await httpClient.GetAsync($"https://gh.atmoomen.top/{downloadUrl}", 
-                                                                        HttpCompletionOption.ResponseHeadersRead))
+                    using (var fileResponse = await httpClient.GetAsync($"{downloadUrl}", HttpCompletionOption.ResponseHeadersRead))
                     {
                         fileResponse.EnsureSuccessStatusCode();
                         using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -383,7 +382,7 @@ public class DalamudUpdater
 
                 if (fileName != "latest.7z") continue;
                 
-                await this.DownloadFile($"https://gh.atmoomen.top/{downloadUrl}", downloadPath, this.defaultTimeout).ConfigureAwait(false);
+                await this.DownloadFile($"{downloadUrl}", downloadPath, this.defaultTimeout).ConfigureAwait(false);
                 PlatformHelpers.Un7za(downloadPath, addonPath.FullName);
                 File.Delete(downloadPath);
                 break;
