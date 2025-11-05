@@ -16,7 +16,7 @@ namespace XIVLauncher.Common.Dalamud;
 
 public class AssetManager
 {
-    private const string ASSET_STORE_URL = "https://raw.githubusercontent.com/AtmoOmen/DalamudAssets/cn/asset.json";
+    private const string ASSET_STORE_URL = "https://raw.githubusercontent.com/Dalamud-DailyRoutines/DalamudAssets/master/assetCN.json";
 
     private static readonly string[] FontUrls =
     [
