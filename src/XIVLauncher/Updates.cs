@@ -43,10 +43,8 @@ internal class Updates
     }
 #pragma warning restore CS8618
 
-    public static bool HaveFeatureFlag(LeaseFeatureFlags flag)
-    {
-        return UpdateLease != null && UpdateLease.Flags.HasFlag(flag);
-    }
+    public static bool HaveFeatureFlag(LeaseFeatureFlags flag) => 
+        UpdateLease != null && UpdateLease.Flags.HasFlag(flag);
 
     public async Task Run(bool downloadPrerelease, ChangelogWindow? changelogWindow)
     {
@@ -58,6 +56,29 @@ internal class Updates
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         try
         {
+            try
+            {
+                using var connClient = new HttpClient();
+                connClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+                connClient.Timeout = TimeSpan.FromSeconds(5);
+                using var headReq = new HttpRequestMessage(HttpMethod.Head, "https://github.com/");
+                var connResp = await connClient.SendAsync(headReq, HttpCompletionOption.ResponseHeadersRead);
+                connResp.EnsureSuccessStatusCode();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "无法连接到 GitHub");
+                CustomMessageBox.Show(
+                    "无法连接到 GitHub, 请检查你的网络环境或代理设置",
+                    "XIVLauncherCN",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error,
+                    false,
+                    false);
+                
+                Environment.Exit(1);
+            }
+
             try
             {
                 using var httpClient = new HttpClient();
@@ -75,28 +96,27 @@ internal class Updates
                 if (remaining == 0)
                 {
                     int resetTimestamp = rateLimit.resources.core.reset;
-                    var resetTime = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
+                    var resetTime      = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
 
                     var builder = new CustomMessageBox.Builder()
-                        .WithCaption("XIVLauncherCN")
-                        .WithText($"当前 {(hasToken ? "Token" : "IP")} 的 GitHub API 调用额度已用尽, 下次刷新时间: {resetTime:HH:mm:ss}\n" +
-                                  $"请{(hasToken ? "更换" : "填写")} GitHub Access Token 或耐心等待 / 更换你的网络环境\n" +
-                                  $"如果你不清楚如何更换网络环境, 请勿询问并立刻卸载本软件, 多谢配合\n" +
-                                  $"GitHub Token:")
-                        .WithButtons(MessageBoxButton.OK)
-                        .WithImage(MessageBoxImage.Error)
-                        .WithShowHelpLinks()
-                        .WithShowDiscordLink()
-                        .WithInputTextBox(App.Settings.GitHubToken);
+                                  .WithCaption("XIVLauncherCN")
+                                  .WithText($"当前 {(hasToken ? "Token" : "IP")} 的 GitHub API 调用额度已用尽, 下次刷新时间: {resetTime:HH:mm:ss}\n" +
+                                            $"请{(hasToken ? "更换" : "填写")} GitHub Access Token 或耐心等待 / 更换你的网络环境\n"                    +
+                                            $"如果你不清楚如何更换网络环境, 请勿询问并立刻卸载本软件, 多谢配合\n"                                                  +
+                                            $"GitHub Token:")
+                                  .WithButtons(MessageBoxButton.OK)
+                                  .WithImage(MessageBoxImage.Error)
+                                  .WithInputTextBox(App.Settings.GitHubToken);
+
                     if (builder.Show() == MessageBoxResult.OK && App.Settings.GitHubToken != builder.InputTextBoxText)
                     {
                         App.Settings.GitHubToken = builder.InputTextBoxText;
                     }
                     else
                     {
-                    Environment.Exit(1);
+                        Environment.Exit(1);
+                    }
                 }
-            }
             }
             catch (Exception ex)
             {
@@ -104,13 +124,11 @@ internal class Updates
                 if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode is HttpStatusCode.Unauthorized && !string.IsNullOrWhiteSpace(App.Settings.GitHubToken))
                 {
                     var builder = new CustomMessageBox.Builder()
-                        .WithCaption("XIVLauncherCN")
-                        .WithText($"当前配置的 GitHub Token 已失效, 请重新配置或删除 Token\n原 Token: {App.Settings.GitHubToken}")
-                        .WithButtons(MessageBoxButton.OK)
-                        .WithImage(MessageBoxImage.Error)
-                        .WithShowHelpLinks()
-                        .WithShowDiscordLink()
-                        .WithInputTextBox(App.Settings.GitHubToken);
+                                  .WithCaption("XIVLauncherCN")
+                                  .WithText($"当前配置的 GitHub Token 已失效, 请重新配置或删除 Token\n原 Token: {App.Settings.GitHubToken}")
+                                  .WithButtons(MessageBoxButton.OK)
+                                  .WithImage(MessageBoxImage.Error)
+                                  .WithInputTextBox(App.Settings.GitHubToken);
 
                     if (builder.Show() == MessageBoxResult.OK)
                     {
