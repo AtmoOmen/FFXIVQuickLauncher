@@ -13,9 +13,12 @@ using Velopack.Sources;
 
 namespace XIVLauncher.Support;
 
-public class GitHubSource(string repoUrl, string? accessToken, bool prerelease, IFileDownloader? downloader = null) :
-    GithubSource(repoUrl, accessToken, prerelease, downloader)
+public class GitHubSource(string repoUrl, string? accessToken, bool prerelease, string? proxyBaseUrl = null, IFileDownloader? downloader = null)
+    :
+        GithubSource(repoUrl, accessToken, prerelease, downloader)
 {
+    private readonly string? proxyUrl = proxyBaseUrl?.TrimEnd('/');
+
     public override async Task<VelopackAssetFeed> GetReleaseFeed(ILogger logger, string channel, Guid? stagingId = null, VelopackAsset? latestLocalRelease = null)
     {
         var releases = await GetReleases(Prerelease).ConfigureAwait(false);
@@ -95,13 +98,30 @@ public class GitHubSource(string repoUrl, string? accessToken, bool prerelease, 
 
     protected override async Task<GithubRelease[]> GetReleases(bool includePrereleases)
     {
-        // https://docs.github.com/en/rest/reference/releases
-        const int perPage = 5;
-        const int page = 1;
-        var releasesPath = $"repos{RepoUri.AbsolutePath}/releases?per_page={perPage}&page={page}";
-        var baseUri = GetApiBaseUrl(RepoUri);
-        var getReleasesUri = new Uri(baseUri, releasesPath);
-        var response = await Downloader.DownloadString(getReleasesUri.ToString(), Authorization, "application/vnd.github.v3+json").ConfigureAwait(false);
+        // 1. 计算原始的 GitHub API 路径
+        // RepoUri.AbsolutePath 通常是 "/User/Repo"
+        const int PER_PAGE     = 5;
+        const int PAGE         = 1;
+        var       releasesPath = $"repos{RepoUri.AbsolutePath}/releases?per_page={PER_PAGE}&page={PAGE}";
+        
+        // 2. 构建目标 URL
+        string requestUrl;
+
+        if (!string.IsNullOrEmpty(proxyUrl))
+        {
+            requestUrl = $"{proxyUrl}/https://api.github.com/{releasesPath}";
+        }
+        else
+        {
+            // 直连逻辑 (回退到原始方式)
+            var baseUri = GetApiBaseUrl(RepoUri);
+            requestUrl = new Uri(baseUri, releasesPath).ToString();
+        }
+
+        // 3. 发起请求
+        // 如果走了代理，Worker 会返回修改后的 JSON（里面的 browser_download_url 都会变成代理链接）
+        var response = await Downloader.DownloadString(requestUrl, Authorization, "application/vnd.github.v3+json").ConfigureAwait(false);
+        
         var releases = JsonConvert.DeserializeObject<List<GithubRelease>>(response);
         return releases == null ? [] : releases.OrderByDescending(d => d.PublishedAt).Where(x => includePrereleases || !x.Prerelease).ToArray();
     }
@@ -113,7 +133,7 @@ public class GitHubSource(string repoUrl, string? accessToken, bool prerelease, 
     // copy from Velopack
     public static string RemoveByteOrderMarkerIfPresent(byte[] content)
     {
-        byte[] output = { };
+        byte[] output = [];
 
         Func<byte[], byte[], bool> matches = (bom, src) =>
         {
@@ -161,7 +181,6 @@ public class GitHubSource(string repoUrl, string? accessToken, bool prerelease, 
 
         return Encoding.UTF8.GetString(output);
     }
-
 }
 
 // copy from Velopack

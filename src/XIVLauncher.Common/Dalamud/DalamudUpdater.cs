@@ -308,7 +308,7 @@ public class DalamudUpdater
         try
         {
             var response = await httpClient.GetAsync(
-                               "https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json");
+                               "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json");
             response.EnsureSuccessStatusCode();
 
             var       json    = await response.Content.ReadAsStringAsync();
@@ -354,7 +354,7 @@ public class DalamudUpdater
 
     private async Task DownloadDalamud(DirectoryInfo addonPath)
     {
-        const string REPO_API = "https://api.github.com/repos/AtmoOmen/Dalamud/releases/latest";
+        const string REPO_API = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/refs/heads/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json";
 
         if (addonPath.Exists) addonPath.Delete(true);
         addonPath.Create();

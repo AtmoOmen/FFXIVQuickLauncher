@@ -56,6 +56,7 @@ internal class Updates
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         try
         {
+            /*var isAbleToConnectToGithub = false;
             try
             {
                 using var connClient = new HttpClient();
@@ -64,6 +65,7 @@ internal class Updates
                 using var headReq = new HttpRequestMessage(HttpMethod.Head, "https://github.com/");
                 var connResp = await connClient.SendAsync(headReq, HttpCompletionOption.ResponseHeadersRead);
                 connResp.EnsureSuccessStatusCode();
+                isAbleToConnectToGithub = true;
             }
             catch (Exception ex)
             {
@@ -79,63 +81,66 @@ internal class Updates
                 Environment.Exit(1);
             }
 
-            try
+            if (isAbleToConnectToGithub)
             {
-                using var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-                var hasToken = !string.IsNullOrWhiteSpace(App.Settings.GitHubToken);
-                if (hasToken)
-                    httpClient.DefaultRequestHeaders.Authorization = new("Bearer", App.Settings.GitHubToken);
-                var response = await httpClient.GetAsync("https://api.github.com/rate_limit");
-                response.EnsureSuccessStatusCode();
-
-                var     json      = await response.Content.ReadAsStringAsync();
-                dynamic rateLimit = JObject.Parse(json);
-                int     remaining = rateLimit.resources.core.remaining;
-
-                if (remaining == 0)
+                try
                 {
-                    int resetTimestamp = rateLimit.resources.core.reset;
-                    var resetTime      = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
+                    using var httpClient = new HttpClient();
+                    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+                    var hasToken = !string.IsNullOrWhiteSpace(App.Settings.GitHubToken);
+                    if (hasToken)
+                        httpClient.DefaultRequestHeaders.Authorization = new("Bearer", App.Settings.GitHubToken);
+                    var response = await httpClient.GetAsync("https://api.github.com/rate_limit");
+                    response.EnsureSuccessStatusCode();
 
-                    var builder = new CustomMessageBox.Builder()
-                                  .WithCaption("XIVLauncherCN")
-                                  .WithText($"当前 {(hasToken ? "Token" : "IP")} 的 GitHub API 调用额度已用尽, 下次刷新时间: {resetTime:HH:mm:ss}\n" +
-                                            $"请{(hasToken ? "更换" : "填写")} GitHub Access Token 或耐心等待 / 更换你的网络环境\n"                    +
-                                            $"如果你不清楚如何更换网络环境, 请勿询问并立刻卸载本软件, 多谢配合\n"                                                  +
-                                            $"GitHub Token:")
-                                  .WithButtons(MessageBoxButton.OK)
-                                  .WithImage(MessageBoxImage.Error)
-                                  .WithInputTextBox(App.Settings.GitHubToken);
+                    var     json      = await response.Content.ReadAsStringAsync();
+                    dynamic rateLimit = JObject.Parse(json);
+                    int     remaining = rateLimit.resources.core.remaining;
 
-                    if (builder.Show() == MessageBoxResult.OK && App.Settings.GitHubToken != builder.InputTextBoxText)
+                    if (remaining == 0)
                     {
-                        App.Settings.GitHubToken = builder.InputTextBoxText;
-                    }
-                    else
-                    {
-                        Environment.Exit(1);
+                        int resetTimestamp = rateLimit.resources.core.reset;
+                        var resetTime      = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
+
+                        var builder = new CustomMessageBox.Builder()
+                                      .WithCaption("XIVLauncherCN")
+                                      .WithText($"当前 {(hasToken ? "Token" : "IP")} 的 GitHub API 调用额度已用尽, 下次刷新时间: {resetTime:HH:mm:ss}\n" +
+                                                $"请{(hasToken ? "更换" : "填写")} GitHub Access Token 或耐心等待 / 更换你的网络环境\n"                    +
+                                                $"如果你不清楚如何更换网络环境, 请勿询问并立刻卸载本软件, 多谢配合\n"                                                  +
+                                                $"GitHub Token:")
+                                      .WithButtons(MessageBoxButton.OK)
+                                      .WithImage(MessageBoxImage.Error)
+                                      .WithInputTextBox(App.Settings.GitHubToken);
+
+                        if (builder.Show() == MessageBoxResult.OK && App.Settings.GitHubToken != builder.InputTextBoxText)
+                        {
+                            App.Settings.GitHubToken = builder.InputTextBoxText;
+                        }
+                        else
+                        {
+                            Environment.Exit(1);
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "GitHub 速率限制检查失败, 继续尝试更新");
-                if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode is HttpStatusCode.Unauthorized && !string.IsNullOrWhiteSpace(App.Settings.GitHubToken))
+                catch (Exception ex)
                 {
-                    var builder = new CustomMessageBox.Builder()
-                                  .WithCaption("XIVLauncherCN")
-                                  .WithText($"当前配置的 GitHub Token 已失效, 请重新配置或删除 Token\n原 Token: {App.Settings.GitHubToken}")
-                                  .WithButtons(MessageBoxButton.OK)
-                                  .WithImage(MessageBoxImage.Error)
-                                  .WithInputTextBox(App.Settings.GitHubToken);
-
-                    if (builder.Show() == MessageBoxResult.OK)
+                    Log.Warning(ex, "GitHub 速率限制检查失败, 继续尝试更新");
+                    if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode is HttpStatusCode.Unauthorized && !string.IsNullOrWhiteSpace(App.Settings.GitHubToken))
                     {
-                        App.Settings.GitHubToken = builder.InputTextBoxText;
+                        var builder = new CustomMessageBox.Builder()
+                                      .WithCaption("XIVLauncherCN")
+                                      .WithText($"当前配置的 GitHub Token 已失效, 请重新配置或删除 Token\n原 Token: {App.Settings.GitHubToken}")
+                                      .WithButtons(MessageBoxButton.OK)
+                                      .WithImage(MessageBoxImage.Error)
+                                      .WithInputTextBox(App.Settings.GitHubToken);
+
+                        if (builder.Show() == MessageBoxResult.OK)
+                        {
+                            App.Settings.GitHubToken = builder.InputTextBoxText;
+                        }
                     }
                 }
-            }
+            }*/
 
             // 游戏进程
             if (System.Diagnostics.Process.GetProcessesByName("ffxiv_dx11").Length > 0)
@@ -146,7 +151,7 @@ internal class Updates
             }
 
             var updateOptions = new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
-            var updateSource  = new GitHubSource(UpdateUrl, App.Settings.GitHubToken, true);
+            var updateSource  = new GitHubSource(UpdateUrl, App.Settings.GitHubToken, true, "https://gh.atmoomen.top/");
             var mgr           = new UpdateManager(updateSource, updateOptions);
 
             var newRelease = await mgr.CheckForUpdatesAsync();
