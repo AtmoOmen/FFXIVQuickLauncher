@@ -503,7 +503,6 @@ namespace XIVLauncher.Windows.ViewModel
                 App.AccountManager.Save();
             };
             
-            // 创建 RisingstoneSignIn 对象
             var risingstoneSignIn = new RisingstoneSignIn();
             
             var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, dcTraveler, risingstoneSignIn, action).ConfigureAwait(false);
@@ -539,13 +538,11 @@ namespace XIVLauncher.Windows.ViewModel
                         Log.Information($"[DcTravel] use port:{loginResult.DcTravelPort}");
                         this.dcTravelListener.StartAsync();
                         
-                        // 初始化石之家签到服务（完全独立于 DcTraveler）
-                        var risingstonePort = ApiHelpers.GetAvailablePort();
-                        this.risingstoneListener = new RisingstoneListener(risingstoneSignIn, risingstonePort, false);
-                        loginResult.RisingStonePort = risingstonePort;
-                        Log.Information($"[Risingstone] use port:{risingstonePort}");
-                        // 异步启动 RisingstoneListener
-                        this.risingstoneListener.Start();
+                        Log.Information($"[Risingstone] 正在开启......");
+                        loginResult.RisingStonePort = ApiHelpers.GetAvailablePort();
+                        this.risingstoneListener = new RisingstoneListener(risingstoneSignIn, loginResult.RisingStonePort, false);
+                        Log.Information($"[Risingstone] use port:{loginResult.RisingStonePort}");
+                        this.risingstoneListener.StartAsync();
                     }
 
                     var accountToSave = new XivAccount()

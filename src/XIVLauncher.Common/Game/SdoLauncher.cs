@@ -73,7 +73,6 @@ namespace XIVLauncher.Common.Game
         private const int QRCodeExpirationTime = 300 * 1000;// ms
         private const int SlideExpirationTime = 30 * 1000;// ms
         private const int AutoLoginKeepDays = 30;
-        
         //public DcTraveler DcTraveler;
         public Func<string, DcTraveler> CreateDcTraveler;
         public async Task<LoginResult> LoginBySid(string sndaId, string sid)
@@ -118,7 +117,6 @@ namespace XIVLauncher.Common.Game
 
             var sndaId = result.Data.SndaId;
             var tgt = result.Data.Tgt;
-            
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
@@ -154,13 +152,11 @@ namespace XIVLauncher.Common.Game
         {
             var guid = await this.GetGuid();
             var (sndaId, tgt, autoLoginSessionKey) = await ThirdPartyLogin(account, token, autoLogin, AutoLoginKeepDays);
-            
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
-            
             if (risingstoneSignIn != null)
             {
                 risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
@@ -246,7 +242,6 @@ namespace XIVLauncher.Common.Game
             var (pushMsgSerialNum, pushMsgSessionKey, expiration) = await SendPushMessage(account);
             showVerificationCode?.Invoke(pushMsgSerialNum);
             var (sndaId, tgt, autoLoginSessionKey) = await WaitingForSlideOnDaoyuApp(pushMsgSessionKey, pushMsgSerialNum, guid, expiration, cts, autoLogin, AutoLoginKeepDays);
-            
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
@@ -352,18 +347,18 @@ namespace XIVLauncher.Common.Game
         }
 
         /// <summary>
-        /// 获取石之家登录的 ticket（使用 appId=6788）
+        /// 获取石之家登录的 ticket(appId=6788)
         /// </summary>
         public async Task<string> GetRisingstoneTicket(string tgt, string guid)
         {
             const string RISINGSTONE_APP_ID = "6788";
-            // 注意：serviceUrl 需要 URL 编码
+            // serviceUrl 需要 URL 编码
             var serviceUrl = "https://apiff14risingstones.web.sdo.com/api/home/GHome/login?redirectUrl=https://ff14risingstones.web.sdo.com/pc/index.html";
             Log.Information($"[Risingstone] GetRisingstoneTicket: tgt={tgt?.Substring(0, Math.Min(10, tgt?.Length ?? 0))}..., guid={guid}, appId={RISINGSTONE_APP_ID}");
             
             try
             {
-                // 使用石之家专用的 appId=6788 调用 GetPromotionInfo
+                // appId=6788 调用 GetPromotionInfo
                 var promotionResult = await GetPromotionInfoWithAppId(tgt, serviceUrl, RISINGSTONE_APP_ID);
                 Log.Information($"[Risingstone] GetPromotionInfo success: returnCode={promotionResult.ReturnCode}");
             }
@@ -373,7 +368,7 @@ namespace XIVLauncher.Common.Game
                 throw;
             }
             
-            // 使用石之家专用的 appId=6788 调用 SsoLogin
+            // appId=6788 调用 SsoLogin
             var ticket = await SsoLoginWithAppId(tgt, guid, RISINGSTONE_APP_ID);
             Log.Information($"[Risingstone] SsoLogin success: ticket={ticket?.Substring(0, Math.Min(20, ticket?.Length ?? 0))}...");
             return ticket;
@@ -451,8 +446,6 @@ namespace XIVLauncher.Common.Game
                 }
                 
                 // 检查登录 API 响应
-                // 成功的响应会是重定向或者 JSON {"code":10000,...}
-                // 失败的响应可能是 {"code":10403,"msg":"请先登录"} 等
                 if (loginRespText.Contains("\"code\""))
                 {
                     try
@@ -728,7 +721,7 @@ namespace XIVLauncher.Common.Game
         }
 
         /// <summary>
-        /// 使用指定 appId 调用 SsoLogin（用于石之家等非游戏服务）
+        /// 使用指定 appId 调用 SsoLogin
         /// </summary>
         private async Task<string> SsoLoginWithAppId(string tgt, string guid, string appId)
         {
@@ -740,7 +733,7 @@ namespace XIVLauncher.Common.Game
         }
 
         /// <summary>
-        /// 使用指定 appId 调用 GetPromotionInfo（用于石之家等非游戏服务）
+        /// 使用指定 appId 调用 GetPromotionInfo
         /// </summary>
         private async Task<SdoLoginResult> GetPromotionInfoWithAppId(string tgt, string serviceUrl, string appId)
         {

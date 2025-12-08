@@ -113,7 +113,7 @@ namespace XIVLauncher.Common.Http
             return sr.ReadToEnd();
         }
 
-        public async Task Start()
+        public async Task StartAsync()
         {
             try
             {

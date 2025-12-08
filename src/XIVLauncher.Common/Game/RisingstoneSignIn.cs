@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 namespace XIVLauncher.Common.Game
 {
     /// <summary>
-    /// 石之家签到服务 (仅提供 API，不包含调度逻辑)
+    /// 石之家签到服务
     /// </summary>
     public class RisingstoneSignIn : IDisposable
     {
@@ -114,13 +114,11 @@ namespace XIVLauncher.Common.Game
                     }
                     catch
                     {
-                        // 忽略初始化请求的错误
                     }
                 }
             }
             catch
             {
-                // 忽略初始化错误
             }
         }
         
