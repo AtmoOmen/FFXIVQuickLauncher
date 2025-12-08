@@ -74,16 +74,6 @@ namespace XIVLauncher.Common.Game
         private const int SlideExpirationTime = 30 * 1000;// ms
         private const int AutoLoginKeepDays = 30;
         
-        /// <summary>
-        /// 最后一次成功登录的 tgt (用于石之家签到 Cookie 获取)
-        /// </summary>
-        public string LastSuccessLoginTgt { get; private set; }
-        
-        /// <summary>
-        /// 最后一次成功登录的 guid (用于石之家签到 Cookie 获取)
-        /// </summary>
-        public string LastSuccessLoginGuid { get; private set; }
-        
         //public DcTraveler DcTraveler;
         public Func<string, DcTraveler> CreateDcTraveler;
         public async Task<LoginResult> LoginBySid(string sndaId, string sid)
@@ -103,7 +93,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginBySdoStatic(string account, string password, DcTraveler dcTraveler)
+        public async Task<LoginResult> LoginBySdoStatic(string account, string password, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
         {
             var guid = await this.GetGuid();
             var macAddress = SdoUtils.GetMacAddress();
@@ -129,14 +119,15 @@ namespace XIVLauncher.Common.Game
             var sndaId = result.Data.SndaId;
             var tgt = result.Data.Tgt;
             
-            // 保存最后一次成功登录的信息，供石之家签到使用
-            this.LastSuccessLoginTgt = tgt;
-            this.LastSuccessLoginGuid = guid;
-            
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
+            }
+            
+            if (risingstoneSignIn != null)
+            {
+                risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
 
             var sessionId = await GetSessionId(tgt, guid);
@@ -159,20 +150,22 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginByWeGameToken(string account, string token, bool autoLogin, DcTraveler dcTraveler)
+        public async Task<LoginResult> LoginByWeGameToken(string account, string token, bool autoLogin, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
         {
             var guid = await this.GetGuid();
             var (sndaId, tgt, autoLoginSessionKey) = await ThirdPartyLogin(account, token, autoLogin, AutoLoginKeepDays);
-            
-            // 保存最后一次成功登录的信息，供石之家签到使用
-            this.LastSuccessLoginTgt = tgt;
-            this.LastSuccessLoginGuid = guid;
             
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
+            
+            if (risingstoneSignIn != null)
+            {
+                risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+            }
+            
             var sessionId = await GetSessionId(tgt, guid);
 
             var oath = new OauthLoginResult
@@ -192,7 +185,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginByScanQrCode(bool autoLogin, CancellationTokenSource cts, Action<byte[]> showQrCode, DcTraveler dcTraveler)
+        public async Task<LoginResult> LoginByScanQrCode(bool autoLogin, CancellationTokenSource cts, Action<byte[]> showQrCode, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
         {
             var guid = await this.GetGuid();
             // Wait for Scan QrCode
@@ -215,15 +208,17 @@ namespace XIVLauncher.Common.Game
             if (autoLogin)
                 (tgt, autoLoginSessionKey) = await AccountGroupLogin(tgt, sndaId, AutoLoginKeepDays);
 
-            // 保存最后一次成功登录的信息，供石之家签到使用
-            this.LastSuccessLoginTgt = tgt;
-            this.LastSuccessLoginGuid = guid;
-
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
+            
+            if (risingstoneSignIn != null)
+            {
+                risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+            }
+            
             var sessionId = await GetSessionId(tgt, guid);
 
             var oath = new OauthLoginResult
@@ -243,7 +238,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginBySlide(string account, bool autoLogin, CancellationTokenSource cts, Action<string> showVerificationCode, DcTraveler dcTraveler)
+        public async Task<LoginResult> LoginBySlide(string account, bool autoLogin, CancellationTokenSource cts, Action<string> showVerificationCode, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
         {
             var guid = await this.GetGuid();
             // Wait for Slide
@@ -252,15 +247,17 @@ namespace XIVLauncher.Common.Game
             showVerificationCode?.Invoke(pushMsgSerialNum);
             var (sndaId, tgt, autoLoginSessionKey) = await WaitingForSlideOnDaoyuApp(pushMsgSessionKey, pushMsgSerialNum, guid, expiration, cts, autoLogin, AutoLoginKeepDays);
             
-            // 保存最后一次成功登录的信息，供石之家签到使用
-            this.LastSuccessLoginTgt = tgt;
-            this.LastSuccessLoginGuid = guid;
-            
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
+            
+            if (risingstoneSignIn != null)
+            {
+                risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+            }
+            
             var sessionId = await GetSessionId(tgt, guid);
 
             var oath = new OauthLoginResult
@@ -280,7 +277,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DcTraveler dcTraveler)
+        public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
         {
             var guid = await this.GetGuid();
             //快速登录,刷新SessionKey
@@ -299,15 +296,17 @@ namespace XIVLauncher.Common.Game
 
             try
             {
-                // 保存最后一次成功登录的信息，供石之家签到使用
-                this.LastSuccessLoginTgt = tgt;
-                this.LastSuccessLoginGuid = guid;
-                
                 if (dcTraveler != null)
                 {
                     dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                     dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
                 }
+                
+                if (risingstoneSignIn != null)
+                {
+                    risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                }
+                
                 var sessionId = await GetSessionId(tgt, guid);
                 var oath = new OauthLoginResult
                 {

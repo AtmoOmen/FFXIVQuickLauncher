@@ -502,7 +502,11 @@ namespace XIVLauncher.Windows.ViewModel
                 App.AccountManager.CurrentAccount.AreaName = name;
                 App.AccountManager.Save();
             };
-            var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, dcTraveler, action).ConfigureAwait(false);
+            
+            // 创建 RisingstoneSignIn 对象
+            var risingstoneSignIn = new RisingstoneSignIn();
+            
+            var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, dcTraveler, risingstoneSignIn, action).ConfigureAwait(false);
 
             if (loginResult == null)
                 return;
@@ -535,28 +539,13 @@ namespace XIVLauncher.Windows.ViewModel
                         Log.Information($"[DcTravel] use port:{loginResult.DcTravelPort}");
                         this.dcTravelListener.StartAsync();
                         
-                        // 初始化石之家签到服务（完全独立）
-                        if (!string.IsNullOrEmpty(this.Launcher.LastSuccessLoginTgt) && 
-                            !string.IsNullOrEmpty(this.Launcher.LastSuccessLoginGuid))
-                        {
-                            var risingstoneSignIn = new XIVLauncher.Common.Game.RisingstoneSignIn();
-                            // 设置获取 Cookie 的委托
-                            risingstoneSignIn.RefreshCookieFunc = () => 
-                                this.Launcher.GetRisingstoneCookieAsync(
-                                    this.Launcher.LastSuccessLoginTgt, 
-                                    this.Launcher.LastSuccessLoginGuid);
-                            
-                            var risingstonePort = ApiHelpers.GetAvailablePort();
-                            this.risingstoneListener = new RisingstoneListener(risingstoneSignIn, risingstonePort, false);
-                            loginResult.RisingStonePort = risingstonePort;
-                            Log.Information($"[Risingstone] use port:{risingstonePort}");
-                            // 异步启动 RisingstoneListener
-                            this.risingstoneListener.Start();
-                        }
-                        else
-                        {
-                            Log.Warning("[Risingstone] Login credentials not available, Risingstone service will not be initialized");
-                        }
+                        // 初始化石之家签到服务（完全独立于 DcTraveler）
+                        var risingstonePort = ApiHelpers.GetAvailablePort();
+                        this.risingstoneListener = new RisingstoneListener(risingstoneSignIn, risingstonePort, false);
+                        loginResult.RisingStonePort = risingstonePort;
+                        Log.Information($"[Risingstone] use port:{risingstonePort}");
+                        // 异步启动 RisingstoneListener
+                        this.risingstoneListener.Start();
                     }
 
                     var accountToSave = new XivAccount()
@@ -584,7 +573,7 @@ namespace XIVLauncher.Windows.ViewModel
                         {
                             this.dcTravelListener.DcTraveler.RefreshGameSessionIdByAutoLoginFunc = async () =>
                             {
-                                var newLoginResult = await this.Launcher.LoginBySessionKey(username, loginResult.OauthLogin.AutoLoginSessionKey, this.dcTravelListener.DcTraveler).ConfigureAwait(false);
+                                var newLoginResult = await this.Launcher.LoginBySessionKey(username, loginResult.OauthLogin.AutoLoginSessionKey, this.dcTravelListener.DcTraveler, this.risingstoneListener?.RisingstoneSignIn).ConfigureAwait(false);
                                 return newLoginResult.OauthLogin.SessionId;
                             };
                         }
@@ -713,6 +702,7 @@ namespace XIVLauncher.Windows.ViewModel
             string serect,
             bool autoLogin,
             DcTraveler dcTraveler,
+            RisingstoneSignIn risingstoneSignIn,
             AfterLoginAction action
             )
         {
@@ -735,7 +725,7 @@ namespace XIVLauncher.Windows.ViewModel
                 {
                     try
                     {
-                        return await this.Launcher.LoginBySessionKey(username, autoLoginSessionKey: serect, dcTraveler).ConfigureAwait(false);
+                        return await this.Launcher.LoginBySessionKey(username, autoLoginSessionKey: serect, dcTraveler, risingstoneSignIn).ConfigureAwait(false);
                     }
                     catch (Exception e)
                     {
@@ -747,7 +737,7 @@ namespace XIVLauncher.Windows.ViewModel
                 switch (type)
                 {
                     case LoginType.SdoStatic:
-                        return await Launcher.LoginBySdoStatic(username, password: serect, dcTraveler).ConfigureAwait(false);
+                        return await Launcher.LoginBySdoStatic(username, password: serect, dcTraveler, risingstoneSignIn).ConfigureAwait(false);
 
                     case LoginType.SdoSlide:
                         return await Launcher.LoginBySlide(username, autoLogin, this.loginCts, (code) =>
@@ -755,7 +745,8 @@ namespace XIVLauncher.Windows.ViewModel
                             Log.Information($"叨鱼确认码:{code}");
                             this.LoginMessage = $"确认码: {code}";
                         },
-                        dcTraveler
+                        dcTraveler,
+                        risingstoneSignIn
                         ).ConfigureAwait(false);
 
                     case LoginType.SdoQrCode:
@@ -763,11 +754,12 @@ namespace XIVLauncher.Windows.ViewModel
                         {
                             this.QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes);
                         },
-                        dcTraveler
+                        dcTraveler,
+                        risingstoneSignIn
                         ).ConfigureAwait(false);
 
                     case LoginType.WeGameToken:
-                        return await Launcher.LoginByWeGameToken(username, token: serect, autoLogin, dcTraveler).ConfigureAwait(false);
+                        return await Launcher.LoginByWeGameToken(username, token: serect, autoLogin, dcTraveler, risingstoneSignIn).ConfigureAwait(false);
 
                     case LoginType.WeGameSid:
                         return await Launcher.LoginBySid(username, sid: serect).ConfigureAwait(false);
