@@ -55,6 +55,7 @@ namespace XIVLauncher.Common.Game
             //this.RefreshDcTravelSessionIdFunc = refreshDcTravelSessionIdFunc;
             //this.RefreshGameSessionByGuidFunc = refreshGameSessionIdFunc;
             this.KeepAliveCts = new CancellationTokenSource();
+            this.signInSchedulerCts = new CancellationTokenSource();
             this.cookieContainer = new CookieContainer();
             if (!string.IsNullOrEmpty(nSessionId))
             {
@@ -210,6 +211,11 @@ namespace XIVLauncher.Common.Game
                 //https://ff14bjz.sdo.com/api/gmallinter/logout?
                 _ = await GetRequestData("api/gmallinter/logout?", ApiType.Order, new Dictionary<string, string>() { }, false);
             }
+            
+            // 清理石之家资源
+            signInSchedulerCts?.Cancel();
+            risingstoneHttpClient?.Dispose();
+            risingstoneHttpClient = null;
         }
         #endregion
 
@@ -581,6 +587,45 @@ namespace XIVLauncher.Common.Game
 
         #region 石之家签到
         
+        private HttpClient risingstoneHttpClient;
+        private string savedRisingstoneCookie = string.Empty;
+        private DateTime? lastSignInTime;
+        private readonly CancellationTokenSource signInSchedulerCts;
+        
+        /// <summary>
+        /// 初始化石之家签到 HttpClient
+        /// </summary>
+        private void InitializeRisingstoneHttpClient()
+        {
+            risingstoneHttpClient = new HttpClient();
+            UpdateRisingstoneHttpClientHeaders();
+        }
+
+        /// <summary>
+        /// 更新石之家 HttpClient 的请求头
+        /// </summary>
+        private void UpdateRisingstoneHttpClientHeaders()
+        {
+            if (risingstoneHttpClient == null) return;
+            
+            risingstoneHttpClient.DefaultRequestHeaders.Clear();
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cache-Control", "no-cache");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Pragma", "no-cache");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua", "\"Chromium\";v=\"122\", \"Not(A:Brand\";v=\"24\", \"Microsoft Edge\";v=\"122\"");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua-Mobile", "?0");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua-Platform", "\"Windows\"");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "empty");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode", "cors");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site", "same-site");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Referer", "https://ff14risingstones.web.sdo.com/");
+            risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0");
+            
+            if (!string.IsNullOrWhiteSpace(savedRisingstoneCookie))
+                risingstoneHttpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cookie", savedRisingstoneCookie);
+        }
+
         /// <summary>
         /// 获取石之家登录用的 Cookie
         /// </summary>
@@ -590,7 +635,317 @@ namespace XIVLauncher.Common.Game
             if (RefreshRisingstoneCookieFunc == null)
                 throw new Exception("RefreshRisingstoneCookieFunc is not set");
             
-            return await RefreshRisingstoneCookieFunc();
+            var cookie = await RefreshRisingstoneCookieFunc();
+            if (!string.IsNullOrWhiteSpace(cookie))
+            {
+                savedRisingstoneCookie = cookie;
+                UpdateRisingstoneHttpClientHeaders();
+            }
+            return cookie;
+        }
+
+        /// <summary>
+        /// 初始化石之家会话
+        /// </summary>
+        private async System.Threading.Tasks.Task InitializeRisingstoneSessionAsync()
+        {
+            if (risingstoneHttpClient == null) return;
+
+            try
+            {
+                var initPaths = new[]
+                {
+                    "/api/home/GHome/isLogin",
+                    "/api/home/groupAndRole/getCharacterBindInfo?platform=2",
+                    "/api/home/sign/signRewardList?month=" + DateTime.Now.ToString("yyyy-MM")
+                };
+
+                foreach (var path in initPaths)
+                {
+                    try
+                    {
+                        var tempsuid = Guid.NewGuid().ToString();
+                        var sep = path.Contains('?') ? "&" : "?";
+                        var url = $"https://apiff14risingstones.web.sdo.com{path}{sep}tempsuid={tempsuid}";
+
+                        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                        req.Headers.TryAddWithoutValidation("Origin", "https://ff14risingstones.web.sdo.com");
+                        req.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+
+                        using var resp = await risingstoneHttpClient.SendAsync(req);
+                        await System.Threading.Tasks.Task.Delay(100);
+                    }
+                    catch
+                    {
+                        // 忽略初始化请求的错误
+                    }
+                }
+            }
+            catch
+            {
+                // 忽略初始化错误
+            }
+        }
+
+        /// <summary>
+        /// 执行签到
+        /// </summary>
+        [HttpRpc]
+        public async Task<RisingstoneSignInResult> ExecuteSignIn()
+        {
+            try
+            {
+                if (risingstoneHttpClient == null)
+                {
+                    InitializeRisingstoneHttpClient();
+                }
+
+                if (string.IsNullOrWhiteSpace(savedRisingstoneCookie))
+                {
+                    var cookie = await GetRisingstoneCookie();
+                    if (string.IsNullOrWhiteSpace(cookie))
+                        return new RisingstoneSignInResult { Success = false, Message = "无法获取 Cookie" };
+                }
+
+                // 初始化会话
+                await InitializeRisingstoneSessionAsync();
+
+                // 执行签到
+                var (success, message) = await RequestSignInAsync();
+                
+                if (!success)
+                    return new RisingstoneSignInResult { Success = false, Message = message };
+
+                var results = new List<string> { $"签到: {message}" };
+
+                // 自动领取奖励
+                var currentMonth = DateTime.Now.ToString("yyyy-MM");
+                var rewardList = await RequestSignRewardListAsync(currentMonth);
+
+                if (rewardList.Count > 0)
+                {
+                    foreach (var reward in rewardList.Where(r => r.IsGet == 0)) // 0 表示可领取
+                    {
+                        var result = await RequestClaimSignRewardAsync(reward.ID, currentMonth);
+                        results.Add($"领取 {reward.ItemName}: {result}");
+                        await System.Threading.Tasks.Task.Delay(1000);
+                    }
+                }
+
+                lastSignInTime = DateTime.Now;
+                
+                return new RisingstoneSignInResult 
+                { 
+                    Success = true, 
+                    Message = string.Join("\n", results),
+                    LastSignInTime = lastSignInTime
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[Risingstone] Sign in failed");
+                return new RisingstoneSignInResult { Success = false, Message = $"签到异常: {ex.Message}" };
+            }
+        }
+
+        /// <summary>
+        /// 请求签到 API
+        /// </summary>
+        private async Task<(bool Success, string Message)> RequestSignInAsync()
+        {
+            if (risingstoneHttpClient == null) 
+                return (false, "HttpClient 未初始化");
+
+            var tempSuid = Guid.NewGuid().ToString();
+            var url = $"https://apiff14risingstones.web.sdo.com/api/home/sign/signIn?tempsuid={tempSuid}";
+
+            var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("tempsuid", tempSuid)
+            });
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+            req.Headers.TryAddWithoutValidation("Origin", "https://ff14risingstones.web.sdo.com");
+            req.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+
+            var response = await risingstoneHttpClient.SendAsync(req);
+            var responseText = await response.Content.ReadAsStringAsync();
+
+            try
+            {
+                var jsonDoc = JsonDocument.Parse(responseText);
+                var code = 0;
+                var msg = string.Empty;
+                
+                if (jsonDoc.RootElement.TryGetProperty("code", out var codeElement))
+                    code = codeElement.GetInt32();
+                
+                if (jsonDoc.RootElement.TryGetProperty("msg", out var msgElement))
+                    msg = msgElement.GetString() ?? string.Empty;
+                
+                var formattedMessage = $"({code}){msg}";
+                
+                // 10000: 签到成功, 10001: 今日已签到, 10301: 操作太快
+                if (code == 10000 || code == 10001 || code == 10301)
+                    return (true, formattedMessage);
+                
+                return (false, formattedMessage);
+            }
+            catch
+            {
+                return (false, "解析响应失败");
+            }
+        }
+
+        /// <summary>
+        /// 请求签到奖励列表
+        /// </summary>
+        private async Task<List<SignRewardItem>> RequestSignRewardListAsync(string month)
+        {
+            if (risingstoneHttpClient == null) 
+                return new List<SignRewardItem>();
+
+            var tempSuid = Guid.NewGuid().ToString();
+            var url = $"https://apiff14risingstones.web.sdo.com/api/home/sign/signRewardList?month={month}&tempsuid={tempSuid}";
+
+            var response = await risingstoneHttpClient.GetAsync(url);
+            var responseText = await response.Content.ReadAsStringAsync();
+
+            var result = JsonSerializer.Deserialize<SignRewardListResponse>(responseText);
+            return result?.Data ?? new List<SignRewardItem>();
+        }
+
+        /// <summary>
+        /// 请求领取签到奖励
+        /// </summary>
+        private async Task<string> RequestClaimSignRewardAsync(int id, string month)
+        {
+            if (risingstoneHttpClient == null) 
+                return "错误: HttpClient 未初始化";
+
+            var tempSuid = Guid.NewGuid().ToString();
+            var url = $"https://apiff14risingstones.web.sdo.com/api/home/sign/getSignReward?tempsuid={tempSuid}";
+
+            var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("id", id.ToString()),
+                new KeyValuePair<string, string>("month", month),
+                new KeyValuePair<string, string>("tempsuid", tempSuid)
+            });
+
+            var response = await risingstoneHttpClient.PostAsync(url, content);
+            var responseText = await response.Content.ReadAsStringAsync();
+
+            try
+            {
+                var jsonDoc = JsonDocument.Parse(responseText);
+                if (jsonDoc.RootElement.TryGetProperty("msg", out var msgElement))
+                    return msgElement.GetString() ?? "成功";
+            }
+            catch (JsonException) { }
+
+            return responseText;
+        }
+
+        /// <summary>
+        /// 获取上次签到时间
+        /// </summary>
+        [HttpRpc]
+        public DateTime? GetLastSignInTime()
+        {
+            return lastSignInTime;
+        }
+
+        /// <summary>
+        /// 启动每日签到调度器
+        /// </summary>
+        public async System.Threading.Tasks.Task StartDailySignInScheduler()
+        {
+            _ = System.Threading.Tasks.Task.Run(async () =>
+            {
+                try
+                {
+                    while (!signInSchedulerCts.Token.IsCancellationRequested)
+                    {
+                        var now = DateTime.Now;
+                        var today = now.Date;
+
+                        // 如果今天还没签到，立即签到
+                        if (!lastSignInTime.HasValue || lastSignInTime.Value.Date < today)
+                        {
+                            Log.Information("[Risingstone] Executing daily sign in...");
+                            var result = await ExecuteSignIn();
+                            Log.Information($"[Risingstone] Sign in result: {result.Message}");
+                        }
+
+                        // 计算下次签到时间（明天凌晨 0:10）
+                        var nextSignIn = today.AddDays(1).AddMinutes(10);
+                        var delay = nextSignIn - now;
+
+                        if (delay.TotalMilliseconds > 0)
+                            await System.Threading.Tasks.Task.Delay(delay, signInSchedulerCts.Token);
+                        else
+                            await System.Threading.Tasks.Task.Delay(TimeSpan.FromHours(1), signInSchedulerCts.Token);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Information("[Risingstone] Daily sign in scheduler cancelled.");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[Risingstone] Daily sign in scheduler error");
+                }
+            }, signInSchedulerCts.Token);
+        }
+
+        public class RisingstoneSignInResult
+        {
+            public bool Success { get; set; }
+            public string Message { get; set; }
+            public DateTime? LastSignInTime { get; set; }
+        }
+
+        public class SignRewardListResponse
+        {
+            [JsonPropertyName("code")]
+            public int Code { get; set; }
+
+            [JsonPropertyName("msg")]
+            public string Message { get; set; }
+
+            [JsonPropertyName("data")]
+            public List<SignRewardItem> Data { get; set; }
+        }
+
+        public class SignRewardItem
+        {
+            [JsonPropertyName("id")]
+            public int ID { get; set; }
+
+            [JsonPropertyName("begin_date")]
+            public string BeginDate { get; set; }
+
+            [JsonPropertyName("end_date")]
+            public string EndDate { get; set; }
+
+            [JsonPropertyName("rule")]
+            public int Rule { get; set; }
+
+            [JsonPropertyName("item_name")]
+            public string ItemName { get; set; }
+
+            [JsonPropertyName("item_pic")]
+            public string ItemPic { get; set; }
+
+            [JsonPropertyName("num")]
+            public int Num { get; set; }
+
+            [JsonPropertyName("item_desc")]
+            public string ItemDesc { get; set; }
+
+            [JsonPropertyName("is_get")]
+            public int IsGet { get; set; }
         }
         
         #endregion
