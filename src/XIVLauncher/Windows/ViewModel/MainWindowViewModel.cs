@@ -548,6 +548,7 @@ namespace XIVLauncher.Windows.ViewModel
                             
                             var risingstonePort = ApiHelpers.GetAvailablePort();
                             this.risingstoneListener = new RisingstoneListener(risingstoneSignIn, risingstonePort, false);
+                            loginResult.RisingStonePort = risingstonePort;
                             Log.Information($"[Risingstone] use port:{risingstonePort}");
                             // 异步启动 RisingstoneListener
                             this.risingstoneListener.Start();
@@ -1802,7 +1803,7 @@ namespace XIVLauncher.Windows.ViewModel
                                                        loginResult.OauthLogin.SessionId,
                                                        loginResult.OauthLogin.SndaId,
                                                        loginResult.DcTravelPort,
-                                                       this.risingstoneListener != null ? this.risingstoneListener.Port : 0,
+                                                       loginResult.RisingStonePort,
                                                        Area.Areaid,
                                                        Area.AreaLobby,
                                                        Area.AreaGm,
