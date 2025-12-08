@@ -127,7 +127,7 @@ namespace XIVLauncher.Common.Game
             
             if (risingstoneSignIn != null)
             {
-                risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
 
             var sessionId = await GetSessionId(tgt, guid);
@@ -163,7 +163,7 @@ namespace XIVLauncher.Common.Game
             
             if (risingstoneSignIn != null)
             {
-                risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             
             var sessionId = await GetSessionId(tgt, guid);
@@ -216,7 +216,7 @@ namespace XIVLauncher.Common.Game
             
             if (risingstoneSignIn != null)
             {
-                risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             
             var sessionId = await GetSessionId(tgt, guid);
@@ -255,7 +255,7 @@ namespace XIVLauncher.Common.Game
             
             if (risingstoneSignIn != null)
             {
-                risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             
             var sessionId = await GetSessionId(tgt, guid);
@@ -304,7 +304,7 @@ namespace XIVLauncher.Common.Game
                 
                 if (risingstoneSignIn != null)
                 {
-                    risingstoneSignIn.RefreshCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                    risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
                 }
                 
                 var sessionId = await GetSessionId(tgt, guid);

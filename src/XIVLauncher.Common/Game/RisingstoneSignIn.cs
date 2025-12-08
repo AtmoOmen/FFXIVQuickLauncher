@@ -24,7 +24,7 @@ namespace XIVLauncher.Common.Game
         /// <summary>
         /// 获取石之家 Cookie 的委托
         /// </summary>
-        public Func<Task<string>>? RefreshCookieFunc { get; set; }
+        public Func<Task<string>>? RefreshRisingstoneCookieFunc { get; set; }
         
         public RisingstoneSignIn()
         {
@@ -69,10 +69,10 @@ namespace XIVLauncher.Common.Game
         /// </summary>
         public async Task<string> GetCookie()
         {
-            if (RefreshCookieFunc == null)
-                throw new Exception("RefreshCookieFunc is not set");
+            if (RefreshRisingstoneCookieFunc == null)
+                throw new Exception("RefreshRisingstoneCookieFunc is not set");
             
-            var cookie = await RefreshCookieFunc();
+            var cookie = await RefreshRisingstoneCookieFunc();
             if (!string.IsNullOrWhiteSpace(cookie))
             {
                 savedCookie = cookie;
