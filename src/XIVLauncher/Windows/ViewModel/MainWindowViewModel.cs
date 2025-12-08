@@ -301,7 +301,7 @@ namespace XIVLauncher.Windows.ViewModel
         }
 
         public DcTravelListener dcTravelListener { get; private set; } = null;
-        public XIVLauncher.Common.Http.RisingstoneListener risingstoneListener { get; private set; } = null;
+        public RisingstoneListener risingstoneListener { get; private set; } = null;
         public const string PresudoPassword = "********假的密码********";
         private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
         {
@@ -547,12 +547,10 @@ namespace XIVLauncher.Windows.ViewModel
                                     this.Launcher.LastSuccessLoginGuid);
                             
                             var risingstonePort = ApiHelpers.GetAvailablePort();
-                            this.risingstoneListener = new XIVLauncher.Common.Http.RisingstoneListener(risingstoneSignIn, risingstonePort, false);
+                            this.risingstoneListener = new RisingstoneListener(risingstoneSignIn, risingstonePort, false);
                             Log.Information($"[Risingstone] use port:{risingstonePort}");
                             // 异步启动 RisingstoneListener
-#pragma warning disable CS4014 // 因为此调用不会被等待，所以在此调用完成之前，当前方法会继续执行
                             this.risingstoneListener.Start();
-#pragma warning restore CS4014 // 因为此调用不会被等待，所以在此调用完成之前，当前方法会继续执行
                         }
                         else
                         {
