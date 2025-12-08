@@ -46,10 +46,9 @@ namespace XIVLauncher.Common.Game
         public Func<Task<string>> RefreshGameSessionByGuidFunc;
         public Func<Task<string>> RefreshDcTravelSessionIdFunc;
         public Func<Task<string>> RefreshGameSessionIdByAutoLoginFunc;
-        public Action<string> SetSdoAreaFunc = null;
+        public Action<string>? SetSdoAreaFunc = null;
         private bool isInitialized = false;
         public readonly CancellationTokenSource KeepAliveCts;
-        
         public DcTraveler(string nSessionId)
         {
             //this.RefreshDcTravelSessionIdFunc = refreshDcTravelSessionIdFunc;
