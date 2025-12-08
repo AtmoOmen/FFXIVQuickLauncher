@@ -1,7 +1,6 @@
 using Serilog;
 using Serilog.Core;
 using System;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -50,6 +49,7 @@ namespace XIVLauncher.Common.Game
         public Action<string>? SetSdoAreaFunc = null;
         private bool isInitialized = false;
         public readonly CancellationTokenSource KeepAliveCts;
+        public Func<Task<string>> RefreshRisingstoneCookieFunc;
         public DcTraveler(string nSessionId)
         {
             //this.RefreshDcTravelSessionIdFunc = refreshDcTravelSessionIdFunc;
@@ -577,6 +577,22 @@ namespace XIVLauncher.Common.Game
                 throw new DcTraveleApiException($"Failed to travel back, resultCode: {data["resultCode"].GetValue<int>()}, message: {data["resultMessage"].GetValue<string>()}");
             return data["orderId"].GetValue<string>();
         }
+        #endregion
+
+        #region 石之家签到
+        
+        /// <summary>
+        /// 获取石之家登录用的 Cookie
+        /// </summary>
+        [HttpRpc]
+        public async Task<string> GetRisingstoneCookie()
+        {
+            if (RefreshRisingstoneCookieFunc == null)
+                throw new Exception("RefreshRisingstoneCookieFunc is not set");
+            
+            return await RefreshRisingstoneCookieFunc();
+        }
+        
         #endregion
     }
 }
