@@ -49,19 +49,12 @@ namespace XIVLauncher.Common.Game
         public Action<string> SetSdoAreaFunc = null;
         private bool isInitialized = false;
         public readonly CancellationTokenSource KeepAliveCts;
-        public Func<Task<string>> RefreshRisingstoneCookieFunc;
-        
-        /// <summary>
-        /// 石之家签到服务
-        /// </summary>
-        public RisingstoneSignIn RisingstoneSignIn { get; private set; }
         
         public DcTraveler(string nSessionId)
         {
             //this.RefreshDcTravelSessionIdFunc = refreshDcTravelSessionIdFunc;
             //this.RefreshGameSessionByGuidFunc = refreshGameSessionIdFunc;
             this.KeepAliveCts = new CancellationTokenSource();
-            this.RisingstoneSignIn = new RisingstoneSignIn();
             this.cookieContainer = new CookieContainer();
             if (!string.IsNullOrEmpty(nSessionId))
             {
@@ -217,9 +210,6 @@ namespace XIVLauncher.Common.Game
                 //https://ff14bjz.sdo.com/api/gmallinter/logout?
                 _ = await GetRequestData("api/gmallinter/logout?", ApiType.Order, new Dictionary<string, string>() { }, false);
             }
-            
-            // 清理石之家资源
-            RisingstoneSignIn?.Dispose();
         }
         #endregion
 
@@ -587,24 +577,6 @@ namespace XIVLauncher.Common.Game
                 throw new DcTraveleApiException($"Failed to travel back, resultCode: {data["resultCode"].GetValue<int>()}, message: {data["resultMessage"].GetValue<string>()}");
             return data["orderId"].GetValue<string>();
         }
-        #endregion
-        
-        #region 石之家签到 API
-        
-        /// <summary>
-        /// 执行签到 (仅提供 API 接口，不包含调度逻辑)
-        /// </summary>
-        [HttpRpc]
-        public async Task<RisingstoneSignIn.SignInResult> ExecuteSignIn()
-        {
-            // 确保 RefreshCookieFunc 已设置
-            if (RisingstoneSignIn.RefreshCookieFunc == null && RefreshRisingstoneCookieFunc != null)
-            {
-                RisingstoneSignIn.RefreshCookieFunc = RefreshRisingstoneCookieFunc;
-            }
-            return await RisingstoneSignIn.ExecuteSignIn();
-        }
-        
         #endregion
     }
 }

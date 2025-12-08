@@ -127,6 +127,7 @@ namespace XIVLauncher.Common.Game
         /// <summary>
         /// 执行签到
         /// </summary>
+        [XIVLauncher.Common.Http.HttpRpc]
         public async Task<SignInResult> ExecuteSignIn()
         {
             try

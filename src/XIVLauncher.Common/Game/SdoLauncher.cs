@@ -73,6 +73,17 @@ namespace XIVLauncher.Common.Game
         private const int QRCodeExpirationTime = 300 * 1000;// ms
         private const int SlideExpirationTime = 30 * 1000;// ms
         private const int AutoLoginKeepDays = 30;
+        
+        /// <summary>
+        /// 最后一次成功登录的 tgt (用于石之家签到 Cookie 获取)
+        /// </summary>
+        public string LastSuccessLoginTgt { get; private set; }
+        
+        /// <summary>
+        /// 最后一次成功登录的 guid (用于石之家签到 Cookie 获取)
+        /// </summary>
+        public string LastSuccessLoginGuid { get; private set; }
+        
         //public DcTraveler DcTraveler;
         public Func<string, DcTraveler> CreateDcTraveler;
         public async Task<LoginResult> LoginBySid(string sndaId, string sid)
@@ -117,11 +128,15 @@ namespace XIVLauncher.Common.Game
 
             var sndaId = result.Data.SndaId;
             var tgt = result.Data.Tgt;
+            
+            // 保存最后一次成功登录的信息，供石之家签到使用
+            this.LastSuccessLoginTgt = tgt;
+            this.LastSuccessLoginGuid = guid;
+            
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
-                dcTraveler.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
 
             var sessionId = await GetSessionId(tgt, guid);
@@ -148,11 +163,15 @@ namespace XIVLauncher.Common.Game
         {
             var guid = await this.GetGuid();
             var (sndaId, tgt, autoLoginSessionKey) = await ThirdPartyLogin(account, token, autoLogin, AutoLoginKeepDays);
+            
+            // 保存最后一次成功登录的信息，供石之家签到使用
+            this.LastSuccessLoginTgt = tgt;
+            this.LastSuccessLoginGuid = guid;
+            
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
-                dcTraveler.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             var sessionId = await GetSessionId(tgt, guid);
 
@@ -196,11 +215,14 @@ namespace XIVLauncher.Common.Game
             if (autoLogin)
                 (tgt, autoLoginSessionKey) = await AccountGroupLogin(tgt, sndaId, AutoLoginKeepDays);
 
+            // 保存最后一次成功登录的信息，供石之家签到使用
+            this.LastSuccessLoginTgt = tgt;
+            this.LastSuccessLoginGuid = guid;
+
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
-                dcTraveler.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             var sessionId = await GetSessionId(tgt, guid);
 
@@ -229,11 +251,15 @@ namespace XIVLauncher.Common.Game
             var (pushMsgSerialNum, pushMsgSessionKey, expiration) = await SendPushMessage(account);
             showVerificationCode?.Invoke(pushMsgSerialNum);
             var (sndaId, tgt, autoLoginSessionKey) = await WaitingForSlideOnDaoyuApp(pushMsgSessionKey, pushMsgSerialNum, guid, expiration, cts, autoLogin, AutoLoginKeepDays);
+            
+            // 保存最后一次成功登录的信息，供石之家签到使用
+            this.LastSuccessLoginTgt = tgt;
+            this.LastSuccessLoginGuid = guid;
+            
             if (dcTraveler != null)
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
-                dcTraveler.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             var sessionId = await GetSessionId(tgt, guid);
 
@@ -273,11 +299,14 @@ namespace XIVLauncher.Common.Game
 
             try
             {
+                // 保存最后一次成功登录的信息，供石之家签到使用
+                this.LastSuccessLoginTgt = tgt;
+                this.LastSuccessLoginGuid = guid;
+                
                 if (dcTraveler != null)
                 {
                     dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                     dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
-                    dcTraveler.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
                 }
                 var sessionId = await GetSessionId(tgt, guid);
                 var oath = new OauthLoginResult
@@ -949,7 +978,7 @@ namespace XIVLauncher.Common.Game
             }
         }
 
-        public Process? LaunchGameSdo(IGameRunner runner, string sessionId, string sndaId, int dcTravelPort, string areaId, string lobbyHost, string gmHost, string dbHost, string areasInfo,
+        public Process? LaunchGameSdo(IGameRunner runner, string sessionId, string sndaId, int dcTravelPort, int risingstonePort, string areaId, string lobbyHost, string gmHost, string dbHost, string areasInfo,
                                       string additionalArguments, DirectoryInfo gamePath, bool encryptArguments, DpiAwareness dpiAwareness)
         {
             Log.Information(
@@ -970,7 +999,8 @@ namespace XIVLauncher.Common.Game
                                   .Append("DEV.TestSID", sessionId)
                                   .Append("XL.SndaId", sndaId)
                                   .Append("XL.LobbyHosts", $"{areasInfo}")
-                                  .Append("XL.DcTraveler", $"{dcTravelPort}");
+                                  .Append("XL.DcTraveler", $"{dcTravelPort}")
+                                  .Append("XL.Risingstone", $"{risingstonePort}");
             // This is a bit of a hack; ideally additionalArguments would be a dictionary or some KeyValue structure
             if (!string.IsNullOrEmpty(additionalArguments))
             {

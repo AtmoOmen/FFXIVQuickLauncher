@@ -301,6 +301,7 @@ namespace XIVLauncher.Windows.ViewModel
         }
 
         public DcTravelListener dcTravelListener { get; private set; } = null;
+        public XIVLauncher.Common.Http.RisingstoneListener risingstoneListener { get; private set; } = null;
         public const string PresudoPassword = "********假的密码********";
         private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
         {
@@ -533,6 +534,30 @@ namespace XIVLauncher.Windows.ViewModel
                         this.dcTravelListener    = new DcTravelListener(dcTraveler, loginResult.DcTravelPort, false);
                         Log.Information($"[DcTravel] use port:{loginResult.DcTravelPort}");
                         this.dcTravelListener.StartAsync();
+                        
+                        // 初始化石之家签到服务（完全独立）
+                        if (!string.IsNullOrEmpty(this.Launcher.LastSuccessLoginTgt) && 
+                            !string.IsNullOrEmpty(this.Launcher.LastSuccessLoginGuid))
+                        {
+                            var risingstoneSignIn = new XIVLauncher.Common.Game.RisingstoneSignIn();
+                            // 设置获取 Cookie 的委托
+                            risingstoneSignIn.RefreshCookieFunc = () => 
+                                this.Launcher.GetRisingstoneCookieAsync(
+                                    this.Launcher.LastSuccessLoginTgt, 
+                                    this.Launcher.LastSuccessLoginGuid);
+                            
+                            var risingstonePort = ApiHelpers.GetAvailablePort();
+                            this.risingstoneListener = new XIVLauncher.Common.Http.RisingstoneListener(risingstoneSignIn, risingstonePort, false);
+                            Log.Information($"[Risingstone] use port:{risingstonePort}");
+                            // 异步启动 RisingstoneListener
+#pragma warning disable CS4014 // 因为此调用不会被等待，所以在此调用完成之前，当前方法会继续执行
+                            this.risingstoneListener.Start();
+#pragma warning restore CS4014 // 因为此调用不会被等待，所以在此调用完成之前，当前方法会继续执行
+                        }
+                        else
+                        {
+                            Log.Warning("[Risingstone] Login credentials not available, Risingstone service will not be initialized");
+                        }
                     }
 
                     var accountToSave = new XivAccount()
@@ -1779,6 +1804,7 @@ namespace XIVLauncher.Windows.ViewModel
                                                        loginResult.OauthLogin.SessionId,
                                                        loginResult.OauthLogin.SndaId,
                                                        loginResult.DcTravelPort,
+                                                       this.risingstoneListener != null ? this.risingstoneListener.Port : 0,
                                                        Area.Areaid,
                                                        Area.AreaLobby,
                                                        Area.AreaGm,
@@ -1859,6 +1885,15 @@ namespace XIVLauncher.Windows.ViewModel
             catch (Exception ex)
             {
                 Log.Error(ex, "Could not shut down DcTraveler");
+            }
+
+            try
+            {
+                this.risingstoneListener?.Stop();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Could not shut down Risingstone");
             }
 
             return gameProcess;
