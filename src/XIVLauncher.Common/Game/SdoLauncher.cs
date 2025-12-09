@@ -442,7 +442,7 @@ namespace XIVLauncher.Common.Game
                 if ((int)loginResp.StatusCode == 567 || loginRespText.Contains("EdgeOne") || loginRespText.Contains("AccessDeny"))
                 {
                     Log.Error("[Risingstone] Request blocked by WAF (Tencent Cloud EdgeOne)");
-                    throw new Exception("Request blocked by WAF. Please try again later or use manual login.");
+                    throw new Exception("Request blocked by WAF. Please try again later.");
                 }
                 
                 // 检查登录 API 响应
