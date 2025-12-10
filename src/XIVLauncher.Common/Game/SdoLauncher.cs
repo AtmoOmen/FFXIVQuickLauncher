@@ -386,29 +386,23 @@ namespace XIVLauncher.Common.Game
             var handler = new HttpClientHandler
             {
                 CookieContainer = cookieContainer,
-                AllowAutoRedirect = true,  // 允许自动重定向
+                AllowAutoRedirect = true,
                 UseCookies = true,
                 AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
             };
             
             using var httpClient = new HttpClient(handler);
             
-            // 设置更完整的浏览器请求头
+            // API 风格的请求头
             httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
-            // 不设置 Accept-Encoding，让 HttpClientHandler 自动处理
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Cache-Control", "no-cache");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Connection", "keep-alive");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Pragma", "no-cache");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua", "\"Chromium\";v=\"122\", \"Not(A:Brand\";v=\"24\", \"Microsoft Edge\";v=\"122\"");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua", "\"Microsoft Edge\";v=\"122\", \"Chromium\";v=\"122\", \"Not/A)Brand\";v=\"24\"");
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua-Mobile", "?0");
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua-Platform", "\"Windows\"");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site", "none");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-User", "?1");
-            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Upgrade-Insecure-Requests", "1");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "empty");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode", "cors");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site", "same-site");
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0");
 
             try
@@ -417,18 +411,37 @@ namespace XIVLauncher.Common.Game
                 Log.Information("[Risingstone] Step 1: Visiting homepage to establish session...");
                 var homepageUrl = "https://ff14risingstones.web.sdo.com/pc/index.html";
                 
+                // 第一次访问主页时临时切换为文档请求风格
+                httpClient.DefaultRequestHeaders.Remove("Accept");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Dest");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Mode");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Site");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,*/*");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site", "none");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-User", "?1");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Upgrade-Insecure-Requests", "1");
+                
                 using var homeResp = await httpClient.GetAsync(homepageUrl);
                 Log.Information($"[Risingstone] Homepage response status: {homeResp.StatusCode}");
                 
-                // 稍等一下，模拟用户行为
                 await Task.Delay(500);
                 
-                // 第二步：调用登录 API（带上 Referer）
+                // 第二步：调用登录 API - 切换回 API 风格
                 var initialUrl = $"https://apiff14risingstones.web.sdo.com/api/home/GHome/login?redirectUrl=https://ff14risingstones.web.sdo.com/pc/index.html&ticket={ticket}";
                 Log.Information($"[Risingstone] Step 2: Calling login API...");
                 
-                // 更新请求头，添加 Referer
+                // 恢复 API 风格的请求头
+                httpClient.DefaultRequestHeaders.Remove("Accept");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Dest");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Mode");
                 httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Site");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-User");
+                httpClient.DefaultRequestHeaders.Remove("Upgrade-Insecure-Requests");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "empty");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode", "cors");
                 httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site", "same-site");
                 httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Referer", "https://ff14risingstones.web.sdo.com/");
                 httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Origin", "https://ff14risingstones.web.sdo.com");
@@ -436,12 +449,11 @@ namespace XIVLauncher.Common.Game
                 using var loginResp = await httpClient.GetAsync(initialUrl);
                 var loginRespText = await loginResp.Content.ReadAsStringAsync();
                 Log.Information($"[Risingstone] Login API response status: {loginResp.StatusCode}");
-                Log.Information($"[Risingstone] Login API response: {loginRespText}");
                 
                 // 检查是否被 WAF 拦截
                 if ((int)loginResp.StatusCode == 567 || loginRespText.Contains("EdgeOne") || loginRespText.Contains("AccessDeny"))
                 {
-                    Log.Error("[Risingstone] Request blocked by WAF (Tencent Cloud EdgeOne)");
+                    Log.Error("[Risingstone] Request blocked by WAF");
                     throw new Exception("Request blocked by WAF. Please try again later.");
                 }
                 
@@ -474,16 +486,31 @@ namespace XIVLauncher.Common.Game
                 await Task.Delay(200);
                 Log.Information("[Risingstone] Step 3: Finalizing session...");
                 
+                // 恢复文档请求风格访问主页
+                httpClient.DefaultRequestHeaders.Remove("Accept");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Dest");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Mode");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Site");
+                httpClient.DefaultRequestHeaders.Remove("Referer");
+                httpClient.DefaultRequestHeaders.Remove("Origin");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "text/html,*/*");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site", "same-origin");
+                
                 using var finalResp = await httpClient.GetAsync(homepageUrl);
                 Log.Information($"[Risingstone] Final page response status: {finalResp.StatusCode}");
 
-                // 第四步：调用 isLogin API 触发 Cookie 设置
+                // 第四步：调用 isLogin API 触发 Cookie 设置 - 再切回 API 风格
                 httpClient.DefaultRequestHeaders.Remove("Accept");
-                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
                 httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Dest");
-                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "empty");
                 httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Mode");
+                httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Site");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "empty");
                 httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode", "cors");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site", "same-site");
+                httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Referer", "https://ff14risingstones.web.sdo.com/");
                 httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
 
                 var isLoginUrl = $"https://apiff14risingstones.web.sdo.com/api/home/GHome/isLogin?tempsuid={Guid.NewGuid()}";
@@ -491,7 +518,7 @@ namespace XIVLauncher.Common.Game
                 var isLoginText = await isLoginResp.Content.ReadAsStringAsync();
                 Log.Information($"[Risingstone] isLogin response: {isLoginText}");
 
-                // 验证 isLogin 响应，确认登录成功
+                // 验证 isLogin 响应
                 try
                 {
                     var isLoginJson = System.Text.Json.JsonDocument.Parse(isLoginText);
@@ -518,11 +545,6 @@ namespace XIVLauncher.Common.Game
                 // 从 CookieContainer 中提取 ff14risingstones Cookie
                 var allCookies = cookieContainer.GetAllCookies();
                 Log.Information($"[Risingstone] Total cookies collected: {allCookies.Count}");
-                
-                foreach (Cookie cookie in allCookies)
-                {
-                    Log.Debug($"[Risingstone] Cookie: {cookie.Name}={cookie.Value?.Substring(0, Math.Min(20, cookie.Value?.Length ?? 0))}... Domain={cookie.Domain}");
-                }
                 
                 Cookie risingstoneCookie = null;
                 foreach (Cookie c in allCookies)
