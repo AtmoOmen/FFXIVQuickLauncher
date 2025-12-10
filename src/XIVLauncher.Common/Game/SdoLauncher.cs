@@ -393,7 +393,7 @@ namespace XIVLauncher.Common.Game
             
             using var httpClient = new HttpClient(handler);
             
-            // API 风格的请求头而不是浏览器导航风格
+            // API 风格的请求头
             httpClient.DefaultRequestHeaders.Clear();
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
