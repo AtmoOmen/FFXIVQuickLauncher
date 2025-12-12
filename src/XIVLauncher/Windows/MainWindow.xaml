@@ -100,13 +100,27 @@
                                 Margin="0 10 0 0"
                                 Height="94"
                                 HorizontalAlignment="Left" Width="{DynamicResource BannerCardWidth}">
-                                <ListView x:Name="NewsListView" MouseUp="NewsListView_OnMouseUp">
+                                <ListView x:Name="NewsListView" MouseUp="NewsListView_OnMouseUp" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                                            <Setter Property="Padding" Value="6,4,6,4" />
+                                            <Setter Property="MinHeight" Value="0" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:Name="SingleLineDataTemplate"
                                                       DataType="game:News">
-                                            <StackPanel Orientation="Horizontal" Height="15">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
                                                 <materialDesign:PackIcon
-                                                                         Height="Auto" Width="Auto">
+                                                                         Grid.Column="0"
+                                                                         VerticalAlignment="Top"
+                                                                         Margin="0,2,0,0"
+                                                                         Height="15" Width="15">
                                                     <materialDesign:PackIcon.Style>
                                                         <Style TargetType="materialDesign:PackIcon">
                                                             <Setter Property="Kind" Value="Newspaper" />
@@ -134,9 +148,9 @@
                                                         </Style>
                                                     </materialDesign:PackIcon.Style>
                                                 </materialDesign:PackIcon>
-                                                <TextBlock Text="{Binding Title}"
-                                                           VerticalAlignment="Center" Margin="12,0,0,0" />
-                                            </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" TextWrapping="Wrap"
+                                                           VerticalAlignment="Top" Margin="12,0,0,0" />
+                                            </Grid>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
                                 </ListView>
