@@ -413,6 +413,10 @@ namespace XIVLauncher.Windows
             {
                 Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
             }
+            else if (!string.IsNullOrEmpty(item.Id))
+            {
+                Process.Start(new ProcessStartInfo($"https://ff.web.sdo.com/web8/index.html#/newstab/newscont/{item.Id}") { UseShellExecute = true });
+            }
             //else
             //{
             //    string url;
