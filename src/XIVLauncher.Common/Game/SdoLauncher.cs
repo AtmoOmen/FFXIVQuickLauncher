@@ -92,7 +92,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginBySdoStatic(string account, string password, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
+        public async Task<LoginResult> LoginBySdoStatic(string account, string password, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
         {
             var guid = await this.GetGuid();
             var macAddress = SdoUtils.GetMacAddress();
@@ -123,9 +123,9 @@ namespace XIVLauncher.Common.Game
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
             
-            if (risingstoneSignIn != null)
+            if (risingstoneCheckIn != null)
             {
-                risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
 
             var sessionId = await GetSessionId(tgt, guid);
@@ -148,7 +148,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginByWeGameToken(string account, string token, bool autoLogin, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
+        public async Task<LoginResult> LoginByWeGameToken(string account, string token, bool autoLogin, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
         {
             var guid = await this.GetGuid();
             var (sndaId, tgt, autoLoginSessionKey) = await ThirdPartyLogin(account, token, autoLogin, AutoLoginKeepDays);
@@ -157,9 +157,9 @@ namespace XIVLauncher.Common.Game
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
-            if (risingstoneSignIn != null)
+            if (risingstoneCheckIn != null)
             {
-                risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             
             var sessionId = await GetSessionId(tgt, guid);
@@ -181,7 +181,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginByScanQrCode(bool autoLogin, CancellationTokenSource cts, Action<byte[]> showQrCode, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
+        public async Task<LoginResult> LoginByScanQrCode(bool autoLogin, CancellationTokenSource cts, Action<byte[]> showQrCode, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
         {
             var guid = await this.GetGuid();
             // Wait for Scan QrCode
@@ -210,9 +210,9 @@ namespace XIVLauncher.Common.Game
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
             
-            if (risingstoneSignIn != null)
+            if (risingstoneCheckIn != null)
             {
-                risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             
             var sessionId = await GetSessionId(tgt, guid);
@@ -234,7 +234,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginBySlide(string account, bool autoLogin, CancellationTokenSource cts, Action<string> showVerificationCode, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
+        public async Task<LoginResult> LoginBySlide(string account, bool autoLogin, CancellationTokenSource cts, Action<string> showVerificationCode, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
         {
             var guid = await this.GetGuid();
             // Wait for Slide
@@ -248,9 +248,9 @@ namespace XIVLauncher.Common.Game
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
             
-            if (risingstoneSignIn != null)
+            if (risingstoneCheckIn != null)
             {
-                risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             
             var sessionId = await GetSessionId(tgt, guid);
@@ -272,7 +272,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DcTraveler dcTraveler, RisingstoneSignIn risingstoneSignIn)
+        public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
         {
             var guid = await this.GetGuid();
             //快速登录,刷新SessionKey
@@ -297,9 +297,9 @@ namespace XIVLauncher.Common.Game
                     dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
                 }
                 
-                if (risingstoneSignIn != null)
+                if (risingstoneCheckIn != null)
                 {
-                    risingstoneSignIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
+                    risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
                 }
                 
                 var sessionId = await GetSessionId(tgt, guid);
