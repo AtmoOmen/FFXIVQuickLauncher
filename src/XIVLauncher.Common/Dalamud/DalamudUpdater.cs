@@ -38,8 +38,8 @@ public class DalamudUpdater
     public static string                  OnlineHash          { get; private set; } = string.Empty;
     public static string                  Version             { get; private set; } = string.Empty;
 
-    public const string RuntimeVersion = "9.0.3";
-
+    public static string RuntimeVersion = string.Empty;
+    
     public FileInfo Runner
     {
         get => this.RunnerOverride ?? this.runnerInternal;
@@ -216,8 +216,7 @@ public class DalamudUpdater
             return;
         }
 
-        Log.Information("[DUPDATE] 需要更新 .NET 运行时: 本地={LocalVer}, 目标={RemoteVer}",
-                        localVersion, RuntimeVersion);
+        Log.Information("[DUPDATE] 需要更新 .NET 运行时: 本地={LocalVer}, 目标={RemoteVer}", localVersion, RuntimeVersion);
         this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Runtime);
 
         try
@@ -307,6 +306,14 @@ public class DalamudUpdater
 
         try
         {
+            var runtimeResponse = await httpClient.GetAsync(
+                                      "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/refs/heads/master/runtimeInfo");
+            runtimeResponse.EnsureSuccessStatusCode();
+            RuntimeVersion = await runtimeResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+            RuntimeVersion = RuntimeVersion.Trim().Trim('\n');
+            
+            Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", RuntimeVersion);
+            
             var response = await httpClient.GetAsync(
                                "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json");
             response.EnsureSuccessStatusCode();
