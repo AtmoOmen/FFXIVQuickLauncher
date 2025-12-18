@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -117,6 +117,10 @@ namespace XIVLauncher.Common.Dalamud
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            
+            psi.Environment["DALAMUD_RUNTIME"] = this.updater.Runtime.FullName;
+            psi.Environment["DOTNET_ROOT"] = this.updater.Runtime.FullName;
+            psi.Environment["DOTNET_MULTILEVEL_LOOKUP"] = "0";
             
             var dalamudProcess = Process.Start(psi);
             while (!dalamudProcess.StandardOutput.EndOfStream)

@@ -24,26 +24,34 @@ public class WindowsGameRunner : IGameRunner
     }
 
     public Process Start(string path, string workingDirectory, string arguments, IDictionary<string, string> environment, DpiAwareness dpiAwareness)
-    {
-        Log.Information($"Game Exe:{path}");
-        if (dalamudOk)
         {
-            var compat = "RunAsInvoker ";
-            compat += dpiAwareness switch {
-                DpiAwareness.Aware => "HighDPIAware",
-                DpiAwareness.Unaware => "DPIUnaware",
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            environment.Add("__COMPAT_LAYER", compat);
+            Log.Information($"Game Exe:{path}");
+            if (dalamudOk)
+            {
+                var compat = "RunAsInvoker ";
+                compat += dpiAwareness switch {
+                    DpiAwareness.Aware => "HighDPIAware",
+                    DpiAwareness.Unaware => "DPIUnaware",
+                    _ => throw new ArgumentOutOfRangeException()
+                };
+                environment.Add("__COMPAT_LAYER", compat);
 
-            var prevDalamudRuntime = Environment.GetEnvironmentVariable("DALAMUD_RUNTIME");
-            if (string.IsNullOrWhiteSpace(prevDalamudRuntime))
-                environment.Add("DALAMUD_RUNTIME", dotnetRuntimePath.FullName);
+                var prevDalamudRuntime = Environment.GetEnvironmentVariable("DALAMUD_RUNTIME");
+                if (string.IsNullOrWhiteSpace(prevDalamudRuntime))
+                    environment.Add("DALAMUD_RUNTIME", dotnetRuntimePath.FullName);
 
-            return this.dalamudLauncher.Run(new FileInfo(path), arguments, environment);
-        }
-        else
-        {
+                var prevDotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+                if (string.IsNullOrWhiteSpace(prevDotnetRoot))
+                    environment.Add("DOTNET_ROOT", dotnetRuntimePath.FullName);
+
+                var prevDotnetLookup = Environment.GetEnvironmentVariable("DOTNET_MULTILEVEL_LOOKUP");
+                if (string.IsNullOrWhiteSpace(prevDotnetLookup))
+                    environment.Add("DOTNET_MULTILEVEL_LOOKUP", "0");
+
+                return this.dalamudLauncher.Run(new FileInfo(path), arguments, environment);
+            }
+            else
+            {
             return NativeAclFix.LaunchGame(workingDirectory, path, arguments, environment, dpiAwareness, process => { 
                 var argFix = new ArgFixer(process);
                 argFix.Fix();
