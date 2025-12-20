@@ -488,8 +488,6 @@
                                                 <Button HorizontalAlignment="Left"
                                                         Visibility="Visible"
                                                         x:Name="AccountSwitcherButton" Margin="0 0 0 0"
-                                                        Background="Orange"
-                                                        BorderBrush="DarkOrange"
                                                         ToolTip="{Binding OpenAccountSwitcherLoc}"
                                                         Click="AccountSwitcherButton_OnClick">
                                                     <StackPanel Orientation="Horizontal" Margin="0">
