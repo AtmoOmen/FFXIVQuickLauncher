@@ -488,8 +488,6 @@
                                                 <Button HorizontalAlignment="Left"
                                                         Visibility="Visible"
                                                         x:Name="AccountSwitcherButton" Margin="0 0 0 0"
-                                                        Background="Orange"
-                                                        BorderBrush="DarkOrange"
                                                         ToolTip="{Binding OpenAccountSwitcherLoc}"
                                                         Click="AccountSwitcherButton_OnClick">
                                                     <StackPanel Orientation="Horizontal" Margin="0">
@@ -520,8 +518,6 @@
                                             <Button HorizontalAlignment="Center"
                                                         Visibility="Visible"
                                                         x:Name="BackToMain" Margin="0 0 0 0"
-                                                        Background="#FF0096DB"
-                                                        BorderBrush="#FF0096DB"
                                                         ToolTip="返回登录页面"
                                                         Click="BackToLoginPageButton_OnClick">
                                                 <StackPanel Orientation="Horizontal" Margin="0">
@@ -571,7 +567,7 @@
                                                     </DataTemplate>
                                                 </ComboBox.ItemTemplate>
                                             </ComboBox>
-  
+
                                             <StackPanel Orientation="Horizontal"
                                                         HorizontalAlignment="Center"
                                                         VerticalAlignment="Bottom"

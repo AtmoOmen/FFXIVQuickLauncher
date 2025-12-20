@@ -324,7 +324,7 @@ namespace XIVLauncher.Windows.ViewModel
 
                 if (bootver > cutoff)
                 {
-                    CustomMessageBox.Show(cutoffText, "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.None, showHelpLinks: false, showDiscordLink: true, showOfficialLauncher: true);
+                    CustomMessageBox.Show(cutoffText, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.None, showHelpLinks: false, showDiscordLink: true, showOfficialLauncher: true);
 
                     Environment.Exit(0);
                     return;
@@ -335,7 +335,7 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 CustomMessageBox.Show(
                     "未能获取到服务器列表,无法登陆",
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
+                    "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
                 return;
             }
 
@@ -1010,7 +1010,7 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 CustomMessageBox.Show(
                     Loc.Localize("LoginNoStartOk",
-                        "An update check was executed and any pending updates were installed."), "XIVLauncherCN",
+                        "An update check was executed and any pending updates were installed."), "XIVLauncherCN (Soil)",
                     MessageBoxButton.OK, MessageBoxImage.Information, showHelpLinks: false, showDiscordLink: false, parentWindow: _window);
 
                 return false;
@@ -1021,7 +1021,7 @@ namespace XIVLauncher.Windows.ViewModel
                 Log.Error("loginResult.State == NeedRetry");
                 CustomMessageBox.Show(
                     Loc.Localize("LoginNeedRetry",
-                                 "登录失败,建议尝试重新扫码登录."), "XIVLauncherCN",
+                                 "登录失败,建议尝试重新扫码登录."), "XIVLauncherCN (Soil)",
                     MessageBoxButton.OK, MessageBoxImage.Information, showHelpLinks: false, showDiscordLink: false, parentWindow: _window);
                 return false;
             }
@@ -1413,7 +1413,7 @@ namespace XIVLauncher.Windows.ViewModel
             }
             else
             {
-                CustomMessageBox.Show(Loc.Localize("PatcherAlreadyInProgress", "XIVLauncher is already patching your game in another instance. Please check if XIVLauncher is still open."), "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
+                CustomMessageBox.Show(Loc.Localize("PatcherAlreadyInProgress", "XIVLauncher is already patching your game in another instance. Please check if XIVLauncher is still open."), "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
             }
 
             return doLogin;
@@ -1580,7 +1580,7 @@ namespace XIVLauncher.Windows.ViewModel
                         var dialog = CustomMessageBox.Builder
                         .NewFrom("当前选择的进程已经注入了")
                         .WithButtons(MessageBoxButton.OK)
-                        .WithCaption("XIVLauncherCN")
+                        .WithCaption("XIVLauncherCN (Soil)")
                         .WithParentWindow(_window)
                         .Show();
                     }
@@ -1592,7 +1592,7 @@ namespace XIVLauncher.Windows.ViewModel
                             var dialog = CustomMessageBox.Builder
                                 .NewFrom("注入完成,是否退出XIVLauncherCN?")
                                 .WithButtons(MessageBoxButton.YesNo)
-                                .WithCaption("XIVLauncherCN")
+                                .WithCaption("XIVLauncherCN (Soil)")
                                 .WithParentWindow(_window)
                                 .Show();
                             if (dialog == MessageBoxResult.Yes)
@@ -1629,7 +1629,7 @@ namespace XIVLauncher.Windows.ViewModel
                     GamePath:{gamePath}
                     GameVersion:{Repository.Ffxiv.GetVer(gamePath)}
                     """,
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Asterisk);
+                    "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Asterisk);
                 return false;
             }
 
@@ -1660,7 +1660,7 @@ namespace XIVLauncher.Windows.ViewModel
                 CustomMessageBox.Show(
                     Loc.Localize("DalamudVc2019RedistError",
                         "The XIVLauncher in-game addon needs the Microsoft Visual C++ 2015-2019 redistributable to be installed to continue. Please install it from the Microsoft homepage."),
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+                    "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
             }
             catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
             {
@@ -1669,7 +1669,7 @@ namespace XIVLauncher.Windows.ViewModel
                 CustomMessageBox.Show(
                     Loc.Localize("DalamudArchError",
                         "Dalamud cannot run your computer's architecture. Please make sure that you are running a 64-bit version of Windows.\nIf you are using Windows on ARM, please make sure that x64-Emulation is enabled for XIVLauncher."),
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+                    "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
             }
 
             try
@@ -1739,7 +1739,7 @@ namespace XIVLauncher.Windows.ViewModel
                 CustomMessageBox.Show(
                     Loc.Localize("DalamudVc2019RedistError",
                         "The XIVLauncher in-game addon needs the Microsoft Visual C++ 2015-2019 redistributable to be installed to continue. Please install it from the Microsoft homepage."),
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+                    "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
             }
             catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
             {
@@ -1748,7 +1748,7 @@ namespace XIVLauncher.Windows.ViewModel
                 CustomMessageBox.Show(
                     Loc.Localize("DalamudArchError",
                         "Dalamud cannot run your computer's architecture. Please make sure that you are running a 64-bit version of Windows.\nIf you are using Windows on ARM, please make sure that x64-Emulation is enabled for XIVLauncher."),
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+                    "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
             }
 
             if (App.Settings.InGameAddonEnabled && !forceNoDalamud)
@@ -1784,7 +1784,7 @@ namespace XIVLauncher.Windows.ViewModel
             stopwatch.Stop();
             if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
             {
-                CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+                CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
                 return null;
             }
             // We won't do any sanity checks here anymore, since that should be handled in StartLogin
@@ -2004,7 +2004,7 @@ namespace XIVLauncher.Windows.ViewModel
 
             if (!mutex.WaitOne(0, false))
             {
-                CustomMessageBox.Show(Loc.Localize("PatcherAlreadyInProgress", "XIVLauncher is already patching your game in another instance. Please check if XIVLauncher is still open."), "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
+                CustomMessageBox.Show(Loc.Localize("PatcherAlreadyInProgress", "XIVLauncher is already patching your game in another instance. Please check if XIVLauncher is still open."), "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
                 Environment.Exit(0);
                 return false; // This line will not be run.
             }

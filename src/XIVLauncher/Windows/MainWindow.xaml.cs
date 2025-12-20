@@ -514,7 +514,7 @@ namespace XIVLauncher.Windows
                 if (hasBootPatch)
                 {
                     CustomMessageBox.Show(Loc.Localize("MaintenanceQueueBootPatch",
-                        "A patch for the official launcher was detected.\nThis usually means that there is a patch for the game as well.\n\nYou will now be logged in."), "XIVLauncherCN", parentWindow: this);
+                        "A patch for the official launcher was detected.\nThis usually means that there is a patch for the game as well.\n\nYou will now be logged in."), "XIVLauncherCN (Soil)", parentWindow: this);
                 }
 
                 Dispatcher.Invoke(() =>

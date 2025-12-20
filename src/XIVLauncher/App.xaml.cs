@@ -327,7 +327,7 @@ namespace XIVLauncher
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Could not set up logging. Please report this error.\n\n" + ex.Message, "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Could not set up logging. Please report this error.\n\n" + ex.Message, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
             try
@@ -378,7 +378,7 @@ namespace XIVLauncher
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Could not parse command line arguments. Please report this error.\n\n" + ex.Message, "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Could not parse command line arguments. Please report this error.\n\n" + ex.Message, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
             try

@@ -197,14 +197,14 @@ internal class Updates
             {
                 CustomMessageBox.Show($"错误: GitHub 服务器返回错误代码 {httpRequestException.StatusCode}.\n" +
                                       Environment.NewLine                                          + updateFailLoc,
-                                      "XIVLauncherCN",
+                                      "XIVLauncherCN (Soil)",
                                       MessageBoxButton.OK,
                                       MessageBoxImage.Error, showOfficialLauncher: true);
             }
             else
             {
                 CustomMessageBox.Show($"错误: {ex.Message}" + Environment.NewLine + updateFailLoc,
-                                      "XIVLauncherCN",
+                                      "XIVLauncherCN (Soil)",
                                       MessageBoxButton.OK,
                                       MessageBoxImage.Error, showOfficialLauncher: true);
             }
@@ -213,7 +213,7 @@ internal class Updates
             {
                 var result = CustomMessageBox.Show("无法检查更新, 根据你的设置, 是否继续使用当前版本?\n" +
                                                    "请注意: 这说明你当前可能无法连接 Github, 即使进入 XIVLauncher 也无法完成 Dalamud 的更新检查与下载",
-                                                   "XIVLauncherCN",
+                                                   "XIVLauncherCN (Soil)",
                                                    MessageBoxButton.YesNo,
                                                    MessageBoxImage.Question,
                                                    showDiscordLink: false,
