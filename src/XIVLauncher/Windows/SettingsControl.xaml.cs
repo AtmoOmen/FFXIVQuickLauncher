@@ -258,7 +258,7 @@ namespace XIVLauncher.Windows
 
             if (Repository.Ffxiv.IsBaseVer(gamePath))
             {
-                CustomMessageBox.Show(Loc.Localize("IntegrityCheckBase", "The game is not installed to the path you specified.\nPlease install the game before running an integrity check."), "XIVLauncherCN", parentWindow: Window.GetWindow(this));
+                CustomMessageBox.Show(Loc.Localize("IntegrityCheckBase", "The game is not installed to the path you specified.\nPlease install the game before running an integrity check."), "XIVLauncherCN (Soil)", parentWindow: Window.GetWindow(this));
                 return;
             }
 
@@ -279,23 +279,23 @@ namespace XIVLauncher.Windows
                         case IntegrityCheck.CompareResult.ReferenceNotFound:
                             CustomMessageBox.Show(Loc.Localize("IntegrityCheckImpossible",
                                     "There is no reference report yet for this game version. Please try again later."),
-                                "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Asterisk, parentWindow: Window.GetWindow(this));
+                                "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Asterisk, parentWindow: Window.GetWindow(this));
                             return;
 
                         case IntegrityCheck.CompareResult.ReferenceFetchFailure:
                             CustomMessageBox.Show(Loc.Localize("IntegrityCheckNetworkError",
                                     "Failed to download reference files for checking integrity. Check your internet connection and try again."),
-                                "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: Window.GetWindow(this));
+                                "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: Window.GetWindow(this));
                             return;
 
                         case IntegrityCheck.CompareResult.Invalid:
                             CustomMessageBox.Show(Loc.Localize("IntegrityCheckFailed",
                                     "Some game files seem to be modified or corrupted. \n\nIf you use TexTools mods, this is an expected result.\n\nIf you do not use mods, right click the \"Login\" button on the XIVLauncher start page and choose \"Repair game\"."),
-                                "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, showReportLinks: true, parentWindow: Window.GetWindow(this));
+                                "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, showReportLinks: true, parentWindow: Window.GetWindow(this));
                             break;
 
                         case IntegrityCheck.CompareResult.Valid:
-                            CustomMessageBox.Show(Loc.Localize("IntegrityCheckValid", "Your game install seems to be valid."), "XIVLauncherCN", MessageBoxButton.OK,
+                            CustomMessageBox.Show(Loc.Localize("IntegrityCheckValid", "Your game install seems to be valid."), "XIVLauncherCN (Soil)", MessageBoxButton.OK,
                                 MessageBoxImage.Asterisk, parentWindow: Window.GetWindow(this));
                             break;
                     }
@@ -315,7 +315,7 @@ namespace XIVLauncher.Windows
 
             if (Repository.Ffxiv.IsBaseVer(gamePath))
             {
-                CustomMessageBox.Show(Loc.Localize("IntegrityCheckBase", "The game is not installed to the path you specified.\nPlease install the game before running an integrity check."), "XIVLauncherCN", parentWindow: Window.GetWindow(this));
+                CustomMessageBox.Show(Loc.Localize("IntegrityCheckBase", "The game is not installed to the path you specified.\nPlease install the game before running an integrity check."), "XIVLauncherCN (Soil)", parentWindow: Window.GetWindow(this));
                 return;
             }
             
@@ -326,7 +326,7 @@ namespace XIVLauncher.Windows
                 this.Dispatcher.Invoke(() =>
                 {
                     CustomMessageBox.Show("已完成游戏客户端哈希数据生成, 相关文件保存在:\n" + 
-                                          $"{task.Result}", "XIVLauncherCN", parentWindow: Window.GetWindow(this));
+                                          $"{task.Result}", "XIVLauncherCN (Soil)", parentWindow: Window.GetWindow(this));
                 });
             });
 
@@ -341,7 +341,7 @@ namespace XIVLauncher.Windows
                 {
                     CustomMessageBox.Show(
                         Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!"),
-                        "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Asterisk, parentWindow: Window.GetWindow(this));
+                        "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Asterisk, parentWindow: Window.GetWindow(this));
                 }
             }
             catch (Exception exc)
@@ -457,7 +457,7 @@ namespace XIVLauncher.Windows
             if (App.Steam.AsyncStartTask != null)
             {
                 CustomMessageBox.Show(Loc.Localize("SteamFtToggleAutoStartWarning", "To apply this setting, XIVLauncher needs to restart.\nPlease reopen XIVLauncher."),
-                                      "XIVLauncherCN", image: MessageBoxImage.Information, showDiscordLink: false, showHelpLinks: false);
+                                      "XIVLauncherCN (Soil)", image: MessageBoxImage.Information, showDiscordLink: false, showHelpLinks: false);
                 App.Settings.IsFt = IsFreeTrialCheckbox.IsChecked == true;
                 CloseMainWindowGracefully?.Invoke(this, null);
             }

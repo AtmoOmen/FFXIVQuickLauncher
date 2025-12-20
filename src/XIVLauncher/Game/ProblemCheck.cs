@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -42,7 +42,7 @@ namespace XIVLauncher.Game
                     var result = CustomMessageBox.Show(
                         Loc.Localize("AdminCheck",
                             "XIVLauncher and/or the game are set to run as administrator.\nThis can cause various issues, including addons failing to launch and hotkey applications failing to respond.\n\nDo you want to fix this issue automatically?"),
-                        "XIVLauncherCN", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation, parentWindow: parentWindow);
+                        "XIVLauncherCN (Soil)", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation, parentWindow: parentWindow);
 
                     if (result != MessageBoxResult.OK)
                         return;

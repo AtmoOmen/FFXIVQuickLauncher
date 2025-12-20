@@ -31,13 +31,13 @@ namespace XIVLauncher.Windows
             try
             {
                 var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory); //获取桌面文件夹路径
-                CreateShortcut(desktop, "XIVLauncherCN", Path.Combine(new DirectoryInfo(Environment.CurrentDirectory).Parent.FullName, "XIVLauncherCN.exe"));
+                CreateShortcut(desktop, "XIVLauncherCN (Soil)", Path.Combine(new DirectoryInfo(Environment.CurrentDirectory).Parent.FullName, "XIVLauncherCN.exe"));
             }
             catch
             {
                 CustomMessageBox.Show(
                     $"创建快捷方式失败，如需要请手动创建快捷方式到桌面。",
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: this);
+                    "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: this);
             }
         }
 
@@ -63,7 +63,7 @@ namespace XIVLauncher.Windows
         public static string GetShortcutTargetFile(string path)
         {
             var shell = new WshShell();
-            var shortcut = (IWshShortcut) shell.CreateShortcut(path);
+            var shortcut = (IWshShortcut)shell.CreateShortcut(path);
 
             return shortcut.TargetPath;
         }
@@ -88,7 +88,7 @@ namespace XIVLauncher.Windows
 
                 if (!GameHelpers.IsValidGamePath(GamePathEntry.Text))
                 {
-                    if (CustomMessageBox.Show(Loc.Localize("GamePathInvalidConfirm", "The folder you selected has no installation of the game.\nXIVLauncher will install the game the first time you log in.\nContinue?"), "XIVLauncherCN",
+                    if (CustomMessageBox.Show(Loc.Localize("GamePathInvalidConfirm", "The folder you selected has no installation of the game.\nXIVLauncher will install the game the first time you log in.\nContinue?"), "XIVLauncherCN (Soil)",
                             MessageBoxButton.YesNo, MessageBoxImage.Information, parentWindow: this) != MessageBoxResult.Yes)
                     {
                         return;
@@ -106,7 +106,7 @@ namespace XIVLauncher.Windows
 
                 if (GamePathEntry.Text.StartsWith("C"))
                 {
-                    if (CustomMessageBox.Show("你选择的游戏路径位于C盘。\nXIVLauncher将会无法正常登陆，请将游戏移出C盘或者使用管理员启动XIVLauncher。", "XIVLauncherCN",
+                    if (CustomMessageBox.Show("你选择的游戏路径位于C盘。\nXIVLauncher将会无法正常登陆，请将游戏移出C盘或者使用管理员启动XIVLauncher。", "XIVLauncherCN (Soil)",
                         MessageBoxButton.YesNo, MessageBoxImage.Warning, parentWindow: this) != MessageBoxResult.Yes)
                     {
                         return;
@@ -117,7 +117,7 @@ namespace XIVLauncher.Windows
             if (SetupTabControl.SelectedIndex == 2)
             {
                 App.Settings.GamePath = new DirectoryInfo(GamePathEntry.Text);
-                App.Settings.Language = (ClientLanguage) LanguageComboBox.SelectedIndex;
+                App.Settings.Language = (ClientLanguage)LanguageComboBox.SelectedIndex;
                 App.Settings.InGameAddonEnabled = HooksCheckBox.IsChecked == true;
 
                 App.Settings.AddonList = new List<AddonEntry>();
