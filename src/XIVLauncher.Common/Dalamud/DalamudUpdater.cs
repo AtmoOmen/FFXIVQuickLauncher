@@ -315,7 +315,7 @@ public class DalamudUpdater
             Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", RuntimeVersion);
             
             var response = await httpClient.GetAsync(
-                               "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json");
+                               "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json");
             response.EnsureSuccessStatusCode();
 
             var       json    = await response.Content.ReadAsStringAsync();
@@ -390,7 +390,7 @@ public class DalamudUpdater
                 if (fileName != "latest.7z") continue;
                 
                 await this.DownloadFile($"{downloadUrl}", downloadPath, this.defaultTimeout).ConfigureAwait(false);
-                PlatformHelpers.Un7za(downloadPath, addonPath.FullName);
+                PlatformHelpers.Unzip7ZAsset(downloadPath, addonPath.FullName);
                 File.Delete(downloadPath);
                 break;
             }
