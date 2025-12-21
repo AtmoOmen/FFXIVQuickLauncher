@@ -56,92 +56,6 @@ internal class Updates
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         try
         {
-            /*var isAbleToConnectToGithub = false;
-            try
-            {
-                using var connClient = new HttpClient();
-                connClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-                connClient.Timeout = TimeSpan.FromSeconds(5);
-                using var headReq = new HttpRequestMessage(HttpMethod.Head, "https://github.com/");
-                var connResp = await connClient.SendAsync(headReq, HttpCompletionOption.ResponseHeadersRead);
-                connResp.EnsureSuccessStatusCode();
-                isAbleToConnectToGithub = true;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "无法连接到 GitHub");
-                CustomMessageBox.Show(
-                    "无法连接到 GitHub, 请检查你的网络环境或代理设置",
-                    "XIVLauncherCN",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error,
-                    false,
-                    false);
-                
-                Environment.Exit(1);
-            }
-
-            if (isAbleToConnectToGithub)
-            {
-                try
-                {
-                    using var httpClient = new HttpClient();
-                    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-                    var hasToken = !string.IsNullOrWhiteSpace(App.Settings.GitHubToken);
-                    if (hasToken)
-                        httpClient.DefaultRequestHeaders.Authorization = new("Bearer", App.Settings.GitHubToken);
-                    var response = await httpClient.GetAsync("https://api.github.com/rate_limit");
-                    response.EnsureSuccessStatusCode();
-
-                    var     json      = await response.Content.ReadAsStringAsync();
-                    dynamic rateLimit = JObject.Parse(json);
-                    int     remaining = rateLimit.resources.core.remaining;
-
-                    if (remaining == 0)
-                    {
-                        int resetTimestamp = rateLimit.resources.core.reset;
-                        var resetTime      = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
-
-                        var builder = new CustomMessageBox.Builder()
-                                      .WithCaption("XIVLauncherCN")
-                                      .WithText($"当前 {(hasToken ? "Token" : "IP")} 的 GitHub API 调用额度已用尽, 下次刷新时间: {resetTime:HH:mm:ss}\n" +
-                                                $"请{(hasToken ? "更换" : "填写")} GitHub Access Token 或耐心等待 / 更换你的网络环境\n"                    +
-                                                $"如果你不清楚如何更换网络环境, 请勿询问并立刻卸载本软件, 多谢配合\n"                                                  +
-                                                $"GitHub Token:")
-                                      .WithButtons(MessageBoxButton.OK)
-                                      .WithImage(MessageBoxImage.Error)
-                                      .WithInputTextBox(App.Settings.GitHubToken);
-
-                        if (builder.Show() == MessageBoxResult.OK && App.Settings.GitHubToken != builder.InputTextBoxText)
-                        {
-                            App.Settings.GitHubToken = builder.InputTextBoxText;
-                        }
-                        else
-                        {
-                            Environment.Exit(1);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "GitHub 速率限制检查失败, 继续尝试更新");
-                    if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode is HttpStatusCode.Unauthorized && !string.IsNullOrWhiteSpace(App.Settings.GitHubToken))
-                    {
-                        var builder = new CustomMessageBox.Builder()
-                                      .WithCaption("XIVLauncherCN")
-                                      .WithText($"当前配置的 GitHub Token 已失效, 请重新配置或删除 Token\n原 Token: {App.Settings.GitHubToken}")
-                                      .WithButtons(MessageBoxButton.OK)
-                                      .WithImage(MessageBoxImage.Error)
-                                      .WithInputTextBox(App.Settings.GitHubToken);
-
-                        if (builder.Show() == MessageBoxResult.OK)
-                        {
-                            App.Settings.GitHubToken = builder.InputTextBoxText;
-                        }
-                    }
-                }
-            }*/
-
             // 游戏进程
             if (System.Diagnostics.Process.GetProcessesByName("ffxiv_dx11").Length > 0)
             {
@@ -192,7 +106,8 @@ internal class Updates
             var updateFailLoc = Loc.Localize("updatefailureerror",
                                              "XIVLauncherCN 检查更新失败, 请检查你的网络环境并将 XIVLauncherCN 加入杀毒软件白名单中");
 
-            if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue &&
+            if (ex is HttpRequestException httpRequestException &&
+                httpRequestException.StatusCode.HasValue        &&
                 (int)httpRequestException.StatusCode is 403 or 444 or 522)
             {
                 CustomMessageBox.Show($"错误: GitHub 服务器返回错误代码 {httpRequestException.StatusCode}.\n" +

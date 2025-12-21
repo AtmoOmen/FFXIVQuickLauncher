@@ -112,7 +112,7 @@ public class AssetManager
                 {
                     using var file       = File.OpenRead(oldFilePath);
                     var       fileHash   = sha1.ComputeHash(file);
-                    var       stringHash = BitConverter.ToString(fileHash).Replace("-", "");
+                    var       stringHash = Convert.ToHexString(fileHash);
 
                     if (stringHash == entry.Hash)
                     {
@@ -173,17 +173,9 @@ public class AssetManager
         return (currentDir, info.Version);
     }
 
-    private static string GetAssetVerPath(DirectoryInfo baseDir)
-    {
-        return Path.Combine(baseDir.FullName, "asset.ver");
-    }
+    private static string GetAssetVerPath(DirectoryInfo baseDir) => 
+        Path.Combine(baseDir.FullName, "asset.ver");
 
-    /// <summary>
-    ///     Check if an asset update is needed. When this fails, just return false - the route to github
-    ///     might be bad, don't wanna just bail out in that case
-    /// </summary>
-    /// <param name="baseDir">Base directory for assets</param>
-    /// <returns>Update state</returns>
     private static async Task<(bool isRefreshNeeded, AssetInfo info)> CheckAssetRefreshNeeded(HttpClient client, DirectoryInfo baseDir)
     {
         var localVerFile = GetAssetVerPath(baseDir);

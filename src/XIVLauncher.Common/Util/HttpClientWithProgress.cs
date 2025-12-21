@@ -6,22 +6,13 @@ using System.Threading.Tasks;
 
 namespace XIVLauncher.Common.Util;
 
-public class HttpClientDownloadWithProgress : IDisposable
+public class HttpClientDownloadWithProgress(string downloadUrl, string destinationFilePath) : IDisposable
 {
-    private readonly string downloadUrl;
-    private readonly string destinationFilePath;
-
     private HttpClient httpClient;
 
     public delegate void ProgressChangedHandler(long? totalFileSize, long totalBytesDownloaded, double? progressPercentage);
 
     public event ProgressChangedHandler ProgressChanged;
-
-    public HttpClientDownloadWithProgress(string downloadUrl, string destinationFilePath)
-    {
-        this.downloadUrl = downloadUrl;
-        this.destinationFilePath = destinationFilePath;
-    }
 
     public async Task Download(TimeSpan? timeout = null, bool isNuGet = false)
     {
@@ -32,7 +23,7 @@ public class HttpClientDownloadWithProgress : IDisposable
         this.httpClient.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
         this.httpClient.DefaultRequestHeaders.Add("accept-encoding", "gzip, deflate, br");
         
-        var request = new HttpRequestMessage(HttpMethod.Get, this.downloadUrl);
+        var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
         if (isNuGet)
         {
             request.Headers.Add("User-Agent",             "NuGet VS VSIX/6.14.0 (WINDOWS, Community/17.0)");
@@ -63,7 +54,7 @@ public class HttpClientDownloadWithProgress : IDisposable
         var buffer = new byte[8192];
         var isMoreToRead = true;
 
-        using var fileStream = new FileStream(this.destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+        using var fileStream = new FileStream(destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
 
         do
         {
@@ -76,7 +67,7 @@ public class HttpClientDownloadWithProgress : IDisposable
                 continue;
             }
 
-            await fileStream.WriteAsync(buffer, 0, bytesRead).ConfigureAwait(false);
+            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead)).ConfigureAwait(false);
 
             totalBytesRead += bytesRead;
             readCount += 1;
