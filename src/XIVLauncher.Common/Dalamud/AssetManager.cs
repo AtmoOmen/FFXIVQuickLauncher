@@ -16,26 +16,7 @@ namespace XIVLauncher.Common.Dalamud;
 
 public class AssetManager
 {
-    private const string ASSET_STORE_URL = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/DalamudAssets/master/assetCN.json";
-
-    private static readonly string[] FontUrls =
-    [
-        "https://mirrors.aliyun.com/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "http://mirrors.pku.edu.cn/ctan/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirror.bjtu.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirrors.bfsu.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirrors.jlu.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirrors.sustech.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirrors.nju.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirror.nyist.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirrors.tuna.tsinghua.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirrors.cloud.tencent.com/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirrors.ustc.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirrors.huaweicloud.com/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirror.lzu.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirrors.zju.edu.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf",
-        "https://mirror.iscas.ac.cn/CTAN/fonts/notocjksc/NotoSansCJKsc-Medium.otf"
-    ];
+    private const string AssetStoreURL = "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DalamudAssets/master/assetCN.json";
 
     public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir)
     {
@@ -84,13 +65,13 @@ public class AssetManager
             {
                 using var file       = File.OpenRead(filePath);
                 var       fileHash   = sha1.ComputeHash(file);
-                var       stringHash = BitConverter.ToString(fileHash).Replace("-", "");
+                var       stringHash = Convert.ToHexString(fileHash);
 
                 if (stringHash != entry.Hash)
                 {
                     Log.Error("[DASSET] 资源文件 {0} 不一致, 需要刷新\n本地: {1}, 远端: {2}", entry.FileName, stringHash, entry.Hash);
                     assetFileDownloadList.Add(entry);
-                    //break;
+                    // break;
                 }
             }
             catch (Exception ex)
@@ -100,6 +81,7 @@ public class AssetManager
             }
         }
 
+        var tasks = new List<Task>();
         foreach (var entry in assetFileDownloadList)
         {
             var oldFilePath = Path.Combine(devDir.FullName,     entry.FileName);
@@ -123,34 +105,13 @@ public class AssetManager
                     }
                 }
             }
-            catch (Exception ex) { Log.Error(ex, "[DASSET] 无法从原资源文件中复制资源至新版本资源文件中: {0}", entry.FileName); }
-
-            var fontUrls = FontUrls.ToList();
-            
-            var maxRetryNumber = 5;
-            while (maxRetryNumber > 0)
+            catch (Exception ex)
             {
-                try
-                {
-                    Log.Information("[DASSET] 正在下载 {0} 至 {1}...", entry.Url, entry.FileName);
-                    await updater.DownloadFile(entry.Url, newFilePath, TimeSpan.FromMinutes(4));
-                    isRefreshNeeded = true;
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "[DASSET] 无法下载旧资源文件: {0}", entry.FileName);
-
-                    if (entry.FileName == "UIRes/NotoSansCJKsc-Medium.otf")
-                    {
-                        maxRetryNumber = fontUrls.Count;
-                        entry.Url      = fontUrls.First();
-                        fontUrls.RemoveAt(0);
-                    }
-
-                    maxRetryNumber--;
-                }
+                Log.Error(ex, "[DASSET] 无法从原资源文件中复制资源至新版本资源文件中: {0}", entry.FileName);
             }
+            
+            tasks.Add(Download(entry.Url, newFilePath));
+            await Task.WhenAll(tasks);
         }
 
         if (isRefreshNeeded)
@@ -160,17 +121,40 @@ public class AssetManager
                 PlatformHelpers.DeleteAndRecreateDirectory(devDir);
                 PlatformHelpers.CopyFilesRecursively(currentDir, devDir);
             }
-            catch (Exception ex) { Log.Error(ex, "[DASSET] 无法将资源文件复制到 dev 文件夹中"); }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[DASSET] 无法将资源文件复制到 dev 文件夹中");
+            }
 
             SetLocalAssetVer(baseDir, info.Version);
         }
 
         Log.Verbose("[DASSET] 已完成 {0} 处的资源检查", currentDir.FullName);
 
-        try { CleanUpOld(baseDir, devDir, currentDir); }
-        catch (Exception ex) { Log.Error(ex, "[DASSET] 无法清理原资源文件"); }
+        try
+        {
+            CleanUpOld(baseDir, devDir, currentDir);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[DASSET] 无法清理原资源文件");
+        }
 
         return (currentDir, info.Version);
+
+        async Task Download(string url, string path)
+        {
+            try
+            {
+                Log.Information("[DASSET] 正在下载 {0} 至 {1}...", url, path);
+                await updater.DownloadFile(url, path, TimeSpan.FromMinutes(4)).ConfigureAwait(false);
+                isRefreshNeeded = true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[DASSET] 无法下载资源文件: {0}", url);
+            }
+        }
     }
 
     private static string GetAssetVerPath(DirectoryInfo baseDir) => 
@@ -192,7 +176,7 @@ public class AssetManager
             Log.Error(ex, "[DASSET] 无法读取 asset.ver");
         }
 
-        var remoteVer = JsonSerializer.Deserialize<AssetInfo>(await client.GetStringAsync(ASSET_STORE_URL), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var remoteVer = JsonSerializer.Deserialize<AssetInfo>(await client.GetStringAsync(AssetStoreURL), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         Log.Verbose("[DASSET] 版本检查 - 本地:{0} 远端:{1}", localVer, remoteVer.Version);
 
@@ -208,7 +192,10 @@ public class AssetManager
             var localVerFile = GetAssetVerPath(baseDir);
             File.WriteAllText(localVerFile, version.ToString());
         }
-        catch (Exception e) { Log.Error(e, "[DASSET] 无法写入本地资源版本信息"); }
+        catch (Exception e)
+        {
+            Log.Error(e, "[DASSET] 无法写入本地资源版本信息");
+        }
     }
 
     private static void CleanUpOld(DirectoryInfo baseDir, DirectoryInfo devDir, DirectoryInfo currentDir)
