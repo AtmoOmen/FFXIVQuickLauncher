@@ -119,23 +119,46 @@ public static class PlatformHelpers
             throw new Exception("Could not untar.");
     }
 
-    public static void Un7za(string path, string output)
+    public static void Unzip7ZAsset(string path, string output)
     {
-        Log.Information("[DUPDATE] Extracting 7z dalamud fastly.");
+        Log.Information("[DUPDATE] 正在解压 7z 包...");
+        try
+        {
+            var unzipPath = Path.Combine(Paths.ResourcesPath, "7zr.exe");
+            
+            var psi = new ProcessStartInfo
+            {
+                FileName        = unzipPath,
+                Arguments       = $"x -y -bso0 -bsp0 -o\"{output}\" \"{path}\"",
+                UseShellExecute = false,
+                CreateNoWindow  = true
+            };
+
+            var proc = Process.Start(psi);
+            if (proc != null)
+            {
+                proc.WaitForExit();
+                if (proc.ExitCode == 0)
+                {
+                    Log.Information("[DUPDATE] 7z 解压完成。");
+                    return;
+                }
+                else
+                {
+                    Log.Warning("[DUPDATE] 系统 7z 解压失败，退出码 {ExitCode}，回退到托管解压。", proc.ExitCode);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[DUPDATE] 系统 7z 不可用，回退到托管解压。");
+        }
 
         using (var archive = ArchiveFactory.Open(path))
         {
-            var reader = archive.ExtractAllEntries();
-
-            while (reader.MoveToNextEntry())
-            {
-                if (!reader.Entry.IsDirectory)
-                    reader.WriteEntryToDirectory(output, new ExtractionOptions() { ExtractFullPath = true, Overwrite = true });
-            }
+            archive.WriteToDirectory(output, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
         }
-
-        Log.Information("[DUPDATE] Extracting finished.");
-        return;
+        Log.Information("[DUPDATE] 托管解压完成。");
     }
 
     private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, port: 0);
