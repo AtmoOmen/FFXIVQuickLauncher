@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
+using XIVLauncher.Common.Http;
 
 namespace XIVLauncher.Common.Util;
 
@@ -19,7 +20,7 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
     public delegate void ProgressChangedHandler(long? totalFileSize, long totalBytesDownloaded, double? progressPercentage);
 
     public event ProgressChangedHandler ProgressChanged;
-
+    
     public async Task Download(TimeSpan? timeout = null, bool isNuGet = false)
     {
         timeout            ??= TimeSpan.FromMinutes(10);
@@ -28,14 +29,14 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
 
         var handler = new SocketsHttpHandler
         {
-            AutomaticDecompression         = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
-            MaxConnectionsPerServer        = this.parallelParts,
+            AutomaticDecompression         = DecompressionMethods.All,
+            MaxConnectionsPerServer        = 20,
             EnableMultipleHttp2Connections = true,
             ConnectTimeout                 = TimeSpan.FromSeconds(5),
+            ConnectCallback = HappyEyeballsCallback.ConnectCallback
         };
         this.httpClient = new HttpClient(handler) { Timeout = timeout.Value };
         this.httpClient.DefaultRequestHeaders.Add("User-Agent",      PlatformHelpers.GetVersion());
-        this.httpClient.DefaultRequestHeaders.Add("accept-encoding", "gzip, deflate, br");
 
         var probeTotalSize = await this.ProbeRangeSupport(isNuGet).ConfigureAwait(false);
 
@@ -55,8 +56,6 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
                 request.Headers.Add("X-NuGet-Client-Version", "6.14.0");
                 request.Headers.Add("X-NuGet-Session-Id",     Guid.NewGuid().ToString("D"));
             }
-            else if (downloadUrl.Contains("github"))
-                request.Headers.Add("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 Edg/130.0.0.0");
 
             return request;
         }, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
@@ -177,11 +176,7 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
                             req.Headers.Add("X-NuGet-Client-Version", "6.14.0");
                             req.Headers.Add("X-NuGet-Session-Id",     Guid.NewGuid().ToString("D"));
                         }
-                        else if (downloadUrl.Contains("github"))
-                        {
-                            req.Headers.Add("User-Agent",
-                                            "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 Edg/130.0.0.0");
-                        }
+
                         return req;
                     }, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 

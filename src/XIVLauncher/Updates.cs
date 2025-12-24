@@ -48,7 +48,7 @@ internal class Updates
 
     public async Task Run(bool downloadPrerelease, ChangelogWindow? changelogWindow)
     {
-#if RELEASENOUPDATE
+#if XL_NOAUTOUPDATE
             OnUpdateCheckFinished?.Invoke(true);
             return;
 #endif
@@ -65,7 +65,7 @@ internal class Updates
             }
 
             var updateOptions = new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
-            var updateSource  = new GitHubSource(UpdateUrl, App.Settings.GitHubToken, true, "https://gh.atmoomen.top/");
+            var updateSource  = new GitHubSource(UpdateUrl, App.Settings.GitHubToken, true, "https://gh.atmoomen.top/", new XLHttpClientFileDownloader());
             var mgr           = new UpdateManager(updateSource, updateOptions);
 
             var newRelease = await mgr.CheckForUpdatesAsync();
