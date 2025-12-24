@@ -1,8 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Serilog;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Unix.Compatibility;
@@ -50,7 +53,14 @@ public static class Dxvk
 
     private static async Task DownloadDxvk(DirectoryInfo installDirectory)
     {
-        using var client = new HttpClient();
+        using var client = new HttpClient(new SocketsHttpHandler
+        {
+            AutomaticDecompression         = DecompressionMethods.All,
+            MaxConnectionsPerServer        = 20,
+            EnableMultipleHttp2Connections = true,
+            ConnectTimeout                 = TimeSpan.FromSeconds(5),
+            ConnectCallback = HappyEyeballsCallback.ConnectCallback
+        });
         client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
         var tempPath = PlatformHelpers.GetTempFileName();
 

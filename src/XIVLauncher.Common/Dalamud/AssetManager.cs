@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Serilog;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Dalamud;
@@ -20,8 +21,15 @@ public class AssetManager
 
     public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir)
     {
-        using var metaClient = new HttpClient(new HttpClientHandler
+        using var metaClient = new HttpClient(new SocketsHttpHandler
         {
+            UseProxy = true,
+            ConnectTimeout = TimeSpan.FromSeconds(10),
+            MaxConnectionsPerServer = 50,
+            EnableMultipleHttp2Connections = true,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(1),
+            Expect100ContinueTimeout = TimeSpan.Zero,
+            ConnectCallback = HappyEyeballsCallback.ConnectCallback,
             // Don't Remove!!!
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
         });
