@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 
@@ -46,6 +47,7 @@ public class DalamudUpdater
         private set => this.runnerInternal = value;
     }
     private FileInfo runnerInternal;
+    private readonly HttpClient httpClient;
 
     public enum DownloadState
     {
@@ -62,6 +64,18 @@ public class DalamudUpdater
         this.assetDirectory = assetDirectory;
         this.cache          = cache;
         this.githubToken    = githubToken;
+        this.httpClient = new HttpClient(new SocketsHttpHandler()
+        {
+            UseProxy = true,
+            ConnectTimeout = TimeSpan.FromSeconds(10),
+            MaxConnectionsPerServer = 50,
+            EnableMultipleHttp2Connections = true,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(1),
+            Expect100ContinueTimeout = TimeSpan.Zero,
+            AutomaticDecompression = DecompressionMethods.All,
+            ConnectCallback = HappyEyeballsCallback.ConnectCallback
+        });
+        this.httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
     }
 
     public void Run(bool overrideForceProxy = false)
@@ -301,9 +315,6 @@ public class DalamudUpdater
     
     public async Task GetDalamudVersionInfoAsync()
     {
-        using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-
         try
         {
             var runtimeResponse = await httpClient.GetAsync(
@@ -361,15 +372,10 @@ public class DalamudUpdater
 
     private async Task DownloadDalamud(DirectoryInfo addonPath)
     {
-        const string REPO_API = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/refs/heads/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json";
+        const string REPO_API = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json";
 
         if (addonPath.Exists) addonPath.Delete(true);
         addonPath.Create();
-
-        using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-        if (!string.IsNullOrWhiteSpace(this.githubToken)) 
-            httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
 
         try
         {
