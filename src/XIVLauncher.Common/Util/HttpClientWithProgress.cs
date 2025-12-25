@@ -113,10 +113,10 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
 
     private async Task<long?> ProbeRangeSupport(bool isNuGet)
     {
-        using var response = await this.SendWithRetry(() =>
+        try
         {
             var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
-            request.Headers.Range = new RangeHeaderValue(0, 0);
+            request.Headers.Range = new RangeHeaderValue(0, 0); // 请求第一个字节
 
             if (isNuGet)
             {
@@ -124,13 +124,18 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
                 request.Headers.Add("X-NuGet-Client-Version", "6.14.0");
                 request.Headers.Add("X-NuGet-Session-Id",     Guid.NewGuid().ToString("D"));
             }
-            else if (downloadUrl.Contains("github"))
-                request.Headers.Add("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 Edg/130.0.0.0");
-
-            return request;
-        }, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-        if (response.StatusCode == HttpStatusCode.PartialContent && response.Content.Headers.ContentRange?.Length != null)
-            return response.Content.Headers.ContentRange.Length.Value;
+            
+            using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            
+            if (response.StatusCode == HttpStatusCode.PartialContent && response.Content.Headers.ContentRange?.Length != null)
+            {
+                return response.Content.Headers.ContentRange.Length.Value;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("[DUPDATE] [{url}] 探测 Range 支持失败或超时: {Msg}. 将降级为直接下载。", downloadUrl, ex.Message);
+        }
         return null;
     }
 
