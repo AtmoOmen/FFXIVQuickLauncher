@@ -76,6 +76,8 @@ public class DalamudUpdater
             ConnectCallback = HappyEyeballsCallback.ConnectCallback
         });
         this.httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+        if (!string.IsNullOrWhiteSpace(this.githubToken)) 
+            httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
     }
 
     public void Run(bool overrideForceProxy = false)

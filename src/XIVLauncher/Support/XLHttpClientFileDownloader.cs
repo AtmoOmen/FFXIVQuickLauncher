@@ -147,6 +147,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
     private HttpRequestMessage CreateRequest(HttpMethod method, string url, string authorization, string accept)
     {
         var request = new HttpRequestMessage(method, url);
+        request.Headers.UserAgent.ParseAdd("XIVLauncherCN");
 
         if (!string.IsNullOrWhiteSpace(accept))
         {
