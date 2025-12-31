@@ -919,22 +919,30 @@ namespace XIVLauncher.Common.Game
         private HttpRequestMessage GetSdoHttpRequestMessage(HttpMethod method, string endPoint, List<string> para, string tgt = null, string appId = "100001900")
         {
             var mac = SdoUtils.GetMac();
-            var commonParas = new List<string>();
-            commonParas.Add("authenSource=1");
-            commonParas.Add($"appId={appId}");
-            commonParas.Add($"areaId=1");
-            commonParas.Add($"appIdSite={appId}");
-            commonParas.Add("locale=zh_CN");
-            commonParas.Add("productId=4");
-            commonParas.Add("frameType=1");
-            commonParas.Add("endpointOS=1");
-            commonParas.Add("version=21");
-            commonParas.Add("customSecurityLevel=2");
-            commonParas.Add($"deviceId={SdoUtils.GetDeviceId()}");
-            commonParas.Add($"thirdLoginExtern=0");
-            commonParas.Add($"macId={mac}");
-            commonParas.Add($"productVersion=1%2e9%2e7%2e10");
-            commonParas.Add($"tag=0");
+            var commonParas = new List<string>() {
+                "authenSource=1",
+                "appId=100001900",
+                "areaId=1",
+                "appIdSite=100001900",
+                "locale=zh_CN",
+                "productId=4",
+                "frameType=1",
+                "endpointOS=1",
+                "version=21",
+                "customSecurityLevel=2",
+                $"deviceId={SdoUtils.GetDeviceId()}",
+                "thirdLoginExtern=0",
+                $"macId={mac}",
+                // 不知道什么时候盛趣加了点新的参数
+                "epIp=",
+                $"epName={SdoUtils.GetHostName()}",
+                "extendInfo=",
+                "sdoVersion=",
+                "runTimeId=",
+                // 为何都是空的，何意味，包抓来便是如此？
+                "productVersion=1.9.7.10",
+                "tag=0"
+            };
             para.AddRange(commonParas);
             var casDomain = useGlobalDomain ? "cas.sdo.com" : "n1.cas.sdo.com";
             var request = new HttpRequestMessage(method, $"https://{casDomain}/authen/{endPoint}?{string.Join("&", para)}");
