@@ -124,6 +124,13 @@ namespace XIVLauncher.Common
             return result;
         }
 
+        public static string GetHostName()
+        {
+            // 给盛趣一些MacBook和SteamDick震撼
+            // 不会返回一个 张二狗的MacBook吧？实名上网？
+            return Environment.MachineName;
+        }
+
         private static string GetDiskSerialNumber()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
