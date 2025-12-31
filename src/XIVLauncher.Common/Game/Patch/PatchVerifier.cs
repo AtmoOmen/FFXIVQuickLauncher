@@ -42,6 +42,11 @@ namespace XIVLauncher.Common.Game.Patch
             //  Savadata.
             new Regex(@"^My Games/.*$", RegexOptions.IgnoreCase),
 
+            //  shits of Shanda V3 launcher.
+            new Regex(@"^Launcher3Configs/.*$", RegexOptions.IgnoreCase),
+            
+            new Regex(@"^LocalVersion3\.xml$", RegexOptions.IgnoreCase),
+
             // Repair recycle bin folder.
             new Regex(@"^repair_recycler/.*$", RegexOptions.IgnoreCase),
         };
