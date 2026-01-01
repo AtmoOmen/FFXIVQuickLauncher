@@ -73,7 +73,7 @@ public class CheckIntegrityCommand
         {
             var gameVersion = File.ReadAllText($@"{this.gameRootPath}\game\ffxivgame.ver");
             Log.Information("Downloading integrity check file for version: {verison}", gameVersion);
-            icr = IntegrityCheck.DownloadIntegrityCheckForVersion(gameVersion);
+            icr = IntegrityCheck.DownloadIntegrityCheckForVersion().Result;
         }
         else
         {
