@@ -219,16 +219,19 @@ namespace XIVLauncher.Windows
             var builder = CustomMessageBox.Builder.NewFrom("请输入账户备注（留空则显示账户名）：")
                 .WithCaption("添加备注")
                 .WithButtons(MessageBoxButton.OKCancel)
-                .WithInputTextBox(account.UserDefinedName ?? string.Empty)
-                .WithParentWindow(this);
+                .WithInputTextBox(account.UserDefinedName ?? string.Empty);
+
+            _closing = true;
+            Hide();
 
             if (builder.Show() == MessageBoxResult.OK)
             {
                 var note = builder.InputTextBoxText?.Trim();
                 account.UserDefinedName = string.IsNullOrEmpty(note) ? null : note;
                 _accountManager.Save();
-                RefreshEntries();
             }
+
+            Close();
         }
 
         private void DontSavePassword_OnChecked(object sender, RoutedEventArgs e)
