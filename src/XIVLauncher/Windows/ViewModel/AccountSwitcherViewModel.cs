@@ -13,7 +13,7 @@ namespace XIVLauncher.Windows.ViewModel
         {
             AccountSwitcherSetProfilePicLoc = Loc.Localize("AccountSwitcherSetProfilePic", "Set profile picture");
             AccountSwitcherCreateShortcutLoc = Loc.Localize("AccountSwitcherCreateShortcut", "Create desktop shortcut");
-            AccountSwitcherSetNoteLoc = Loc.Localize("AccountSwitcherSetNote", "添加备注");
+            AccountSwitcherSetNoteLoc = Loc.Localize("AccountSwitcherSetNote", "Set Note");
             RemoveLoc = Loc.Localize("Remove", "Remove");
             AccountSwitcherDontSavePasswordLoc = Loc.Localize("AccountSwitcherDontSavePassword", "Don't save password");
         }
