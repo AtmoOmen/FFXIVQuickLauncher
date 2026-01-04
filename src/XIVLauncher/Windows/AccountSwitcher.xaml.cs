@@ -210,6 +210,27 @@ namespace XIVLauncher.Windows
             RefreshEntries();
         }
 
+        private void SetNote_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (!(AccountListView.SelectedItem is AccountSwitcherEntry selectedEntry))
+                return;
+
+            var account = _accountManager.Accounts.First(a => a.Id == selectedEntry.Account.Id);
+            var builder = CustomMessageBox.Builder.NewFrom("请输入账户备注（留空则显示账户名）：")
+                .WithCaption("添加备注")
+                .WithButtons(MessageBoxButton.OKCancel)
+                .WithInputTextBox(account.UserDefinedName ?? string.Empty)
+                .WithParentWindow(this);
+
+            if (builder.Show() == MessageBoxResult.OK)
+            {
+                var note = builder.InputTextBoxText?.Trim();
+                account.UserDefinedName = string.IsNullOrEmpty(note) ? null : note;
+                _accountManager.Save();
+                RefreshEntries();
+            }
+        }
+
         private void DontSavePassword_OnChecked(object sender, RoutedEventArgs e)
         {
             if (!(AccountListView.SelectedItem is AccountSwitcherEntry selectedEntry))
