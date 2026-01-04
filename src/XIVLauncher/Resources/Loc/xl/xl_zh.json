@@ -147,6 +147,18 @@
     "message": "创建桌面快捷方式",
     "description": "AccountSwitcherViewModel.SetupLoc"
   },
+  "AccountSwitcherSetNote": {
+    "message": "设置备注",
+    "description": "AccountSwitcherViewModel.SetupLoc"
+  },
+  "AccountSwitcherSetNoteHint": {
+    "message": "请输入账户备注（留空则显示账户名）：",
+    "description": "AccountSwitcher.SetNote_OnClick"
+  },
+  "AccountSwitcherSetNoteCaption": {
+    "message": "设置备注",
+    "description": "AccountSwitcher.SetNote_OnClick"
+  },
   "Remove": {
     "message": "移除",
     "description": "AccountSwitcherViewModel.SetupLoc"

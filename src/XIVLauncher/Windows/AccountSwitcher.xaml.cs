@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using CheapLoc;
 using IWshRuntimeLibrary;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
@@ -208,6 +209,30 @@ namespace XIVLauncher.Windows
             _accountManager.Save();
 
             RefreshEntries();
+        }
+
+        private void SetNote_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (!(AccountListView.SelectedItem is AccountSwitcherEntry selectedEntry))
+                return;
+
+            var account = _accountManager.Accounts.First(a => a.Id == selectedEntry.Account.Id);
+            var builder = CustomMessageBox.Builder.NewFrom(Loc.Localize("AccountSwitcherSetNoteHint", "Please enter a note for this account (leave empty to show account name):"))
+                .WithCaption(Loc.Localize("AccountSwitcherSetNoteCaption", "Set Note"))
+                .WithButtons(MessageBoxButton.OKCancel)
+                .WithInputTextBox(account.UserDefinedName ?? string.Empty);
+
+            _closing = true;
+            Hide();
+
+            if (builder.Show() == MessageBoxResult.OK)
+            {
+                var note = builder.InputTextBoxText?.Trim();
+                account.UserDefinedName = string.IsNullOrEmpty(note) ? null : note;
+                _accountManager.Save();
+            }
+
+            Close();
         }
 
         private void DontSavePassword_OnChecked(object sender, RoutedEventArgs e)
