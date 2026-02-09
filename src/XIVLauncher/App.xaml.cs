@@ -143,6 +143,8 @@ namespace XIVLauncher
                        .UseTypeParser(new CommonJsonParser<PreserveWindowPosition.WindowPlacement>())
                        .Build();
 
+            SdoUtils.IsDynamicDeviceId = Settings.DynamicDeviceId;
+
             if (Settings.EnableVerboseLog.GetValueOrDefault(false)) {
                 LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
             }

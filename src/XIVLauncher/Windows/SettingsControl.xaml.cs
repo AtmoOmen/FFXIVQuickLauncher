@@ -100,6 +100,8 @@ namespace XIVLauncher.Windows
 
             IsFreeTrialCheckbox.IsChecked = App.Settings.IsFt;
 
+            DynamicDeviceIdCheckBox.IsChecked = App.Settings.DynamicDeviceId;
+
             AccountStorageEncryptCombox.SelectedIndex = (int)App.Settings.CredType.GetValueOrDefault(CredType.WindowsCredManager);
         }
 
@@ -146,6 +148,10 @@ namespace XIVLauncher.Windows
             App.Settings.GitHubToken = ViewModel.GitHubToken;
 
             App.Settings.IsFt = this.IsFreeTrialCheckbox.IsChecked == true;
+            App.Settings.DynamicDeviceId = this.DynamicDeviceIdCheckBox.IsChecked == true;
+            // Apply setting immediately
+            SdoUtils.IsDynamicDeviceId = App.Settings.DynamicDeviceId;
+
             App.Settings.CredType = (CredType)AccountStorageEncryptCombox.SelectedIndex;
             App.AccountManager.ChangeCredType(App.Settings.CredType);
 

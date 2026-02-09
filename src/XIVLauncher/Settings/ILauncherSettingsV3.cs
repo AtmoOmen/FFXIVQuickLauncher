@@ -59,6 +59,7 @@ namespace XIVLauncher.Settings
         CredType? CredType { get; set; }
         bool? EnableSkipUpdate { get; set; }
         bool? EnableVerboseLog { get; set; }
+        bool DynamicDeviceId { get; set; }
         
         #endregion
     }

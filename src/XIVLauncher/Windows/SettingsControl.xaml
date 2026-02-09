@@ -99,6 +99,12 @@
                         <ComboBoxItem>系统凭据管理器</ComboBoxItem>
                         <ComboBoxItem>Windows Hello</ComboBoxItem>
                     </ComboBox>
+
+                    <CheckBox x:Name="DynamicDeviceIdCheckBox"
+                              Content="启用动态设备码"
+                              HorizontalAlignment="Left" Margin="0,15,0,0"
+                              Foreground="{DynamicResource MaterialDesignBody}"
+                              ToolTip="启用后，每次打开启动器都会生成一个新的随机设备唯一标识符" />
                 </StackPanel>
             </TabItem>
             <TabItem Header="{Binding SettingsAutoLaunchLoc}">

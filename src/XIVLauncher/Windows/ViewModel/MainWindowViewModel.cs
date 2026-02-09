@@ -301,7 +301,6 @@ namespace XIVLauncher.Windows.ViewModel
         }
 
         public DcTravelListener dcTravelListener { get; private set; } = null;
-        public RisingstoneListener risingstoneListener { get; private set; } = null;
         public const string PresudoPassword = "********假的密码********";
         private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
         {
@@ -503,9 +502,7 @@ namespace XIVLauncher.Windows.ViewModel
                 App.AccountManager.Save();
             };
             
-            var risingstoneSignIn = new RisingstoneCheckIn();
-            
-            var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, dcTraveler, risingstoneSignIn, action).ConfigureAwait(false);
+            var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, dcTraveler, action).ConfigureAwait(false);
 
             if (loginResult == null)
                 return;
@@ -535,31 +532,23 @@ namespace XIVLauncher.Windows.ViewModel
 
                         loginResult.DcTravelPort = ApiHelpers.GetAvailablePort();
                         this.dcTravelListener    = new DcTravelListener(dcTraveler, loginResult.DcTravelPort, false);
-                        Log.Information($"[DcTravel] use port:{loginResult.DcTravelPort}");
+                        Log.Information($"[DCTravel] 打开端口:{loginResult.DcTravelPort}");
                         this.dcTravelListener.StartAsync();
-                        
-                        Log.Information($"[Risingstone] 正在开启......");
-                        loginResult.RisingStonePort = ApiHelpers.GetAvailablePort();
-                        this.risingstoneListener = new RisingstoneListener(risingstoneSignIn, loginResult.RisingStonePort, false);
-                        Log.Information($"[Risingstone] use port:{loginResult.RisingStonePort}");
-                        this.risingstoneListener.StartAsync();
                     }
 
-                    var accountToSave = new XivAccount()
+                    var accountToSave = new XivAccount
                     {
-                        AutoLogin = loginType == LoginType.WeGameSid || doingAutoLogin,
+                        AutoLogin    = loginType == LoginType.WeGameSid || doingAutoLogin,
                         LoginAccount = loginResult.OauthLogin.InputUserId,
-                        SndaId = loginResult.OauthLogin.SndaId,
+                        SndaId       = loginResult.OauthLogin.SndaId,
+                        AccountType  = loginType switch
+                        {
+                            LoginType.WeGameSid                                              => XivAccountType.WeGameSid,
+                            LoginType.WeGameToken                                            => XivAccountType.WeGame,
+                            LoginType.SdoStatic or LoginType.SdoSlide or LoginType.SdoQrCode => XivAccountType.Sdo
+                        },
+                        AreaName = Area.AreaName
                     };
-
-                    accountToSave.AccountType = loginType switch
-                    {
-                        LoginType.WeGameSid => XivAccountType.WeGameSid,
-                        LoginType.WeGameToken => XivAccountType.WeGame,
-                        LoginType.SdoStatic or LoginType.SdoSlide or LoginType.SdoQrCode => XivAccountType.Sdo
-                    };
-
-                    accountToSave.AreaName = Area.AreaName;
 
                     if (doingAutoLogin && accountToSave.AccountType != XivAccountType.WeGameSid)
                     {
@@ -570,7 +559,7 @@ namespace XIVLauncher.Windows.ViewModel
                         {
                             this.dcTravelListener.DcTraveler.RefreshGameSessionIdByAutoLoginFunc = async () =>
                             {
-                                var newLoginResult = await this.Launcher.LoginBySessionKey(username, loginResult.OauthLogin.AutoLoginSessionKey, this.dcTravelListener.DcTraveler, this.risingstoneListener?.RisingstoneCheckIn).ConfigureAwait(false);
+                                var newLoginResult = await this.Launcher.LoginBySessionKey(username, loginResult.OauthLogin.AutoLoginSessionKey, this.dcTravelListener.DcTraveler).ConfigureAwait(false);
                                 return newLoginResult.OauthLogin.SessionId;
                             };
                         }
@@ -699,7 +688,6 @@ namespace XIVLauncher.Windows.ViewModel
             string serect,
             bool autoLogin,
             DcTraveler dcTraveler,
-            RisingstoneCheckIn risingstoneCheckIn,
             AfterLoginAction action
             )
         {
@@ -722,7 +710,7 @@ namespace XIVLauncher.Windows.ViewModel
                 {
                     try
                     {
-                        return await this.Launcher.LoginBySessionKey(username, autoLoginSessionKey: serect, dcTraveler, risingstoneCheckIn).ConfigureAwait(false);
+                        return await this.Launcher.LoginBySessionKey(username, autoLoginSessionKey: serect, dcTraveler).ConfigureAwait(false);
                     }
                     catch (Exception e)
                     {
@@ -734,7 +722,7 @@ namespace XIVLauncher.Windows.ViewModel
                 switch (type)
                 {
                     case LoginType.SdoStatic:
-                        return await Launcher.LoginBySdoStatic(username, password: serect, dcTraveler, risingstoneCheckIn).ConfigureAwait(false);
+                        return await Launcher.LoginBySdoStatic(username, password: serect, dcTraveler).ConfigureAwait(false);
 
                     case LoginType.SdoSlide:
                         return await Launcher.LoginBySlide(username, autoLogin, this.loginCts, (code) =>
@@ -742,8 +730,7 @@ namespace XIVLauncher.Windows.ViewModel
                             Log.Information($"叨鱼确认码:{code}");
                             this.LoginMessage = $"确认码: {code}";
                         },
-                        dcTraveler,
-                        risingstoneCheckIn
+                        dcTraveler
                         ).ConfigureAwait(false);
 
                     case LoginType.SdoQrCode:
@@ -751,12 +738,11 @@ namespace XIVLauncher.Windows.ViewModel
                         {
                             this.QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes);
                         },
-                        dcTraveler,
-                        risingstoneCheckIn
+                        dcTraveler
                         ).ConfigureAwait(false);
 
                     case LoginType.WeGameToken:
-                        return await Launcher.LoginByWeGameToken(username, token: serect, autoLogin, dcTraveler, risingstoneCheckIn).ConfigureAwait(false);
+                        return await Launcher.LoginByWeGameToken(username, token: serect, autoLogin, dcTraveler).ConfigureAwait(false);
 
                     case LoginType.WeGameSid:
                         return await Launcher.LoginBySid(username, sid: serect).ConfigureAwait(false);
@@ -1803,34 +1789,26 @@ namespace XIVLauncher.Windows.ViewModel
                 return null;
             }
             // We won't do any sanity checks here anymore, since that should be handled in StartLogin
-            var launched = this.Launcher.LaunchGameSdo(gameRunner,
-                                                       loginResult.OauthLogin.SessionId,
-                                                       loginResult.OauthLogin.SndaId,
-                                                       loginResult.DcTravelPort,
-                                                       loginResult.RisingStonePort,
-                                                       Area.Areaid,
-                                                       Area.AreaLobby,
-                                                       Area.AreaGm,
-                                                       Area.AreaConfigUpload,
-                                                       Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
-                                                       App.Settings.AdditionalLaunchArgs,
-                                                       App.Settings.GamePath,
-                                                       App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
-                                                       App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware));
-            // var launched = this.Launcher.LaunchGame(gameRunner,
-            //     loginResult.UniqueId,
-            //     loginResult.OauthLogin.Region,
-            //     loginResult.OauthLogin.MaxExpansion,
-            //     isSteam,
-            //     App.Settings.AdditionalLaunchArgs,
-            //     App.Settings.GamePath,
-            //     App.Settings.Language.GetValueOrDefault(ClientLanguage.English),
-            //     App.Settings.EncryptArguments.GetValueOrDefault(false),
-            //     App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware));
+            var launched = this.Launcher.LaunchGameSdo
+            (
+                gameRunner,
+                loginResult.OauthLogin.SessionId,
+                loginResult.OauthLogin.SndaId,
+                loginResult.DcTravelPort,
+                Area.Areaid,
+                Area.AreaLobby,
+                Area.AreaGm,
+                Area.AreaConfigUpload,
+                Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
+                App.Settings.AdditionalLaunchArgs,
+                App.Settings.GamePath,
+                App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
+                App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware)
+            );
 
             Troubleshooting.LogTroubleshooting();
 
-            if (launched is not Process gameProcess)
+            if (launched is not Process)
             {
                 Log.Information("GameProcess was null...");
                 IsLoggingIn = false;
@@ -1841,19 +1819,25 @@ namespace XIVLauncher.Windows.ViewModel
 
             try
             {
-                App.Settings.AddonList ??= new List<AddonEntry>();
+                App.Settings.AddonList ??= [];
 
                 var addons = App.Settings.AddonList.Where(x => x.IsEnabled).Select(x => x.Addon).Cast<IAddon>().ToList();
 
-                addonMgr.RunAddons(gameProcess.Id, addons);
+                addonMgr.RunAddons(launched.Id, addons);
             }
             catch (Exception ex)
             {
                 CustomMessageBox.Builder
                                 .NewFrom(ex, "Addons")
                                 .WithAppendText("\n\n")
-                                .WithAppendText(Loc.Localize("AddonLoadError",
-                                                             "This could be caused by your antivirus, please check its logs and add any needed exclusions."))
+                                .WithAppendText
+                                (
+                                    Loc.Localize
+                                    (
+                                        "AddonLoadError",
+                                        "This could be caused by your antivirus, please check its logs and add any needed exclusions."
+                                    )
+                                )
                                 .WithParentWindow(_window)
                                 .Show();
 
@@ -1863,7 +1847,7 @@ namespace XIVLauncher.Windows.ViewModel
             }
 
             Log.Debug("Waiting for game to exit");
-            await Task.Run(() => gameProcess.WaitForExit()).ConfigureAwait(false);
+            await Task.Run(() => launched.WaitForExit()).ConfigureAwait(false);
             Log.Verbose("Game has exited");
 
             if (addonMgr.IsRunning)
@@ -1890,16 +1874,7 @@ namespace XIVLauncher.Windows.ViewModel
                 Log.Error(ex, "Could not shut down DcTraveler");
             }
 
-            try
-            {
-                this.risingstoneListener?.Stop();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Could not shut down Risingstone");
-            }
-
-            return gameProcess;
+            return launched;
         }
 
         public void OnWindowClosed(object sender, object args)

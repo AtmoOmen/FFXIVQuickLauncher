@@ -92,7 +92,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginBySdoStatic(string account, string password, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
+        public async Task<LoginResult> LoginBySdoStatic(string account, string password, DcTraveler dcTraveler)
         {
             var guid = await this.GetGuid();
             var macAddress = SdoUtils.GetMacAddress();
@@ -122,11 +122,6 @@ namespace XIVLauncher.Common.Game
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
-            
-            if (risingstoneCheckIn != null)
-            {
-                risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
-            }
 
             var sessionId = await GetSessionId(tgt, guid);
 
@@ -148,7 +143,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginByWeGameToken(string account, string token, bool autoLogin, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
+        public async Task<LoginResult> LoginByWeGameToken(string account, string token, bool autoLogin, DcTraveler dcTraveler)
         {
             var guid = await this.GetGuid();
             var (sndaId, tgt, autoLoginSessionKey) = await ThirdPartyLogin(account, token, autoLogin, AutoLoginKeepDays);
@@ -156,10 +151,6 @@ namespace XIVLauncher.Common.Game
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
-            }
-            if (risingstoneCheckIn != null)
-            {
-                risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             
             var sessionId = await GetSessionId(tgt, guid);
@@ -181,7 +172,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginByScanQrCode(bool autoLogin, CancellationTokenSource cts, Action<byte[]> showQrCode, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
+        public async Task<LoginResult> LoginByScanQrCode(bool autoLogin, CancellationTokenSource cts, Action<byte[]> showQrCode, DcTraveler dcTraveler)
         {
             var guid = await this.GetGuid();
             // Wait for Scan QrCode
@@ -210,11 +201,6 @@ namespace XIVLauncher.Common.Game
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
             }
             
-            if (risingstoneCheckIn != null)
-            {
-                risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
-            }
-            
             var sessionId = await GetSessionId(tgt, guid);
 
             var oath = new OauthLoginResult
@@ -234,7 +220,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginBySlide(string account, bool autoLogin, CancellationTokenSource cts, Action<string> showVerificationCode, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
+        public async Task<LoginResult> LoginBySlide(string account, bool autoLogin, CancellationTokenSource cts, Action<string> showVerificationCode, DcTraveler dcTraveler)
         {
             var guid = await this.GetGuid();
             // Wait for Slide
@@ -246,11 +232,6 @@ namespace XIVLauncher.Common.Game
             {
                 dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                 dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
-            }
-            
-            if (risingstoneCheckIn != null)
-            {
-                risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
             }
             
             var sessionId = await GetSessionId(tgt, guid);
@@ -272,7 +253,7 @@ namespace XIVLauncher.Common.Game
             };
         }
 
-        public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DcTraveler dcTraveler, RisingstoneCheckIn risingstoneCheckIn)
+        public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DcTraveler dcTraveler)
         {
             var guid = await this.GetGuid();
             //快速登录,刷新SessionKey
@@ -295,11 +276,6 @@ namespace XIVLauncher.Common.Game
                 {
                     dcTraveler.RefreshDcTravelSessionIdFunc = () => this.GetDcTravelSessionId(tgt, guid);
                     dcTraveler.RefreshGameSessionByGuidFunc = () => this.GetSessionId(tgt, guid);
-                }
-                
-                if (risingstoneCheckIn != null)
-                {
-                    risingstoneCheckIn.RefreshRisingstoneCookieFunc = () => this.GetRisingstoneCookieAsync(tgt, guid);
                 }
                 
                 var sessionId = await GetSessionId(tgt, guid);
@@ -1000,29 +976,45 @@ namespace XIVLauncher.Common.Game
             }
         }
 
-        public Process? LaunchGameSdo(IGameRunner runner, string sessionId, string sndaId, int dcTravelPort, int risingstonePort, string areaId, string lobbyHost, string gmHost, string dbHost, string areasInfo,
-                                      string additionalArguments, DirectoryInfo gamePath, bool encryptArguments, DpiAwareness dpiAwareness)
+        public Process? LaunchGameSdo
+        (
+            IGameRunner   runner,
+            string        sessionId,
+            string        sndaId,
+            int           dcTravelPort,
+            string        areaId,
+            string        lobbyHost,
+            string        gmHost,
+            string        dbHost,
+            string        areasInfo,
+            string        additionalArguments,
+            DirectoryInfo gamePath,
+            bool          encryptArguments,
+            DpiAwareness  dpiAwareness
+        )
         {
-            Log.Information(
-                $"XivGame::LaunchGame(args:{additionalArguments})");
+            Log.Information
+            (
+                $"XivGame::LaunchGame(args:{additionalArguments})"
+            );
             //EnsureLoginEntry(gamePath);
             var exePath = Path.Combine(gamePath.FullName, "game", "ffxiv_dx11.exe");
 
             var environment = new Dictionary<string, string>();
             var argumentBuilder = new ArgumentBuilder()
-                                  .Append("-AppID", "100001900")
-                                  .Append("-AreaID", areaId)
-                                  .Append("Dev.LobbyHost01", lobbyHost)
-                                  .Append("Dev.LobbyPort01", "54994")
-                                  .Append("Dev.GMServerHost", gmHost)
-                                  .Append("Dev.SaveDataBankHost", dbHost)
-                                  .Append("resetConfig", "0")
+                                  .Append("-AppID",                     "100001900")
+                                  .Append("-AreaID",                    areaId)
+                                  .Append("Dev.LobbyHost01",            lobbyHost)
+                                  .Append("Dev.LobbyPort01",            "54994")
+                                  .Append("Dev.GMServerHost",           gmHost)
+                                  .Append("Dev.SaveDataBankHost",       dbHost)
+                                  .Append("resetConfig",                "0")
                                   .Append("DEV.MaxEntitledExpansionID", "1")
-                                  .Append("DEV.TestSID", sessionId)
-                                  .Append("XL.SndaId", sndaId)
-                                  .Append("XL.LobbyHosts", $"{areasInfo}")
-                                  .Append("XL.DcTraveler", $"{dcTravelPort}")
-                                  .Append("XL.Risingstone", $"{risingstonePort}");
+                                  .Append("DEV.TestSID",                sessionId)
+                                  .Append("XL.SndaId",                  sndaId)
+                                  .Append("XL.LobbyHosts",              $"{areasInfo}")
+                                  .Append("XL.DcTraveler",              $"{dcTravelPort}");
+
             // This is a bit of a hack; ideally additionalArguments would be a dictionary or some KeyValue structure
             if (!string.IsNullOrEmpty(additionalArguments))
             {

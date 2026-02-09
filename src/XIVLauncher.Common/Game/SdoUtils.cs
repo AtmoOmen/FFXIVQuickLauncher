@@ -10,12 +10,31 @@ using Serilog;
 
 namespace XIVLauncher.Common;
 
-internal static class SdoUtils
+public static class SdoUtils
 {
     private static readonly Lazy<string> DeviceID = 
         new(() => string.Join(":", GetMacAddress(), GetCPUID(), GetDiskSerialNumber()));
 
-    public static string GetDeviceID() => DeviceID.Value;
+    public static bool IsDynamicDeviceId { get; set; }
+
+    private static string? dynamicDeviceId;
+
+    public static string GetDeviceID()
+    {
+        if (IsDynamicDeviceId)
+        {
+            dynamicDeviceId ??= string.Join(":", GetRandomMD5(), GetRandomMD5(), GetRandomMD5());
+            return dynamicDeviceId;
+        }
+
+        return DeviceID.Value;
+    }
+
+    private static string GetRandomMD5()
+    {
+        var buffer = Guid.NewGuid().ToByteArray();
+        return GetMD5(buffer);
+    }
 
     public static string GetMD5(byte[] payload)
     {
