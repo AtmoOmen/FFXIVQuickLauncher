@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using CheapLoc;
 using IWshRuntimeLibrary;
+using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows.ViewModel;
@@ -85,6 +86,8 @@ public partial class FirstTimeSetup : Window
 
     private void NextButton_Click(object sender, RoutedEventArgs e)
     {
+        Log.Information($"[FirstTimeSetup] 当前步骤索引: {SetupTabControl.SelectedIndex}");
+        
         switch (SetupTabControl.SelectedIndex)
         {
             case 0 when string.IsNullOrEmpty(GamePathEntry.Text):
@@ -142,8 +145,8 @@ public partial class FirstTimeSetup : Window
 
                 break;
             }
-
-            case 2:
+            
+            case 1:
                 App.Settings.GamePath           = new(GamePathEntry.Text);
                 App.Settings.Language           = ClientLanguage.ChineseSimplified;
                 App.Settings.InGameAddonEnabled = HooksCheckBox.IsChecked == true;

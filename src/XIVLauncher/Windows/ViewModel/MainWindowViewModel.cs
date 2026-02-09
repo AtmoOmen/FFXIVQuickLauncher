@@ -2988,13 +2988,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             Log.Information("正在重新启动游戏...");
             
-            // 重新调用启动逻辑
-            // 注意：这里需要递归调用或重新触发启动流程
-            // 由于 StartGameAndAddon 是 Task<Process>，我们不能直接在这里await它来替换当前任务，
-            // 但我们可以调用它来启动新游戏，并更新我们监控的进程对象。
-            
             var restartedProcess = await StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins);
-            
             if (restartedProcess == null)
             {
                 Log.Error("重启游戏失败");

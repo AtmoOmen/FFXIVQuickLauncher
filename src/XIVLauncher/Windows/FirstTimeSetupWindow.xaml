@@ -29,11 +29,6 @@
                                             Margin="0,0,0,40" Width="400" VerticalAlignment="Center"
                                             HorizontalAlignment="Left"
                                             Foreground="{DynamicResource MaterialDesignBody}" />
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,10"
-                               Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding FirstTimeSteamNoticeLoc}"/>
-                    <CheckBox x:Name="SteamCheckBox" Content="{Binding FirstTimeSteamCheckBoxLoc}" IsEnabled="False"
-                              HorizontalAlignment="Left" Margin="0,0,0,15"
-                              Foreground="{DynamicResource MaterialDesignBody}" />
                     <Button Content="{Binding NextLoc}" Width="79" VerticalAlignment="Bottom"
                             HorizontalAlignment="Right" Margin="0,0,10,10" Click="NextButton_Click" />
                 </StackPanel>
