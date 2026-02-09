@@ -38,25 +38,6 @@
                             HorizontalAlignment="Right" Margin="0,0,10,10" Click="NextButton_Click" />
                 </StackPanel>
             </TabItem>
-            <TabItem Header="Language">
-                <Grid>
-                    <StackPanel Margin="10,10,10,0">
-                        <TextBlock TextWrapping="Wrap" HorizontalAlignment="Left" VerticalAlignment="Top"
-                                   Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding FirstTimeLanguageLoc}"/>
-
-                        <ComboBox SelectedIndex="4" Margin="0, 5, 0, 70" IsEnabled="False"
-                                  x:Name="LanguageComboBox" Foreground="{DynamicResource MaterialDesignBody}">
-                            <ComboBoxItem>日本語</ComboBoxItem>
-                            <ComboBoxItem>English</ComboBoxItem>
-                            <ComboBoxItem>Deutsch</ComboBoxItem>
-                            <ComboBoxItem>Français</ComboBoxItem>
-                            <ComboBoxItem>中文(国服)</ComboBoxItem>
-                        </ComboBox>
-                    </StackPanel>
-                    <Button Content="{Binding NextLoc}" Width="79" VerticalAlignment="Bottom"
-                            HorizontalAlignment="Right" Margin="0,0,10,10" Click="NextButton_Click" />
-                </Grid>
-            </TabItem>
             <TabItem Header="Hooks">
                 <Grid>
                     <StackPanel Margin="10,10,10,0">

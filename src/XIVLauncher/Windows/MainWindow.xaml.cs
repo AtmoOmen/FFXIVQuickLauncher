@@ -138,12 +138,7 @@ namespace XIVLauncher.Windows
             {
                 _bannerChangeTimer?.Stop();
 
-                //await Headlines.GetWorlds(_launcher, App.Settings.Language.GetValueOrDefault(ClientLanguage.English));
-                //_banners = await Headlines.GetBanners(_launcher, App.Settings.Language.GetValueOrDefault(ClientLanguage.English), App.Settings.ForceNorthAmerica.GetValueOrDefault(false))
-                //                          .ConfigureAwait(false);
-                //await Headlines.GetMessage(_launcher, App.Settings.Language.GetValueOrDefault(ClientLanguage.English), App.Settings.ForceNorthAmerica.GetValueOrDefault(false))
-                //               .ConfigureAwait(false);
-                _headlines = await Headlines.GetNews(_launcher, App.Settings.Language.GetValueOrDefault(ClientLanguage.ChineseSimplified), App.Settings.ForceNorthAmerica.GetValueOrDefault(false))
+                _headlines = await Headlines.GetNews(_launcher, ClientLanguage.ChineseSimplified, App.Settings.ForceNorthAmerica.GetValueOrDefault(false))
                                             .ConfigureAwait(false);
                 _banners = this._headlines.Banner;
 
@@ -152,7 +147,7 @@ namespace XIVLauncher.Windows
 
                 for (var i = 0; i < _banners.Count; i++)
                 {
-                    var imageBytes = await _launcher.DownloadAsLauncher(_banners[i].LsbBanner.ToString(), App.Settings.Language.GetValueOrDefault(ClientLanguage.ChineseSimplified));
+                    var imageBytes = await _launcher.DownloadAsLauncher(_banners[i].LsbBanner.ToString(), ClientLanguage.ChineseSimplified);
 
                     using var stream = new MemoryStream(imageBytes);
 
@@ -453,11 +448,8 @@ namespace XIVLauncher.Windows
             //}
         }
 
-        private void WorldStatusButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (App.Settings.Language == ClientLanguage.ChineseSimplified) Process.Start(new ProcessStartInfo("https://ff.web.sdo.com/web8/index.html#/servers") { UseShellExecute = true });
-            else Process.Start(new ProcessStartInfo("https://is.xivup.com/") { UseShellExecute = true });
-        }
+        private void WorldStatusButton_Click(object sender, RoutedEventArgs e) => 
+            Process.Start(new ProcessStartInfo("https://ff.web.sdo.com/web8/index.html#/servers") { UseShellExecute = true });
 
         private void QueueButton_OnClick(object sender, RoutedEventArgs e)
         {

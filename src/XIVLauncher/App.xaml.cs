@@ -171,7 +171,7 @@ namespace XIVLauncher
 
                 if (CommandLine.ClientLanguage != null)
                 {
-                    App.Settings.Language = CommandLine.ClientLanguage;
+                    App.Settings.Language = ClientLanguage.ChineseSimplified;
                 }
             }
             catch (Exception ex)
@@ -395,11 +395,7 @@ namespace XIVLauncher
 #if !XL_LOC_FORCEFALLBACKS
             try
             {
-                if (App.Settings.LauncherLanguage == null)
-                {
-                    var currentUiLang = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-                    App.Settings.LauncherLanguage = App.Settings.LauncherLanguage.GetLangFromTwoLetterIso(currentUiLang);
-                }
+                App.Settings.LauncherLanguage ??= LauncherLanguage.SimplifiedChinese;
 
                 Log.Information("Trying to set up Loc for language code {0}", App.Settings.LauncherLanguage.GetLocalizationCode());
 

@@ -83,29 +83,6 @@
                               Content="{Binding IsFreeTrialLoc}" Foreground="{DynamicResource MaterialDesignBody}"
                               HorizontalAlignment="Left" Margin="0,0,0,15" />
                     
-                    <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top"
-                               Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding ChooseLanguageLoc}" />
-                    <ComboBox SelectedIndex="1" Margin="0, 3, 0, 0" x:Name="LanguageComboBox" IsEnabled="False"
-                              Foreground="{DynamicResource MaterialDesignBody}">
-                        <ComboBoxItem>日本語</ComboBoxItem>
-                        <ComboBoxItem>English</ComboBoxItem>
-                        <ComboBoxItem>Deutsch</ComboBoxItem>
-                        <ComboBoxItem>Français</ComboBoxItem>
-                        <ComboBoxItem>中文(国服)</ComboBoxItem>
-                    </ComboBox>
-
-                    <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0, 20, 0, 0"
-                               Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding ChooseLauncherLanguageLoc}" />
-                    <ComboBox
-                        Margin="0,3,0,0"
-                        Cursor=""
-                        DisplayMemberPath="Display"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        ItemsSource="{Binding LauncherLanguageList}"
-                        SelectedValue="{Binding LauncherLanguage}"
-                        SelectedValuePath="Value" />
-                    <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0, 20, 0, 0"
-                               Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding LauncherLanguageHelpCtaLoc}" TextDecorations="Underline" MouseLeftButtonUp="OpenI18nLabel_OnClick" Cursor="Hand"/>
                     <TextBlock
                         Margin="0,0,0,0"
                         HorizontalAlignment="Left"
@@ -115,10 +92,10 @@
                         Visibility="{c:Binding LauncherLanguageNoticeVisiable, FalseToVisibility=Hidden}" />
 
                     <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top"
-                               Foreground="{DynamicResource MaterialDesignBody}" Text="请选择自动登录密码的加密方式" />
+                               Foreground="{DynamicResource MaterialDesignBody}" Text="自动登录密码加密方式" />
                     <ComboBox SelectedIndex="1" Margin="0, 3, 0, 0" x:Name="AccountStorageEncryptCombox"
                               Foreground="{DynamicResource MaterialDesignBody}">
-                        <ComboBoxItem>无 (不建议)</ComboBoxItem>
+                        <ComboBoxItem>无 [不建议]</ComboBoxItem>
                         <ComboBoxItem>系统凭据管理器</ComboBoxItem>
                         <ComboBoxItem>Windows Hello</ComboBoxItem>
                     </ComboBox>

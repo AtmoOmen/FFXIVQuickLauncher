@@ -1620,30 +1620,40 @@ namespace XIVLauncher.Windows.ViewModel
             var gameExeFolder = Path.GetDirectoryName(gameExePath);
             var gamePath = (new DirectoryInfo(gameExeFolder!)).Parent;
             Log.Information($"GameExePath:{gameExePath},GameExeFolder:{gameExeFolder},GamePath;{gamePath}");
+
             if (!DalamudLauncher.CanRunDalamud(gamePath))
             {
-                CustomMessageBox.Show($"""
-                    {Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!")}
-                    GameExePath:{gameExePath}
-                    GameExeFolder:{gameExeFolder}
-                    GamePath:{gamePath}
-                    GameVersion:{Repository.Ffxiv.GetVer(gamePath)}
-                    """,
-                    "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Asterisk);
+                CustomMessageBox.Show
+                (
+                    $"""
+                     {Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!")}
+                     GameExePath:{gameExePath}
+                     GameExeFolder:{gameExeFolder}
+                     GamePath:{gamePath}
+                     GameVersion:{Repository.Ffxiv.GetVer(gamePath)}
+                     """,
+                    "XIVLauncherCN (Soil)",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Asterisk
+                );
                 return false;
             }
 
-
-            var dalamudLauncher = new DalamudLauncher(new WindowsDalamudRunner(), App.DalamudUpdater, DalamudLoadMethod.DllInject,
+            var dalamudLauncher = new DalamudLauncher
+            (
+                new WindowsDalamudRunner(),
+                App.DalamudUpdater,
+                DalamudLoadMethod.DllInject,
                 gamePath,
                 new DirectoryInfo(Paths.RoamingPath),
                 new DirectoryInfo(Paths.RoamingPath),
-                App.Settings.Language.GetValueOrDefault(ClientLanguage.ChineseSimplified),
+                ClientLanguage.ChineseSimplified,
                 (int)App.Settings.DalamudInjectionDelayMs,
                 false,
                 noPlugins,
                 noThird,
-                Troubleshooting.GetTroubleshootingJson());
+                Troubleshooting.GetTroubleshootingJson()
+            );
 
             var dalamudOk = false;
 
@@ -1713,16 +1723,21 @@ namespace XIVLauncher.Windows.ViewModel
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            var dalamudLauncher = new DalamudLauncher(new WindowsDalamudRunner(), App.DalamudUpdater, App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
+            var dalamudLauncher = new DalamudLauncher
+            (
+                new WindowsDalamudRunner(),
+                App.DalamudUpdater,
+                App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
                 App.Settings.GamePath,
                 new DirectoryInfo(Paths.RoamingPath),
                 new DirectoryInfo(Paths.RoamingPath),
-                App.Settings.Language.GetValueOrDefault(ClientLanguage.English),
+                ClientLanguage.ChineseSimplified,
                 (int)App.Settings.DalamudInjectionDelayMs,
                 false,
                 noPlugins,
                 noThird,
-                Troubleshooting.GetTroubleshootingJson());
+                Troubleshooting.GetTroubleshootingJson()
+            );
 
             var dalamudOk = false;
 

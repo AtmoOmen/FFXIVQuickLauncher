@@ -63,14 +63,13 @@ namespace XIVLauncher.Windows
             if (App.Settings.PatchPath != null)
                 ViewModel.PatchPath = App.Settings.PatchPath.FullName;
 
-            LanguageComboBox.SelectedIndex = (int)App.Settings.Language.GetValueOrDefault(ClientLanguage.English);
-            ViewModel.LauncherLanguage = App.Settings.LauncherLanguage.GetValueOrDefault(LauncherLanguage.English);
+            ViewModel.LauncherLanguage               = LauncherLanguage.SimplifiedChinese;
             ViewModel.LauncherLanguageNoticeVisiable = false;
-            AddonListView.ItemsSource = App.Settings.AddonList ??= new List<AddonEntry>();
-            AskBeforePatchingCheckBox.IsChecked = App.Settings.AskBeforePatchInstall;
-            KeepPatchesCheckBox.IsChecked = App.Settings.KeepPatches;
-            PatchAcquisitionComboBox.SelectedIndex = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
-            AutoStartSteamCheckBox.IsChecked = App.Settings.AutoStartSteam;
+            AddonListView.ItemsSource                = App.Settings.AddonList ??= [];
+            AskBeforePatchingCheckBox.IsChecked      = App.Settings.AskBeforePatchInstall;
+            KeepPatchesCheckBox.IsChecked            = App.Settings.KeepPatches;
+            PatchAcquisitionComboBox.SelectedIndex   = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
+            AutoStartSteamCheckBox.IsChecked         = App.Settings.AutoStartSteam;
 
             InjectionDelayUpDown.Value = App.Settings.DalamudInjectionDelayMs;
 
@@ -116,9 +115,8 @@ namespace XIVLauncher.Windows
             App.Settings.GamePath = !string.IsNullOrEmpty(ViewModel.GamePath) ? new DirectoryInfo(ViewModel.GamePath) : null;
             App.Settings.PatchPath = !string.IsNullOrEmpty(ViewModel.PatchPath) ? new DirectoryInfo(ViewModel.PatchPath) : null;
 
-            App.Settings.Language = (ClientLanguage)LanguageComboBox.SelectedIndex;
             // Keep the notice visible if LauncherLanguage has changed
-            App.Settings.LauncherLanguage = ViewModel.LauncherLanguage;
+            App.Settings.LauncherLanguage = LauncherLanguage.SimplifiedChinese;
 
             App.Settings.AddonList = (List<AddonEntry>)AddonListView.ItemsSource;
             App.Settings.AskBeforePatchInstall = AskBeforePatchingCheckBox.IsChecked == true;
@@ -369,11 +367,6 @@ namespace XIVLauncher.Windows
                     "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: Window.GetWindow(this));
                 Log.Error(ex, error);
             }
-        }
-
-        private void OpenI18nLabel_OnClick(object sender, MouseButtonEventArgs e)
-        {
-            PlatformHelpers.OpenBrowser("https://crowdin.com/project/ffxivquicklauncher");
         }
 
         private void GamePathEntry_OnTextChanged(object sender, TextChangedEventArgs e)

@@ -65,27 +65,17 @@ namespace XIVLauncher.Windows.ViewModel
 
         private static List<string> LauncherLanguageStrings { get; } =
         [
-            "日本語",
-            "English",
-            "Deutsch",
-            "Français",
-            "Italiano",
-            "Español",
-            "Português",
-            "한국어",
-            "Norsk",
-            "русский",
             "简体中文",
             "繁體中文",
-            "svenska"
         ];
 
-        public List<GenericCombinedData<LauncherLanguage>> LauncherLanguageList { get; } = LauncherLanguageStrings
-            .Zip(Enum.GetValues(typeof(LauncherLanguage)).Cast<LauncherLanguage>())
-            .Select(pair => new GenericCombinedData<LauncherLanguage>() { Display = pair.First, Value = pair.Second })
-            .ToList();
+        public List<GenericCombinedData<LauncherLanguage>> LauncherLanguageList { get; } =
+            LauncherLanguageStrings
+                .Zip(Enum.GetValues<LauncherLanguage>())
+                .Select(pair => new GenericCombinedData<LauncherLanguage> { Display = pair.First, Value = pair.Second })
+                .ToList();
 
-        private LauncherLanguage _launcherLanguage = LauncherLanguage.Japanese;
+        private LauncherLanguage _launcherLanguage = LauncherLanguage.SimplifiedChinese;
 
         public LauncherLanguage LauncherLanguage
         {
@@ -184,10 +174,6 @@ namespace XIVLauncher.Windows.ViewModel
             AutoStartSteamTooltipLoc = Loc.Localize("AutoStartSteamTooltip", "Whenever you open XIVLauncher, it will check if Steam is running and start it if it isn't.\nYou will automatically show as \"Playing\" on Steam.");
 
             SettingsGameSettingsLoc = Loc.Localize("SettingsGameSettings", "Game Settings");
-            ChooseLanguageLoc = Loc.Localize("ChooseLanguage", "Please select which language you want to load the game with.");
-            ChooseLauncherLanguageLoc = Loc.Localize("ChooseLauncherLanguage", "Please select the launcher language, requires a restart.");
-            LauncherLanguageHelpCtaLoc = Loc.Localize("LauncherLanguageHelpCtaLoc",
-                "Notice any mistakes? You can help out translating the launcher! Just click here!");
             LauncherLanguageNoticeLoc = Loc.Localize("LauncherLanguageNotice", "A restart is required to apply the launcher language setting.");
 
             SettingsAutoLaunchLoc = Loc.Localize("SettingsAutoLaunch", "Auto-Launch");
@@ -289,9 +275,6 @@ namespace XIVLauncher.Windows.ViewModel
         public string SettingsGameSettingsLoc { get; private set; }
         public string DirectXLoc { get; private set; }
         public string DirectX9NoticeLoc { get; private set; }
-        public string ChooseLanguageLoc { get; private set; }
-        public string ChooseLauncherLanguageLoc { get; private set; }
-        public string LauncherLanguageHelpCtaLoc { get; private set; }
         public string LauncherLanguageNoticeLoc { get; private set; }
 
         public string SettingsAutoLaunchLoc { get; private set; }
