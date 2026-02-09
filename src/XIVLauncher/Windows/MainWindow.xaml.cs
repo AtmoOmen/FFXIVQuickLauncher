@@ -623,20 +623,26 @@ namespace XIVLauncher.Windows
 
         private void FakeStart_OnClick(object sender, RoutedEventArgs e)
         {
-            _ = Model.StartGameAndAddon(new Launcher.LoginResult
-            {
-                OauthLogin = new Launcher.OauthLoginResult
+            _ = Model.StartGameAndAddon
+            (
+                new Launcher.LoginResult
                 {
-                    MaxExpansion = 5,
-                    Playable = true,
-                    Region = 0,
-                    SessionId = "0",
-                    TermsAccepted = true,
-                    SndaId = "114514",
+                    OauthLogin = new Launcher.OauthLoginResult
+                    {
+                        MaxExpansion  = 5,
+                        Playable      = true,
+                        Region        = 0,
+                        SessionId     = "0",
+                        TermsAccepted = true,
+                        SndaId        = "114514",
+                    },
+                    State    = Launcher.LoginState.Ok,
+                    UniqueId = "0"
                 },
-                State = Launcher.LoginState.Ok,
-                UniqueId = "0"
-            }, false, false, false, false).ConfigureAwait(false);
+                false,
+                false,
+                false
+            ).ConfigureAwait(false);
         }
 
         private void LoginPassword_OnPasswordChanged(object sender, RoutedEventArgs e)

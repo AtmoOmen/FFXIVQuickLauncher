@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -650,7 +651,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         serect = null;
 
         //return;
-        if (await TryProcessLoginResult(loginResult, false, action).ConfigureAwait(false))
+        if (await TryProcessLoginResult(loginResult, action).ConfigureAwait(false))
         {
             if (App.Settings.ExitLauncherAfterGameExit ?? true)
                 Environment.Exit(0);
@@ -1056,7 +1057,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<bool> TryProcessLoginResult(Launcher.LoginResult loginResult, bool isSteam, AfterLoginAction action)
+    private async Task<bool> TryProcessLoginResult(Launcher.LoginResult loginResult, AfterLoginAction action)
     {
         if (loginResult.State == Launcher.LoginState.NoService)
         {
@@ -1252,7 +1253,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 using var process = await StartGameAndAddon
                                     (
                                         loginResult,
-                                        isSteam,
                                         action == AfterLoginAction.StartWithoutDalamud || Updates.HaveFeatureFlag(Updates.LeaseFeatureFlags.GlobalDisableDalamud),
                                         action == AfterLoginAction.StartWithoutThird,
                                         action == AfterLoginAction.StartWithoutPlugins
@@ -1261,7 +1261,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 if (process == null)
                     return false;
 
-                if (process.ExitCode != 0 && (App.Settings.TreatNonZeroExitCodeAsFailure ?? false))
+                // 正常退出 / 重启
+                if (process.ExitCode is not (0 or 0x12345678) && (App.Settings.TreatNonZeroExitCodeAsFailure ?? false))
                 {
                     switch (new CustomMessageBox.Builder()
                             .WithTextFormatted
@@ -2107,7 +2108,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         return true;
     }
 
-    public async Task<Process> StartGameAndAddon(Launcher.LoginResult loginResult, bool isSteam, bool forceNoDalamud, bool noThird, bool noPlugins)
+    public async Task<Process> StartGameAndAddon(Launcher.LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
     {
         var stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -2187,10 +2188,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     "Could not download necessary data files to use Dalamud and plugins.\nThis could be a problem with your internet connection, or might be caused by your antivirus application blocking necessary files. The game will start, but you will not be able to use plugins.\n\nPlease check our FAQ for more information."
                 );
 
-                if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
-                    ensurementErrorMessage = "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}.\n你的IP可能被WAF封禁, 请前往频道进行上报." + Environment.NewLine + ensurementErrorMessage;
-                else
-                    ensurementErrorMessage = "错误: " + ex.Message + Environment.NewLine + ensurementErrorMessage;
+                ensurementErrorMessage = "错误: " + ex.Message + Environment.NewLine + ensurementErrorMessage;
 
                 CustomMessageBox.Builder
                                 .NewFrom(ensurementErrorMessage)
@@ -2269,9 +2267,18 @@ public class MainWindowViewModel : INotifyPropertyChanged
             addonMgr.StopAddons();
         }
 
-        Log.Debug("Waiting for game to exit");
-        await Task.Run(() => launched.WaitForExit()).ConfigureAwait(false);
-        Log.Verbose("Game has exited");
+        Log.Debug("等待游戏进程退出");
+
+        if (dalamudOk)
+        {
+            await MonitorGameProcess(launched, loginResult, forceNoDalamud, noThird, noPlugins);
+        }
+        else
+        {
+            await Task.Run(() => launched.WaitForExit()).ConfigureAwait(false);
+        }
+
+        Log.Verbose("游戏进程已退出");
 
         if (addonMgr.IsRunning)
             addonMgr.StopAddons();
@@ -2894,6 +2901,143 @@ public class MainWindowViewModel : INotifyPropertyChanged
     #endregion
 
     public event PropertyChangedEventHandler PropertyChanged;
+
+    private async Task MonitorGameProcess(Process process, Launcher.LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
+    {
+        var processName = process.ProcessName;
+
+        while (true)
+        {
+            var processHandle = IntPtr.Zero;
+            try
+            {
+                // PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                var currentProcess = Process.GetCurrentProcess();
+                if (!DuplicateHandle(currentProcess.Handle, process.Handle, currentProcess.Handle, out processHandle, 0, false, 2)) // DUPLICATE_SAME_ACCESS = 2
+                {
+                    Log.Error($"DuplicateHandle failed: {Marshal.GetLastWin32Error()}");
+                    processHandle = process.Handle;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to duplicate process handle");
+            }
+
+            await Task.Run(process.WaitForExit);
+
+            int exitCode;
+            try
+            {
+                exitCode = process.ExitCode;
+            }
+            catch (InvalidOperationException)
+            {
+                if (processHandle != IntPtr.Zero && GetExitCodeProcess(processHandle, out var nativeExitCode))
+                {
+                    exitCode = (int)nativeExitCode;
+                }
+                else
+                {
+                    Log.Error($"无法获取进程退出码: {Marshal.GetLastWin32Error()}");
+                    if (processHandle != IntPtr.Zero && processHandle != process.Handle)
+                        CloseHandle(processHandle);
+                    break;
+                }
+            }
+            finally
+            {
+                // 无论如何，清理我们复制的句柄
+                if (processHandle != IntPtr.Zero && processHandle != process.Handle)
+                {
+                    CloseHandle(processHandle);
+                }
+            }
+
+            if (exitCode != 0x12345678)
+            {
+                Log.Information($"游戏进程正常退出, 退出码: 0x{exitCode:X}");
+                break;
+            }
+
+            Log.Information($"游戏进程请求重启并退出, 退出码: 0x{exitCode:X}, 等待重启后进程");
+
+            var searchStartTime = DateTime.Now.AddSeconds(-30);
+
+            // 搜索新进程
+            var newProcess = await FindNewGameProcess(processName, searchStartTime);
+
+            if (newProcess == null)
+            {
+                Log.Error("无法找到重启后游戏进程");
+                break;
+            }
+
+            Log.Information($"找到重启后游戏进程 {newProcess.Id}，正在终止并重新启动以进行注入...");
+            
+            try 
+            {
+                newProcess.Kill();
+                await Task.Run(() => newProcess.WaitForExit());
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "无法终止重启后的游戏进程");
+                break;
+            }
+
+            Log.Information("正在重新启动游戏...");
+            
+            // 重新调用启动逻辑
+            // 注意：这里需要递归调用或重新触发启动流程
+            // 由于 StartGameAndAddon 是 Task<Process>，我们不能直接在这里await它来替换当前任务，
+            // 但我们可以调用它来启动新游戏，并更新我们监控的进程对象。
+            
+            var restartedProcess = await StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins);
+            
+            if (restartedProcess == null)
+            {
+                Log.Error("重启游戏失败");
+                break;
+            }
+
+            break; 
+        }
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DuplicateHandle(IntPtr hSourceProcessHandle, IntPtr hSourceHandle, IntPtr hTargetProcessHandle, out IntPtr lpTargetHandle, uint dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, uint dwOptions);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr hObject);
+
+    private async Task<Process> FindNewGameProcess(string processName, DateTime afterTime)
+    {
+        for (var i = 0; i < 60; i++)
+        {
+            await Task.Delay(1000);
+            var processes = Process.GetProcessesByName(processName);
+            foreach (var p in processes)
+            {
+                try
+                {
+                    if (p.StartTime > afterTime)
+                        return p;
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+        }
+        return null;
+    }
 
     private void OnPropertyChanged(string propertyName)
     {
