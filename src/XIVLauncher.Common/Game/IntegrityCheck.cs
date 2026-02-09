@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Serilog;
 
 namespace XIVLauncher.Common.Game;
 
 public static class IntegrityCheck
 {
     public const string INTEGRITY_CHECK_BASE_URL = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/integrity/";
+    
+    private static readonly JsonSerializerOptions DefaultOption = new() { WriteIndented = true };
 
     public class IntegrityCheckResult
     {
@@ -33,7 +35,9 @@ public static class IntegrityCheck
         ReferenceNotFound,
         ReferenceFetchFailure
     }
-    
+
+    private static readonly HttpClient HttpClient = new();
+
     public static async Task<string> GenerateIntegrityAsync(IProgress<IntegrityCheckProgress> progress, DirectoryInfo gamePath)
     {
         var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress).ConfigureAwait(false);
@@ -47,17 +51,20 @@ public static class IntegrityCheck
     {
         IntegrityCheckResult remoteIntegrity;
 
-        try { remoteIntegrity = DownloadIntegrityCheckForVersion(Repository.Ffxiv.GetVer(gamePath)); }
-        catch (WebException e)
+        try
         {
-            if (e.Response is HttpWebResponse resp && resp.StatusCode == HttpStatusCode.NotFound)
+            remoteIntegrity = DownloadIntegrityCheckForVersion(Repository.Ffxiv.GetVer(gamePath));
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode == HttpStatusCode.NotFound)
                 return (CompareResult.ReferenceNotFound, null, null);
             return (CompareResult.ReferenceFetchFailure, null, null);
         }
-        
+
         var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex).ConfigureAwait(false);
 
-        var report = "";
+        var report = string.Empty;
         var failed = false;
 
         foreach (var hashEntry in remoteIntegrity.Hashes)
@@ -82,24 +89,30 @@ public static class IntegrityCheck
 
     public static IntegrityCheckResult DownloadIntegrityCheckForVersion(string gameVersion)
     {
-        using (var client = new WebClient())
-        {
-            client.Headers.Add("X-Machine-Token", SdoUtils.GetDeviceId());
+        using var request = new HttpRequestMessage(HttpMethod.Get, INTEGRITY_CHECK_BASE_URL + gameVersion + ".json");
+        request.Headers.Add("X-Machine-Token", SdoUtils.GetDeviceID());
 
-            return JsonSerializer.Deserialize<IntegrityCheckResult>(
-                client.DownloadString(INTEGRITY_CHECK_BASE_URL + gameVersion + ".json"));
-        }
+        using var response = HttpClient.Send(request);
+        response.EnsureSuccessStatusCode();
+
+        var json = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+        return JsonSerializer.Deserialize<IntegrityCheckResult>(json);
     }
 
-    public static async Task<IntegrityCheckResult> RunIntegrityCheckAsync(
+#pragma warning disable CS1998
+    public static async Task<IntegrityCheckResult> RunIntegrityCheckAsync
+#pragma warning restore CS1998
+    (
         DirectoryInfo                     gamePath,
-        IProgress<IntegrityCheckProgress> progress, bool onlyIndex = false)
+        IProgress<IntegrityCheckProgress> progress,
+        bool                              onlyIndex = false
+    )
     {
         var hashes = new Dictionary<string, string>();
 
-        using (var sha1 = SHA1.Create()) 
+        using (var sha1 = SHA1.Create())
             CheckDirectory(gamePath, sha1, gamePath.FullName, ref hashes, progress, onlyIndex);
-        
+
         return new IntegrityCheckResult
         {
             GameVersion = Repository.Ffxiv.GetVer(gamePath),
@@ -107,18 +120,24 @@ public static class IntegrityCheck
         };
     }
 
-    private static void CheckDirectory(
-        DirectoryInfo                  directory, SHA1                              sha1,     string rootDirectory,
-        ref Dictionary<string, string> results,   IProgress<IntegrityCheckProgress> progress, bool   onlyIndex = false)
+    private static void CheckDirectory
+    (
+        DirectoryInfo                     directory,
+        SHA1                              sha1,
+        string                            rootDirectory,
+        ref Dictionary<string, string>    results,
+        IProgress<IntegrityCheckProgress> progress,
+        bool                              onlyIndex = false
+    )
     {
         foreach (var file in directory.GetFiles())
         {
-            var relativePath = file.FullName.Substring(rootDirectory.Length);
+            var relativePath = file.FullName[rootDirectory.Length..];
 
             // for unix compatibility with windows-generated integrity files.
             relativePath = relativePath.Replace("/", "\\");
 
-            if (!relativePath.StartsWith(@"\", StringComparison.Ordinal))
+            if (!relativePath.StartsWith('\\'))
                 relativePath = "\\" + relativePath;
 
             if (!relativePath.StartsWith(@"\game", StringComparison.Ordinal))
@@ -138,11 +157,14 @@ public static class IntegrityCheck
                 var hash = sha1.ComputeHash(stream);
 
                 results.Add(relativePath, BitConverter.ToString(hash).Replace('-', ' '));
-                
-                progress?.Report(new IntegrityCheckProgress
-                {
-                    CurrentFile = relativePath
-                });
+
+                progress?.Report
+                (
+                    new IntegrityCheckProgress
+                    {
+                        CurrentFile = relativePath
+                    }
+                );
             }
             catch (IOException)
             {
@@ -152,7 +174,8 @@ public static class IntegrityCheck
 
         foreach (var dir in directory.GetDirectories())
         {
-            if (!dir.FullName.ToLower().Contains("shade")) //skip gshade directories. They just waste cpu
+            // skip gshade directories. They just waste cpu
+            if (!dir.FullName.Contains("shade", StringComparison.CurrentCultureIgnoreCase))
                 CheckDirectory(dir, sha1, rootDirectory, ref results, progress, onlyIndex);
         }
     }
@@ -163,19 +186,19 @@ public static class IntegrityCheck
         {
             result.Hashes,
             result.GameVersion,
-            LastGameVersion = string.Empty,
+            LastGameVersion = string.Empty
         };
 
-        var json     = JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = true });
+        var json     = JsonSerializer.Serialize(jsonObject, DefaultOption);
         var fileName = $"{result.GameVersion}.json";
-        
+
         var directoryName = Path.Combine(Paths.RoamingPath, "gameHashes");
         if (!Directory.Exists(directoryName))
             Directory.CreateDirectory(directoryName);
 
         var filePath = Path.Combine(directoryName, fileName);
         File.WriteAllText(filePath, json);
-        
+
         savedPath = filePath;
     }
 }

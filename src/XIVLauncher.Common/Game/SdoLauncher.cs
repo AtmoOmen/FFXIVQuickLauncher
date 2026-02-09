@@ -930,7 +930,7 @@ namespace XIVLauncher.Common.Game
                 "endpointOS=1",
                 "version=21",
                 "customSecurityLevel=2",
-                $"deviceId={SdoUtils.GetDeviceId()}",
+                $"deviceId={SdoUtils.GetDeviceID()}",
                 "thirdLoginExtern=0",
                 $"macId={mac}",
                 // 不知道什么时候盛趣加了点新的参数
