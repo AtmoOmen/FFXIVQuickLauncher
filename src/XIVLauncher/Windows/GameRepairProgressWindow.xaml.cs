@@ -1,7 +1,10 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Timers;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using XIVLauncher.Common.Game.Patch;
 using XIVLauncher.Common.Util;
@@ -16,6 +19,10 @@ namespace XIVLauncher.Windows
     public partial class GameRepairProgressWindow : Window
     {
         private readonly PatchVerifier _verify;
+        private readonly ProgressBar[] _installProgressBars;
+        private readonly TextBlock[] _installInfoTextBlocks;
+        private readonly Dictionary<int, int> _installSlotBySourceIndex = new();
+        private readonly List<int> _installSourceIndicesInOrder = new();
 
         private readonly Timer _timer;
 
@@ -26,6 +33,9 @@ namespace XIVLauncher.Windows
             InitializeComponent();
 
             _verify = verify;
+            _installProgressBars = new[] { Progress, Progress1, Progress2, Progress3, Progress4, Progress5, Progress6, Progress7 };
+            _installInfoTextBlocks = new[] { InfoTextBlock, InfoTextBlock1, InfoTextBlock2, InfoTextBlock3, InfoTextBlock4, InfoTextBlock5, InfoTextBlock6, InfoTextBlock7 };
+            SetInstallItemsVisible(0);
 
             this.DataContext = new GameRepairProgressWindowViewModel();
 
@@ -84,6 +94,7 @@ namespace XIVLauncher.Windows
                     SpeedTextBlock.Text = string.Format(ViewModel.SpeedUnitPerSecLoc, ApiHelpers.BytesToString(_verify.Speed));
                     EstimatedTimeTextBlock.Text = ViewModel.FormatEstimatedTime(_verify.Total - _verify.Progress, _verify.Speed);
                     this.Progress.Value = _verify.Total != 0 ? 100.0 * _verify.Progress / _verify.Total : 0;
+                    SetInstallItemsVisible(1);
                     break;
 
                 case PatchVerifier.VerifyState.VerifyAndRepair:
@@ -112,8 +123,16 @@ namespace XIVLauncher.Windows
                         Common.Patching.IndexedZiPatch.IndexedZiPatchInstaller.InstallTaskState.Finishing => "",
                         _ => ViewModel.FormatEstimatedTime(_verify.Total - _verify.Progress, _verify.Speed),
                     };
+                    if (!_verify.IsDownloading)
+                    {
+                        this.Progress.Value = _verify.Total != 0 ? 100.0 * _verify.Progress / _verify.Total : 0;
+                    }
+                    else
+                    {
+                        UpdateInstallProgressDisplay();
+                    }
 
-                    this.Progress.Value = _verify.Total != 0 ? 100.0 * _verify.Progress / _verify.Total : 0;
+
                     break;
 
                 default:
@@ -123,7 +142,67 @@ namespace XIVLauncher.Windows
                     SpeedTextBlock.Text = "";
                     EstimatedTimeTextBlock.Text = "";
                     this.Progress.Value = _verify.State == PatchVerifier.VerifyState.Done ? this.Progress.Maximum : 0;
+                    SetInstallItemsVisible(1);
                     break;
+            }
+        }
+
+        private void UpdateInstallProgressDisplay()
+        {
+            var entries = _verify.GetCurrentInstallProgressEntries();
+            var desiredVisibleCount = Math.Min(_verify.CurrentInstallBrokenFileCount, _installProgressBars.Length);
+            if (entries.Count == 0 || desiredVisibleCount <= 0)
+            {
+                _installSlotBySourceIndex.Clear();
+                _installSourceIndicesInOrder.Clear();
+                SetInstallItemsVisible(0);
+                return;
+            }
+
+            foreach (var sourceIndex in _installSourceIndicesInOrder.Where(x => !entries.ContainsKey(x)).ToList())
+            {
+                _installSlotBySourceIndex.Remove(sourceIndex);
+                _installSourceIndicesInOrder.Remove(sourceIndex);
+            }
+
+            foreach (var sourceIndex in entries.Keys.OrderBy(x => x))
+            {
+                if (_installSlotBySourceIndex.ContainsKey(sourceIndex))
+                    continue;
+
+                if (_installSourceIndicesInOrder.Count >= _installProgressBars.Length)
+                    break;
+
+                _installSourceIndicesInOrder.Add(sourceIndex);
+                _installSlotBySourceIndex[sourceIndex] = _installSourceIndicesInOrder.Count - 1;
+            }
+
+            SetInstallItemsVisible(Math.Min(desiredVisibleCount, _installSourceIndicesInOrder.Count));
+            foreach (var pair in _installSlotBySourceIndex)
+            {
+                if (!entries.TryGetValue(pair.Key, out var entry))
+                    continue;
+
+                if (pair.Value >= desiredVisibleCount)
+                    continue;
+
+                _installInfoTextBlocks[pair.Value].Text = entry.FilePath;
+                _installProgressBars[pair.Value].Value = entry.Total > 0 ? 100.0 * entry.Progress / entry.Total : 0;
+            }
+        }
+
+        private void SetInstallItemsVisible(int visibleCount)
+        {
+            for (var i = 0; i < _installProgressBars.Length; i++)
+            {
+                var visibility = i < visibleCount ? Visibility.Visible : Visibility.Collapsed;
+                _installProgressBars[i].Visibility = visibility;
+                _installInfoTextBlocks[i].Visibility = visibility;
+                if (visibility == Visibility.Collapsed)
+                {
+                    _installProgressBars[i].Value = 0;
+                    _installInfoTextBlocks[i].Text = string.Empty;
+                }
             }
         }
 

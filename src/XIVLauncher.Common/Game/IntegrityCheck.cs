@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using XIVLauncher.Common.Util;
 
@@ -19,8 +20,12 @@ namespace XIVLauncher.Common.Game
         public class IntegrityCheckResult
         {
             public Dictionary<string, string> Hashes { get; set; }
+            public Dictionary<string, ulong> Sizes { get; set; }
             public string GameVersion { get; set; }
             public string LastGameVersion { get; set; }
+            public string BaseUrl { get; set; }
+            public string DataVersion { get; set; }
+            public string AppId { get; set; }
         }
 
         public class IntegrityCheckProgress
@@ -65,11 +70,20 @@ namespace XIVLauncher.Common.Game
             {
                 if (onlyIndex && (!hashEntry.Key.EndsWith(".index", StringComparison.Ordinal) && !hashEntry.Key.EndsWith(".index2", StringComparison.Ordinal)))
                     continue;
-                if (hashEntry.Key == "\\game\\LocalVersion3.xml")
-                    continue;
-                if (localIntegrity.Hashes.Any(h => h.Key == hashEntry.Key))
+                if (localIntegrity.Hashes.TryGetValue(hashEntry.Key, out var localHash))
                 {
-                    if (localIntegrity.Hashes.First(h => h.Key == hashEntry.Key).Value != hashEntry.Value)
+                    if (remoteIntegrity.Sizes is not null &&
+                        localIntegrity.Sizes is not null &&
+                        remoteIntegrity.Sizes.TryGetValue(hashEntry.Key, out var remoteSize) &&
+                        localIntegrity.Sizes.TryGetValue(hashEntry.Key, out var localSize) &&
+                        localSize != remoteSize)
+                    {
+                        report += $"Size mismatch: {hashEntry.Key}\n";
+                        failed = true;
+                        continue;
+                    }
+
+                    if (localHash != hashEntry.Value)
                     {
                         report += $"Mismatch: {hashEntry.Key}\n";
                         failed = true;
@@ -110,6 +124,14 @@ namespace XIVLauncher.Common.Game
             }
         }
 
+        public static async Task<string> GetFileMd5Hash(string filePath, CancellationToken cancellationToken = default)
+        {
+            await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var md5 = MD5.Create();
+            var hash = await md5.ComputeHashAsync(stream, cancellationToken);
+            return Convert.ToHexString(hash);
+        }
+
         public static async Task<IntegrityCheckResult> DownloadIntegrityCheckForVersion()
         {
             using (var client = new HttpClient())
@@ -122,17 +144,27 @@ namespace XIVLauncher.Common.Game
                 var integrityLines = reponseText.Trim().Split();
                 var result = new IntegrityCheckResult();
                 result.Hashes = new Dictionary<string, string>();
-                var dataVersion = integrityLines[0].Split('|')[2];
+                result.Sizes = new Dictionary<string, ulong>();
+                var lineParts = integrityLines[0].Split('|');
+                var dataVersion = lineParts[2];
+                result.DataVersion = dataVersion;
+                result.AppId = lineParts[1];
+                result.BaseUrl = lineParts[0];
                 var versionMapping = await GetVersionMapping();
                 var gameVersion = versionMapping.FirstOrDefault(x => x.Value.V == dataVersion);
                 result.GameVersion = gameVersion.Key;
                 for (int i = 1; i < integrityLines.Length; i++)
                 {
-                    var filePath = integrityLines[i].Split('|')[0];
+                    lineParts = integrityLines[i].Split('|');
+                    var filePath = lineParts[0];
                     if (!filePath.StartsWith("\\"))
                         filePath = "\\" + filePath;
-                    var md5 = integrityLines[i].Split('|')[2];
+                    if (!filePath.StartsWith("\\game\\"))
+                        continue;
+                    var size = ulong.Parse(lineParts[1]);
+                    var md5 = lineParts[2];
                     result.Hashes.Add(filePath, md5);
+                    result.Sizes.Add(filePath, size);
                 }
                 return result;
             }
@@ -143,16 +175,17 @@ namespace XIVLauncher.Common.Game
         {
             //var hashes = new Dictionary<string, string>();
 
-            var hashes = CheckDirectory(gamePath, gamePath.FullName, progress, onlyIndex);
+            var files = CheckDirectory(gamePath, gamePath.FullName, progress, onlyIndex);
 
             return new IntegrityCheckResult
             {
                 GameVersion = Repository.Ffxiv.GetVer(gamePath),
-                Hashes = hashes.ToDictionary()
+                Hashes = files.ToDictionary(x => x.Key, x => x.Value.Hash),
+                Sizes = files.ToDictionary(x => x.Key, x => x.Value.Size)
             };
         }
 
-        private static ConcurrentDictionary<string, string> CheckDirectory(
+        private static ConcurrentDictionary<string, (string Hash, ulong Size)> CheckDirectory(
             DirectoryInfo directory,
             string rootDirectory,
             IProgress<IntegrityCheckProgress> progress,
@@ -161,11 +194,10 @@ namespace XIVLauncher.Common.Game
             var filesToProcess = new List<FileInfo>();
             CollectFiles(directory, rootDirectory, onlyIndex, filesToProcess);
 
-            var results = new ConcurrentDictionary<string, string>();
+            var results = new ConcurrentDictionary<string, (string Hash, ulong Size)>();
             var options = new ParallelOptions
             {
-                // 占用一半CPU，至少1个线程，避免占满CPU导致系统卡顿
-                MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount / 2, 1)
+                MaxDegreeOfParallelism = Math.Min(Math.Max(Environment.ProcessorCount - 2, 1), 32)
             };
 
             Parallel.ForEach(filesToProcess, options, file =>
@@ -182,7 +214,7 @@ namespace XIVLauncher.Common.Game
                     var hash = md5.ComputeHash(stream);
                     var hashString = BitConverter.ToString(hash).Replace("-", string.Empty);
 
-                    results.TryAdd(relativePath, hashString);
+                    results.TryAdd(relativePath, (hashString, (ulong)file.Length));
 
                     // UI只有一个显示文件的位置，先不改，反正看着UI在动就行，省的以为卡住了
                     progress?.Report(new IntegrityCheckProgress

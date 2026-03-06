@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.CommandLine;
 using System.Threading.Tasks;
 using Serilog;
@@ -28,6 +28,7 @@ public static class Program
         rc.AddCommand(IndexRpcCommand.Command);
         rc.AddCommand(IndexRpcTestCommand.Command);
         rc.AddCommand(RpcCommand.Command);
+        rc.AddCommand(SdoRpcCommand.Command);
 
         var ret = -1;
 

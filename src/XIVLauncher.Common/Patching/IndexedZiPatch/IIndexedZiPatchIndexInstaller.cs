@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace XIVLauncher.Common.Patching.IndexedZiPatch;
 
 /// <summary>Common functions for ZiPatch index installers.</summary>
-public interface IIndexedZiPatchIndexInstaller : IDisposable
+public interface IIndexedZiPatchIndexInstaller : IDisposable,IInstaller
 {
     /// <summary>Invoked whenever install progress changes, with rate throttling specified from <see cref="ConstructFromPatchFile"/>.</summary>
     event IndexedZiPatchInstaller.OnInstallProgressDelegate? OnInstallProgress;

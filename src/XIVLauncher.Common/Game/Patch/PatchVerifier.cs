@@ -13,7 +13,9 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Game.Exceptions;
+using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
+using XIVLauncher.Common.Patching.SdoFileDownload;
 using XIVLauncher.Common.Patching.Util;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
@@ -44,7 +46,7 @@ namespace XIVLauncher.Common.Game.Patch
 
             //  shits of Shanda V3 launcher.
             new Regex(@"^Launcher3Configs/.*$", RegexOptions.IgnoreCase),
-            
+
             new Regex(@"^LocalVersion3\.xml$", RegexOptions.IgnoreCase),
 
             // Repair recycle bin folder.
@@ -54,6 +56,7 @@ namespace XIVLauncher.Common.Game.Patch
         private readonly ISettings _settings;
         private readonly int _maxExpansionToCheck;
         private readonly bool _external;
+        //private readonly bool _useSdoVerifierV3;
         private HttpClient _client;
         private CancellationTokenSource _cancellationTokenSource = new();
 
@@ -62,6 +65,8 @@ namespace XIVLauncher.Common.Game.Patch
 
         private Task _verificationTask;
         private List<Tuple<long, long>> _reportedProgresses = new();
+        private readonly object _installProgressLock = new();
+        private readonly Dictionary<int, InstallProgressEntry> _currentInstallProgressBySourceIndex = new();
 
         public TimeSpan ProgressUpdateInterval { get; private set; }
         public int NumBrokenFiles { get; private set; } = 0;
@@ -77,6 +82,8 @@ namespace XIVLauncher.Common.Game.Patch
         public string CurrentFile { get; private set; }
         public long Speed { get; private set; }
         public Exception LastException { get; private set; }
+        public int CurrentInstallBrokenFileCount { get; private set; }
+        public bool IsDownloading { get; private set; } = false;
 
         private const string BASE_URL = ServerAddress.S3Address + "/xlassets/patchinfo/";
 
@@ -94,6 +101,20 @@ namespace XIVLauncher.Common.Game.Patch
         {
             public FileInfo FileInfo;
             public Uri Uri;
+        }
+
+        public readonly struct InstallProgressEntry
+        {
+            public InstallProgressEntry(string filePath, long progress, long total)
+            {
+                FilePath = filePath;
+                Progress = progress;
+                Total = total;
+            }
+
+            public string FilePath { get; }
+            public long Progress { get; }
+            public long Total { get; }
         }
 
         private class VerifyVersions
@@ -143,6 +164,14 @@ namespace XIVLauncher.Common.Game.Patch
 
         public VerifyState State { get; private set; } = VerifyState.NotStarted;
 
+        public Dictionary<int, InstallProgressEntry> GetCurrentInstallProgressEntries()
+        {
+            lock (_installProgressLock)
+            {
+                return _currentInstallProgressBySourceIndex.ToDictionary(x => x.Key, x => x.Value);
+            }
+        }
+
         public PatchVerifier(ISettings settings, Launcher.LoginResult loginResult, TimeSpan progressUpdateInterval, int maxExpansion, bool external = true)
         {
             this._settings = settings;
@@ -150,6 +179,7 @@ namespace XIVLauncher.Common.Game.Patch
             ProgressUpdateInterval = progressUpdateInterval;
             _maxExpansionToCheck = maxExpansion;
             _external = external;
+            //_useSdoVerifierV3 = loginResult.OauthLogin?.LoginType is LoginType.SdoStatic or LoginType.SdoSlide or LoginType.SdoQrCode or LoginType.WeGameToken or LoginType.WeGameSid or LoginType.AutoLoginSession;
 
             SetLoginState(loginResult);
         }
@@ -172,6 +202,8 @@ namespace XIVLauncher.Common.Game.Patch
             Speed = 0;
             CurrentMetaInstallState = IndexedZiPatchInstaller.InstallTaskState.NotStarted;
             LastException = null;
+            CurrentInstallBrokenFileCount = 0;
+            ResetInstallProgressDisplay();
 
             _verificationTask = Task.Run(this.RunVerifier, _cancellationTokenSource.Token);
         }
@@ -238,7 +270,7 @@ namespace XIVLauncher.Common.Game.Patch
                 Speed = (_reportedProgresses.Last().Item2 - _reportedProgresses.First().Item2) * 10 * 1000 * 1000 / elapsedMs;
         }
 
-        public async Task MoveUnnecessaryFiles(IIndexedZiPatchIndexInstaller installer, string gamePath, HashSet<string> targetRelativePaths)
+        public async Task MoveUnnecessaryFiles(IInstaller installer, string gamePath, HashSet<string> targetRelativePaths)
         {
             this.MovedFileToDir = Path.Combine(gamePath, REPAIR_RECYCLER_DIRECTORY, DateTime.Now.ToString("yyyyMMdd_HHmmss"));
 
@@ -278,11 +310,11 @@ namespace XIVLauncher.Common.Game.Patch
                         continue;
 
                     var relativePath = subdir.FullName.Substring(gamePath.Length + 1).Replace('\\', '/') + "/";
-                    
+
                     if (GameIgnoreUnnecessaryFilePatterns.Any(x => x.IsMatch(relativePath)))
                         continue;
 
-                    if (!targetRelativePaths.Any(x => x.Replace('\\', '/').ToLowerInvariant().StartsWith(relativePath.ToLowerInvariant())))
+                    if (!targetRelativePaths.Any(x => x.TrimStart('\\').Replace('\\', '/').ToLowerInvariant().StartsWith(relativePath.ToLowerInvariant())))
                     {
                         await installer.MoveFile(subdir.FullName, Path.Combine(this.MovedFileToDir, relativePath));
                         MovedFiles.Add(relativePath);
@@ -312,7 +344,218 @@ namespace XIVLauncher.Common.Game.Patch
             }
         }
 
+        private static string NormalizeSdoTargetRelativePath(string path)
+        {
+            var normalized = path.TrimStart('\\').Replace('\\',Path.DirectorySeparatorChar).Substring("\\game\\".Length-1);
+            return normalized;
+        }
+
         private async Task RunVerifier()
+        {
+            State = VerifyState.NotStarted;
+            LastException = null;
+            ISdoFileDownloadInstaller sdoFileInstaller = null;
+
+            try
+            {
+                var assemblyLocation = AppContext.BaseDirectory;
+                if (_external)
+                    sdoFileInstaller = new SdoFileDownloadRemoteInstaller(Path.Combine(assemblyLocation!, "XIVLauncher.PatchInstaller.exe"), AdminAccessRequired(_settings.GamePath.FullName));
+                else
+                    sdoFileInstaller = new SdoFileDownloadLocalInstaller();
+
+                while (!_cancellationTokenSource.IsCancellationRequested && State != VerifyState.Done)
+                {
+                    switch (State)
+                    {
+                        case VerifyState.NotStarted:
+                            State = VerifyState.DownloadMeta;
+                            break;
+
+                        case VerifyState.DownloadMeta:
+                            CurrentFile = "client_all_files_list.dat";
+                            Progress = Total = 0;
+                            _reportedProgresses.Clear();
+                            State = VerifyState.VerifyAndRepair;
+                            break;
+
+                        case VerifyState.VerifyAndRepair:
+                            {
+                                const int REATTEMPT_COUNT = 5;
+                                const int MAX_CONCURRENT_CONNECTIONS_FOR_PATCH_SET = 8;
+
+                                List<string> targetRelativePaths = new();
+                                List<bool> fileBroken = new();
+                                var repaired = false;
+
+                                void UpdateVerifyProgress(int targetIndex, int count, long progress, long max)
+                                {
+                                    if (targetRelativePaths.Count <= 0)
+                                        return;
+
+                                    CurrentFile = targetRelativePaths[Math.Min(targetIndex, targetRelativePaths.Count - 1)];
+                                    TaskIndex = count;
+                                    Progress = Math.Min(progress, max);
+                                    Total = max;
+                                    RecordProgressForEstimation();
+                                }
+
+                                var installProgressTaskIndex = 0;
+                                void UpdateInstallProgress(int sourceIndex, long progress, long max, SdoFileDownloadInstaller.InstallTaskState state)
+                                {
+                                    if (targetRelativePaths.Count <= 0)
+                                        return;
+
+                                    CurrentFile = targetRelativePaths[Math.Min(sourceIndex, targetRelativePaths.Count - 1)];
+                                    if (state == SdoFileDownloadInstaller.InstallTaskState.Complete)
+                                        TaskIndex = Interlocked.Increment(ref installProgressTaskIndex);
+                                    Progress = Math.Min(progress, max);
+                                    Total = max;
+                                    CurrentMetaInstallState = state switch
+                                    {
+                                        SdoFileDownloadInstaller.InstallTaskState.Connecting => IndexedZiPatchInstaller.InstallTaskState.Connecting,
+                                        SdoFileDownloadInstaller.InstallTaskState.Downloading => IndexedZiPatchInstaller.InstallTaskState.Working,
+                                        SdoFileDownloadInstaller.InstallTaskState.Complete => IndexedZiPatchInstaller.InstallTaskState.Done,
+                                        _ => IndexedZiPatchInstaller.InstallTaskState.NotStarted,
+                                    };
+                                    UpdateInstallProgressEntry(sourceIndex, CurrentFile, progress, max);
+                                    RecordProgressForEstimation();
+                                }
+
+                                try
+                                {
+                                    sdoFileInstaller.OnVerifyProgress += UpdateVerifyProgress;
+                                    sdoFileInstaller.OnInstallProgress += UpdateInstallProgress;
+
+                                    var remoteIntegrity = await IntegrityCheck.DownloadIntegrityCheckForVersion().ConfigureAwait(false);
+                                    //var localVersion = Repository.Ffxiv.GetVer(_settings.GamePath);
+                                    //if (remoteIntegrity.GameVersion != localVersion)
+                                    //{
+                                    //    throw new Exception($"游戏版本不匹配，请先更新游戏。 本地版本: {localVersion}, 远程版本: {remoteIntegrity.GameVersion}");
+                                    //}
+                                    targetRelativePaths = remoteIntegrity.Hashes
+                                        .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+                                        .Select(x => NormalizeSdoTargetRelativePath(x.Key))
+                                        .ToList();
+                                    await sdoFileInstaller.ConstructFromRemoteIntegrity(remoteIntegrity, ProgressUpdateInterval).ConfigureAwait(false);
+                                    fileBroken = Enumerable.Repeat(false, targetRelativePaths.Count).ToList();
+
+                                    TaskCount = targetRelativePaths.Count;
+                                    PatchSetIndex = 0;
+                                    PatchSetCount = 1;
+                                    CurrentMetaInstallState = IndexedZiPatchInstaller.InstallTaskState.NotStarted;
+
+                                    for (var attemptIndex = 0; attemptIndex < REATTEMPT_COUNT; attemptIndex++)
+                                    {
+                                        //repaired=true;
+                                        //continue;
+                                        CurrentMetaInstallState = IndexedZiPatchInstaller.InstallTaskState.NotStarted;
+                                        Progress = Total = TaskIndex = 0;
+                                        _reportedProgresses.Clear();
+
+                                        await sdoFileInstaller.VerifyFiles(_settings.GamePath.FullName, attemptIndex > 0, Math.Min(Math.Max(Environment.ProcessorCount - 2, 1), 32), _cancellationTokenSource.Token).ConfigureAwait(false);
+
+                                        var brokenFiles = await sdoFileInstaller.GetBrokenFiles().ConfigureAwait(false);
+                                        _reportedProgresses.Clear();
+                                        TaskIndex = 0;
+                                        TaskCount = brokenFiles.Count;
+                                        if (!(repaired = !brokenFiles.Any()))
+                                        {
+                                            var brokenFileSet = new HashSet<string>(brokenFiles, StringComparer.OrdinalIgnoreCase);
+                                            CurrentInstallBrokenFileCount = brokenFileSet.Count;
+                                            ResetInstallProgressDisplay();
+
+                                            for (var brokenFileIndex = 0; brokenFileIndex < targetRelativePaths.Count; brokenFileIndex++)
+                                            {
+                                                var filePath = targetRelativePaths[brokenFileIndex];
+                                                if (!brokenFileSet.Contains($"\\game\\{filePath}"))
+                                                    continue;
+
+                                                fileBroken[brokenFileIndex] = true;
+                                                UpdateInstallProgressEntry(brokenFileIndex, filePath, 0, 0);
+                                                await sdoFileInstaller.QueueInstall(brokenFileIndex, $"\\game\\{filePath}", _cancellationTokenSource.Token).ConfigureAwait(false);
+                                            }
+
+                                            CurrentMetaInstallState = IndexedZiPatchInstaller.InstallTaskState.Connecting;
+                                            await sdoFileInstaller.Install(MAX_CONCURRENT_CONNECTIONS_FOR_PATCH_SET, _cancellationTokenSource.Token).ConfigureAwait(false);
+                                            CurrentInstallBrokenFileCount = 0;
+                                            ResetInstallProgressDisplay();
+                                            continue;
+                                        }
+
+                                        CurrentInstallBrokenFileCount = 0;
+                                        ResetInstallProgressDisplay();
+                                        break;
+                                    }
+
+                                    if (!repaired)
+                                        throw new IOException($"Failed to repair after {REATTEMPT_COUNT} attempts");
+
+                                    NumBrokenFiles += fileBroken.Count(x => x);
+                                    PatchSetIndex = PatchSetCount;
+                                }
+                                finally
+                                {
+                                    sdoFileInstaller.OnVerifyProgress -= UpdateVerifyProgress;
+                                    sdoFileInstaller.OnInstallProgress -= UpdateInstallProgress;
+                                }
+                                var gamePath = Path.Combine(_settings.GamePath.FullName, "game");
+                                await MoveUnnecessaryFiles(sdoFileInstaller, gamePath, new HashSet<string>(targetRelativePaths));
+                                State = VerifyState.Done;
+                                break;
+                            }
+
+                        case VerifyState.Done:
+                            break;
+
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex is OperationCanceledException)
+                    State = VerifyState.Cancelled;
+                else if (_cancellationTokenSource.IsCancellationRequested)
+                    State = VerifyState.Cancelled;
+                else if (ex is Win32Exception winex && (uint)winex.HResult == 0x80004005u)
+                    State = VerifyState.Cancelled;
+                else
+                {
+                    Log.Error(ex, "Unexpected error occurred in RunVerifierV3");
+                    LastException = ex;
+                    State = VerifyState.Error;
+                }
+            }
+            finally
+            {
+                CurrentInstallBrokenFileCount = 0;
+                ResetInstallProgressDisplay();
+                sdoFileInstaller?.Dispose();
+            }
+        }
+
+        private void ResetInstallProgressDisplay()
+        {
+            IsDownloading = false;
+            lock (_installProgressLock)
+            {
+                _currentInstallProgressBySourceIndex.Clear();
+            }
+        }
+
+        private void UpdateInstallProgressEntry(int sourceIndex, string filePath, long progress, long total)
+        {
+            IsDownloading = true;
+            var effectiveProgress = total > 0 ? Math.Min(progress, total) : progress;
+            lock (_installProgressLock)
+            {
+                _currentInstallProgressBySourceIndex[sourceIndex] = new InstallProgressEntry(filePath, effectiveProgress, total);
+            }
+        }
+
+        private async Task _RunVerifier()
         {
             State = VerifyState.NotStarted;
             LastException = null;
