@@ -65,7 +65,8 @@ namespace XIVLauncher.Common.Game
             {
                 if (onlyIndex && (!hashEntry.Key.EndsWith(".index", StringComparison.Ordinal) && !hashEntry.Key.EndsWith(".index2", StringComparison.Ordinal)))
                     continue;
-
+                if (hashEntry.Key == "\\game\\LocalVersion3.xml")
+                    continue;
                 if (localIntegrity.Hashes.Any(h => h.Key == hashEntry.Key))
                 {
                     if (localIntegrity.Hashes.First(h => h.Key == hashEntry.Key).Value != hashEntry.Value)
@@ -77,6 +78,7 @@ namespace XIVLauncher.Common.Game
                 else
                 {
                     report += $"Missing: {hashEntry.Key}\n";
+                    failed = true;
                 }
             }
 
@@ -162,7 +164,8 @@ namespace XIVLauncher.Common.Game
             var results = new ConcurrentDictionary<string, string>();
             var options = new ParallelOptions
             {
-                MaxDegreeOfParallelism = Environment.ProcessorCount
+                // 占用一半CPU，至少1个线程，避免占满CPU导致系统卡顿
+                MaxDegreeOfParallelism = Math.Max(Environment.ProcessorCount / 2, 1)
             };
 
             Parallel.ForEach(filesToProcess, options, file =>
