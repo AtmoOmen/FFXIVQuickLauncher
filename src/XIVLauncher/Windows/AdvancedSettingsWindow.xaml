@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
         mc:Ignorable="d"
-        Title="{Binding AdvancedSettingsTitleLoc}" SizeToContent="Height" Width="450" WindowStartupLocation="CenterScreen"
+        Title="{Binding AdvancedSettingsTitleLoc}" SizeToContent="Height" Width="450"
+        WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         Background="{DynamicResource MaterialDesignPaper}"
@@ -53,7 +54,7 @@
                       Content="允许跳过启动器更新"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
         </StackPanel>
-        
+
         <Button Content="{Binding CloseLoc}" Width="79" VerticalAlignment="Bottom"
                 HorizontalAlignment="Right" Margin="0,0,10,10" Click="CloseButton_OnClick" />
     </Grid>

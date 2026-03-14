@@ -21,96 +21,108 @@ namespace XIVLauncher.Common.Dalamud;
 
 public class DalamudUpdater
 {
-    private readonly DirectoryInfo   addonDirectory;
-    private readonly DirectoryInfo   assetDirectory;
-    private readonly IUniqueIdCache? cache;
-    private readonly string?         githubToken;
+    public DirectoryInfo Runtime { get; }
 
-    private readonly TimeSpan defaultTimeout = TimeSpan.FromMinutes(1);
-
-    private bool forceProxy;
+    public static string RuntimeVersion = string.Empty;
 
     public        DownloadState           State               { get; private set; } = DownloadState.Unknown;
     public        Exception?              EnsurementException { get; private set; }
-    public        DirectoryInfo           Runtime             { get; }
     public        FileInfo?               RunnerOverride      { get; set; }
     public        DirectoryInfo           AssetDirectory      { get; private set; }
     public        IDalamudLoadingOverlay? Overlay             { get; set; }
     public static string                  OnlineHash          { get; private set; } = string.Empty;
     public static string                  Version             { get; private set; } = string.Empty;
 
-    public static string RuntimeVersion = string.Empty;
-    
     public FileInfo Runner
     {
-        get => this.RunnerOverride ?? this.runnerInternal;
-        private set => this.runnerInternal = value;
+        get => RunnerOverride ?? runnerInternal;
+        private set => runnerInternal = value;
     }
-    private FileInfo runnerInternal;
+
+    private readonly DirectoryInfo   addonDirectory;
+    private readonly DirectoryInfo   assetDirectory;
+    private readonly IUniqueIdCache? cache;
+    private readonly string?         githubToken;
+
+    private readonly TimeSpan   defaultTimeout = TimeSpan.FromMinutes(1);
     private readonly HttpClient httpClient;
 
-    public enum DownloadState
-    {
-        Unknown,
-        Done,
-        NoIntegrity // fail with error message
-    }
+    private bool     forceProxy;
+    private FileInfo runnerInternal;
 
-    public DalamudUpdater(
-        DirectoryInfo addonDirectory, DirectoryInfo runtimeDirectory, DirectoryInfo assetDirectory, IUniqueIdCache? cache, string? githubToken)
+    public DalamudUpdater
+    (
+        DirectoryInfo   addonDirectory,
+        DirectoryInfo   runtimeDirectory,
+        DirectoryInfo   assetDirectory,
+        IUniqueIdCache? cache,
+        string?         githubToken
+    )
     {
         this.addonDirectory = addonDirectory;
-        this.Runtime        = runtimeDirectory;
+        Runtime             = runtimeDirectory;
         this.assetDirectory = assetDirectory;
         this.cache          = cache;
         this.githubToken    = githubToken;
-        this.httpClient = new HttpClient(new SocketsHttpHandler()
-        {
-            UseProxy = true,
-            ConnectTimeout = TimeSpan.FromSeconds(10),
-            MaxConnectionsPerServer = 50,
-            EnableMultipleHttp2Connections = true,
-            PooledConnectionLifetime = TimeSpan.FromMinutes(1),
-            Expect100ContinueTimeout = TimeSpan.Zero,
-            AutomaticDecompression = DecompressionMethods.All,
-            ConnectCallback = HappyEyeballsCallback.ConnectCallback
-        });
-        this.httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-        if (!string.IsNullOrWhiteSpace(this.githubToken)) 
+        httpClient = new HttpClient
+        (
+            new SocketsHttpHandler
+            {
+                UseProxy                       = true,
+                ConnectTimeout                 = TimeSpan.FromSeconds(10),
+                MaxConnectionsPerServer        = 50,
+                EnableMultipleHttp2Connections = true,
+                PooledConnectionLifetime       = TimeSpan.FromMinutes(1),
+                Expect100ContinueTimeout       = TimeSpan.Zero,
+                AutomaticDecompression         = DecompressionMethods.All,
+                ConnectCallback                = HappyEyeballsCallback.ConnectCallback
+            }
+        );
+        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+        if (!string.IsNullOrWhiteSpace(this.githubToken))
             httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
     }
 
     public void Run(bool overrideForceProxy = false)
     {
         Log.Information("[DUPDATE] 启动中... (是否强制使用代理: {ForceProxy})", overrideForceProxy);
-        this.State = DownloadState.Unknown;
+        State = DownloadState.Unknown;
 
-        this.forceProxy = overrideForceProxy;
+        forceProxy = overrideForceProxy;
 
-        Task.Run(async () =>
-        {
-            const int MAX_TRIES = 10;
-
-            var isUpdated = false;
-
-            for (var tries = 0; tries < MAX_TRIES; tries++)
+        Task.Run
+        (async () =>
             {
-                try
-                {
-                    await this.UpdateDalamud().ConfigureAwait(true);
-                    isUpdated = true;
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries, MAX_TRIES);
-                    this.EnsurementException = ex;
-                    this.forceProxy          = false;
-                }
-            }
+                const int MAX_TRIES = 10;
 
-            this.State = isUpdated ? DownloadState.Done : DownloadState.NoIntegrity;
-        });
+                var isUpdated = false;
+
+                for (var tries = 0; tries < MAX_TRIES; tries++)
+                {
+                    try
+                    {
+                        await UpdateDalamud().ConfigureAwait(true);
+                        isUpdated = true;
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries, MAX_TRIES);
+                        EnsurementException = ex;
+                        forceProxy          = false;
+                    }
+                }
+
+                State = isUpdated ? DownloadState.Done : DownloadState.NoIntegrity;
+            }
+        );
+    }
+
+    public enum DownloadState
+    {
+        Unknown,
+        Done,
+        NoIntegrity // fail with error message
     }
 
     #region Steps
@@ -120,10 +132,10 @@ public class DalamudUpdater
         try
         {
             Log.Information("[DUPDATE] 开始 Dalamud 更新进程");
-            
+
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-            await this.InitVersionInfoAsync();
+            await InitVersionInfoAsync();
             var paths = PreparePaths();
             await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath);
             await UpdateRuntimeAsync(paths.runtimePaths);
@@ -133,9 +145,9 @@ public class DalamudUpdater
             if (!CheckDalamudIntegrity(paths.currentVersionPath))
                 throw new DalamudIntegrityException("完整性验证最终失败");
 
-            this.Runner = new FileInfo(Path.Combine(paths.currentVersionPath.FullName, "Dalamud.Injector.exe"));
-            this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Starting);
-            this.ReportOverlayProgress(null, 0, null);
+            Runner = new FileInfo(Path.Combine(paths.currentVersionPath.FullName, "Dalamud.Injector.exe"));
+            SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Starting);
+            ReportOverlayProgress(null, 0, null);
 
             Log.Information($"[DUPDATE] Dalamud {Version} ({OnlineHash}) 准备完毕");
         }
@@ -160,27 +172,31 @@ public class DalamudUpdater
         await GetDalamudVersionInfoAsync();
         Log.Information("[DUPDATE] 获取到版本: {Version} ({Hash})", Version, OnlineHash);
     }
-    
+
     private (DirectoryInfo addonPath, DirectoryInfo currentVersionPath, DirectoryInfo[] runtimePaths) PreparePaths()
     {
         Log.Verbose("[DUPDATE] 开始准备路径信息");
 
-        var addonPath          = new DirectoryInfo(Path.Combine(this.addonDirectory.FullName, "Hooks"));
-        var currentVersionPath = new DirectoryInfo(Path.Combine(addonPath.FullName,           Version));
+        var addonPath          = new DirectoryInfo(Path.Combine(addonDirectory.FullName, "Hooks"));
+        var currentVersionPath = new DirectoryInfo(Path.Combine(addonPath.FullName,      Version));
 
         var runtimePaths = new DirectoryInfo[]
         {
-            new(Path.Combine(this.Runtime.FullName, "host",   "fxr",                          RuntimeVersion)),
-            new(Path.Combine(this.Runtime.FullName, "shared", "Microsoft.NETCore.App",        RuntimeVersion)),
-            new(Path.Combine(this.Runtime.FullName, "shared", "Microsoft.WindowsDesktop.App", RuntimeVersion))
+            new(Path.Combine(Runtime.FullName, "host",   "fxr",                          RuntimeVersion)),
+            new(Path.Combine(Runtime.FullName, "shared", "Microsoft.NETCore.App",        RuntimeVersion)),
+            new(Path.Combine(Runtime.FullName, "shared", "Microsoft.WindowsDesktop.App", RuntimeVersion))
         };
 
-        Log.Verbose("[DUPDATE] 路径信息: 版本路径={Path}, 运行时路径数={Count}",
-                    currentVersionPath.FullName, runtimePaths.Length);
+        Log.Verbose
+        (
+            "[DUPDATE] 路径信息: 版本路径={Path}, 运行时路径数={Count}",
+            currentVersionPath.FullName,
+            runtimePaths.Length
+        );
 
         return (addonPath, currentVersionPath, runtimePaths);
     }
-    
+
     private async Task UpdateDalamudCoreAsync(DirectoryInfo addonPath, DirectoryInfo currentVersionPath)
     {
         Log.Information("[DUPDATE] 开始检查 Dalamud 本体完整性");
@@ -192,17 +208,17 @@ public class DalamudUpdater
         }
 
         Log.Information("[DUPDATE] Dalamud 本体完整性检查未通过, 开始更新");
-        this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud);
+        SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud);
 
         try
         {
             Log.Information("[DUPDATE] 开始下载 Dalamud 本体");
-            await this.DownloadDalamud(currentVersionPath).ConfigureAwait(true);
+            await DownloadDalamud(currentVersionPath).ConfigureAwait(true);
 
             Log.Information("[DUPDATE] 清理旧版本 Dalamud 文件");
             CleanUpOld(addonPath, Version);
 
-            this.cache?.Reset();
+            cache?.Reset();
             Log.Information("[DUPDATE] Dalamud 本体更新完成");
         }
         catch (Exception ex)
@@ -211,19 +227,19 @@ public class DalamudUpdater
             throw new DalamudIntegrityException("下载 Dalamud 失败", ex);
         }
     }
-    
+
     private async Task UpdateRuntimeAsync(DirectoryInfo[] runtimePaths)
     {
         Log.Information("[DUPDATE] 开始检查 .NET 运行时 {Version} 完整性", RuntimeVersion);
 
-        if (!this.Runtime.Exists)
+        if (!Runtime.Exists)
         {
             Log.Verbose("[DUPDATE] 运行时目录不存在, 进行创建");
-            Directory.CreateDirectory(this.Runtime.FullName);
+            Directory.CreateDirectory(Runtime.FullName);
         }
 
-        var versionFile        = new FileInfo(Path.Combine(this.Runtime.FullName, "version"));
-        var localVersion       = this.GetLocalRuntimeVersion(versionFile);
+        var versionFile        = new FileInfo(Path.Combine(Runtime.FullName, "version"));
+        var localVersion       = GetLocalRuntimeVersion(versionFile);
         var runtimeNeedsUpdate = localVersion != RuntimeVersion;
 
         if (runtimePaths.All(p => p.Exists) && !runtimeNeedsUpdate)
@@ -233,12 +249,12 @@ public class DalamudUpdater
         }
 
         Log.Information("[DUPDATE] 需要更新 .NET 运行时: 本地={LocalVer}, 目标={RemoteVer}", localVersion, RuntimeVersion);
-        this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Runtime);
+        SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Runtime);
 
         try
         {
             Log.Information("[DUPDATE] 开始下载 .NET 运行时");
-            await this.DownloadRuntime(this.Runtime, RuntimeVersion).ConfigureAwait(false);
+            await DownloadRuntime(Runtime, RuntimeVersion).ConfigureAwait(false);
 
             File.WriteAllText(versionFile.FullName, RuntimeVersion);
             Log.Information("[DUPDATE] .NET 运行时更新完成");
@@ -249,19 +265,19 @@ public class DalamudUpdater
             throw new DalamudIntegrityException("无法确保运行时完整性", ex);
         }
     }
-    
+
     private async Task UpdateAssetsAsync()
     {
         Log.Information("[DUPDATE] 开始验证资源文件完整性");
-        
-        this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Assets);
-        this.ReportOverlayProgress(null, 0, null);
+
+        SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Assets);
+        ReportOverlayProgress(null, 0, null);
 
         try
         {
-            var assetResult = await AssetManager.EnsureAssets(this, this.assetDirectory).ConfigureAwait(true);
-            this.AssetDirectory = assetResult.AssetDir;
-            Log.Information("[DUPDATE] 资源文件验证完成: {Path}", this.AssetDirectory.FullName);
+            var assetResult = await AssetManager.EnsureAssets(this, assetDirectory).ConfigureAwait(true);
+            AssetDirectory = assetResult.AssetDir;
+            Log.Information("[DUPDATE] 资源文件验证完成: {Path}", AssetDirectory.FullName);
         }
         catch (Exception ex)
         {
@@ -280,15 +296,14 @@ public class DalamudUpdater
 
         try
         {
-            if (!CanRead(files.First(x => x.Name == "Dalamud.Injector.exe")) || 
-                !CanRead(files.First(x => x.Name == "Dalamud.dll"))          || 
-                !CanRead(files.First(x => x.Name == "ImGuiScene.dll")))
+            if (!CanRead(files.First(x => x.Name == "Dalamud.Injector.exe")) || !CanRead(files.First(x => x.Name == "Dalamud.dll")) || !CanRead(files.First(x => x.Name == "ImGuiScene.dll")))
             {
                 Log.Error("[DUPDATE] 无法打开核心文件");
                 return false;
             }
 
             var hashesPath = Path.Combine(addonPath.FullName, "hashes.json");
+
             if (!File.Exists(hashesPath))
             {
                 Log.Error("[DUPDATE] 无 hashes.json");
@@ -314,21 +329,25 @@ public class DalamudUpdater
             return false;
         }
     }
-    
+
     public async Task GetDalamudVersionInfoAsync()
     {
         try
         {
-            var runtimeResponse = await httpClient.GetAsync(
-                                      "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/refs/heads/master/runtimeInfo");
+            var runtimeResponse = await httpClient.GetAsync
+                                  (
+                                      "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/refs/heads/master/runtimeInfo"
+                                  );
             runtimeResponse.EnsureSuccessStatusCode();
             RuntimeVersion = await runtimeResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
             RuntimeVersion = RuntimeVersion.Trim().Trim('\n');
-            
+
             Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", RuntimeVersion);
-            
-            var response = await httpClient.GetAsync(
-                               "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json");
+
+            var response = await httpClient.GetAsync
+                           (
+                               "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json"
+                           );
             response.EnsureSuccessStatusCode();
 
             var       json    = await response.Content.ReadAsStringAsync();
@@ -338,8 +357,9 @@ public class DalamudUpdater
             if (string.IsNullOrWhiteSpace(version))
                 throw new NullReferenceException("[DUPDATE] 未能找到对应的版本信息");
             Version = version!;
-            
-            var assets  = jsonDoc.RootElement.GetProperty("assets");
+
+            var assets = jsonDoc.RootElement.GetProperty("assets");
+
             foreach (var asset in assets.EnumerateArray())
             {
                 if (asset.GetProperty("name").GetString() == "hashes.json")
@@ -358,7 +378,7 @@ public class DalamudUpdater
 
                     var hash = ComputeFileHash(downloadPath);
                     File.Delete(downloadPath);
-                    
+
                     Log.Information($"[DUPDATE] 获取到远端 Dalamud 哈希: {hash}");
                     OnlineHash = hash;
                     return;
@@ -367,9 +387,18 @@ public class DalamudUpdater
 
             throw new NullReferenceException("[DUPDATE] 未能找到对应的 hashes.json 文件");
         }
-        catch (HttpRequestException e) { throw new Exception("访问 Github API 时发生错误: " + e.Message); }
-        catch (TaskCanceledException) { throw new Exception("下载超时"); }
-        catch (OperationCanceledException) { throw new Exception("下载取消"); }
+        catch (HttpRequestException e)
+        {
+            throw new Exception("访问 Github API 时发生错误: " + e.Message);
+        }
+        catch (TaskCanceledException)
+        {
+            throw new Exception("下载超时");
+        }
+        catch (OperationCanceledException)
+        {
+            throw new Exception("下载取消");
+        }
     }
 
     private async Task DownloadDalamud(DirectoryInfo addonPath)
@@ -389,27 +418,30 @@ public class DalamudUpdater
             var       assets  = jsonDoc.RootElement.GetProperty("assets");
 
             var downloadPath = PlatformHelpers.GetTempFileName();
-            
+
             foreach (var asset in assets.EnumerateArray())
             {
                 var fileName    = asset.GetProperty("name").GetString()!;
                 var downloadUrl = asset.GetProperty("browser_download_url").GetString()!;
 
                 if (fileName != "latest.7z") continue;
-                
-                await this.DownloadFile($"{downloadUrl}", downloadPath, this.defaultTimeout).ConfigureAwait(false);
+
+                await DownloadFile($"{downloadUrl}", downloadPath, defaultTimeout).ConfigureAwait(false);
                 PlatformHelpers.Unzip7ZAsset(downloadPath, addonPath.FullName);
                 File.Delete(downloadPath);
                 break;
             }
-            
+
             try
             {
                 var devPath = new DirectoryInfo(Path.Combine(addonPath.FullName, "..", "dev"));
                 PlatformHelpers.DeleteAndRecreateDirectory(devPath);
                 PlatformHelpers.CopyFilesRecursively(addonPath, devPath);
             }
-            catch (Exception ex) { Log.Error(ex, "[DUPDATE] 复制到 dev 目录失败"); }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[DUPDATE] 复制到 dev 目录失败");
+            }
         }
         catch (HttpRequestException e)
         {
@@ -439,7 +471,7 @@ public class DalamudUpdater
                                          ? "https://api.nuget.org/v3-flatcontainer"
                                          : "https://repo.huaweicloud.com/artifactory/api/nuget/v3/nuget-remote";
 
-            var dotnetUrl = $"{packageBaseAddress}/microsoft.netcore.app.runtime.win-x64/{version}/microsoft.netcore.app.runtime.win-x64.{version}.nupkg";
+            var dotnetUrl  = $"{packageBaseAddress}/microsoft.netcore.app.runtime.win-x64/{version}/microsoft.netcore.app.runtime.win-x64.{version}.nupkg";
             var desktopUrl = $"{packageBaseAddress}/microsoft.windowsdesktop.app.runtime.win-x64/{version}/microsoft.windowsdesktop.app.runtime.win-x64.{version}.nupkg";
 
             var downloadPath = PlatformHelpers.GetTempFileName();
@@ -450,19 +482,22 @@ public class DalamudUpdater
             // 下载 .NET 运行时
             Log.Verbose("[DUPDATE] 正在下载 .NET 运行时 v{Version}...", version);
             var dotnetVersion = version.Split('.')[0];
-            await this.DownloadNuGet(dotnetUrl, downloadPath, this.defaultTimeout).ConfigureAwait(false);
+            await DownloadNuGet(dotnetUrl, downloadPath, defaultTimeout).ConfigureAwait(false);
             ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version), "runtimes/win-x64/native/");
             ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version), $"runtimes/win-x64/lib/net{dotnetVersion}.0/");
 
             // 下载 Windows Desktop 运行时
             Log.Verbose("[DUPDATE] 正在下载 .NET 桌面运行时 v{Version}...", version);
-            await this.DownloadNuGet(desktopUrl, downloadPath, this.defaultTimeout).ConfigureAwait(false);
+            await DownloadNuGet(desktopUrl, downloadPath, defaultTimeout).ConfigureAwait(false);
             ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", version), "runtimes/win-x64/native/");
             ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", version), $"runtimes/win-x64/lib/net{dotnetVersion}.0/");
 
             Directory.CreateDirectory(Path.Combine(runtimePath.FullName, "host", "fxr", version));
-            File.Move(Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version, "hostfxr.dll"), 
-                      Path.Combine(runtimePath.FullName, "host", "fxr", version, "hostfxr.dll"));
+            File.Move
+            (
+                Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version, "hostfxr.dll"),
+                Path.Combine(runtimePath.FullName, "host",   "fxr",                   version, "hostfxr.dll")
+            );
 
             File.Delete(downloadPath);
         }
@@ -524,7 +559,7 @@ public class DalamudUpdater
 
         return true;
     }
-    
+
     private static bool CanRead(FileInfo info)
     {
         try
@@ -532,11 +567,14 @@ public class DalamudUpdater
             using var stream = info.OpenRead();
             stream.ReadByte();
         }
-        catch { return false; }
+        catch
+        {
+            return false;
+        }
 
         return true;
     }
-    
+
     private static string ComputeFileHash(string path)
     {
         try
@@ -552,7 +590,7 @@ public class DalamudUpdater
             throw new Exception("Error computing file hash: " + e.Message);
         }
     }
-    
+
     private static void CleanUpOld(DirectoryInfo addonPath, string currentVer)
     {
         if (!addonPath.Exists)
@@ -572,26 +610,26 @@ public class DalamudUpdater
             }
         }
     }
-    
+
     public async Task DownloadFile(string url, string path, TimeSpan timeout)
     {
-        if (this.forceProxy && url.Contains("/File/Get/")) 
+        if (forceProxy && url.Contains("/File/Get/"))
             url = url.Replace("/File/Get/", "/File/GetProxy/");
 
         using var downloader = new HttpClientDownloadWithProgress(url, path);
-        downloader.ProgressChanged += this.ReportOverlayProgress;
+        downloader.ProgressChanged += ReportOverlayProgress;
 
         await downloader.Download(timeout).ConfigureAwait(false);
     }
-    
+
     public async Task DownloadNuGet(string url, string path, TimeSpan timeout)
     {
         using var downloader = new HttpClientDownloadWithProgress(url, path);
-        downloader.ProgressChanged += this.ReportOverlayProgress;
+        downloader.ProgressChanged += ReportOverlayProgress;
 
         await downloader.Download(timeout, true).ConfigureAwait(false);
     }
-    
+
     public static void ExtractSpecificDirectory(string zipPath, string extractPath, string directoryToExtract)
     {
         using var archive = ZipFile.OpenRead(zipPath);
@@ -603,13 +641,10 @@ public class DalamudUpdater
                 var destinationPath      = Path.Combine(extractPath, entry.FullName[directoryToExtract.Length..]);
                 var destinationDirectory = Path.GetDirectoryName(destinationPath);
                 if (!string.IsNullOrEmpty(destinationDirectory))
-                {
                     Directory.CreateDirectory(destinationDirectory);
-                }
+
                 if (!string.IsNullOrEmpty(entry.Name))
-                {
                     entry.ExtractToFile(destinationPath, true);
-                }
             }
         }
     }
@@ -627,12 +662,20 @@ public class DalamudUpdater
         var googleResult = await googleTask;
         var huaweiResult = await huaweiTask;
 
-        Log.Information("谷歌连接耗时: {GoogleTime:F2} ms, 状态: {GoogleStatus}",
-                        googleResult.Elapsed.TotalMilliseconds, googleResult.IsSuccess ? "成功" : "失败");
+        Log.Information
+        (
+            "谷歌连接耗时: {GoogleTime:F2} ms, 状态: {GoogleStatus}",
+            googleResult.Elapsed.TotalMilliseconds,
+            googleResult.IsSuccess ? "成功" : "失败"
+        );
 
-        Log.Information("华为云连接耗时: {HuaweiTime:F2} ms, 状态: {HuaweiStatus}",
-                        huaweiResult.Elapsed.TotalMilliseconds, huaweiResult.IsSuccess ? "成功" : "失败");
-        
+        Log.Information
+        (
+            "华为云连接耗时: {HuaweiTime:F2} ms, 状态: {HuaweiStatus}",
+            huaweiResult.Elapsed.TotalMilliseconds,
+            huaweiResult.IsSuccess ? "成功" : "失败"
+        );
+
         if (!googleResult.IsSuccess)
         {
             Log.Warning("无法连接到谷歌");
@@ -641,8 +684,12 @@ public class DalamudUpdater
 
         if (huaweiResult.IsSuccess && huaweiResult.Elapsed < googleResult.Elapsed)
         {
-            Log.Information("华为云连接速度 ({HuaweiTime:F2} ms) 快于 Google ({GoogleTime:F2} ms)",
-                            huaweiResult.Elapsed.TotalMilliseconds, googleResult.Elapsed.TotalMilliseconds);
+            Log.Information
+            (
+                "华为云连接速度 ({HuaweiTime:F2} ms) 快于 Google ({GoogleTime:F2} ms)",
+                huaweiResult.Elapsed.TotalMilliseconds,
+                googleResult.Elapsed.TotalMilliseconds
+            );
             return false;
         }
 
@@ -678,27 +725,23 @@ public class DalamudUpdater
 
     #region UI
 
-    public void SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep progress)
-    {
-        this.Overlay!.SetStep(progress);
-    }
+    public void SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep progress) =>
+        Overlay!.SetStep(progress);
 
-    public void ShowOverlay()
-    {
-        this.Overlay!.SetVisible();
-    }
+    public void ShowOverlay() =>
+        Overlay!.SetVisible();
 
-    public void CloseOverlay()
-    {
-        this.Overlay!.SetInvisible();
-    }
+    public void CloseOverlay() =>
+        Overlay!.SetInvisible();
 
-    private void ReportOverlayProgress(long? size, long downloaded, double? progress)
-    {
-        this.Overlay!.ReportProgress(size, downloaded, progress);
-    }
+    private void ReportOverlayProgress(long? size, long downloaded, double? progress) =>
+        Overlay!.ReportProgress(size, downloaded, progress);
 
     #endregion
 }
 
-public class DalamudIntegrityException(string msg, Exception? inner = null) : Exception(msg, inner);
+public class DalamudIntegrityException
+(
+    string     msg,
+    Exception? inner = null
+) : Exception(msg, inner);

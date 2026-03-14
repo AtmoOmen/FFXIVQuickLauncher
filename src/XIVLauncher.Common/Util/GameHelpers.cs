@@ -3,19 +3,16 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace XIVLauncher.Common.Util;
 
 public static class GameHelpers
 {
     /// <summary>
-    ///     Returns <see langword="true"/> if the current system region is set to North America.
+    ///     Returns <see langword="true" /> if the current system region is set to North America.
     /// </summary>
-    public static bool IsRegionNorthAmerica()
-    {
-        return RegionInfo.CurrentRegion.TwoLetterISORegionName is "US" or "MX" or "CA";
-    }
+    public static bool IsRegionNorthAmerica() =>
+        RegionInfo.CurrentRegion.TwoLetterISORegionName is "US" or "MX" or "CA";
 
     public static bool IsValidGamePath(string path)
     {
@@ -25,7 +22,7 @@ public static class GameHelpers
         return Directory.Exists(Path.Combine(path, "game")) && Directory.Exists(Path.Combine(path, "sdo"));
     }
 
-    public static bool CanMightNotBeInternationalClient(string path) 
+    public static bool CanMightNotBeInternationalClient(string path)
     {
         if (Directory.Exists(Path.Combine(path, "sdo")))
             return true;
@@ -55,24 +52,21 @@ public static class GameHelpers
         return true;
     }
 
-    public static FileInfo GetOfficialLauncherPath(DirectoryInfo gamePath) => new(File.Exists(Path.Combine(gamePath.FullName, "boot", "ffxivboot.exe")) ? Path.Combine(gamePath.FullName, "boot", "ffxivboot.exe") : Path.Combine(gamePath.FullName, "ffxivboot.exe"));
+    public static FileInfo GetOfficialLauncherPath(DirectoryInfo gamePath) => new
+        (File.Exists(Path.Combine(gamePath.FullName, "boot", "ffxivboot.exe")) ? Path.Combine(gamePath.FullName, "boot", "ffxivboot.exe") : Path.Combine(gamePath.FullName, "ffxivboot.exe"));
 
     public static void StartOfficialLauncher(DirectoryInfo gamePath, bool isSteam, bool isFreeTrial)
     {
         var args = string.Empty;
 
         if (isSteam && isFreeTrial)
-        {
             args = "-issteamfreetrial";
-        }
         else if (isSteam)
-        {
             args = "-issteam";
-        }
 
         var startInfo = new ProcessStartInfo(GetOfficialLauncherPath(gamePath).FullName);
         startInfo.WorkingDirectory = gamePath.FullName;
-        startInfo.UseShellExecute = true;
+        startInfo.UseShellExecute  = true;
 
         //Start as admin if needed
         if (!EnvironmentSettings.IsNoRunas && Environment.OSVersion.Version.Major >= 6)

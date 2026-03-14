@@ -10,25 +10,21 @@ namespace XIVLauncher.Common.Unix;
 public class UnixGameRunner : IGameRunner
 {
     private readonly CompatibilityTools compatibility;
-    private readonly DalamudLauncher dalamudLauncher;
-    private readonly bool dalamudOk;
+    private readonly DalamudLauncher    dalamudLauncher;
+    private readonly bool               dalamudOk;
 
     public UnixGameRunner(CompatibilityTools compatibility, DalamudLauncher dalamudLauncher, bool dalamudOk)
     {
-        this.compatibility = compatibility;
+        this.compatibility   = compatibility;
         this.dalamudLauncher = dalamudLauncher;
-        this.dalamudOk = dalamudOk;
+        this.dalamudOk       = dalamudOk;
     }
 
     public Process? Start(string path, string workingDirectory, string arguments, IDictionary<string, string> environment, DpiAwareness dpiAwareness)
     {
         if (dalamudOk)
-        {
-            return this.dalamudLauncher.Run(new FileInfo(path), arguments, environment);
-        }
-        else
-        {
-            return compatibility.RunInPrefix($"\"{path}\" {arguments}", workingDirectory, environment, writeLog: true);
-        }
+            return dalamudLauncher.Run(new FileInfo(path), arguments, environment);
+
+        return compatibility.RunInPrefix($"\"{path}\" {arguments}", workingDirectory, environment, writeLog: true);
     }
 }

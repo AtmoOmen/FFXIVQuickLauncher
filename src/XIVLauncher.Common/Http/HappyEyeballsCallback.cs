@@ -19,7 +19,7 @@ public class HappyEyeballsCallback
         var sortedRecords = await DnsResolver.GetSortedAddressesAsync(context.DnsEndPoint.Host, token);
 
         var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(token);
-        var tasks = new List<Task<NetworkStream>>();
+        var tasks       = new List<Task<NetworkStream>>();
 
         var delayCts = CancellationTokenSource.CreateLinkedTokenSource(linkedToken.Token);
 
@@ -33,7 +33,7 @@ public class HappyEyeballsCallback
             tasks.Add(task);
 
             var nextDelayCts = CancellationTokenSource.CreateLinkedTokenSource(linkedToken.Token);
-            _ = task.ContinueWith(_ => { nextDelayCts.Cancel(); }, TaskContinuationOptions.OnlyOnFaulted);
+            _        = task.ContinueWith(_ => { nextDelayCts.Cancel(); }, TaskContinuationOptions.OnlyOnFaulted);
             delayCts = nextDelayCts;
         }
 
@@ -46,9 +46,13 @@ public class HappyEyeballsCallback
         return stream;
     }
 
-    private static async Task<NetworkStream> AttemptConnection(
-        IPAddress address, int port, CancellationToken token,
-        CancellationToken delayToken)
+    private static async Task<NetworkStream> AttemptConnection
+    (
+        IPAddress         address,
+        int               port,
+        CancellationToken token,
+        CancellationToken delayToken
+    )
     {
         await AsyncUtils.CancellableDelay(-1, delayToken).ConfigureAwait(false);
         token.ThrowIfCancellationRequested();
@@ -77,8 +81,6 @@ public class HappyEyeballsCallback
         var exception = task.Exception;
 
         if (task.IsFaulted)
-        {
             Log.Verbose(exception!, "A HappyEyeballs connection task failed. Are there network issues?");
-        }
     }
 }

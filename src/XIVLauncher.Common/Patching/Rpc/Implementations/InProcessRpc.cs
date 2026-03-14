@@ -23,9 +23,16 @@ public class InProcessRpc : IRpc, IDisposable
         instanceList.Add(this);
     }
 
+    #region Disposal
+
+    public void Dispose() =>
+        instanceMapping[channelName].Remove(this);
+
+    #endregion
+
     public void SendMessage(PatcherIpcEnvelope envelope)
     {
-        var list = instanceMapping[this.channelName];
+        var list = instanceMapping[channelName];
 
         for (var i = 0; i < list.Count; i++)
         {
@@ -38,15 +45,8 @@ public class InProcessRpc : IRpc, IDisposable
         }
     }
 
-    private void Dispatch(PatcherIpcEnvelope envelope)
-    {
-        this.MessageReceived?.Invoke(envelope);
-    }
+    private void Dispatch(PatcherIpcEnvelope envelope) =>
+        MessageReceived?.Invoke(envelope);
 
     public event Action<PatcherIpcEnvelope> MessageReceived;
-
-    public void Dispose()
-    {
-        instanceMapping[this.channelName].Remove(this);
-    }
 }

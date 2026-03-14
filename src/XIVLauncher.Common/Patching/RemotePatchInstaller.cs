@@ -14,163 +14,35 @@ namespace XIVLauncher.Common.Patching;
 
 public class RemotePatchInstaller
 {
-    private readonly IRpc rpc;
-    private readonly ConcurrentQueue<PatcherIpcStartInstall> queuedInstalls = new();
-    private readonly Thread patcherThread;
-    private readonly CancellationTokenSource patcherCancelToken = new();
+    public bool HasQueuedInstalls => !queuedInstalls.IsEmpty;
 
     public bool IsDone { get; private set; }
 
-    public bool IsFailed { get; private set; }
-
-    public bool HasQueuedInstalls => !this.queuedInstalls.IsEmpty;
+    public           bool                                    IsFailed { get; private set; }
+    private readonly IRpc                                    rpc;
+    private readonly ConcurrentQueue<PatcherIpcStartInstall> queuedInstalls = new();
+    private readonly Thread                                  patcherThread;
+    private readonly CancellationTokenSource                 patcherCancelToken = new();
 
     public RemotePatchInstaller(IRpc rpc)
     {
-        this.rpc = rpc;
+        this.rpc                 =  rpc;
         this.rpc.MessageReceived += RemoteCallHandler;
 
         Log.Information("[PATCHER] IPC connected");
 
-        rpc.SendMessage(new PatcherIpcEnvelope
-        {
-            OpCode = PatcherIpcOpCode.Hello,
-            Data = DateTime.Now
-        });
+        rpc.SendMessage
+        (
+            new PatcherIpcEnvelope
+            {
+                OpCode = PatcherIpcOpCode.Hello,
+                Data   = DateTime.Now
+            }
+        );
 
         Log.Information("[PATCHER] sent hello");
 
-        this.patcherThread = new Thread(this.ProcessPatches);
-    }
-
-    public void Start()
-    {
-        this.patcherThread.Start();
-    }
-
-    private void ProcessPatches()
-    {
-        try
-        {
-            while (!this.patcherCancelToken.IsCancellationRequested)
-            {
-                if (!RunInstallQueue())
-                {
-                    IsFailed = true;
-                    return;
-                }
-
-                Thread.Sleep(1000);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[PATCHER] RemotePatchInstaller loop encountered an error");
-            this.rpc.SendMessage(new PatcherIpcEnvelope
-            {
-                OpCode = PatcherIpcOpCode.InstallFailed
-            });
-        }
-    }
-
-    private void RemoteCallHandler(PatcherIpcEnvelope envelope)
-    {
-        switch (envelope.OpCode)
-        {
-            case PatcherIpcOpCode.Bye:
-                Task.Run(() =>
-                {
-                    Thread.Sleep(3000);
-                    IsDone = true;
-                });
-                break;
-
-            case PatcherIpcOpCode.StartInstall:
-
-                var installData = (PatcherIpcStartInstall)envelope.Data;
-                this.queuedInstalls.Enqueue(installData);
-                break;
-
-            case PatcherIpcOpCode.Finish:
-                var path = new DirectoryInfo((string)envelope.Data);
-
-                try
-                {
-                    VerToBck(path);
-                    Log.Information("VerToBck done");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "VerToBck failed");
-                    this.rpc.SendMessage(new PatcherIpcEnvelope
-                    {
-                        OpCode = PatcherIpcOpCode.InstallFailed
-                    });
-                }
-
-                break;
-        }
-    }
-
-    private bool RunInstallQueue()
-    {
-        if (this.queuedInstalls.TryDequeue(out var installData))
-        {
-            // Ensure that subdirs exist
-            if (!installData.GameDirectory.Exists)
-                installData.GameDirectory.Create();
-
-            installData.GameDirectory.CreateSubdirectory("game");
-            installData.GameDirectory.CreateSubdirectory("boot");
-
-            try
-            {
-                InstallPatch(installData.PatchFile.FullName,
-                    Path.Combine(installData.GameDirectory.FullName,
-                        installData.Repo == Repository.Boot ? "boot" : "game"));
-
-                try
-                {
-                    installData.Repo.SetVer(installData.GameDirectory, installData.VersionId);
-                    this.rpc.SendMessage(new PatcherIpcEnvelope
-                    {
-                        OpCode = PatcherIpcOpCode.InstallOk
-                    });
-
-                    try
-                    {
-                        if (!installData.KeepPatch)
-                            installData.PatchFile.Delete();
-                    }
-                    catch (Exception exception)
-                    {
-                        Log.Error(exception, "Could not delete patch file");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Could not set ver file");
-                    this.rpc.SendMessage(new PatcherIpcEnvelope
-                    {
-                        OpCode = PatcherIpcOpCode.InstallFailed
-                    });
-
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[PATCHER] Patch install failed");
-                this.rpc.SendMessage(new PatcherIpcEnvelope
-                {
-                    OpCode = PatcherIpcOpCode.InstallFailed
-                });
-
-                return false;
-            }
-        }
-
-        return true;
+        patcherThread = new Thread(ProcessPatches);
     }
 
     public static void InstallPatch(string patchPath, string gamePath)
@@ -189,6 +61,9 @@ public class RemotePatchInstaller
 
         Log.Information("[PATCHER] Patch {0} installed", patchPath);
     }
+
+    public void Start() =>
+        patcherThread.Start();
 
     private static void VerToBck(DirectoryInfo gamePath)
     {
@@ -216,5 +91,153 @@ public class RemotePatchInstaller
                     throw;
             }
         }
+    }
+
+    private void ProcessPatches()
+    {
+        try
+        {
+            while (!patcherCancelToken.IsCancellationRequested)
+            {
+                if (!RunInstallQueue())
+                {
+                    IsFailed = true;
+                    return;
+                }
+
+                Thread.Sleep(1000);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[PATCHER] RemotePatchInstaller loop encountered an error");
+            rpc.SendMessage
+            (
+                new PatcherIpcEnvelope
+                {
+                    OpCode = PatcherIpcOpCode.InstallFailed
+                }
+            );
+        }
+    }
+
+    private void RemoteCallHandler(PatcherIpcEnvelope envelope)
+    {
+        switch (envelope.OpCode)
+        {
+            case PatcherIpcOpCode.Bye:
+                Task.Run
+                (() =>
+                    {
+                        Thread.Sleep(3000);
+                        IsDone = true;
+                    }
+                );
+                break;
+
+            case PatcherIpcOpCode.StartInstall:
+
+                var installData = (PatcherIpcStartInstall)envelope.Data;
+                queuedInstalls.Enqueue(installData);
+                break;
+
+            case PatcherIpcOpCode.Finish:
+                var path = new DirectoryInfo((string)envelope.Data);
+
+                try
+                {
+                    VerToBck(path);
+                    Log.Information("VerToBck done");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "VerToBck failed");
+                    rpc.SendMessage
+                    (
+                        new PatcherIpcEnvelope
+                        {
+                            OpCode = PatcherIpcOpCode.InstallFailed
+                        }
+                    );
+                }
+
+                break;
+        }
+    }
+
+    private bool RunInstallQueue()
+    {
+        if (queuedInstalls.TryDequeue(out var installData))
+        {
+            // Ensure that subdirs exist
+            if (!installData.GameDirectory.Exists)
+                installData.GameDirectory.Create();
+
+            installData.GameDirectory.CreateSubdirectory("game");
+            installData.GameDirectory.CreateSubdirectory("boot");
+
+            try
+            {
+                InstallPatch
+                (
+                    installData.PatchFile.FullName,
+                    Path.Combine
+                    (
+                        installData.GameDirectory.FullName,
+                        installData.Repo == Repository.Boot ? "boot" : "game"
+                    )
+                );
+
+                try
+                {
+                    installData.Repo.SetVer(installData.GameDirectory, installData.VersionId);
+                    rpc.SendMessage
+                    (
+                        new PatcherIpcEnvelope
+                        {
+                            OpCode = PatcherIpcOpCode.InstallOk
+                        }
+                    );
+
+                    try
+                    {
+                        if (!installData.KeepPatch)
+                            installData.PatchFile.Delete();
+                    }
+                    catch (Exception exception)
+                    {
+                        Log.Error(exception, "Could not delete patch file");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Could not set ver file");
+                    rpc.SendMessage
+                    (
+                        new PatcherIpcEnvelope
+                        {
+                            OpCode = PatcherIpcOpCode.InstallFailed
+                        }
+                    );
+
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[PATCHER] Patch install failed");
+                rpc.SendMessage
+                (
+                    new PatcherIpcEnvelope
+                    {
+                        OpCode = PatcherIpcOpCode.InstallFailed
+                    }
+                );
+
+                return false;
+            }
+        }
+
+        return true;
     }
 }

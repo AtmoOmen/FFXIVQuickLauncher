@@ -2,105 +2,109 @@
 using System.IO;
 using System.Linq;
 
-namespace XIVLauncher.Common.Patching.Util
+namespace XIVLauncher.Common.Patching.Util;
+
+public class ReusableByteBufferManager
 {
-    public class ReusableByteBufferManager
+    private static readonly int[]                       ArraySizes = new[] { 1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22 };
+    private static readonly ReusableByteBufferManager[] Instances  = ArraySizes.Select(x => new ReusableByteBufferManager(x, 2 * Environment.ProcessorCount)).ToArray();
+
+    private readonly int          arraySize;
+    private readonly Allocation[] buffers;
+
+    public ReusableByteBufferManager(int arraySize, int maxBuffers)
     {
-        private static readonly int[] ArraySizes = new int[] { 1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22 };
-        private static readonly ReusableByteBufferManager[] Instances = ArraySizes.Select(x => new ReusableByteBufferManager(x, 2 * Environment.ProcessorCount)).ToArray();
+        this.arraySize = arraySize;
+        buffers        = new Allocation[maxBuffers];
+    }
 
-        public class Allocation : IDisposable
+    public static Allocation GetBuffer(bool clear = false) =>
+        Instances[0].Allocate(clear);
+
+    public static Allocation GetBuffer(long minSize, bool clear = false)
+    {
+        for (var i = 0; i < ArraySizes.Length; i++)
         {
-            public readonly ReusableByteBufferManager BufferManager;
-            public readonly byte[] Buffer;
-            public readonly MemoryStream Stream;
-            public readonly BinaryWriter Writer;
-
-            internal Allocation(ReusableByteBufferManager b, long size)
-            {
-                BufferManager = b;
-                Buffer = new byte[size];
-                Stream = new MemoryStream(Buffer);
-                Writer = new BinaryWriter(Stream);
-            }
-
-            public void ResetState()
-            {
-                Stream.SetLength(0);
-                Stream.Seek(0, SeekOrigin.Begin);
-            }
-
-            public void Clear() => Array.Clear(Buffer, 0, Buffer.Length);
-
-            public void Dispose() => BufferManager?.Return(this);
+            if (ArraySizes[i] >= minSize)
+                return Instances[i].Allocate(clear);
         }
 
-        private readonly int arraySize;
-        private readonly Allocation[] buffers;
+        return new Allocation(null, minSize);
+    }
 
-        public ReusableByteBufferManager(int arraySize, int maxBuffers)
+    public Allocation Allocate(bool clear = false)
+    {
+        Allocation res = null;
+
+        for (var i = 0; i < buffers.Length; i++)
         {
-            this.arraySize = arraySize;
-            this.buffers = new Allocation[maxBuffers];
-        }
+            if (buffers[i] == null)
+                continue;
 
-        public Allocation Allocate(bool clear = false)
-        {
-            Allocation res = null;
-
-            for (int i = 0; i < this.buffers.Length; i++)
+            lock (buffers.SyncRoot)
             {
-                if (this.buffers[i] == null)
+                if (buffers[i] == null)
                     continue;
 
-                lock (this.buffers.SyncRoot)
-                {
-                    if (this.buffers[i] == null)
-                        continue;
-
-                    res = this.buffers[i];
-                    this.buffers[i] = null;
-                    break;
-                }
+                res        = buffers[i];
+                buffers[i] = null;
+                break;
             }
-            if (res == null)
-                res = new Allocation(this, this.arraySize);
-            else if (clear)
-                res.Clear();
-            res.ResetState();
-            return res;
         }
 
-        internal void Return(Allocation buf)
+        if (res == null)
+            res = new Allocation(this, arraySize);
+        else if (clear)
+            res.Clear();
+        res.ResetState();
+        return res;
+    }
+
+    internal void Return(Allocation buf)
+    {
+        for (var i = 0; i < buffers.Length; i++)
         {
-            for (int i = 0; i < this.buffers.Length; i++)
+            if (buffers[i] != null)
+                continue;
+
+            lock (buffers.SyncRoot)
             {
-                if (this.buffers[i] != null)
+                if (buffers[i] != null)
                     continue;
 
-                lock (this.buffers.SyncRoot)
-                {
-                    if (this.buffers[i] != null)
-                        continue;
-
-                    this.buffers[i] = buf;
-                    return;
-                }
+                buffers[i] = buf;
+                return;
             }
         }
+    }
 
-        public static Allocation GetBuffer(bool clear = false)
+    public class Allocation : IDisposable
+    {
+        public readonly ReusableByteBufferManager BufferManager;
+        public readonly byte[]                    Buffer;
+        public readonly MemoryStream              Stream;
+        public readonly BinaryWriter              Writer;
+
+        internal Allocation(ReusableByteBufferManager b, long size)
         {
-            return Instances[0].Allocate(clear);
+            BufferManager = b;
+            Buffer        = new byte[size];
+            Stream        = new MemoryStream(Buffer);
+            Writer        = new BinaryWriter(Stream);
         }
 
-        public static Allocation GetBuffer(long minSize, bool clear = false)
-        {
-            for (int i = 0; i < ArraySizes.Length; i++)
-                if (ArraySizes[i] >= minSize)
-                    return Instances[i].Allocate(clear);
+        #region Disposal
 
-            return new Allocation(null, minSize);
+        public void Dispose() => BufferManager?.Return(this);
+
+        #endregion
+
+        public void ResetState()
+        {
+            Stream.SetLength(0);
+            Stream.Seek(0, SeekOrigin.Begin);
         }
+
+        public void Clear() => Array.Clear(Buffer, 0, Buffer.Length);
     }
 }

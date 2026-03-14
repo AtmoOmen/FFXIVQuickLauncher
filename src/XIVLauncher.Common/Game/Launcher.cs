@@ -8,72 +8,85 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-
-#if NET6_0_OR_GREATER && !WIN32
-using System.Net.Security;
-#endif
-
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
-using XIVLauncher.Common.Game.Patch.PatchList;
 using XIVLauncher.Common.Encryption;
 using XIVLauncher.Common.Game.Exceptions;
+using XIVLauncher.Common.Game.Patch.PatchList;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
+#if NET6_0_OR_GREATER && !WIN32
+using System.Net.Security;
+#endif
 
 namespace XIVLauncher.Common.Game;
 
 public partial class Launcher
 {
-    private readonly ISteam?        steam;
-    private readonly byte[]?        overriddenSteamTicket;
-    private readonly IUniqueIdCache uniqueIdCache;
-    private readonly ISettings settings;
-    private readonly HttpClient client;
-    private readonly HttpClient loginClient;
+    private readonly ISteam?         steam;
+    private readonly byte[]?         overriddenSteamTicket;
+    private readonly IUniqueIdCache  uniqueIdCache;
+    private readonly ISettings       settings;
+    private readonly HttpClient      client;
+    private readonly HttpClient      loginClient;
     private readonly CookieContainer loginCookies;
-    private readonly string frontierUrlTemplate;
+    private readonly string          frontierUrlTemplate;
+
+    // The user agent for frontier pages. {0} has to be replaced by a unique computer id and its checksum
+    private const    string UserAgentTemplate = "SQEXAuthor/2.0.0(Windows 6.2; ja-jp; {0})";
+    private readonly string userAgent         = GenerateUserAgent();
+
+    private static readonly string[] FilesToHash =
+    {
+        "ffxivboot.exe"
+        // "ffxivboot64.exe",
+        // "ffxivlauncher64.exe",
+        // "ffxivupdater64.exe"
+    };
 
     public Launcher(ISteam? steam, IUniqueIdCache uniqueIdCache, ISettings settings, string frontierUrl)
     {
         this.steam         = steam;
         this.uniqueIdCache = uniqueIdCache;
-        this.settings = settings;
-        this.loginCookies = new CookieContainer();
+        this.settings      = settings;
+        loginCookies       = new CookieContainer();
         //this.frontierUrlTemplate = frontierUrl ?? throw new Exception("Frontier URL template is null, this is now required");
         ServicePointManager.Expect100Continue = false;
 #if NET6_0_OR_GREATER && !WIN32
         var sslOptions = new SslClientAuthenticationOptions()
         {
-            CipherSuitesPolicy = new CipherSuitesPolicy(new[]
-            {
-                TlsCipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-                TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-                TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-                TlsCipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
-                TlsCipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
-                TlsCipherSuite.TLS_RSA_WITH_AES_256_CCM_8,
-                TlsCipherSuite.TLS_RSA_WITH_AES_256_CCM,
-                TlsCipherSuite.TLS_RSA_WITH_AES_128_CCM_8,
-                TlsCipherSuite.TLS_RSA_WITH_AES_128_CCM,
-                TlsCipherSuite.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
-            })
+            CipherSuitesPolicy = new CipherSuitesPolicy
+            (
+                new[]
+                {
+                    TlsCipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+                    TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+                    TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+                    TlsCipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+                    TlsCipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
+                    TlsCipherSuite.TLS_RSA_WITH_AES_256_CCM_8,
+                    TlsCipherSuite.TLS_RSA_WITH_AES_256_CCM,
+                    TlsCipherSuite.TLS_RSA_WITH_AES_128_CCM_8,
+                    TlsCipherSuite.TLS_RSA_WITH_AES_128_CCM,
+                    TlsCipherSuite.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+                }
+            )
         };
         var handler = new SocketsHttpHandler
         {
-            UseCookies = true,
+            UseCookies      = true,
             CookieContainer = loginCookies,
-            SslOptions = sslOptions,
+            SslOptions      = sslOptions,
         };
         var loginHandler = new SocketsHttpHandler
         {
-            UseCookies = true,
+            UseCookies      = true,
             CookieContainer = loginCookies,
-            SslOptions = sslOptions,
+            SslOptions      = sslOptions,
         };
         var loginHandler = new SocketsHttpHandler
         {
@@ -83,64 +96,28 @@ public partial class Launcher
 #else
         var handler = new HttpClientHandler
         {
-            UseCookies = true,
-            CookieContainer = loginCookies,
+            UseCookies      = true,
+            CookieContainer = loginCookies
         };
         var loginHandler = new HttpClientHandler
         {
-            UseCookies = true,
-            CookieContainer = loginCookies,
+            UseCookies      = true,
+            CookieContainer = loginCookies
         };
 #endif
 
-        this.client = new HttpClient(handler);
-        this.loginClient = new HttpClient(loginHandler);
+        client      = new HttpClient(handler);
+        loginClient = new HttpClient(loginHandler);
     }
 
     public Launcher(byte[] overriddenSteamTicket, IUniqueIdCache uniqueIdCache, ISettings settings, string frontierUrl)
-        : this(steam: null, uniqueIdCache, settings, frontierUrl)
-    {
+        : this(steam: null, uniqueIdCache, settings, frontierUrl) =>
         this.overriddenSteamTicket = overriddenSteamTicket;
-    }
-
-    // The user agent for frontier pages. {0} has to be replaced by a unique computer id and its checksum
-    private const string UserAgentTemplate = "SQEXAuthor/2.0.0(Windows 6.2; ja-jp; {0})";
-    private readonly string userAgent = GenerateUserAgent();
-
-    private static readonly string[] FilesToHash =
-    {
-        "ffxivboot.exe",
-        // "ffxivboot64.exe",
-        // "ffxivlauncher64.exe",
-        // "ffxivupdater64.exe"
-    };
-
-    public enum LoginState
-    {
-        Unknown,
-        Ok,
-        NeedsPatchGame,
-        NeedsPatchBoot,
-        NoService,
-        NoTerms,
-        NeedRetry
-    }
-
-    public class LoginResult
-    {
-        public LoginState State { get; set; }
-        public PatchListEntry[] PendingPatches { get; set; } = [];
-        public OauthLoginResult? OauthLogin { get; set; }
-        public string? UniqueId { get; set; }
-        public SdoArea? Area { get; set; }
-        public SdoArea[]? Areas { get; set; }
-        public int DcTravelPort { get; set; } = 0;
-    }
 
     public async Task<LoginResult> Login(string userName, string password, string otp, bool isSteam, bool useCache, DirectoryInfo gamePath, bool forceBaseVersion, bool isFreeTrial)
     {
         string? uid;
-        var pendingPatches = Array.Empty<PatchListEntry>();
+        var     pendingPatches = Array.Empty<PatchListEntry>();
 
         OauthLoginResult oauthLoginResult;
 
@@ -152,22 +129,20 @@ public partial class Launcher
 
         if (isSteam)
         {
-            if (this.overriddenSteamTicket != null)
+            if (overriddenSteamTicket != null)
             {
-                steamTicket = Ticket.EncryptAuthSessionTicket(this.overriddenSteamTicket, (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                steamTicket = Ticket.EncryptAuthSessionTicket(overriddenSteamTicket, (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                 Log.Information("Using predefined steam ticket");
             }
             else
             {
-                if (this.steam == null)
+                if (steam == null)
                     throw new InvalidOperationException("No Steam instance provided, but tried to log in with Steam");
 
                 try
                 {
-                    if (!this.steam.IsValid)
-                    {
-                        this.steam.Initialize(isFreeTrial ? Constants.STEAM_FT_APP_ID : Constants.STEAM_APP_ID);
-                    }
+                    if (!steam.IsValid)
+                        steam.Initialize(isFreeTrial ? Constants.STEAM_FT_APP_ID : Constants.STEAM_APP_ID);
                 }
                 catch (Exception ex)
                 {
@@ -175,15 +150,11 @@ public partial class Launcher
                     throw new SteamException("SteamAPI_Init() failed.", ex);
                 }
 
-                if (!this.steam.IsValid)
-                {
+                if (!steam.IsValid)
                     throw new SteamException("Steam did not initialize successfully. Please restart Steam and try again.");
-                }
 
-                if (!this.steam.BLoggedOn)
-                {
+                if (!steam.BLoggedOn)
                     throw new SteamException("Not logged into Steam, or Steam is running in offline mode. Please log in and try again.");
-                }
 
                 const int NUM_TRIES = 5;
 
@@ -204,20 +175,21 @@ public partial class Launcher
             }
 
             if (steamTicket == null)
-            {
                 throw new SteamTicketNullException();
-            }
         }
 
-        if (!useCache || !this.uniqueIdCache.TryGet(userName, out var cached))
+        if (!useCache || !uniqueIdCache.TryGet(userName, out var cached))
         {
             oauthLoginResult = await OauthLogin(userName, password, otp, isFreeTrial, isSteam, 3, steamTicket);
 
-            Log.Information("OAuth login successful - playable:{IsPlayable} terms:{TermsAccepted} region:{Region} ex:{MaxExpansion}",
-                            oauthLoginResult.Playable,
-                            oauthLoginResult.TermsAccepted,
-                            oauthLoginResult.Region,
-                            oauthLoginResult.MaxExpansion);
+            Log.Information
+            (
+                "OAuth login successful - playable:{IsPlayable} terms:{TermsAccepted} region:{Region} ex:{MaxExpansion}",
+                oauthLoginResult.Playable,
+                oauthLoginResult.TermsAccepted,
+                oauthLoginResult.Region,
+                oauthLoginResult.MaxExpansion
+            );
 
             if (!oauthLoginResult.Playable)
             {
@@ -238,20 +210,20 @@ public partial class Launcher
             (uid, loginState, pendingPatches) = await RegisterSession(oauthLoginResult, gamePath, forceBaseVersion);
 
             if (useCache)
-                this.uniqueIdCache.Add(userName, uid, oauthLoginResult.Region, oauthLoginResult.MaxExpansion);
+                uniqueIdCache.Add(userName, uid, oauthLoginResult.Region, oauthLoginResult.MaxExpansion);
         }
         else
         {
             Log.Information("Cached UID found, using instead");
-            uid = cached.UniqueId;
+            uid        = cached.UniqueId;
             loginState = LoginState.Ok;
 
             oauthLoginResult = new OauthLoginResult
             {
-                Playable = true,
-                Region = cached.Region,
+                Playable      = true,
+                Region        = cached.Region,
                 TermsAccepted = true,
-                MaxExpansion = cached.MaxExpansion
+                MaxExpansion  = cached.MaxExpansion
             };
         }
 
@@ -261,34 +233,45 @@ public partial class Launcher
         return new LoginResult
         {
             PendingPatches = pendingPatches,
-            OauthLogin = oauthLoginResult,
-            State = loginState,
-            UniqueId = uid,
+            OauthLogin     = oauthLoginResult,
+            State          = loginState,
+            UniqueId       = uid
         };
     }
 
-    public Process? LaunchGame(
-        IGameRunner runner, string sessionId, int region, int expansionLevel,
-        bool isSteamServiceAccount, string additionalArguments,
-        DirectoryInfo gamePath, ClientLanguage language,
-        bool encryptArguments, DpiAwareness dpiAwareness)
+    public Process? LaunchGame
+    (
+        IGameRunner    runner,
+        string         sessionId,
+        int            region,
+        int            expansionLevel,
+        bool           isSteamServiceAccount,
+        string         additionalArguments,
+        DirectoryInfo  gamePath,
+        ClientLanguage language,
+        bool           encryptArguments,
+        DpiAwareness   dpiAwareness
+    )
     {
-        Log.Information("XivGame::LaunchGame(steamServiceAccount:{IsSteam}, args:{AdditionalArguments})",
-                        isSteamServiceAccount,
-                        additionalArguments);
+        Log.Information
+        (
+            "XivGame::LaunchGame(steamServiceAccount:{IsSteam}, args:{AdditionalArguments})",
+            isSteamServiceAccount,
+            additionalArguments
+        );
 
-        var exePath = Path.Combine(gamePath.FullName, "game", "ffxiv_dx11.exe");
+        var exePath     = Path.Combine(gamePath.FullName, "game", "ffxiv_dx11.exe");
         var environment = new Dictionary<string, string>();
 
         var argumentBuilder = new ArgumentBuilder()
-                              .Append("DEV.DataPathType", "1")
+                              .Append("DEV.DataPathType",           "1")
                               .Append("DEV.MaxEntitledExpansionID", expansionLevel.ToString())
-                              .Append("DEV.TestSID", sessionId)
-                              .Append("DEV.UseSqPack", "1")
-                              .Append("SYS.Region", region.ToString())
-                              .Append("language", ((int)language).ToString())
-                              .Append("resetConfig", "0")
-                              .Append("ver", Repository.Ffxiv.GetVer(gamePath));
+                              .Append("DEV.TestSID",                sessionId)
+                              .Append("DEV.UseSqPack",              "1")
+                              .Append("SYS.Region",                 region.ToString())
+                              .Append("language",                   ((int)language).ToString())
+                              .Append("resetConfig",                "0")
+                              .Append("ver",                        Repository.Ffxiv.GetVer(gamePath));
 
         if (isSteamServiceAccount)
         {
@@ -317,6 +300,101 @@ public partial class Launcher
         return runner.Start(exePath, workingDir, arguments, environment, dpiAwareness);
     }
 
+    public async Task<PatchListEntry[]> CheckBootVersion(DirectoryInfo gamePath, bool forceBaseVersion = false)
+    {
+        //CN
+        return Array.Empty<PatchListEntry>();
+
+        var bootVersion = forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Boot.GetVer(gamePath);
+        var request = new HttpRequestMessage
+        (
+            HttpMethod.Get,
+            $"http://patch-bootver.ffxiv.com/http/win32/ffxivneo_release_boot/{bootVersion}/?time=" + GetLauncherFormattedTimeLongRounded()
+        );
+
+        request.Headers.AddWithoutValidation("User-Agent", Constants.PatcherUserAgent);
+        request.Headers.AddWithoutValidation("Host",       "patch-bootver.ffxiv.com");
+
+        var resp = await client.SendAsync(request);
+        var text = await resp.Content.ReadAsStringAsync();
+
+        if (string.IsNullOrWhiteSpace(text))
+            return Array.Empty<PatchListEntry>();
+
+        Log.Verbose("Boot patching is needed... List:\n{PatchList}", resp);
+
+        try
+        {
+            return PatchListParser.Parse(text);
+        }
+        catch (PatchListParseException ex)
+        {
+            Log.Information("Patch list:\n{PatchList}", ex.List);
+            throw;
+        }
+    }
+
+    public async Task<string> GenPatchToken(string patchUrl, string uniqueId)
+    {
+        // Yes, Square does use HTTP for this and sends tokens in headers. IT'S NOT MY FAULT.
+        var request = new HttpRequestMessage(HttpMethod.Post, "http://patch-gamever.ffxiv.com/gen_token");
+
+        request.Headers.AddWithoutValidation("Connection", "Keep-Alive");
+        //request.Headers.AddWithoutValidation("X-Patch-Unique-Id", uniqueId);
+        request.Headers.AddWithoutValidation("User-Agent", Constants.PatcherUserAgent);
+
+        request.Content = new StringContent(patchUrl);
+
+        var resp = await client.SendAsync(request);
+        resp.EnsureSuccessStatusCode();
+
+        return await resp.Content.ReadAsStringAsync();
+    }
+
+    public async Task<GateStatus> GetGateStatus(ClientLanguage language)
+    {
+        try
+        {
+            var reply = Encoding.UTF8.GetString
+            (
+                await DownloadAsLauncher
+                (
+                    $"https://frontier.ffxiv.com/worldStatus/gate_status.json?lang={language.GetLangCode()}&_={ApiHelpers.GetUnixMillis()}",
+                    language
+                ).ConfigureAwait(true)
+            );
+
+            return JsonConvert.DeserializeObject<GateStatus>(reply);
+        }
+        catch (Exception exc)
+        {
+            throw new Exception("Could not get gate status", exc);
+        }
+    }
+
+    public async Task<byte[]> DownloadAsLauncher(string url, ClientLanguage language, string contentType = "")
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        //request.Headers.AddWithoutValidation("Accept", "*/*");
+        //request.Headers.AddWithoutValidation("User-Agent", this.userAgent);
+
+        if (!string.IsNullOrEmpty(contentType))
+            request.Headers.AddWithoutValidation("Accept", contentType);
+
+        request.Headers.AddWithoutValidation("Accept-Encoding", "gzip, deflate");
+        request.Headers.AddWithoutValidation("Accept-Language", "zh-CN");
+        request.Headers.AddWithoutValidation
+        (
+            "User-Agent",
+            "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.2; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)"
+        );
+        request.Headers.AddWithoutValidation("Referer", "https://ff.web.sdo.com/project/launcher0904/index.html");
+        //request.Headers.AddWithoutValidation("Host", "ff.web.sdo.com");
+
+        var resp = await client.SendAsync(request);
+        return await resp.Content.ReadAsByteArrayAsync();
+    }
+
     private static string GetVersionReport(DirectoryInfo gamePath, int exLevel, bool forceBaseVersion)
     {
         var verReport = $"{GetBootVersionHash(gamePath)}\n";
@@ -340,7 +418,7 @@ public partial class Launcher
     }
 
     /// <summary>
-    /// Check ver and bck files for sanity.
+    ///     Check ver and bck files for sanity.
     /// </summary>
     /// <param name="gamePath"></param>
     /// <param name="exLevel"></param>
@@ -388,8 +466,8 @@ public partial class Launcher
         var text = repo.GetVer(gamePath, isBck);
 
         var nullOrWhitespace = string.IsNullOrWhiteSpace(text);
-        var containsNewline = text.Contains("\n");
-        var allNullBytes = Encoding.UTF8.GetBytes(text).All(x => x == 0x00);
+        var containsNewline  = text.Contains("\n");
+        var allNullBytes     = Encoding.UTF8.GetBytes(text).All(x => x == 0x00);
 
         if (nullOrWhitespace || containsNewline || allNullBytes)
         {
@@ -401,8 +479,8 @@ public partial class Launcher
     }
 
     /// <summary>
-    /// Calculate the hash that is sent to patch-gamever for version verification/tamper protection.
-    /// This same hash is also sent in lobby, but for ffxiv.exe and ffxiv_dx11.exe.
+    ///     Calculate the hash that is sent to patch-gamever for version verification/tamper protection.
+    ///     This same hash is also sent in lobby, but for ffxiv.exe and ffxiv_dx11.exe.
     /// </summary>
     /// <returns>String of hashed EXE files.</returns>
     private static string GetBootVersionHash(DirectoryInfo gamePath)
@@ -423,53 +501,110 @@ public partial class Launcher
         return result;
     }
 
-    public async Task<PatchListEntry[]> CheckBootVersion(DirectoryInfo gamePath, bool forceBaseVersion = false)
+    private static string GetOauthTopUrl(int region, bool isFreeTrial, bool isSteam, Ticket? steamTicket)
     {
-        //CN
-        return Array.Empty<PatchListEntry>();
+        var url =
+            $"https://ffxiv-login.square-enix.com/oauth/ffxivarr/login/top?lng=en&rgn={region}&isft={(isFreeTrial ? "1" : "0")}&cssmode=1&isnew=1&launchver=3";
 
-
-        var bootVersion = forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Boot.GetVer(gamePath);
-        var request = new HttpRequestMessage(HttpMethod.Get,
-                                             $"http://patch-bootver.ffxiv.com/http/win32/ffxivneo_release_boot/{bootVersion}/?time=" +
-                                             GetLauncherFormattedTimeLongRounded());
-
-        request.Headers.AddWithoutValidation("User-Agent", Constants.PatcherUserAgent);
-        request.Headers.AddWithoutValidation("Host", "patch-bootver.ffxiv.com");
-
-        var resp = await this.client.SendAsync(request);
-        var text = await resp.Content.ReadAsStringAsync();
-
-        if (string.IsNullOrWhiteSpace(text))
-            return Array.Empty<PatchListEntry>();
-
-        Log.Verbose("Boot patching is needed... List:\n{PatchList}", resp);
-
-        try
+        if (isSteam)
         {
-            return PatchListParser.Parse(text);
+            if (steamTicket == null)
+                throw new ArgumentNullException(nameof(steamTicket), "isSteam, but steamTicket == null");
+
+            if (string.IsNullOrWhiteSpace(steamTicket.Text))
+                throw new ArgumentException("Steam ticket is empty", nameof(steamTicket));
+
+            url += "&issteam=1";
+
+            url += $"&session_ticket={steamTicket.Text}";
+            url += $"&ticket_size={steamTicket.Length}";
         }
-        catch (PatchListParseException ex)
-        {
-            Log.Information("Patch list:\n{PatchList}", ex.List);
-            throw;
-        }
+
+        return url;
+    }
+
+    private static string GetFileHash(string file)
+    {
+        var bytes = File.ReadAllBytes(file);
+
+        var hash       = SHA1.Create().ComputeHash(bytes);
+        var hashstring = string.Join("", hash.Select(b => b.ToString("x2")).ToArray());
+
+        var length = new FileInfo(file).Length;
+
+        return length + "/" + hashstring;
+    }
+
+    //public async Task<GateStatus> GetLoginStatus()
+    //{
+    //    return true;
+    //    try
+    //    {
+    //        var reply = Encoding.UTF8.GetString(
+    //            await DownloadAsLauncher(
+    //                $"https://frontier.ffxiv.com/worldStatus/login_status.json?_={ApiHelpers.GetUnixMillis()}", ClientLanguage.English).ConfigureAwait(true));
+
+    //        return JsonConvert.DeserializeObject<GateStatus>(reply);
+    //    }
+    //    catch (Exception exc)
+    //    {
+    //        throw new Exception("Could not get login status", exc);
+    //    }
+    //}
+
+    private static string MakeComputerId()
+    {
+        var hashString = Environment.MachineName + Environment.UserName + Environment.OSVersion + Environment.ProcessorCount;
+
+        using var sha1 = HashAlgorithm.Create("SHA1");
+
+        var bytes = new byte[5];
+
+        Debug.Assert(sha1 != null, nameof(sha1) + " != null");
+        Array.Copy(sha1!.ComputeHash(Encoding.Unicode.GetBytes(hashString)), 0, bytes, 1, 4);
+
+        var checkSum = (byte)-(bytes[1] + bytes[2] + bytes[3] + bytes[4]);
+        bytes[0] = checkSum;
+
+        return BitConverter.ToString(bytes).Replace("-", "").ToLower();
+    }
+
+    // Used to be used for frontier top, they now use the un-rounded long timestamp
+    private static string GetLauncherFormattedTime() => DateTime.UtcNow.ToString("yyyy-MM-dd-HH");
+
+    private static string GetLauncherFormattedTimeLong() => DateTime.UtcNow.ToString("yyyy-MM-dd-HH-mm");
+
+    private static string GetLauncherFormattedTimeLongRounded()
+    {
+        var formatted = DateTime.UtcNow.ToString("yyyy-MM-dd-HH-mm", new CultureInfo("en-US")).ToCharArray();
+        formatted[15] = '0';
+
+        return new string(formatted);
+    }
+
+    private static string GenerateUserAgent()
+    {
+        return
+            "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; InfoPath.2; .NET CLR 2.0.50727; MS-RTC LM 8; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET CLR 1.1.4322; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)";
     }
 
     private async Task<(string? Uid, LoginState result, PatchListEntry[] PendingGamePatches)> RegisterSession(OauthLoginResult loginResult, DirectoryInfo gamePath, bool forceBaseVersion)
     {
-        var request = new HttpRequestMessage(HttpMethod.Post,
-                                             $"{loginResult}/http/win32/shanda_release_chs_game/{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ffxiv.GetVer(gamePath))}");
+        var request = new HttpRequestMessage
+        (
+            HttpMethod.Post,
+            $"{loginResult}/http/win32/shanda_release_chs_game/{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ffxiv.GetVer(gamePath))}"
+        );
 
-        request.Headers.AddWithoutValidation("Connection", "Keep-Alive");
-        request.Headers.AddWithoutValidation("User-Agent", Constants.PatcherUserAgent);
+        request.Headers.AddWithoutValidation("Connection",   "Keep-Alive");
+        request.Headers.AddWithoutValidation("User-Agent",   Constants.PatcherUserAgent);
         request.Headers.AddWithoutValidation("X-Hash-Check", "enabled");
 
         if (!forceBaseVersion)
             EnsureVersionSanity(gamePath, loginResult.MaxExpansion);
         request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(GetVersionReport(gamePath, loginResult.MaxExpansion, forceBaseVersion)));
 
-        var resp = await this.client.SendAsync(request);
+        var resp = await client.SendAsync(request);
         var text = await resp.Content.ReadAsStringAsync();
 
         /*
@@ -505,36 +640,19 @@ public partial class Launcher
         return (uid, LoginState.NeedsPatchGame, pendingPatches);
     }
 
-    public async Task<string> GenPatchToken(string patchUrl, string uniqueId)
-    {
-        // Yes, Square does use HTTP for this and sends tokens in headers. IT'S NOT MY FAULT.
-        var request = new HttpRequestMessage(HttpMethod.Post, "http://patch-gamever.ffxiv.com/gen_token");
-
-        request.Headers.AddWithoutValidation("Connection", "Keep-Alive");
-        //request.Headers.AddWithoutValidation("X-Patch-Unique-Id", uniqueId);
-        request.Headers.AddWithoutValidation("User-Agent", Constants.PatcherUserAgent);
-
-        request.Content = new StringContent(patchUrl);
-
-        var resp = await this.client.SendAsync(request);
-        resp.EnsureSuccessStatusCode();
-
-        return await resp.Content.ReadAsStringAsync();
-    }
-
     private async Task<(string Stored, string? SteamLinkedId)> GetOauthTop(string url, bool isSteam)
     {
         // This is needed to be able to access the login site correctly
         var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.AddWithoutValidation("Accept", "image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/xaml+xml, application/x-ms-xbap, */*");
-        request.Headers.AddWithoutValidation("Referer", GenerateFrontierReferer(this.settings.ClientLanguage.GetValueOrDefault(ClientLanguage.English)));
+        request.Headers.AddWithoutValidation("Accept",          "image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/xaml+xml, application/x-ms-xbap, */*");
+        request.Headers.AddWithoutValidation("Referer",         GenerateFrontierReferer(settings.ClientLanguage.GetValueOrDefault(ClientLanguage.English)));
         request.Headers.AddWithoutValidation("Accept-Encoding", "gzip, deflate");
-        request.Headers.AddWithoutValidation("Accept-Language", this.settings.AcceptLanguage);
-        request.Headers.AddWithoutValidation("User-Agent", this.userAgent);
-        request.Headers.AddWithoutValidation("Connection", "Keep-Alive");
-        request.Headers.AddWithoutValidation("Cookie", "_rsid=\"\"");
+        request.Headers.AddWithoutValidation("Accept-Language", settings.AcceptLanguage);
+        request.Headers.AddWithoutValidation("User-Agent",      userAgent);
+        request.Headers.AddWithoutValidation("Connection",      "Keep-Alive");
+        request.Headers.AddWithoutValidation("Cookie",          "_rsid=\"\"");
 
-        var reply = await this.client.SendAsync(request);
+        var reply = await client.SendAsync(request);
 
         var text = await reply.Content.ReadAsStringAsync();
 
@@ -547,7 +665,7 @@ public partial class Launcher
         }
 
         var storedRegex = new Regex(@"\t<\s*input .* name=""_STORED_"" value=""(?<stored>.*)"">");
-        var matches = storedRegex.Matches(text);
+        var matches     = storedRegex.Matches(text);
 
         if (matches.Count == 0)
         {
@@ -559,7 +677,7 @@ public partial class Launcher
 
         if (isSteam)
         {
-            var steamRegex = new Regex(@"<input name=""sqexid"" type=""hidden"" value=""(?<sqexid>.*)""\/>");
+            var steamRegex   = new Regex(@"<input name=""sqexid"" type=""hidden"" value=""(?<sqexid>.*)""\/>");
             var steamMatches = steamRegex.Matches(text);
 
             if (steamMatches.Count == 0)
@@ -574,63 +692,30 @@ public partial class Launcher
         return (matches[0].Groups["stored"].Value, steamUsername);
     }
 
-    public class OauthLoginResult
-    {
-        public string SessionId { get; set; }
-        public string InputUserId { get; set; }
-        public string SndaId { get; set; }
-        public string Password { get; set; }
-        public string AutoLoginSessionKey { get; set; }
-        public int Region { get; set; }
-        public bool TermsAccepted { get; set; }
-        public bool Playable { get; set; }
-        public int MaxExpansion { get; set; }
-        public LoginType LoginType { get; set; }
-    }
-
-    private static string GetOauthTopUrl(int region, bool isFreeTrial, bool isSteam, Ticket? steamTicket)
-    {
-        var url =
-            $"https://ffxiv-login.square-enix.com/oauth/ffxivarr/login/top?lng=en&rgn={region}&isft={(isFreeTrial ? "1" : "0")}&cssmode=1&isnew=1&launchver=3";
-
-        if (isSteam)
-        {
-            if (steamTicket == null)
-                throw new ArgumentNullException(nameof(steamTicket), "isSteam, but steamTicket == null");
-
-            if (string.IsNullOrWhiteSpace(steamTicket.Text))
-                throw new ArgumentException("Steam ticket is empty", nameof(steamTicket));
-
-            url += "&issteam=1";
-
-            url += $"&session_ticket={steamTicket.Text}";
-            url += $"&ticket_size={steamTicket.Length}";
-        }
-
-        return url;
-    }
-
     private async Task<OauthLoginResult> OauthLogin(string userName, string password, string otp, bool isFreeTrial, bool isSteam, int region, Ticket? steamTicket)
     {
         if (isSteam && steamTicket == null)
             throw new ArgumentNullException(nameof(steamTicket), "isSteam, but steamTicket == null");
 
-        var topUrl = GetOauthTopUrl(region, isFreeTrial, isSteam, steamTicket);
+        var topUrl    = GetOauthTopUrl(region, isFreeTrial, isSteam, steamTicket);
         var topResult = await GetOauthTop(topUrl, isSteam);
 
-        var request = new HttpRequestMessage(HttpMethod.Post,
-                                             "https://ffxiv-login.square-enix.com/oauth/ffxivarr/login/login.send");
+        var request = new HttpRequestMessage
+        (
+            HttpMethod.Post,
+            "https://ffxiv-login.square-enix.com/oauth/ffxivarr/login/login.send"
+        );
 
-        request.Headers.AddWithoutValidation("Accept", "image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/xaml+xml, application/x-ms-xbap, */*");
-        request.Headers.AddWithoutValidation("Referer", topUrl);
-        request.Headers.AddWithoutValidation("Accept-Language", this.settings.AcceptLanguage);
-        request.Headers.AddWithoutValidation("User-Agent", this.userAgent);
+        request.Headers.AddWithoutValidation("Accept",          "image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/xaml+xml, application/x-ms-xbap, */*");
+        request.Headers.AddWithoutValidation("Referer",         topUrl);
+        request.Headers.AddWithoutValidation("Accept-Language", settings.AcceptLanguage);
+        request.Headers.AddWithoutValidation("User-Agent",      userAgent);
         //request.Headers.AddWithoutValidation("Content-Type", "application/x-www-form-urlencoded");
         request.Headers.AddWithoutValidation("Accept-Encoding", "gzip, deflate");
-        request.Headers.AddWithoutValidation("Host", "ffxiv-login.square-enix.com");
-        request.Headers.AddWithoutValidation("Connection", "Keep-Alive");
-        request.Headers.AddWithoutValidation("Cache-Control", "no-cache");
-        request.Headers.AddWithoutValidation("Cookie", "_rsid=\"\"");
+        request.Headers.AddWithoutValidation("Host",            "ffxiv-login.square-enix.com");
+        request.Headers.AddWithoutValidation("Connection",      "Keep-Alive");
+        request.Headers.AddWithoutValidation("Cache-Control",   "no-cache");
+        request.Headers.AddWithoutValidation("Cookie",          "_rsid=\"\"");
 
         if (isSteam)
         {
@@ -643,21 +728,23 @@ public partial class Launcher
             userName = topResult.SteamLinkedId!;
         }
 
-        request.Content = new FormUrlEncodedContent(
+        request.Content = new FormUrlEncodedContent
+        (
             new Dictionary<string, string>
             {
                 { "_STORED_", topResult.Stored },
                 { "sqexid", userName },
                 { "password", password },
-                { "otppw", otp },
+                { "otppw", otp }
                 // { "saveid", "1" } // NOTE(goat): This adds a Set-Cookie with a filled-out _rsid value in the login response.
-            });
+            }
+        );
 
-        var response = await this.client.SendAsync(request);
+        var response = await client.SendAsync(request);
 
         var reply = await response.Content.ReadAsStringAsync();
 
-        var regex = new Regex(@"window.external.user\(""login=auth,ok,(?<launchParams>.*)\);");
+        var regex   = new Regex(@"window.external.user\(""login=auth,ok,(?<launchParams>.*)\);");
         var matches = regex.Matches(reply);
 
         if (matches.Count == 0)
@@ -667,123 +754,55 @@ public partial class Launcher
 
         return new OauthLoginResult
         {
-            SessionId = launchParams[1],
-            Region = int.Parse(launchParams[5]),
+            SessionId     = launchParams[1],
+            Region        = int.Parse(launchParams[5]),
             TermsAccepted = launchParams[3] != "0",
-            Playable = launchParams[9] != "0",
-            MaxExpansion = int.Parse(launchParams[13])
+            Playable      = launchParams[9] != "0",
+            MaxExpansion  = int.Parse(launchParams[13])
         };
-    }
-
-    private static string GetFileHash(string file)
-    {
-        var bytes = File.ReadAllBytes(file);
-
-        var hash = SHA1.Create().ComputeHash(bytes);
-        var hashstring = string.Join("", hash.Select(b => b.ToString("x2")).ToArray());
-
-        var length = new FileInfo(file).Length;
-
-        return length + "/" + hashstring;
-    }
-
-    public async Task<GateStatus> GetGateStatus(ClientLanguage language)
-    {
-        try
-        {
-            var reply = Encoding.UTF8.GetString(
-                await DownloadAsLauncher(
-                    $"https://frontier.ffxiv.com/worldStatus/gate_status.json?lang={language.GetLangCode()}&_={ApiHelpers.GetUnixMillis()}", language).ConfigureAwait(true));
-
-            return JsonConvert.DeserializeObject<GateStatus>(reply);
-        }
-        catch (Exception exc)
-        {
-            throw new Exception("Could not get gate status", exc);
-        }
-    }
-
-    //public async Task<GateStatus> GetLoginStatus()
-    //{
-    //    return true;
-    //    try
-    //    {
-    //        var reply = Encoding.UTF8.GetString(
-    //            await DownloadAsLauncher(
-    //                $"https://frontier.ffxiv.com/worldStatus/login_status.json?_={ApiHelpers.GetUnixMillis()}", ClientLanguage.English).ConfigureAwait(true));
-
-    //        return JsonConvert.DeserializeObject<GateStatus>(reply);
-    //    }
-    //    catch (Exception exc)
-    //    {
-    //        throw new Exception("Could not get login status", exc);
-    //    }
-    //}
-
-    private static string MakeComputerId()
-    {
-        var hashString = Environment.MachineName + Environment.UserName + Environment.OSVersion +
-                         Environment.ProcessorCount;
-
-        using var sha1 = HashAlgorithm.Create("SHA1");
-
-        var bytes = new byte[5];
-
-        Debug.Assert(sha1 != null, nameof(sha1) + " != null");
-        Array.Copy(sha1!.ComputeHash(Encoding.Unicode.GetBytes(hashString)), 0, bytes, 1, 4);
-
-        var checkSum = (byte)-(bytes[1] + bytes[2] + bytes[3] + bytes[4]);
-        bytes[0] = checkSum;
-
-        return BitConverter.ToString(bytes).Replace("-", "").ToLower();
-    }
-
-    public async Task<byte[]> DownloadAsLauncher(string url, ClientLanguage language, string contentType = "")
-    {
-        var request = new HttpRequestMessage(HttpMethod.Get, url);
-        //request.Headers.AddWithoutValidation("Accept", "*/*");
-        //request.Headers.AddWithoutValidation("User-Agent", this.userAgent);
-
-        if (!string.IsNullOrEmpty(contentType))
-        {
-            request.Headers.AddWithoutValidation("Accept", contentType);
-        }
-
-        request.Headers.AddWithoutValidation("Accept-Encoding", "gzip, deflate");
-        request.Headers.AddWithoutValidation("Accept-Language", "zh-CN");
-        request.Headers.AddWithoutValidation(
-            "User-Agent", "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.2; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)");
-        request.Headers.AddWithoutValidation("Referer", "https://ff.web.sdo.com/project/launcher0904/index.html");
-        //request.Headers.AddWithoutValidation("Host", "ff.web.sdo.com");
-
-        var resp = await this.client.SendAsync(request);
-        return await resp.Content.ReadAsByteArrayAsync();
     }
 
     private string GenerateFrontierReferer(ClientLanguage language)
     {
-        var langCode = language.GetLangCode().Replace("-", "_");
+        var langCode      = language.GetLangCode().Replace("-", "_");
         var formattedTime = GetLauncherFormattedTimeLong();
 
-        return string.Format(this.frontierUrlTemplate, langCode, formattedTime);
+        return string.Format(frontierUrlTemplate, langCode, formattedTime);
     }
 
-    // Used to be used for frontier top, they now use the un-rounded long timestamp
-    private static string GetLauncherFormattedTime() => DateTime.UtcNow.ToString("yyyy-MM-dd-HH");
-
-    private static string GetLauncherFormattedTimeLong() => DateTime.UtcNow.ToString("yyyy-MM-dd-HH-mm");
-
-    private static string GetLauncherFormattedTimeLongRounded()
+    public enum LoginState
     {
-        var formatted = DateTime.UtcNow.ToString("yyyy-MM-dd-HH-mm", new CultureInfo("en-US")).ToCharArray();
-        formatted[15] = '0';
-
-        return new string(formatted);
+        Unknown,
+        Ok,
+        NeedsPatchGame,
+        NeedsPatchBoot,
+        NoService,
+        NoTerms,
+        NeedRetry
     }
 
-    private static string GenerateUserAgent()
+    public class LoginResult
     {
-        return
-            "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; InfoPath.2; .NET CLR 2.0.50727; MS-RTC LM 8; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET CLR 1.1.4322; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)";
+        public LoginState        State          { get; set; }
+        public PatchListEntry[]  PendingPatches { get; set; } = [];
+        public OauthLoginResult? OauthLogin     { get; set; }
+        public string?           UniqueId       { get; set; }
+        public SdoArea?          Area           { get; set; }
+        public SdoArea[]?        Areas          { get; set; }
+        public int               DcTravelPort   { get; set; } = 0;
+    }
+
+    public class OauthLoginResult
+    {
+        public string    SessionId           { get; set; }
+        public string    InputUserId         { get; set; }
+        public string    SndaId              { get; set; }
+        public string    Password            { get; set; }
+        public string    AutoLoginSessionKey { get; set; }
+        public int       Region              { get; set; }
+        public bool      TermsAccepted       { get; set; }
+        public bool      Playable            { get; set; }
+        public int       MaxExpansion        { get; set; }
+        public LoginType LoginType           { get; set; }
     }
 }

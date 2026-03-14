@@ -5,14 +5,11 @@
 
 using Newtonsoft.Json;
 
-namespace AriaNet.Attributes
-{
-    public class AriaUri
-    {
-        [JsonProperty("status")]
-        public string Status { get; set; }
+namespace AriaNet.Attributes;
 
-        [JsonProperty("uri")]
-        public string Uri { get; set; }
-    }
+public class AriaUri
+{
+    [JsonProperty("status")] public string Status { get; set; }
+
+    [JsonProperty("uri")] public string Uri { get; set; }
 }

@@ -1,46 +1,40 @@
 ﻿using System;
 using System.Threading;
 
-namespace XIVLauncher.Common.Http
+namespace XIVLauncher.Common.Http;
+
+public class OtpListener
 {
-    public class OtpListener
+    private const int HTTP_PORT = 4646;
+
+    private readonly Thread     serverThread;
+    private volatile HttpServer server;
+
+    public OtpListener(string version)
     {
-        private volatile HttpServer server;
+        server             =  new HttpServer(HTTP_PORT, version);
+        server.GetReceived += GetReceived;
 
-        private const int HTTP_PORT = 4646;
+        serverThread = new Thread(server.Start) { Name = "OtpListenerServerThread", IsBackground = true };
+    }
 
-        public event LoginEvent OnOtpReceived;
+    public void Start() =>
+        serverThread.Start();
 
-        public delegate void LoginEvent(string onetimePassword);
+    public void Stop() =>
+        server?.Stop();
 
-        private readonly Thread serverThread;
-
-        public OtpListener(string version)
+    private void GetReceived(object sender, HttpServer.HttpServerGetEvent e)
+    {
+        if (e.Path.StartsWith("/ffxivlauncher/", StringComparison.Ordinal))
         {
-            this.server = new HttpServer(HTTP_PORT, version);
-            this.server.GetReceived += this.GetReceived;
+            var otp = e.Path.Substring(15);
 
-            this.serverThread = new Thread(this.server.Start) { Name = "OtpListenerServerThread", IsBackground = true };
-        }
-
-        private void GetReceived(object sender, HttpServer.HttpServerGetEvent e)
-        {
-            if (e.Path.StartsWith("/ffxivlauncher/", StringComparison.Ordinal))
-            {
-                var otp = e.Path.Substring(15);
-
-                OnOtpReceived?.Invoke(otp);
-            }
-        }
-
-        public void Start()
-        {
-            this.serverThread.Start();
-        }
-
-        public void Stop()
-        {
-            this.server?.Stop();
+            OnOtpReceived?.Invoke(otp);
         }
     }
+
+    public event LoginEvent OnOtpReceived;
+
+    public delegate void LoginEvent(string onetimePassword);
 }

@@ -7,6 +7,8 @@ namespace XIVLauncher.Settings.Parsers;
 
 public class CommonJsonParser<T> : ITypeParser
 {
+    public IEnumerable<Type> SupportedTypes => new[] { typeof(T) };
+
     public bool TryParse(string value, Type t, out object result)
     {
         try
@@ -22,10 +24,6 @@ public class CommonJsonParser<T> : ITypeParser
         return true;
     }
 
-    public string ToRawString(object value)
-    {
-        return value == null ? null : JsonConvert.SerializeObject(value);
-    }
-
-    public IEnumerable<Type> SupportedTypes => new[] { typeof(T) };
+    public string ToRawString(object value) =>
+        value == null ? null : JsonConvert.SerializeObject(value);
 }

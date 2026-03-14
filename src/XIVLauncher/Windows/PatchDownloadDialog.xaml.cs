@@ -7,54 +7,116 @@ using System.Windows.Input;
 using XIVLauncher.Common.Game.Patch;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows.ViewModel;
-using Brushes = System.Windows.Media.Brushes;
 
-namespace XIVLauncher.Windows
+namespace XIVLauncher.Windows;
+
+/// <summary>
+///     Interaction logic for PatchDownloadDialog.xaml
+/// </summary>
+public partial class PatchDownloadDialog : Window
 {
-    /// <summary>
-    /// Interaction logic for PatchDownloadDialog.xaml
-    /// </summary>
-    public partial class PatchDownloadDialog : Window
+    public           PatchDownloadDialogViewModel ViewModel => DataContext as PatchDownloadDialogViewModel;
+    private readonly PatchManager                 _manager;
+
+    private readonly Timer _timer;
+
+    public PatchDownloadDialog(PatchManager manager)
     {
-        private readonly PatchManager _manager;
+        InitializeComponent();
 
-        private readonly Timer _timer;
+        _manager = manager;
 
-        public PatchDownloadDialogViewModel ViewModel => DataContext as PatchDownloadDialogViewModel;
+        DataContext = new PatchDownloadDialogViewModel();
 
-        public PatchDownloadDialog(PatchManager manager)
+        MouseMove += PatchDownloadDialog_OnMouseMove;
+
+        _timer           =  new Timer();
+        _timer.Elapsed   += ViewUpdateTimerOnElapsed;
+        _timer.AutoReset =  true;
+        _timer.Interval  =  200;
+
+        IsVisibleChanged += (_, _) => _timer.Enabled = IsVisible;
+        Closed           += (_, _) => _timer.Dispose();
+    }
+
+    public void SetGeneralProgress(int curr, int final, bool busy)
+    {
+        PatchProgressText.Text = string.Format(ViewModel.PatchGeneralStatusLoc, $"{curr}/{final}");
+        InstallingText.Text    = busy ? string.Format(ViewModel.PatchInstallingFormattedLoc, curr) : ViewModel.PatchInstallingIdleLoc;
+    }
+
+    public void SetLeft(long left, double rate)
+    {
+        var eta = rate == 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(left / rate);
+        BytesLeftText.Text = string.Format(ViewModel.PatchEtaLoc, ApiHelpers.BytesToString(left), ApiHelpers.BytesToString(rate));
+        TimeLeftText.Text  = ApiHelpers.GetTimeLeft(eta, ViewModel.PatchEtaTimeLoc);
+    }
+
+    public void SetPatchProgress(int index, string patchName, double pct, bool indeterminate)
+    {
+        switch (index)
         {
-            InitializeComponent();
+            case 0:
+                SetProgressBar1Progress(patchName, pct, indeterminate);
+                break;
 
-            _manager = manager;
+            case 1:
+                SetProgressBar2Progress(patchName, pct, indeterminate);
+                break;
 
-            this.DataContext = new PatchDownloadDialogViewModel();
+            case 2:
+                SetProgressBar3Progress(patchName, pct, indeterminate);
+                break;
 
-            MouseMove += PatchDownloadDialog_OnMouseMove;
-
-            _timer = new Timer();
-            _timer.Elapsed += ViewUpdateTimerOnElapsed;
-            _timer.AutoReset = true;
-            _timer.Interval = 200;
-
-            IsVisibleChanged += (_, _) => _timer.Enabled = IsVisible;
-            Closed += (_, _) => _timer.Dispose();
+            case 3:
+                SetProgressBar4Progress(patchName, pct, indeterminate);
+                break;
         }
+    }
 
-        private void PatchDownloadDialog_OnMouseMove(object sender, MouseEventArgs e)
-        {
-            if (e.LeftButton == MouseButtonState.Pressed)
-                DragMove();
-        }
+    public void SetProgressBar1Progress(string patchName, double percentage, bool indeterminate)
+    {
+        Progress1.Value           = percentage;
+        Progress1.IsIndeterminate = indeterminate;
+        Progress1Text.Text        = patchName;
+    }
 
-        private void ViewUpdateTimerOnElapsed(object sender, ElapsedEventArgs e)
-        {
-            if (_manager == null)
-                return;
+    public void SetProgressBar2Progress(string patchName, double percentage, bool indeterminate)
+    {
+        Progress2.Value           = percentage;
+        Progress2.IsIndeterminate = indeterminate;
+        Progress2Text.Text        = patchName;
+    }
 
-            this.Dispatcher.Invoke(() =>
+    public void SetProgressBar3Progress(string patchName, double percentage, bool indeterminate)
+    {
+        Progress3.Value           = percentage;
+        Progress3.IsIndeterminate = indeterminate;
+        Progress3Text.Text        = patchName;
+    }
+
+    public void SetProgressBar4Progress(string patchName, double percentage, bool indeterminate)
+    {
+        Progress4.Value           = percentage;
+        Progress4.IsIndeterminate = indeterminate;
+        Progress4Text.Text        = patchName;
+    }
+
+    private void PatchDownloadDialog_OnMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+            DragMove();
+    }
+
+    private void ViewUpdateTimerOnElapsed(object sender, ElapsedEventArgs e)
+    {
+        if (_manager == null)
+            return;
+
+        Dispatcher.Invoke
+        (() =>
             {
-                SetGeneralProgress(_manager.CurrentInstallIndex, _manager.Downloads.Count, this._manager.IsInstallerBusy);
+                SetGeneralProgress(_manager.CurrentInstallIndex, _manager.Downloads.Count, _manager.IsInstallerBusy);
 
                 for (var i = 0; i < PatchManager.MAX_DOWNLOADS_AT_ONCE; i++)
                 {
@@ -68,92 +130,35 @@ namespace XIVLauncher.Windows
 
                     if (_manager.Slots[i] == PatchManager.SlotState.Checking)
                     {
-                        SetPatchProgress(i,
-                                         $"{activePatch.Patch} ({ViewModel.PatchCheckingLoc})", 100f, true);
+                        SetPatchProgress
+                        (
+                            i,
+                            $"{activePatch.Patch} ({ViewModel.PatchCheckingLoc})",
+                            100f,
+                            true
+                        );
                     }
                     else
                     {
-                        var pct = Math.Round((double) (100 * _manager.Progresses[i]) / activePatch.Patch.Length, 2);
-                        SetPatchProgress(i,
-                                         $"{activePatch.Patch} ({pct:#0.0}%, {ApiHelpers.BytesToString(_manager.Speeds[i])}/s)",
-                                         pct, false);
+                        var pct = Math.Round((double)(100 * _manager.Progresses[i]) / activePatch.Patch.Length, 2);
+                        SetPatchProgress
+                        (
+                            i,
+                            $"{activePatch.Patch} ({pct:#0.0}%, {ApiHelpers.BytesToString(_manager.Speeds[i])}/s)",
+                            pct,
+                            false
+                        );
                     }
                 }
 
                 if (_manager.DownloadsDone)
-                {
                     SetLeft(0, 0);
-                }
                 else
-                {
                     SetLeft(_manager.AllDownloadsLength < 0 ? 0 : _manager.AllDownloadsLength, _manager.Speeds.Sum());
-                }
-            });
-        }
-
-        public void SetGeneralProgress(int curr, int final, bool busy)
-        {
-            PatchProgressText.Text = string.Format(ViewModel.PatchGeneralStatusLoc, $"{curr}/{final}");
-            InstallingText.Text = busy ? string.Format(ViewModel.PatchInstallingFormattedLoc, curr) : ViewModel.PatchInstallingIdleLoc;
-        }
-
-        public void SetLeft(long left, double rate)
-        {
-            TimeSpan eta = rate == 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(left / rate);
-            BytesLeftText.Text = string.Format(ViewModel.PatchEtaLoc, ApiHelpers.BytesToString(left), ApiHelpers.BytesToString(rate));
-            TimeLeftText.Text = ApiHelpers.GetTimeLeft(eta, ViewModel.PatchEtaTimeLoc);
-        }
-
-        public void SetPatchProgress(int index, string patchName, double pct, bool indeterminate)
-        {
-            switch (index)
-            {
-                case 0:
-                    SetProgressBar1Progress(patchName, pct, indeterminate);
-                    break;
-                case 1:
-                    SetProgressBar2Progress(patchName, pct, indeterminate);
-                    break;
-                case 2:
-                    SetProgressBar3Progress(patchName, pct, indeterminate);
-                    break;
-                case 3:
-                    SetProgressBar4Progress(patchName, pct, indeterminate);
-                    break;
             }
-        }
-
-        public void SetProgressBar1Progress(string patchName, double percentage, bool indeterminate)
-        {
-            Progress1.Value = percentage;
-            Progress1.IsIndeterminate = indeterminate;
-            Progress1Text.Text = patchName;
-        }
-
-        public void SetProgressBar2Progress(string patchName, double percentage, bool indeterminate)
-        {
-            Progress2.Value = percentage;
-            Progress2.IsIndeterminate = indeterminate;
-            Progress2Text.Text = patchName;
-        }
-
-        public void SetProgressBar3Progress(string patchName, double percentage, bool indeterminate)
-        {
-            Progress3.Value = percentage;
-            Progress3.IsIndeterminate = indeterminate;
-            Progress3Text.Text = patchName;
-        }
-
-        public void SetProgressBar4Progress(string patchName, double percentage, bool indeterminate)
-        {
-            Progress4.Value = percentage;
-            Progress4.IsIndeterminate = indeterminate;
-            Progress4Text.Text = patchName;
-        }
-
-        private void PatchDownloadDialog_OnClosing(object sender, CancelEventArgs e)
-        {
-            e.Cancel = true; // We can't cancel patching yet, big TODO
-        }
+        );
     }
+
+    private void PatchDownloadDialog_OnClosing(object sender, CancelEventArgs e) =>
+        e.Cancel = true; // We can't cancel patching yet, big TODO
 }

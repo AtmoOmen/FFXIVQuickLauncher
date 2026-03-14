@@ -1,21 +1,21 @@
 ﻿using System.IO;
 
-namespace XIVLauncher.Common.Patching.ZiPatch.Chunk
+namespace XIVLauncher.Common.Patching.ZiPatch.Chunk;
+
+public class EndOfFileChunk : ZiPatchChunk
 {
-    public class EndOfFileChunk : ZiPatchChunk
+    public new static string Type = "EOF_";
+
+    public EndOfFileChunk(BinaryReader reader, long offset, long size)
+        : base(reader, offset, size)
     {
-        public new static string Type = "EOF_";
+    }
 
-        protected override void ReadChunk()
-        {
-            using var advanceAfter = this.GetAdvanceOnDispose();
-        }
+    public override string ToString() =>
+        Type;
 
-        public EndOfFileChunk(BinaryReader reader, long offset, long size) : base(reader, offset, size) {}
-
-        public override string ToString()
-        {
-            return Type;
-        }
+    protected override void ReadChunk()
+    {
+        using var advanceAfter = GetAdvanceOnDispose();
     }
 }

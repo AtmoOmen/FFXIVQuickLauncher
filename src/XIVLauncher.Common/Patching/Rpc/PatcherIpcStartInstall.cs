@@ -1,32 +1,25 @@
-using Newtonsoft.Json;
 using System.IO;
+using Newtonsoft.Json;
 
-namespace XIVLauncher.Common.PatcherIpc
+namespace XIVLauncher.Common.PatcherIpc;
+
+public class PatcherIpcStartInstall
 {
-    public class PatcherIpcStartInstall
+    public string     PatchFileDTO     { get; set; }
+    public Repository Repo             { get; set; }
+    public string     VersionId        { get; set; }
+    public string     GameDirectoryDTO { get; set; }
+    public bool       KeepPatch        { get; set; }
+
+    [JsonIgnore] public FileInfo PatchFile
     {
-        public string PatchFileDTO { get; set; }
-        public Repository Repo { get; set; }
-        public string VersionId { get; set; }
-        public string GameDirectoryDTO { get; set; }
-        public bool KeepPatch { get; set; }
-        [JsonIgnore]
-        public FileInfo PatchFile
-        {
-            get => new FileInfo(PatchFileDTO);
-            set
-            {
-                PatchFileDTO = value.FullName;
-            }
-        }
-        [JsonIgnore]
-        public DirectoryInfo GameDirectory
-        {
-            get => new DirectoryInfo(GameDirectoryDTO);
-            set
-            {
-                GameDirectoryDTO = value.FullName;
-            }
-        }
+        get => new(PatchFileDTO);
+        set => PatchFileDTO = value.FullName;
+    }
+
+    [JsonIgnore] public DirectoryInfo GameDirectory
+    {
+        get => new(GameDirectoryDTO);
+        set => GameDirectoryDTO = value.FullName;
     }
 }

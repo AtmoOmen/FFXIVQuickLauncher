@@ -7,16 +7,14 @@ namespace XIVLauncher.Common.Game.Exceptions;
 [Serializable]
 public class OauthLoginException : Exception
 {
+    public string? OauthErrorMessage { get; private set; }
+
     private static Regex errorMessageRegex =
         new(@"window.external.user\(""login=auth,ng,err,(?<errorMessage>.*)\""\);", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    public string? OauthErrorMessage { get; private set; }
-
     public OauthLoginException(string document)
-        : base(document ?? "Unknown error")
-    {
-        this.OauthErrorMessage = document;
-    }
+        : base(document ?? "Unknown error") =>
+        OauthErrorMessage = document;
 
     private static string? GetErrorMessage(string document)
     {

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Serilog;
 using Serilog.Events;
 using XIVLauncher.Common;
-using XIVLauncher.Common.Patching.IndexedZiPatch;
 using XIVLauncher.Common.Patching.SdoFileDownload;
 
 namespace XIVLauncher.PatchInstaller.Commands;
@@ -18,6 +17,9 @@ public class SdoRpcCommand
 
     private static readonly Argument<string> ChannelNameArgument = new("channel-name");
 
+    private readonly int    monitorProcessId;
+    private readonly string channelName;
+
     static SdoRpcCommand()
     {
         Command.AddArgument(MonitorProcessIDArgument);
@@ -25,13 +27,10 @@ public class SdoRpcCommand
         Command.SetHandler(x => new SdoRpcCommand(x.ParseResult).Handle());
     }
 
-    private readonly int monitorProcessId;
-    private readonly string channelName;
-
     private SdoRpcCommand(ParseResult parseResult)
     {
-        this.monitorProcessId = parseResult.GetValueForArgument(MonitorProcessIDArgument);
-        this.channelName = parseResult.GetValueForArgument(ChannelNameArgument);
+        monitorProcessId = parseResult.GetValueForArgument(MonitorProcessIDArgument);
+        channelName      = parseResult.GetValueForArgument(ChannelNameArgument);
     }
 
     private Task<int> Handle()
@@ -43,7 +42,7 @@ public class SdoRpcCommand
                      .MinimumLevel.Verbose()
                      .CreateLogger();
 
-        new SdoFileDownloadRemoteInstaller.WorkerSubprocessBody(this.monitorProcessId, this.channelName).RunToDisposeSelf();
+        new SdoFileDownloadRemoteInstaller.WorkerSubprocessBody(monitorProcessId, channelName).RunToDisposeSelf();
         return Task.FromResult(0);
     }
 }

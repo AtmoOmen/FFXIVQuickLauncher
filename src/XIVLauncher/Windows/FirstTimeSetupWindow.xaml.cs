@@ -21,7 +21,7 @@ public partial class FirstTimeSetup : Window
     {
         InitializeComponent();
 
-        this.DataContext = new FirstTimeSetupViewModel();
+        DataContext = new FirstTimeSetupViewModel();
 
         var detectedPath = AppUtil.TryGamePaths();
 
@@ -87,7 +87,7 @@ public partial class FirstTimeSetup : Window
     private void NextButton_Click(object sender, RoutedEventArgs e)
     {
         Log.Information($"[FirstTimeSetup] 当前步骤索引: {SetupTabControl.SelectedIndex}");
-        
+
         switch (SetupTabControl.SelectedIndex)
         {
             case 0 when string.IsNullOrEmpty(GamePathEntry.Text):
@@ -145,7 +145,7 @@ public partial class FirstTimeSetup : Window
 
                 break;
             }
-            
+
             case 1:
                 App.Settings.GamePath           = new(GamePathEntry.Text);
                 App.Settings.Language           = ClientLanguage.ChineseSimplified;
@@ -154,7 +154,7 @@ public partial class FirstTimeSetup : Window
                 App.Settings.AddonList = [];
 
                 WasCompleted = true;
-                this.Close();
+                Close();
                 break;
         }
 

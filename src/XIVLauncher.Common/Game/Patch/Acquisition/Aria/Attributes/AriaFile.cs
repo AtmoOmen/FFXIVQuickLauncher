@@ -6,26 +6,19 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace AriaNet.Attributes
+namespace AriaNet.Attributes;
+
+public class AriaFile
 {
-    public class AriaFile
-    {
-        [JsonProperty("index")]
-        public string Index { get; set; }
+    [JsonProperty("index")] public string Index { get; set; }
 
-        [JsonProperty("length")]
-        public string Length { get; set; }
+    [JsonProperty("length")] public string Length { get; set; }
 
-        [JsonProperty("completedLength")]
-        public string CompletedLength { get; set; }
+    [JsonProperty("completedLength")] public string CompletedLength { get; set; }
 
-        [JsonProperty("path")]
-        public string Path { get; set; }
+    [JsonProperty("path")] public string Path { get; set; }
 
-        [JsonProperty("selected")]
-        public string Selected { get; set; }
+    [JsonProperty("selected")] public string Selected { get; set; }
 
-        [JsonProperty("uris")]
-        public List<AriaUri> Uris { get; set; }
-    }
+    [JsonProperty("uris")] public List<AriaUri> Uris { get; set; }
 }

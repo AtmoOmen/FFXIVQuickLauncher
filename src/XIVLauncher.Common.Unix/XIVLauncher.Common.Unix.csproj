@@ -20,7 +20,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
     </ItemGroup>
 
     <PropertyGroup Label="Configuration" Condition="'$(Configuration)'=='Release'">
@@ -29,14 +29,14 @@
     </PropertyGroup>
 
     <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
-        <None Remove="libsteam_api64.so" />
+        <None Remove="libsteam_api64.so"/>
         <Content Include="libsteam_api64.so">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
 
     <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
-        <None Remove="libsteam_api64.dylib" />
+        <None Remove="libsteam_api64.dylib"/>
         <Content Include="libsteam_api64.dylib">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
@@ -48,7 +48,7 @@
 
     <ItemGroup>
         <!-- Custom steamworks, based on the chippy branch of Facepunch.Steamworks -->
-        <PackageReference Include="goaaats.Steamworks" Version="2.3.4" />
-        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
+        <PackageReference Include="goaaats.Steamworks" Version="2.3.4"/>
+        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0"/>
     </ItemGroup>
 </Project>

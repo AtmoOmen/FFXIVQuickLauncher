@@ -10,10 +10,10 @@ public interface IUniqueIdCache
 
     void Reset();
 
-    public struct CachedUid
+    struct CachedUid
     {
         public string UniqueId;
-        public int Region;
-        public int MaxExpansion;
+        public int    Region;
+        public int    MaxExpansion;
     }
 }

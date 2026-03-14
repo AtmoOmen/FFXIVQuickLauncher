@@ -7,27 +7,27 @@ public class GameFixApply
 {
     private readonly GameFix[] fixes;
 
-    public delegate void UpdateProgressDelegate(string loadingText, bool hasProgress, float progress);
-
-    public event UpdateProgressDelegate UpdateProgress;
-
     public GameFixApply(DirectoryInfo gameDirectory, DirectoryInfo configDirectory, DirectoryInfo winePrefixDirectory, DirectoryInfo tempDirectory)
     {
-        this.fixes = new GameFix[]
+        fixes = new GameFix[]
         {
-            new CutsceneMovieOpeningFix(gameDirectory, configDirectory, winePrefixDirectory, tempDirectory),
+            new CutsceneMovieOpeningFix(gameDirectory, configDirectory, winePrefixDirectory, tempDirectory)
         };
     }
 
     public void Run()
     {
-        foreach (GameFix fix in this.fixes)
+        foreach (var fix in fixes)
         {
-            this.UpdateProgress?.Invoke(fix.LoadingTitle, false, 0f);
+            UpdateProgress?.Invoke(fix.LoadingTitle, false, 0f);
 
-            fix.UpdateProgress += this.UpdateProgress;
+            fix.UpdateProgress += UpdateProgress;
             fix.Apply();
-            fix.UpdateProgress -= this.UpdateProgress;
+            fix.UpdateProgress -= UpdateProgress;
         }
     }
+
+    public delegate void UpdateProgressDelegate(string loadingText, bool hasProgress, float progress);
+
+    public event UpdateProgressDelegate UpdateProgress;
 }

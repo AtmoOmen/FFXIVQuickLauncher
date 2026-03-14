@@ -2,33 +2,31 @@
 using System.Windows.Input;
 using XIVLauncher.Windows.ViewModel;
 
-namespace XIVLauncher.Windows
+namespace XIVLauncher.Windows;
+
+/// <summary>
+///     Interaction logic for OtpInputDialog.xaml
+/// </summary>
+public partial class UpdateLoadingDialog : Window
 {
-    /// <summary>
-    /// Interaction logic for OtpInputDialog.xaml
-    /// </summary>
-    public partial class UpdateLoadingDialog : Window
+    public UpdateLoadingDialog()
     {
-        public UpdateLoadingDialog()
-        {
-            InitializeComponent();
+        InitializeComponent();
 
-            AutoLoginDisclaimer.Visibility = App.Settings.AutologinEnabled ? Visibility.Visible : Visibility.Collapsed;
-            ResetUidCacheDisclaimer.Visibility = App.Settings.UniqueIdCacheEnabled ? Visibility.Visible : Visibility.Collapsed;
-            if (ResetUidCacheDisclaimer.Visibility == Visibility.Visible
-                && AutoLoginDisclaimer.Visibility == Visibility.Visible) {
-                UpdateLoadingCard.Height += 19;
-            }
+        AutoLoginDisclaimer.Visibility     = App.Settings.AutologinEnabled ? Visibility.Visible : Visibility.Collapsed;
+        ResetUidCacheDisclaimer.Visibility = App.Settings.UniqueIdCacheEnabled ? Visibility.Visible : Visibility.Collapsed;
+        if (ResetUidCacheDisclaimer.Visibility == Visibility.Visible
+            && AutoLoginDisclaimer.Visibility  == Visibility.Visible)
+            UpdateLoadingCard.Height += 19;
 
-            this.DataContext = new UpdateLoadingDialogViewModel();
+        DataContext = new UpdateLoadingDialogViewModel();
 
-            MouseMove += UpdateLoadingDialog_OnMouseMove;
-        }
+        MouseMove += UpdateLoadingDialog_OnMouseMove;
+    }
 
-        private void UpdateLoadingDialog_OnMouseMove(object sender, MouseEventArgs e)
-        {
-            if (e.LeftButton == MouseButtonState.Pressed)
-                DragMove();
-        }
+    private void UpdateLoadingDialog_OnMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+            DragMove();
     }
 }

@@ -14,25 +14,34 @@
         AllowsTransparency="True"
         Background="Transparent"
         WindowStyle="None" Height="240" Width="340"
-        d:DataContext="{d:DesignInstance viewModel:PatchDownloadDialogViewModel}" Closing="PatchDownloadDialog_OnClosing">
+        d:DataContext="{d:DesignInstance viewModel:PatchDownloadDialogViewModel}"
+        Closing="PatchDownloadDialog_OnClosing">
     <Grid Margin="0,0,0,0">
         <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="Auto" Margin="0,0,10,0">
             <StackPanel Margin="16,16,16,0">
-                <TextBlock x:Name="PatchProgressText" Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center" Text="{Binding PatchPreparingLoc}" Margin="0,0,0,15"/>
+                <TextBlock x:Name="PatchProgressText" Foreground="{DynamicResource MaterialDesignBody}"
+                           HorizontalAlignment="Center" Text="{Binding PatchPreparingLoc}" Margin="0,0,0,15" />
 
-                <TextBlock x:Name="Progress1Text" Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}"></TextBlock>
+                <TextBlock x:Name="Progress1Text" Foreground="{DynamicResource MaterialDesignBody}"
+                           HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}" />
                 <ProgressBar x:Name="Progress1" Value="0" Margin="0,0,0,10" />
-                <TextBlock x:Name="Progress2Text" Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}"></TextBlock>
+                <TextBlock x:Name="Progress2Text" Foreground="{DynamicResource MaterialDesignBody}"
+                           HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}" />
                 <ProgressBar x:Name="Progress2" Value="0" Margin="0,0,0,10" />
-                <TextBlock x:Name="Progress3Text" Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}"></TextBlock>
+                <TextBlock x:Name="Progress3Text" Foreground="{DynamicResource MaterialDesignBody}"
+                           HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}" />
                 <ProgressBar x:Name="Progress3" Value="0" Margin="0,0,0,10" />
-                <TextBlock x:Name="Progress4Text" Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}"></TextBlock>
+                <TextBlock x:Name="Progress4Text" Foreground="{DynamicResource MaterialDesignBody}"
+                           HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}" />
                 <ProgressBar x:Name="Progress4" Value="0" Margin="0,0,0,10" />
-                <TextBlock x:Name="InstallingText" Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center" Text="{Binding PatchInstallingLoc}"></TextBlock>
+                <TextBlock x:Name="InstallingText" Foreground="{DynamicResource MaterialDesignBody}"
+                           HorizontalAlignment="Center" Text="{Binding PatchInstallingLoc}" />
                 <ProgressBar IsIndeterminate="True" Margin="0,0,0,11" />
 
-                <TextBlock x:Name="BytesLeftText" Foreground="DarkGray" Margin="0,8,0,0" TextAlignment="Center" Text="{Binding PatchPreparingLoc}"/>
-                <TextBlock x:Name="TimeLeftText" Foreground="DarkGray" Margin="0,0,0,12" TextAlignment="Center" Text="{Binding PatchPreparingLoc}"/>
+                <TextBlock x:Name="BytesLeftText" Foreground="DarkGray" Margin="0,8,0,0" TextAlignment="Center"
+                           Text="{Binding PatchPreparingLoc}" />
+                <TextBlock x:Name="TimeLeftText" Foreground="DarkGray" Margin="0,0,0,12" TextAlignment="Center"
+                           Text="{Binding PatchPreparingLoc}" />
             </StackPanel>
         </materialDesign:Card>
     </Grid>

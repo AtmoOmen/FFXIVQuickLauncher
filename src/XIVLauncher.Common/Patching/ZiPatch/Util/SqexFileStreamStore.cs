@@ -2,48 +2,51 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace XIVLauncher.Common.Patching.ZiPatch.Util
+namespace XIVLauncher.Common.Patching.ZiPatch.Util;
+
+public class SqexFileStreamStore : IDisposable
 {
-    public class SqexFileStreamStore : IDisposable
+    private readonly Dictionary<string, SqexFileStream> _streams = new();
+
+    #region Disposal
+
+    public void Dispose()
     {
-        private readonly Dictionary<string, SqexFileStream> _streams = new Dictionary<string, SqexFileStream>();
-
-        public SqexFileStream GetStream(string path, FileMode mode, int tries, int sleeptime)
+        foreach (var stream in _streams.Values)
         {
-            // Normalise path
-            path = Path.GetFullPath(path);
-            var key = path.ToLowerInvariant();
+            stream.Flush(true);
+            stream.Dispose();
+        }
 
-            if (_streams.TryGetValue(key, out var stream))
-                return stream;
+        _streams.Clear();
+    }
 
-            stream = SqexFileStream.WaitForStream(path, mode, tries, sleeptime);
-            _streams.Add(key, stream);
+    #endregion
 
+    public SqexFileStream GetStream(string path, FileMode mode, int tries, int sleeptime)
+    {
+        // Normalise path
+        path = Path.GetFullPath(path);
+        var key = path.ToLowerInvariant();
+
+        if (_streams.TryGetValue(key, out var stream))
             return stream;
-        }
 
-        public void CloseStream(string path)
+        stream = SqexFileStream.WaitForStream(path, mode, tries, sleeptime);
+        _streams.Add(key, stream);
+
+        return stream;
+    }
+
+    public void CloseStream(string path)
+    {
+        path = Path.GetFullPath(path);
+        var key = path.ToLowerInvariant();
+
+        if (_streams.TryGetValue(key, out var s))
         {
-            path = Path.GetFullPath(path);
-            var key = path.ToLowerInvariant();
-
-            if (this._streams.TryGetValue(key, out var s))
-            {
-                this._streams.Remove(key);
-                s.Dispose();
-            }
-        }
-
-        public void Dispose()
-        {
-            foreach (var stream in _streams.Values)
-            {
-                stream.Flush(true);
-                stream.Dispose();
-            }
-
-            this._streams.Clear();
+            _streams.Remove(key);
+            s.Dispose();
         }
     }
 }

@@ -4,9 +4,9 @@ namespace XIVLauncher.Common.PlatformAbstractions;
 
 public interface IDalamudCompatibilityCheck
 {
-    public void EnsureCompatibility();
+    void EnsureCompatibility();
 
-    public class ArchitectureNotSupportedException : Exception
+    class ArchitectureNotSupportedException : Exception
     {
         public ArchitectureNotSupportedException(string message)
             : base(message)
@@ -14,7 +14,7 @@ public interface IDalamudCompatibilityCheck
         }
     }
 
-    public class NoRedistsException : Exception
+    class NoRedistsException : Exception
     {
     }
 }

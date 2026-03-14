@@ -11,7 +11,7 @@ public class SettingsDescriptionAttribute : Attribute
 
     public SettingsDescriptionAttribute(string friendlyName, string description)
     {
-        this.FriendlyName = friendlyName;
-        this.Description = description;
+        FriendlyName = friendlyName;
+        Description  = description;
     }
 }

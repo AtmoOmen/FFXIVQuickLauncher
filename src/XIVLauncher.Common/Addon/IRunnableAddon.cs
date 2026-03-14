@@ -1,7 +1,6 @@
-﻿namespace XIVLauncher.Common.Addon
+﻿namespace XIVLauncher.Common.Addon;
+
+internal interface IRunnableAddon : IAddon
 {
-    interface IRunnableAddon : IAddon
-    {
-        void Run();
-    }
+    void Run();
 }

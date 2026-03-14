@@ -33,8 +33,8 @@
 
     <!-- Assets -->
     <ItemGroup>
-        <Resource Include="Resources\*.*" />
-        <EmbeddedResource Include="Resources\Loc\xl\*.json" />
+        <Resource Include="Resources\*.*"/>
+        <EmbeddedResource Include="Resources\Loc\xl\*.json"/>
     </ItemGroup>
 
     <PropertyGroup>
@@ -53,10 +53,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Resource Remove="Resources\aria2c-xl.exe" />
-        <Resource Remove="Resources\CHANGELOG.txt" />
-        <Resource Remove="Resources\COPYING.aria2" />
-        <Resource Remove="Resources\LICENSE.txt" />
+        <Resource Remove="Resources\aria2c-xl.exe"/>
+        <Resource Remove="Resources\CHANGELOG.txt"/>
+        <Resource Remove="Resources\COPYING.aria2"/>
+        <Resource Remove="Resources\LICENSE.txt"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -72,44 +72,44 @@
         <Content Include="Resources\LICENSE.txt">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <None Remove="Resources\7zr.exe" />
+        <None Remove="Resources\7zr.exe"/>
         <Content Include="Resources\7zr.exe">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="CalcBinding" Version="2.5.2" />
-        <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
-        <PackageReference Include="AdysTech.CredentialManager" Version="2.6.0" />
-        <PackageReference Include="CheapLoc" Version="1.1.6" />
-        <PackageReference Include="Config.Net.Json" Version="4.14.23" />
-        <PackageReference Include="Downloader" Version="2.2.8" />
-        <PackageReference Include="Dragablz" Version="0.0.3.223" />
-        <PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
-        <PackageReference Include="MaterialDesignThemes" Version="4.3.0" />
-        <PackageReference Include="Microsoft.WindowsAPICodePack-Shell" Version="1.1.0" />
-        <PackageReference Include="NSec.Cryptography" Version="24.4.0" />
-        <PackageReference Include="Serilog" Version="4.0.2" />
-        <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0" />
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-        <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
-        <PackageReference Include="SharedMemory" Version="2.3.2" />
-        <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
-        <PackageReference Include="Stylet" Version="1.3.7" />
-        <PackageReference Include="System.Collections.Immutable" Version="1.5.0" />
-        <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
-        <PackageReference Include="System.Text.Encodings.Web" Version="8.0.0" />
-        <PackageReference Include="Velopack" Version="0.0.1053" />
-        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
+        <PackageReference Include="CalcBinding" Version="2.5.2"/>
+        <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1"/>
+        <PackageReference Include="AdysTech.CredentialManager" Version="2.6.0"/>
+        <PackageReference Include="CheapLoc" Version="1.1.6"/>
+        <PackageReference Include="Config.Net.Json" Version="4.14.23"/>
+        <PackageReference Include="Downloader" Version="2.2.8"/>
+        <PackageReference Include="Dragablz" Version="0.0.3.223"/>
+        <PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0"/>
+        <PackageReference Include="MaterialDesignThemes" Version="4.3.0"/>
+        <PackageReference Include="Microsoft.WindowsAPICodePack-Shell" Version="1.1.0"/>
+        <PackageReference Include="NSec.Cryptography" Version="24.4.0"/>
+        <PackageReference Include="Serilog" Version="4.0.2"/>
+        <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0"/>
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
+        <PackageReference Include="Serilog.Sinks.File" Version="5.0.0"/>
+        <PackageReference Include="SharedMemory" Version="2.3.2"/>
+        <PackageReference Include="sqlite-net-pcl" Version="1.9.172"/>
+        <PackageReference Include="Stylet" Version="1.3.7"/>
+        <PackageReference Include="System.Collections.Immutable" Version="1.5.0"/>
+        <PackageReference Include="System.Drawing.Common" Version="8.0.10"/>
+        <PackageReference Include="System.Text.Encodings.Web" Version="8.0.0"/>
+        <PackageReference Include="Velopack" Version="0.0.1053"/>
+        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\FfxivArgLauncher\FfxivArgLauncher.csproj" />
-        <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj" />
-        <ProjectReference Include="..\XIVLauncher.Common.Windows\XIVLauncher.Common.Windows.csproj" />
-        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />
-        <ProjectReference Include="..\XIVLauncher.PatchInstaller\XIVLauncher.PatchInstaller.csproj" />
+        <ProjectReference Include="..\FfxivArgLauncher\FfxivArgLauncher.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Common.Windows\XIVLauncher.Common.Windows.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.PatchInstaller\XIVLauncher.PatchInstaller.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -125,10 +125,10 @@
             <VerFile>$(IntermediateOutputPath)gitver</VerFile>
         </PropertyGroup>
         <!-- write the hash to the temp file.-->
-        <Exec Command="git -C &quot;$(ProjectDir.Replace('\','\\'))&quot; describe --tags --long --always --dirty &gt; $(VerFile)" />
+        <Exec Command="git -C &quot;$(ProjectDir.Replace('\','\\'))&quot; describe --tags --long --always --dirty &gt; $(VerFile)"/>
         <!-- read the version into the GitVersion itemGroup-->
         <ReadLinesFromFile File="$(VerFile)">
-            <Output TaskParameter="Lines" ItemName="GitVersion" />
+            <Output TaskParameter="Lines" ItemName="GitVersion"/>
         </ReadLinesFromFile>
         <!-- Set the BuildHash property to contain the GitVersion, if it wasn't already set.-->
         <PropertyGroup>
@@ -142,7 +142,7 @@
         </PropertyGroup>
         <!-- includes the CustomAssemblyInfo for compilation into your project -->
         <ItemGroup>
-            <Compile Include="$(CustomAssemblyInfoFile)" />
+            <Compile Include="$(CustomAssemblyInfoFile)"/>
         </ItemGroup>
         <!-- defines the AssemblyMetadata attribute that will be written -->
         <ItemGroup>
@@ -157,7 +157,7 @@
             </AssemblyAttributes>
         </ItemGroup>
         <!-- writes the attribute to the customAssemblyInfo file -->
-        <WriteCodeFragment Language="C#" OutputFile="$(CustomAssemblyInfoFile)" AssemblyAttributes="@(AssemblyAttributes)" />
+        <WriteCodeFragment Language="C#" OutputFile="$(CustomAssemblyInfoFile)" AssemblyAttributes="@(AssemblyAttributes)"/>
     </Target>
 
 </Project>

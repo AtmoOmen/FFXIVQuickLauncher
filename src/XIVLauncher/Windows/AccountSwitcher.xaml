@@ -20,82 +20,90 @@
                 <ListView x:Name="AccountListView"
                           MaxHeight="370"
                           AllowDrop="True"
-                          MouseUp="AccountListView_OnMouseUp" 
+                          MouseUp="AccountListView_OnMouseUp"
                           PreviewMouseLeftButtonDown="AccountListView_OnPreviewMouseLeftButtonDown"
                           PreviewMouseMove="AccountListView_OnPreviewMouseMove"
                           Drop="AccountListView_OnDrop">
                     <ListView.ContextMenu>
                         <ContextMenu Opened="AccountListViewContext_Opened" StaysOpen="true">
                             <!--<MenuItem Header="{Binding AccountSwitcherSetProfilePicLoc}" Click="SetProfilePicture_OnClick"  Foreground="{DynamicResource MaterialDesignBody}"/>-->
-                            <MenuItem Header="{Binding AccountSwitcherCreateShortcutLoc}" Click="CreateDesktopShortcut_OnClick" Foreground="{DynamicResource MaterialDesignBody}"/>
-                            <MenuItem Header="{Binding AccountSwitcherSetNoteLoc}" Click="SetNote_OnClick" Foreground="{DynamicResource MaterialDesignBody}"/>
-                            <MenuItem Header="{Binding RemoveLoc}" Click="RemoveAccount_OnClick" Foreground="{DynamicResource MaterialDesignBody}"/>
-                            <MenuItem x:Name="AccountEntrySavePasswordCheck" Visibility="Collapsed" IsCheckable="true" Header="{Binding AccountSwitcherDontSavePasswordLoc}" Checked="DontSavePassword_OnChecked" Unchecked="DontSavePassword_OnUnchecked" Foreground="{DynamicResource MaterialDesignBody}"/>
+                            <MenuItem Header="{Binding AccountSwitcherCreateShortcutLoc}"
+                                      Click="CreateDesktopShortcut_OnClick"
+                                      Foreground="{DynamicResource MaterialDesignBody}" />
+                            <MenuItem Header="{Binding AccountSwitcherSetNoteLoc}" Click="SetNote_OnClick"
+                                      Foreground="{DynamicResource MaterialDesignBody}" />
+                            <MenuItem Header="{Binding RemoveLoc}" Click="RemoveAccount_OnClick"
+                                      Foreground="{DynamicResource MaterialDesignBody}" />
+                            <MenuItem x:Name="AccountEntrySavePasswordCheck" Visibility="Collapsed" IsCheckable="true"
+                                      Header="{Binding AccountSwitcherDontSavePasswordLoc}"
+                                      Checked="DontSavePassword_OnChecked" Unchecked="DontSavePassword_OnUnchecked"
+                                      Foreground="{DynamicResource MaterialDesignBody}" />
                         </ContextMenu>
                     </ListView.ContextMenu>
 
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
-              <DataTemplate x:Name="SingleLineDataTemplate" DataType="accounts:AccountSwitcherEntry">
-                  <Grid>
-                      <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="Auto" />
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition Width="Auto" />
-                      </Grid.ColumnDefinitions>
-                      <StackPanel Orientation="Horizontal" Height="42">
-                          <Image Source="{Binding ProfileImage}"></Image>
-                                    <TextBlock Text="{Binding Account.DisplayName}" VerticalAlignment="Center" Margin="12,0,0,0" />
-                      </StackPanel>
+                        <DataTemplate x:Name="SingleLineDataTemplate" DataType="accounts:AccountSwitcherEntry">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" Height="42">
+                                    <Image Source="{Binding ProfileImage}" />
+                                    <TextBlock Text="{Binding Account.DisplayName}" VerticalAlignment="Center"
+                                               Margin="12,0,0,0" />
+                                </StackPanel>
 
-                      <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
-                          <materialDesign:PackIcon Height="20" Width="20"
-                                                   Margin="0,0,0,0" HorizontalAlignment="Right"
-                                                   VerticalAlignment="Center">
-                              <materialDesign:PackIcon.Style>
-                                  <Style TargetType="materialDesign:PackIcon">
-                                      <Style.Triggers>
-                                          <DataTrigger
-                                                       Binding="{Binding Account.IsWeGame}" Value="true">
-                                              <Setter Property="Kind" Value="Qqchat" />
-                                          </DataTrigger>
-                                          <DataTrigger
-                                                       Binding="{Binding Account.IsWeGame}" Value="false">
-                                              <Setter Property="Visibility" Value="Collapsed" />
-                                          </DataTrigger>
-                                      </Style.Triggers>
-                                  </Style>
-                              </materialDesign:PackIcon.Style>
-                          </materialDesign:PackIcon>
+                                <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <materialDesign:PackIcon Height="20" Width="20"
+                                                             Margin="0,0,0,0" HorizontalAlignment="Right"
+                                                             VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Style.Triggers>
+                                                    <DataTrigger
+                                                        Binding="{Binding Account.IsWeGame}" Value="true">
+                                                        <Setter Property="Kind" Value="Qqchat" />
+                                                    </DataTrigger>
+                                                    <DataTrigger
+                                                        Binding="{Binding Account.IsWeGame}" Value="false">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
 
-                          <materialDesign:PackIcon Height="20" Width="20"
-                                                   Margin="0,0,0,0" HorizontalAlignment="Right"
-                                                   VerticalAlignment="Center">
-                              <materialDesign:PackIcon.Style>
-                                  <Style TargetType="materialDesign:PackIcon">
-                                      <Style.Triggers>
-                                          <DataTrigger
-                                              Binding="{Binding Account.AutoLogin}" Value="True">
-                                              <Setter Property="Kind" Value="AccountKeyOutline" />
-                                          </DataTrigger>
-                                          <DataTrigger
-                                              Binding="{Binding Account.AutoLogin}" Value="False">
-                                              <Setter Property="Visibility" Value="Collapsed" />
-                                          </DataTrigger>
-                                      </Style.Triggers>
-                                  </Style>
-                              </materialDesign:PackIcon.Style>
-                          </materialDesign:PackIcon>
-                      </StackPanel>
-                  </Grid>
+                                    <materialDesign:PackIcon Height="20" Width="20"
+                                                             Margin="0,0,0,0" HorizontalAlignment="Right"
+                                                             VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Style.Triggers>
+                                                    <DataTrigger
+                                                        Binding="{Binding Account.AutoLogin}" Value="True">
+                                                        <Setter Property="Kind" Value="AccountKeyOutline" />
+                                                    </DataTrigger>
+                                                    <DataTrigger
+                                                        Binding="{Binding Account.AutoLogin}" Value="False">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                </StackPanel>
+                            </Grid>
 
-              </DataTemplate>
-            </ListView.ItemTemplate>
-          </ListView>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
             </StackPanel>
         </materialDesign:Card>
     </Grid>

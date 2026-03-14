@@ -6,14 +6,12 @@ using Microsoft.Win32.SafeHandles;
 namespace XIVLauncher.Common;
 
 /// <summary>
-/// Class allowing the creation of a Process object based on an already held handle.
+///     Class allowing the creation of a Process object based on an already held handle.
 /// </summary>
 public class ExistingProcess : Process
 {
-    public ExistingProcess(IntPtr handle)
-    {
+    public ExistingProcess(IntPtr handle) =>
         SetHandle(handle);
-    }
 
     private void SetHandle(IntPtr handle)
     {
@@ -21,8 +19,11 @@ public class ExistingProcess : Process
         if (baseType == null)
             return;
 
-        var setProcessHandleMethod = baseType.GetMethod("SetProcessHandle",
-            BindingFlags.NonPublic | BindingFlags.Instance);
+        var setProcessHandleMethod = baseType.GetMethod
+        (
+            "SetProcessHandle",
+            BindingFlags.NonPublic | BindingFlags.Instance
+        );
         setProcessHandleMethod?.Invoke(this, new object[] { new SafeProcessHandle(handle, true) });
     }
 }

@@ -1,9 +1,8 @@
-﻿namespace XIVLauncher.Common.Addon
-{
-    public interface IAddon
-    {
-        string Name { get; }
+﻿namespace XIVLauncher.Common.Addon;
 
-        void Setup(int gamePid);
-    }
+public interface IAddon
+{
+    string Name { get; }
+
+    void Setup(int gamePid);
 }

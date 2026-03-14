@@ -21,18 +21,16 @@ public class RpcCommand
 
     private static readonly Argument<string> ChannelNameArgument = new("channel-name");
 
+    private readonly string channelName;
+
     static RpcCommand()
     {
         Command.AddArgument(ChannelNameArgument);
         Command.SetHandler(x => new RpcCommand(x.ParseResult).Handle());
     }
 
-    private readonly string channelName;
-
-    private RpcCommand(ParseResult parseResult)
-    {
-        this.channelName = parseResult.GetValueForArgument(ChannelNameArgument);
-    }
+    private RpcCommand(ParseResult parseResult) =>
+        channelName = parseResult.GetValueForArgument(ChannelNameArgument);
 
     private Task<int> Handle()
     {
@@ -45,12 +43,12 @@ public class RpcCommand
 
         try
         {
-            var installer = new RemotePatchInstaller(new SharedMemoryRpc(this.channelName));
+            var installer = new RemotePatchInstaller(new SharedMemoryRpc(channelName));
             installer.Start();
 
             while (true)
             {
-                if ((Process.GetProcesses().All(x => x.ProcessName != "XIVLauncherCN") && !installer.HasQueuedInstalls) || installer.IsDone)
+                if (Process.GetProcesses().All(x => x.ProcessName != "XIVLauncherCN") && !installer.HasQueuedInstalls || installer.IsDone)
                 {
                     Environment.Exit(0);
                     return Task.FromResult(0); // does not run

@@ -9,165 +9,175 @@ using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.Rpc;
 using XIVLauncher.Common.Patching.Rpc.Implementations;
 
-namespace XIVLauncher.Common.Game.Patch
+namespace XIVLauncher.Common.Game.Patch;
+
+public class PatchInstaller : IDisposable
 {
-    public class PatchInstaller : IDisposable
+    public           InstallerState State { get; private set; } = InstallerState.NotStarted;
+    private readonly bool           keepPatches;
+    private          IRpc           rpc;
+
+    private RemotePatchInstaller? internalPatchInstaller;
+
+    public PatchInstaller(bool keepPatches) =>
+        this.keepPatches = keepPatches;
+
+    #region Disposal
+
+    public void Dispose() =>
+        Stop();
+
+    #endregion
+
+    public void StartIfNeeded(bool external = true)
     {
-        private readonly bool keepPatches;
-        private IRpc rpc;
+        var rpcName = "XLPatcher" + Guid.NewGuid();
 
-        private RemotePatchInstaller? internalPatchInstaller;
+        Log.Information("[PATCHERIPC] Starting patcher with '{0}'", rpcName);
 
-        public enum InstallerState
+        if (external)
         {
-            NotStarted,
-            NotReady,
-            Ready,
-            Busy,
-            Failed
-        }
+            rpc                 =  new SharedMemoryRpc(rpcName);
+            rpc.MessageReceived += RemoteCallHandler;
 
-        public InstallerState State { get; private set; } = InstallerState.NotStarted;
+            var path = Path.Combine
+            (
+                AppContext.BaseDirectory,
+                "XIVLauncher.PatchInstaller.exe"
+            );
 
-        public event Action OnFail;
+            var startInfo = new ProcessStartInfo(path);
+            startInfo.UseShellExecute = true;
 
-        public PatchInstaller(bool keepPatches)
-        {
-            this.keepPatches = keepPatches;
-        }
+            //Start as admin if needed
+            if (!EnvironmentSettings.IsNoRunas && Environment.OSVersion.Version.Major >= 6)
+                startInfo.Verb = "runas";
 
-        public void StartIfNeeded(bool external = true)
-        {
-            var rpcName = "XLPatcher" + Guid.NewGuid().ToString();
-
-            Log.Information("[PATCHERIPC] Starting patcher with '{0}'", rpcName);
-
-            if (external)
+            if (!Debugger.IsAttached)
             {
-                this.rpc = new SharedMemoryRpc(rpcName);
-                this.rpc.MessageReceived += RemoteCallHandler;
-
-                var path = Path.Combine(AppContext.BaseDirectory,
-                    "XIVLauncher.PatchInstaller.exe");
-
-                var startInfo = new ProcessStartInfo(path);
-                startInfo.UseShellExecute = true;
-
-                //Start as admin if needed
-                if (!EnvironmentSettings.IsNoRunas && Environment.OSVersion.Version.Major >= 6)
-                    startInfo.Verb = "runas";
-
-                if (!Debugger.IsAttached)
-                {
-                    startInfo.CreateNoWindow = true;
-                    startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                }
-
-                startInfo.Arguments = $"rpc {rpcName}";
-
-                State = InstallerState.NotReady;
-
-                try
-                {
-                    Process.Start(startInfo);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Could not launch Patch Installer");
-                    throw new PatchInstallerException("Start failed.", ex);
-                }
-            }
-            else
-            {
-                this.rpc = new InProcessRpc(rpcName);
-                this.rpc.MessageReceived += RemoteCallHandler;
-
-                this.internalPatchInstaller = new RemotePatchInstaller(new InProcessRpc(rpcName));
-                this.internalPatchInstaller.Start();
-            }
-        }
-
-        private void RemoteCallHandler(PatcherIpcEnvelope envelope)
-        {
-            switch (envelope.OpCode)
-            {
-                case PatcherIpcOpCode.Hello:
-                    //_client.Initialize(_clientPort);
-                    Log.Information("[PATCHERIPC] GOT HELLO");
-                    State = InstallerState.Ready;
-                    break;
-
-                case PatcherIpcOpCode.InstallOk:
-                    Log.Information("[PATCHERIPC] INSTALL OK");
-                    State = InstallerState.Ready;
-                    break;
-
-                case PatcherIpcOpCode.InstallFailed:
-                    State = InstallerState.Failed;
-                    OnFail?.Invoke();
-
-                    Stop();
-                    Environment.Exit(0);
-                    break;
-
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        public void WaitOnHello()
-        {
-            for (var i = 0; i < 40; i++)
-            {
-                if (State == InstallerState.Ready)
-                    return;
-
-                Thread.Sleep(500);
+                startInfo.CreateNoWindow = true;
+                startInfo.WindowStyle    = ProcessWindowStyle.Hidden;
             }
 
-            throw new PatchInstallerException("Installer RPC timed out.");
-        }
+            startInfo.Arguments = $"rpc {rpcName}";
 
-        public void Stop()
+            State = InstallerState.NotReady;
+
+            try
+            {
+                Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Could not launch Patch Installer");
+                throw new PatchInstallerException("Start failed.", ex);
+            }
+        }
+        else
         {
-            if (State == InstallerState.NotReady || State == InstallerState.NotStarted || State == InstallerState.Busy)
+            rpc                 =  new InProcessRpc(rpcName);
+            rpc.MessageReceived += RemoteCallHandler;
+
+            internalPatchInstaller = new RemotePatchInstaller(new InProcessRpc(rpcName));
+            internalPatchInstaller.Start();
+        }
+    }
+
+    public void WaitOnHello()
+    {
+        for (var i = 0; i < 40; i++)
+        {
+            if (State == InstallerState.Ready)
                 return;
 
-            this.rpc.SendMessage(new PatcherIpcEnvelope
-            {
-                OpCode = PatcherIpcOpCode.Bye
-            });
+            Thread.Sleep(500);
         }
 
-        public void StartInstall(DirectoryInfo gameDirectory, FileInfo file, PatchListEntry patch)
-        {
-            State = InstallerState.Busy;
-            this.rpc.SendMessage(new PatcherIpcEnvelope
+        throw new PatchInstallerException("Installer RPC timed out.");
+    }
+
+    public void Stop()
+    {
+        if (State == InstallerState.NotReady || State == InstallerState.NotStarted || State == InstallerState.Busy)
+            return;
+
+        rpc.SendMessage
+        (
+            new PatcherIpcEnvelope
+            {
+                OpCode = PatcherIpcOpCode.Bye
+            }
+        );
+    }
+
+    public void StartInstall(DirectoryInfo gameDirectory, FileInfo file, PatchListEntry patch)
+    {
+        State = InstallerState.Busy;
+        rpc.SendMessage
+        (
+            new PatcherIpcEnvelope
             {
                 OpCode = PatcherIpcOpCode.StartInstall,
                 Data = new PatcherIpcStartInstall
                 {
                     GameDirectory = gameDirectory,
-                    PatchFile = file,
-                    Repo = patch.GetRepo(),
-                    VersionId = patch.VersionId,
-                    KeepPatch = this.keepPatches,
+                    PatchFile     = file,
+                    Repo          = patch.GetRepo(),
+                    VersionId     = patch.VersionId,
+                    KeepPatch     = keepPatches
                 }
-            });
-        }
+            }
+        );
+    }
 
-        public void FinishInstall(DirectoryInfo gameDirectory)
-        {
-            this.rpc.SendMessage(new PatcherIpcEnvelope
+    public void FinishInstall(DirectoryInfo gameDirectory)
+    {
+        rpc.SendMessage
+        (
+            new PatcherIpcEnvelope
             {
                 OpCode = PatcherIpcOpCode.Finish,
-                Data = gameDirectory.FullName
-            });
-        }
+                Data   = gameDirectory.FullName
+            }
+        );
+    }
 
-        public void Dispose()
+    private void RemoteCallHandler(PatcherIpcEnvelope envelope)
+    {
+        switch (envelope.OpCode)
         {
-            Stop();
+            case PatcherIpcOpCode.Hello:
+                //_client.Initialize(_clientPort);
+                Log.Information("[PATCHERIPC] GOT HELLO");
+                State = InstallerState.Ready;
+                break;
+
+            case PatcherIpcOpCode.InstallOk:
+                Log.Information("[PATCHERIPC] INSTALL OK");
+                State = InstallerState.Ready;
+                break;
+
+            case PatcherIpcOpCode.InstallFailed:
+                State = InstallerState.Failed;
+                OnFail?.Invoke();
+
+                Stop();
+                Environment.Exit(0);
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
         }
     }
+
+    public enum InstallerState
+    {
+        NotStarted,
+        NotReady,
+        Ready,
+        Busy,
+        Failed
+    }
+
+    public event Action OnFail;
 }

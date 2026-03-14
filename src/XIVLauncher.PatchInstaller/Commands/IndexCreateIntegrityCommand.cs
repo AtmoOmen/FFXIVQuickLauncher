@@ -27,10 +27,16 @@ public class IndexCreateIntegrityCommand
 
     private static readonly Argument<string[]> PatchIndexFilesArgument = new("patch-index-files", "Path to a patch index file. (*.patch.index)");
 
-    private static readonly Option<int> ThreadCountOption = new(
+    private static readonly Option<int> ThreadCountOption = new
+    (
         ["-t", "--threads"],
         () => Math.Min(Environment.ProcessorCount, 8),
-        "Number of threads. Specifying 0 will use all available cores.");
+        "Number of threads. Specifying 0 will use all available cores."
+    );
+
+    private readonly string   patchRootPath;
+    private readonly string[] patchIndexFiles;
+    private readonly int      threadCount;
 
     static IndexCreateIntegrityCommand()
     {
@@ -41,23 +47,19 @@ public class IndexCreateIntegrityCommand
         Command.SetHandler(x => new IndexCreateIntegrityCommand(x.ParseResult).Handle(x.GetCancellationToken()));
     }
 
-    private readonly string patchRootPath;
-    private readonly string[] patchIndexFiles;
-    private readonly int threadCount;
-
     private IndexCreateIntegrityCommand(ParseResult parseResult)
     {
-        this.patchRootPath = parseResult.GetValueForArgument(PatchRootPathArgument);
-        this.patchIndexFiles = parseResult.GetValueForArgument(PatchIndexFilesArgument);
-        this.threadCount = parseResult.GetValueForOption(ThreadCountOption);
-        if (this.threadCount == 0)
-            this.threadCount = Environment.ProcessorCount;
-        Debug.Assert(this.threadCount > 0);
+        patchRootPath   = parseResult.GetValueForArgument(PatchRootPathArgument);
+        patchIndexFiles = parseResult.GetValueForArgument(PatchIndexFilesArgument);
+        threadCount     = parseResult.GetValueForOption(ThreadCountOption);
+        if (threadCount == 0)
+            threadCount = Environment.ProcessorCount;
+        Debug.Assert(threadCount > 0);
     }
 
     private async Task<int> Handle(CancellationToken cancellationToken)
     {
-        var patchGame = Path.Combine(this.patchRootPath, "game");
+        var patchGame = Path.Combine(patchRootPath, "game");
 
         if (!Directory.Exists(patchGame))
         {
@@ -78,13 +80,11 @@ public class IndexCreateIntegrityCommand
                              .ToDictionary(Path.GetFileName, x => x);
             }
             else if (dirName.Length == 8 && Regex.IsMatch(dirName, "[0-9a-f]{8}"))
-            {
                 patchFiles[0] = Directory.GetFiles(dirPath).ToDictionary(Path.GetFileName, x => x);
-            }
         }
 
-        using var cts = new CancellationTokenSource();
-        var ct = cts.Token;
+        using var cts             = new CancellationTokenSource();
+        var       ct              = cts.Token;
         using var ctsRegistration = cancellationToken.Register(cts.Cancel);
 
         var tasks = new HashSet<Task<Tuple<string, string>>>();
@@ -93,7 +93,7 @@ public class IndexCreateIntegrityCommand
 
         try
         {
-            foreach (var f in this.patchIndexFiles)
+            foreach (var f in patchIndexFiles)
             {
                 ct.ThrowIfCancellationRequested();
                 var pi = new IndexedZiPatchIndex(new BinaryReader(new DeflateStream(new FileStream(f, FileMode.Open, FileAccess.Read), CompressionMode.Decompress)));
@@ -105,7 +105,7 @@ public class IndexCreateIntegrityCommand
                         continue;
 
                     case 0:
-                        result.GameVersion = pi.VersionName;
+                        result.GameVersion     = pi.VersionName;
                         result.LastGameVersion = Path.GetFileNameWithoutExtension(pi.Sources[pi.Sources.Count - 2].Substring(1));
                         result.Hashes[@"\game\ffxivgame.bck"] =
                             result.Hashes[@"\game\ffxivgame.ver"] =
@@ -123,14 +123,14 @@ public class IndexCreateIntegrityCommand
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    while (tasks.Count >= this.threadCount)
+                    while (tasks.Count >= threadCount)
                     {
                         ct.ThrowIfCancellationRequested();
 
                         var t = await Task.WhenAny(tasks);
                         tasks.Remove(t);
 
-                        var (filename, hash) = await t;
+                        var (filename, hash)    = await t;
                         result.Hashes[filename] = hash;
                         Log.Information("Hashed: {name} => {hash}", filename, hash);
                     }
@@ -150,12 +150,12 @@ public class IndexCreateIntegrityCommand
                         throw;
                     }
 
-                    var fs = pi[i].ToStream(sources);
+                    var fs   = pi[i].ToStream(sources);
                     var name = @"\game\" + pi[i].RelativePath.Replace("/", "\\");
 
                     Log.Information("Hashing: {name} ({progress}/{max}) of {ex}", name, i + 1, pi.Length, pi.ExpacVersion == 0 ? "base" : $"ex{pi.ExpacVersion}");
                     // Use empty cancellation token, since we need the task body to dispose the stream
-                    tasks.Add(Task.Run(async () => Tuple.Create(name, await this.HashFromStream(fs, ct)), new()));
+                    tasks.Add(Task.Run(async () => Tuple.Create(name, await HashFromStream(fs, ct)), new()));
                 }
             }
 
@@ -166,7 +166,7 @@ public class IndexCreateIntegrityCommand
                 var t = await Task.WhenAny(tasks);
                 tasks.Remove(t);
 
-                var (filename, hash) = await t;
+                var (filename, hash)    = await t;
                 result.Hashes[filename] = hash;
                 Log.Information("Hashed: {name} => {hash}", filename, hash);
             }
@@ -183,45 +183,8 @@ public class IndexCreateIntegrityCommand
         return 0;
     }
 
-    private class PathDepthComparer : IComparer<string>
-    {
-        public int Compare(string l, string r)
-        {
-            int comp;
-            var llist = l.Split('\\').Reverse().ToList();
-            var rlist = r.Split('\\').Reverse().ToList();
-
-            while (llist.Count > 1 && rlist.Count > 1)
-            {
-                var lback = llist[llist.Count - 1];
-                var rback = rlist[rlist.Count - 1];
-                comp = string.Compare(lback, rback, StringComparison.OrdinalIgnoreCase);
-                if (comp == 0)
-                    comp = string.Compare(lback, rback, StringComparison.Ordinal);
-                if (comp != 0)
-                    return comp;
-
-                llist.RemoveAt(llist.Count - 1);
-                rlist.RemoveAt(rlist.Count - 1);
-            }
-
-            comp = llist.Count.CompareTo(rlist.Count);
-
-            if (comp == 0 && llist.Any() && rlist.Any())
-            {
-                comp = string.Compare(llist[llist.Count - 1], rlist[rlist.Count - 1], StringComparison.OrdinalIgnoreCase);
-                if (comp == 0)
-                    comp = string.Compare(llist[llist.Count - 1], rlist[rlist.Count - 1], StringComparison.Ordinal);
-            }
-
-            return comp;
-        }
-    }
-
-    private string HashFromBytes(byte[] bytes)
-    {
-        return HashFromBytes(bytes, 0, bytes.Length);
-    }
+    private string HashFromBytes(byte[] bytes) =>
+        HashFromBytes(bytes, 0, bytes.Length);
 
     private string HashFromBytes(byte[] bytes, int offset, int length)
     {
@@ -263,6 +226,41 @@ public class IndexCreateIntegrityCommand
         {
             ArrayPool<byte>.Shared.Return(buf);
             stream.Dispose();
+        }
+    }
+
+    private class PathDepthComparer : IComparer<string>
+    {
+        public int Compare(string l, string r)
+        {
+            int comp;
+            var llist = l.Split('\\').Reverse().ToList();
+            var rlist = r.Split('\\').Reverse().ToList();
+
+            while (llist.Count > 1 && rlist.Count > 1)
+            {
+                var lback = llist[llist.Count - 1];
+                var rback = rlist[rlist.Count - 1];
+                comp = string.Compare(lback, rback, StringComparison.OrdinalIgnoreCase);
+                if (comp == 0)
+                    comp = string.Compare(lback, rback, StringComparison.Ordinal);
+                if (comp != 0)
+                    return comp;
+
+                llist.RemoveAt(llist.Count - 1);
+                rlist.RemoveAt(rlist.Count - 1);
+            }
+
+            comp = llist.Count.CompareTo(rlist.Count);
+
+            if (comp == 0 && llist.Any() && rlist.Any())
+            {
+                comp = string.Compare(llist[llist.Count - 1], rlist[rlist.Count - 1], StringComparison.OrdinalIgnoreCase);
+                if (comp == 0)
+                    comp = string.Compare(llist[llist.Count - 1], rlist[rlist.Count - 1], StringComparison.Ordinal);
+            }
+
+            return comp;
         }
     }
 }

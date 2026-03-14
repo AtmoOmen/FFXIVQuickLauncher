@@ -1,8 +1,8 @@
 {
-  "profiles": {
-    "XIVLauncher.PatchInstaller": {
-      "commandName": "Project",
-      "commandLineArgs": "index-update"
+    "profiles": {
+        "XIVLauncher.PatchInstaller": {
+            "commandName": "Project",
+            "commandLineArgs": "index-update"
+        }
     }
-  }
 }

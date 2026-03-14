@@ -1,21 +1,22 @@
-namespace XIVLauncher.ArgReader;
-using FfxivArgLauncher;
+using System.Diagnostics;
 using Serilog;
 using Serilog.Events;
 using SharpCompress;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using XIVLauncher.Common;
 using XIVLauncher.Common.PatcherIpc;
 using XIVLauncher.Common.Patching.Rpc.Implementations;
 
+namespace XIVLauncher.ArgReader;
+
 internal class Program
 {
-    private static SharedMemoryRpc rpc;
-    private static ArgReader argReader;
+    private static readonly CancellationTokenSource    readerCancelToken = new();
+    private static          SharedMemoryRpc            rpc;
+    private static          FfxivArgLauncher.ArgReader argReader;
 
     private static Thread thread;
-    static void Main(string[] args)
+
+    private static void Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration()
                      .WriteTo.Console(standardErrorFromLevel: LogEventLevel.Fatal)
@@ -26,7 +27,7 @@ internal class Program
 
         if (args.Length != 1)
         {
-            Log.Error($"[ArgReader] Error args");
+            Log.Error("[ArgReader] Error args");
             Environment.Exit(-1);
         }
 
@@ -37,34 +38,35 @@ internal class Program
 
     private static void InitRpc(string channelName)
     {
-        rpc = new SharedMemoryRpc(channelName);
+        rpc                 =  new SharedMemoryRpc(channelName);
         rpc.MessageReceived += RemoteCallHandler;
 
         Log.Information("[ArgReader] IPC connected");
 
-        rpc.SendMessage(new PatcherIpcEnvelope
-        {
-            OpCode = PatcherIpcOpCode.Hello,
-            Data = DateTime.Now
-        });
+        rpc.SendMessage
+        (
+            new PatcherIpcEnvelope
+            {
+                OpCode = PatcherIpcOpCode.Hello,
+                Data   = DateTime.Now
+            }
+        );
 
         Log.Information("[ArgReader] sent hello");
     }
 
-    private static CancellationTokenSource readerCancelToken = new();
     private static void Loop()
     {
         try
         {
             while (!readerCancelToken.IsCancellationRequested)
-            {
                 Thread.Sleep(1000);
-            }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[ArgReader] loop encountered an error");
         }
+
         Log.Information("Exit");
     }
 
@@ -80,9 +82,10 @@ internal class Program
                         argReader.KillProcess();
                         // 清理残留sdologin.exe
                         Process.GetProcesses()
-                        .Where(p => p.ProcessName == "sdologin" || p.ProcessName == "SdoLoginComServer")
-                        .ForEach(p => p.Kill());
+                               .Where(p => p.ProcessName == "sdologin" || p.ProcessName == "SdoLoginComServer")
+                               .ForEach(p => p.Kill());
                     }
+
                     Log.Information("[ArgReader] Bye");
                     readerCancelToken.Cancel();
                     break;
@@ -90,26 +93,32 @@ internal class Program
                 case PatcherIpcOpCode.OpenProcess:
                     Log.Information($"[ArgReader] Open process: {envelope.Data}");
                     var processId = (long)envelope.Data;
-                    var process = Process.GetProcessById((int)processId);
-                    argReader = new ArgReader(process);
-                    Log.Information($"[ArgReader] 1");
-                    rpc.SendMessage(new PatcherIpcEnvelope
-                    {
-                        OpCode = PatcherIpcOpCode.ArgReadOk,
-                    });
-                    Log.Information($"[ArgReader] 2");
-                    Log.Information($"[ArgReader] Send ArgReadOk");
+                    var process   = Process.GetProcessById((int)processId);
+                    argReader = new FfxivArgLauncher.ArgReader(process);
+                    Log.Information("[ArgReader] 1");
+                    rpc.SendMessage
+                    (
+                        new PatcherIpcEnvelope
+                        {
+                            OpCode = PatcherIpcOpCode.ArgReadOk
+                        }
+                    );
+                    Log.Information("[ArgReader] 2");
+                    Log.Information("[ArgReader] Send ArgReadOk");
                     break;
 
                 case PatcherIpcOpCode.ReadArgs:
-                    Log.Information($"[ArgReader] Read Args");
+                    Log.Information("[ArgReader] Read Args");
                     var data = argReader.GetLoginData();
-                    rpc.SendMessage(new PatcherIpcEnvelope
-                    {
-                        OpCode = PatcherIpcOpCode.ArgReadOk,
-                        Data = data
-                    });
-                    Log.Information($"[ArgReader] Send ArgReadOk");
+                    rpc.SendMessage
+                    (
+                        new PatcherIpcEnvelope
+                        {
+                            OpCode = PatcherIpcOpCode.ArgReadOk,
+                            Data   = data
+                        }
+                    );
+                    Log.Information("[ArgReader] Send ArgReadOk");
                     break;
             }
 
@@ -117,11 +126,14 @@ internal class Program
         catch (Exception ex)
         {
             Log.Error(ex, "Open process failed");
-            rpc.SendMessage(new PatcherIpcEnvelope
-            {
-                OpCode = PatcherIpcOpCode.ArgReadFail,
-                Data = ex.ToString()
-            });
+            rpc.SendMessage
+            (
+                new PatcherIpcEnvelope
+                {
+                    OpCode = PatcherIpcOpCode.ArgReadFail,
+                    Data   = ex.ToString()
+                }
+            );
         }
     }
 }

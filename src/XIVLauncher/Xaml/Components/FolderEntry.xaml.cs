@@ -2,62 +2,66 @@
 using System.Windows.Controls;
 using Microsoft.WindowsAPICodePack.Dialogs;
 
-namespace XIVLauncher.Xaml.Components
+namespace XIVLauncher.Xaml.Components;
+
+/// <summary>
+///     Interaction logic for FolderEntry.xaml
+/// </summary>
+public partial class FolderEntry
 {
-    /// <summary>
-    ///     Interaction logic for FolderEntry.xaml
-    /// </summary>
-    public partial class FolderEntry
+    public static DependencyProperty TextProperty = DependencyProperty.Register
+    (
+        "Text",
+        typeof(string),
+        typeof(FolderEntry),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault)
+    );
+
+    public static DependencyProperty DescriptionProperty = DependencyProperty.Register
+    (
+        "Description",
+        typeof(string),
+        typeof(FolderEntry),
+        new PropertyMetadata(null)
+    );
+
+    public string Text
     {
-        public static DependencyProperty TextProperty = DependencyProperty.Register("Text", typeof(string),
-            typeof(FolderEntry),
-            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+        get => GetValue(TextProperty) as string;
+        set => SetValue(TextProperty, value);
+    }
 
-        public static DependencyProperty DescriptionProperty = DependencyProperty.Register("Description",
-            typeof(string), typeof(FolderEntry), new PropertyMetadata(null));
+    public string Description
+    {
+        get => GetValue(DescriptionProperty) as string;
+        set => SetValue(DescriptionProperty, value);
+    }
 
-        public event TextChangedEventHandler TextChanged;
+    public FolderEntry() =>
+        InitializeComponent();
 
-        public string Text
+    private void BrowseFolder(object sender, RoutedEventArgs e)
+    {
+        using (var dlg = new CommonOpenFileDialog())
         {
-            get => GetValue(TextProperty) as string;
-            set => SetValue(TextProperty, value);
-        }
+            dlg.Multiselect      = false;
+            dlg.IsFolderPicker   = true;
+            dlg.EnsurePathExists = true;
+            dlg.Title            = Description;
+            var result = dlg.ShowDialog();
 
-        public string Description
-        {
-            get => GetValue(DescriptionProperty) as string;
-            set => SetValue(DescriptionProperty, value);
-        }
-
-        public FolderEntry()
-        {
-            InitializeComponent();
-        }
-
-        private void BrowseFolder(object sender, RoutedEventArgs e)
-        {
-            using (var dlg = new CommonOpenFileDialog())
+            if (result == CommonFileDialogResult.Ok)
             {
-                dlg.Multiselect = false;
-                dlg.IsFolderPicker = true;
-                dlg.EnsurePathExists = true;
-                dlg.Title = Description;
-                var result = dlg.ShowDialog();
-
-                if (result == CommonFileDialogResult.Ok)
-                {
-                    Text = dlg.FileName;
-                    var be = GetBindingExpression(TextProperty);
-                    if (be != null)
-                        be.UpdateSource();
-                }
+                Text = dlg.FileName;
+                var be = GetBindingExpression(TextProperty);
+                if (be != null)
+                    be.UpdateSource();
             }
         }
-
-        private void TextBoxBase_OnTextChanged(object sender, TextChangedEventArgs e)
-        {
-            TextChanged?.Invoke(sender, e);
-        }
     }
+
+    private void TextBoxBase_OnTextChanged(object sender, TextChangedEventArgs e) =>
+        TextChanged?.Invoke(sender, e);
+
+    public event TextChangedEventHandler TextChanged;
 }

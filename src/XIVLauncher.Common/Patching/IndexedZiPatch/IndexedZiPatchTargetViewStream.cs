@@ -1,33 +1,34 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.IO;
-
-#nullable enable
 
 namespace XIVLauncher.Common.Patching.IndexedZiPatch;
 
 public class IndexedZiPatchTargetViewStream : Stream
 {
-    private readonly List<Stream> sources;
-    private readonly IndexedZiPatchTargetFile partList;
-    private readonly bool disposeStreams;
-
-    internal IndexedZiPatchTargetViewStream(List<Stream> sources, IndexedZiPatchTargetFile partList, bool disposeStreams)
-    {
-        this.sources = sources;
-        this.partList = partList;
-        this.disposeStreams = disposeStreams;
-    }
-
     public override bool CanRead => true;
 
     public override bool CanSeek => true;
 
     public override bool CanWrite => false;
 
-    public override long Length => this.partList.FileSize;
+    public override long Length => partList.FileSize;
 
-    public override long Position { get; set; }
+    public override  long                     Position { get; set; }
+    private readonly List<Stream>             sources;
+    private readonly IndexedZiPatchTargetFile partList;
+    private readonly bool                     disposeStreams;
+
+    internal IndexedZiPatchTargetViewStream(List<Stream> sources, IndexedZiPatchTargetFile partList, bool disposeStreams)
+    {
+        this.sources        = sources;
+        this.partList       = partList;
+        this.disposeStreams = disposeStreams;
+    }
+
+    #region Disposal
 
     protected override void Dispose(bool disposing)
     {
@@ -37,9 +38,11 @@ public class IndexedZiPatchTargetViewStream : Stream
         {
             foreach (var s in sources)
                 s.Dispose();
-            this.sources.Clear();
+            sources.Clear();
         }
     }
+
+    #endregion
 
     public override int Read(byte[] buffer, int offset, int count)
     {
@@ -47,13 +50,13 @@ public class IndexedZiPatchTargetViewStream : Stream
 
         while (count > 0 && Position < Length)
         {
-            var i = this.partList.BinarySearchByTargetOffset(Position);
+            var i = partList.BinarySearchByTargetOffset(Position);
             if (i < 0)
                 i = ~i - 1;
 
-            var reconstructedLength = this.partList[i].Reconstruct(this.sources, buffer, offset, count, (int)(Position - this.partList[i].TargetOffset));
-            offset += reconstructedLength;
-            count -= reconstructedLength;
+            var reconstructedLength = partList[i].Reconstruct(sources, buffer, offset, count, (int)(Position - partList[i].TargetOffset));
+            offset   += reconstructedLength;
+            count    -= reconstructedLength;
             Position += reconstructedLength;
         }
 

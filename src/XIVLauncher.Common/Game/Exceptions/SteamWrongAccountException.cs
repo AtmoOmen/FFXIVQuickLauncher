@@ -11,7 +11,7 @@ public class SteamWrongAccountException : Exception
     public SteamWrongAccountException(string chosenUserName, string imposedUserName)
         : base($"Wrong username! chosen: {chosenUserName}, imposed: {imposedUserName}")
     {
-        ChosenUserName = chosenUserName;
+        ChosenUserName  = chosenUserName;
         ImposedUserName = imposedUserName;
     }
 }

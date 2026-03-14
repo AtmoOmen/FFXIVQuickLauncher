@@ -6,13 +6,13 @@
 
 using System;
 
-namespace XIVLauncher.Common.Encryption.BlockCipher
+namespace XIVLauncher.Common.Encryption.BlockCipher;
+
+public interface IBlockMode
 {
-    public interface IBlockMode
-    {
-        void Encrypt(ReadOnlySpan<byte> input, Span<byte> output);
-        void Decrypt(ReadOnlySpan<byte> input, Span<byte> output);
-    }
+    void Encrypt(ReadOnlySpan<byte> input, Span<byte> output);
+
+    void Decrypt(ReadOnlySpan<byte> input, Span<byte> output);
 }
 
 // ReSharper restore InconsistentNaming

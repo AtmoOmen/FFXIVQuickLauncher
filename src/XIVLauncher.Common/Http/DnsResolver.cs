@@ -17,6 +17,24 @@ public static class DnsResolver
 
     private static readonly List<CidrRange> CachedRanges;
 
+    private readonly struct CidrRange
+    {
+        public readonly uint Network;
+        public readonly uint Mask;
+
+        public CidrRange(IPAddress ip, int prefixLength)
+        {
+            var bytes = ip.GetAddressBytes();
+            if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
+
+            var ipNum = BitConverter.ToUInt32(bytes, 0);
+            var mask  = prefixLength == 0 ? 0 : uint.MaxValue << 32 - prefixLength;
+
+            Network = ipNum & mask;
+            Mask    = mask;
+        }
+    }
+
     // From https://www.cloudflare.com/ips/
     static DnsResolver()
     {
@@ -42,35 +60,14 @@ public static class DnsResolver
         CachedRanges = new List<CidrRange>(rawRanges.Count);
 
         foreach (var (ipStr, prefix) in rawRanges)
-        {
             CachedRanges.Add(new CidrRange(IPAddress.Parse(ipStr), prefix));
-        }
-    }
-
-    private static bool IsCloudflareIp(IPAddress ip)
-    {
-        if (ip.AddressFamily != AddressFamily.InterNetwork)
-            return false;
-
-        var bytes = ip.GetAddressBytes();
-
-        if (BitConverter.IsLittleEndian)
-        {
-            Array.Reverse(bytes);
-        }
-
-        var ipNum = BitConverter.ToUInt32(bytes, 0);
-
-        return CachedRanges.Any(range => (ipNum & range.Mask) == range.Network);
     }
 
     public static async Task<List<IPAddress>> GetSortedAddressesAsync(string hostname, CancellationToken token)
     {
         var dnsRecords = await Dns.GetHostAddressesAsync(hostname, ForcedAddressFamily, token);
 
-        if (dnsRecords.Length > 0 &&
-            !string.IsNullOrEmpty(HijackCname) &&
-            dnsRecords.All(IsCloudflareIp))
+        if (dnsRecords.Length > 0 && !string.IsNullOrEmpty(HijackCname) && dnsRecords.All(IsCloudflareIp))
         {
             try
             {
@@ -89,14 +86,23 @@ public static class DnsResolver
                 }
                 else
                 {
-                    Log.Warning("CNAME {_hijackCname} resolved to empty or invalid IPs for {Hostname}", HijackCname,
-                                hostname);
+                    Log.Warning
+                    (
+                        "CNAME {_hijackCname} resolved to empty or invalid IPs for {Hostname}",
+                        HijackCname,
+                        hostname
+                    );
                 }
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "Failed to resolve CNAME {_hijackCname} for hijack of {Hostname}", HijackCname,
-                            hostname);
+                Log.Warning
+                (
+                    ex,
+                    "Failed to resolve CNAME {_hijackCname} for hijack of {Hostname}",
+                    HijackCname,
+                    hostname
+                );
             }
         }
 
@@ -107,27 +113,10 @@ public static class DnsResolver
         return ZipperMerge(groups).ToList();
     }
 
-    private readonly struct CidrRange
-    {
-        public readonly uint Network;
-        public readonly uint Mask;
-
-        public CidrRange(IPAddress ip, int prefixLength)
-        {
-            var bytes = ip.GetAddressBytes();
-            if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
-
-            var ipNum = BitConverter.ToUInt32(bytes, 0);
-            var mask = prefixLength == 0 ? 0 : uint.MaxValue << (32 - prefixLength);
-
-            Network = ipNum & mask;
-            Mask = mask;
-        }
-    }
-
     /// <summary>
-    /// Perform a "zipper merge" (A, 1, B, 2, C, 3) of multiple enumerables, allowing for lists to end early.
-    /// Copied From https://github.com/goatcorp/Dalamud/blob/3be14d4135fecf3816d033e87259115941b18494/Dalamud/Utility/Util.cs#L502-L544
+    ///     Perform a "zipper merge" (A, 1, B, 2, C, 3) of multiple enumerables, allowing for lists to end early.
+    ///     Copied From
+    ///     https://github.com/goatcorp/Dalamud/blob/3be14d4135fecf3816d033e87259115941b18494/Dalamud/Utility/Util.cs#L502-L544
     /// </summary>
     /// <param name="sources">A set of enumerable sources to combine.</param>
     /// <typeparam name="TSource">The resulting type of the merged list to return.</typeparam>
@@ -140,9 +129,7 @@ public static class DnsResolver
         try
         {
             for (var i = 0; i < sources.Length; i++)
-            {
                 enumerators[i] = sources[i].GetEnumerator();
-            }
 
             var hasNext = new bool[enumerators.Length];
 
@@ -151,9 +138,7 @@ public static class DnsResolver
                 var anyHasNext = false;
 
                 for (var i = 0; i < enumerators.Length; i++)
-                {
                     anyHasNext |= hasNext[i] = enumerators[i].MoveNext();
-                }
 
                 return anyHasNext;
             }
@@ -163,18 +148,29 @@ public static class DnsResolver
                 for (var i = 0; i < enumerators.Length; i++)
                 {
                     if (hasNext[i])
-                    {
                         yield return enumerators[i].Current;
-                    }
                 }
             }
         }
         finally
         {
             foreach (var enumerator in enumerators)
-            {
                 enumerator?.Dispose();
-            }
         }
+    }
+
+    private static bool IsCloudflareIp(IPAddress ip)
+    {
+        if (ip.AddressFamily != AddressFamily.InterNetwork)
+            return false;
+
+        var bytes = ip.GetAddressBytes();
+
+        if (BitConverter.IsLittleEndian)
+            Array.Reverse(bytes);
+
+        var ipNum = BitConverter.ToUInt32(bytes, 0);
+
+        return CachedRanges.Any(range => (ipNum & range.Mask) == range.Network);
     }
 }

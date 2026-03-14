@@ -3,14 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:XIVLauncher"
         xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
         mc:Ignorable="d"
         Title="XIVLauncher Setup" SizeToContent="Height" Width="450" WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         Background="{DynamicResource MaterialDesignPaper}"
-        TextElement.FontWeight="Medium" >
+        TextElement.FontWeight="Medium">
     <Grid>
         <TabControl IsEnabled="True" BorderThickness="0" x:Name="SetupTabControl"
                     Background="{DynamicResource MaterialDesignPaper}">
@@ -37,7 +36,8 @@
                 <Grid>
                     <StackPanel Margin="10,10,10,0">
                         <TextBlock TextWrapping="Wrap" HorizontalAlignment="Left" VerticalAlignment="Top"
-                                   Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding FirstTimeDalamudLoc}"/>
+                                   Foreground="{DynamicResource MaterialDesignBody}"
+                                   Text="{Binding FirstTimeDalamudLoc}" />
 
                         <CheckBox x:Name="HooksCheckBox" Content="{Binding FirstTimeDalamudCheckBoxLoc}"
                                   HorizontalAlignment="Left" Margin="0,25,0,50"

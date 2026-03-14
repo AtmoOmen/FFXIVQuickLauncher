@@ -1,43 +1,42 @@
 ﻿using XIVLauncher.Common.Util;
 
-namespace XIVLauncher.Common
+namespace XIVLauncher.Common;
+
+public enum ClientLanguage
 {
-    public enum ClientLanguage
-    {
-        Japanese,
-        English,
-        German,
-        French,
-        ChineseSimplified
-    }
+    Japanese,
+    English,
+    German,
+    French,
+    ChineseSimplified
+}
 
-    public static class ClientLanguageExtensions
+public static class ClientLanguageExtensions
+{
+    public static string GetLangCode(this ClientLanguage language, bool forceNa = false)
     {
-        public static string GetLangCode(this ClientLanguage language, bool forceNa = false)
+        switch (language)
         {
-            switch (language)
-            {
-                case ClientLanguage.Japanese:
-                    return "ja";
+            case ClientLanguage.Japanese:
+                return "ja";
 
-                case ClientLanguage.English when GameHelpers.IsRegionNorthAmerica() || forceNa:
-                    return "en-us";
+            case ClientLanguage.English when GameHelpers.IsRegionNorthAmerica() || forceNa:
+                return "en-us";
 
-                case ClientLanguage.English:
-                    return "en-gb";
+            case ClientLanguage.English:
+                return "en-gb";
 
-                case ClientLanguage.German:
-                    return "de";
+            case ClientLanguage.German:
+                return "de";
 
-                case ClientLanguage.French:
-                    return "fr";
+            case ClientLanguage.French:
+                return "fr";
 
-                case ClientLanguage.ChineseSimplified:
-                    return "zh-CN";
+            case ClientLanguage.ChineseSimplified:
+                return "zh-CN";
 
-                default:
-                    return "en-gb";
-            }
+            default:
+                return "en-gb";
         }
     }
 }

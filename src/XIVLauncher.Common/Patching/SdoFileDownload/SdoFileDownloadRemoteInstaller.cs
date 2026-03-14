@@ -35,7 +35,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
             workerProcess.StartInfo.Arguments       = $"sdo-rpc {Environment.ProcessId} {rpcChannelName}";
 #if !DEBUG
             this.workerProcess.StartInfo.CreateNoWindow = true;
-            this.workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            this.workerProcess.StartInfo.WindowStyle    = ProcessWindowStyle.Hidden;
 #endif
             workerProcess.Start();
         }

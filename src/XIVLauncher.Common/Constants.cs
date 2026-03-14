@@ -1,35 +1,35 @@
 using System;
 using XIVLauncher.Common.Util;
 
-namespace XIVLauncher.Common
+namespace XIVLauncher.Common;
+
+public static class Constants
 {
-    public static class Constants
+    public const string BASE_GAME_VERSION = "2012.01.01.0000.0000";
+
+    public const uint STEAM_APP_ID    = 39210;
+    public const uint STEAM_FT_APP_ID = 312060;
+
+    public static string PatcherUserAgent => GetPatcherUserAgent(PlatformHelpers.GetPlatform());
+
+    public const int MaxExpansion = 5;
+
+    private static string GetPatcherUserAgent(Platform platform)
     {
-        public const string BASE_GAME_VERSION = "2012.01.01.0000.0000";
+        return "FFXIV_Patch";
 
-        public const uint STEAM_APP_ID = 39210;
-        public const uint STEAM_FT_APP_ID = 312060;
-
-        public static string PatcherUserAgent => GetPatcherUserAgent(PlatformHelpers.GetPlatform());
-
-        public const int MaxExpansion = 5;
-
-        private static string GetPatcherUserAgent(Platform platform)
+        switch (platform)
         {
-            return "FFXIV_Patch";
-            switch (platform)
-            {
-                case Platform.Win32:
-                case Platform.Win32OnLinux:
-                case Platform.Linux:
-                    return "FFXIV PATCH CLIENT";
+            case Platform.Win32:
+            case Platform.Win32OnLinux:
+            case Platform.Linux:
+                return "FFXIV PATCH CLIENT";
 
-                case Platform.Mac:
-                    return "FFXIV-MAC PATCH CLIENT";
+            case Platform.Mac:
+                return "FFXIV-MAC PATCH CLIENT";
 
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(platform), platform, null);
-            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(platform), platform, null);
         }
     }
 }

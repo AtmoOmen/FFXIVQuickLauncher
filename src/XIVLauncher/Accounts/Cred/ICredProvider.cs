@@ -4,15 +4,18 @@ namespace XIVLauncher.Accounts.Cred;
 
 public interface ICredProvider
 {
-    public string GetName();
-    public string GetDescription();
+    string GetName();
 
-    public Task<bool> IsSupported();
+    string GetDescription();
+
+    Task<bool> IsSupported();
+
+    Task ClearCache();
+
+    Task Unregister();
 #nullable enable
-    public Task<string> Encrypt(string? text);
-    public Task<string> Decrypt(string? text);
-#nullable disable
-    public Task ClearCache();
+    Task<string> Encrypt(string? text);
 
-    public Task Unregister();
+    Task<string> Decrypt(string? text);
+#nullable disable
 }

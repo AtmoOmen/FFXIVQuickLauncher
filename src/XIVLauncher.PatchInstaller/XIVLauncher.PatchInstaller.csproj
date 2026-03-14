@@ -19,22 +19,22 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     </PropertyGroup>
     <ItemGroup Label="Assets">
-        <Resource Include="Resources/*.*" />
+        <Resource Include="Resources/*.*"/>
     </ItemGroup>
     <PropertyGroup>
         <ApplicationIcon>Resources/icon.ico</ApplicationIcon>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-        <PackageReference Include="Serilog" Version="4.0.2" />
-        <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0" />
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-        <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
-        <PackageReference Include="SharedMemory" Version="2.3.2" />
-        <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
+        <PackageReference Include="Serilog" Version="4.0.2"/>
+        <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0"/>
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
+        <PackageReference Include="Serilog.Sinks.File" Version="5.0.0"/>
+        <PackageReference Include="SharedMemory" Version="2.3.2"/>
+        <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1"/>
+        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0"/>
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
     </ItemGroup>
 </Project>

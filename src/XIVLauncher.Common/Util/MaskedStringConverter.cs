@@ -1,19 +1,18 @@
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 public class MaskMiddleConverter : JsonConverter
 {
-    public override bool CanConvert(Type objectType)
-    {
-        return objectType == typeof(string) || objectType == typeof(List<string>);
-    }
+    public override bool CanConvert(Type objectType) =>
+        objectType == typeof(string) || objectType == typeof(List<string>);
 
     public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
     {
         if (objectType == typeof(List<string>))
         {
             var list = new List<string>();
+
             if (reader.TokenType == JsonToken.StartArray)
             {
                 while (reader.Read())
@@ -22,19 +21,16 @@ public class MaskMiddleConverter : JsonConverter
                         break;
 
                     if (reader.TokenType == JsonToken.String)
-                    {
                         list.Add((string)reader.Value);
-                    }
                 }
             }
+
             return list;
         }
 
         // 反序列化单个字符串
         if (reader.TokenType == JsonToken.String)
-        {
             return reader.Value;
-        }
 
         throw new JsonSerializationException($"Unexpected token type: {reader.TokenType}");
     }
@@ -49,16 +45,14 @@ public class MaskMiddleConverter : JsonConverter
 
         if (value is string str)
         {
-            string masked = MaskString(str);
+            var masked = MaskString(str);
             writer.WriteValue(masked);
         }
         else if (value is List<string> list)
         {
             writer.WriteStartArray();
             foreach (var item in list)
-            {
                 writer.WriteValue(MaskString(item));
-            }
             writer.WriteEndArray();
         }
     }
@@ -71,7 +65,7 @@ public class MaskMiddleConverter : JsonConverter
             return input.Length == 1 ? "*" : new string('*', input.Length);
         }
 
-        int maskLength = input.Length - 2;
+        var maskLength = input.Length - 2;
         return $"{input[0]}{new string('*', maskLength)}{input[input.Length - 1]}";
     }
 }

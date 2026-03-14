@@ -33,7 +33,7 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
             workerProcess.StartInfo.Arguments       = $"index-rpc {Process.GetCurrentProcess().Id} {rpcChannelName}";
 #if !DEBUG
             this.workerProcess.StartInfo.CreateNoWindow = true;
-            this.workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            this.workerProcess.StartInfo.WindowStyle    = ProcessWindowStyle.Hidden;
 #endif
             workerProcess.Start();
         }

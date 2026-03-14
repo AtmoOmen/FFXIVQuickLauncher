@@ -45,24 +45,19 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public class MainWindowViewModel : INotifyPropertyChanged
 {
-    private readonly Window _window;
-
-    private readonly Task<GateStatus> loginStatusTask;
-    private          bool             refetchLoginStatus = false;
+    public const string PresudoPassword = "********假的密码********";
 
     public bool IsLoggingIn;
-
-    public Launcher Launcher { get; private set; }
-
-    public AccountManager AccountManager { get; private set; } = App.AccountManager;
 
     public Action Activate;
     public Action Hide;
     public Action ReloadHeadlines;
 
-    public string Password { get; set; }
+    public Launcher Launcher { get; private set; }
 
-    private SdoArea[] _sdoAreas;
+    public AccountManager AccountManager { get; private set; } = App.AccountManager;
+
+    public string Password { get; set; }
 
     public SdoArea[] SdoAreas
     {
@@ -74,17 +69,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public enum AfterLoginAction
-    {
-        Start,
-        StartWithoutDalamud,
-        StartWithoutPlugins,
-        StartWithoutThird,
-        UpdateOnly,
-        Repair,
-        CancelLogin,
-        ForceQR
-    }
+    public           DcTravelListener dcTravelListener { get; private set; }
+    private readonly Window           _window;
+
+    private readonly Task<GateStatus> loginStatusTask;
+    private          bool             refetchLoginStatus = false;
+
+    private SdoArea[] _sdoAreas;
+
+    private CancellationTokenSource loginCts;
+
+    private bool IsInjecting;
 
     public MainWindowViewModel(Window window)
     {
@@ -134,6 +129,589 @@ public class MainWindowViewModel : INotifyPropertyChanged
         //    }
         //});
     }
+
+    public void SwitchCard(LoginCard i)
+    {
+        _window.Dispatcher.Invoke
+        (() =>
+            {
+                CancelLogin();
+                LoginCardTransitionerIndex = (int)i;
+                ModeSwitchIcon             = i == LoginCard.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
+                if (LoginCardTransitionerIndex == (int)LoginCard.InjectMode)
+                    RefreshFfxivProcess();
+            }
+        );
+    }
+
+    public void TryLogin(LoginType loginType, string username, string password, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
+    {
+        if (IsLoggingIn)
+            return;
+
+        //if (username == null) username = string.Empty;
+        if (_window.Dispatcher != Dispatcher.CurrentDispatcher)
+        {
+            _window.Dispatcher.Invoke(() => TryLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
+            return;
+        }
+
+        LoadingDialogCancelButtonVisibility = Visibility.Collapsed;
+
+        IsEnabled = false;
+        //LoginCardTransitionerIndex = 0;
+        var currentCard = (LoginCard)LoginCardTransitionerIndex;
+        SwitchCard(loginType == LoginType.SdoQrCode ? LoginCard.ScanQrCode : LoginCard.Logining);
+        loginCts    = new CancellationTokenSource();
+        IsLoggingIn = true;
+
+        Task.Run
+        (() =>
+            {
+                try
+                {
+                    Login(loginType, username, password, doingAutoLogin, readWeGameInfo, action).Wait();
+                }
+                catch (Exception ex)
+                {
+                    CustomMessageBox.Builder.NewFromUnexpectedException(ex, "GetLoginFunc/Task")
+                                    .WithParentWindow(_window)
+                                    .Show();
+                }
+
+                SwitchCard(currentCard);
+                IsLoggingIn = false;
+                IsEnabled   = true;
+
+                ReloadHeadlines();
+                Activate();
+            }
+        );
+    }
+
+    public void CancelLogin()
+    {
+        if (loginCts != null)
+        {
+            Log.Information("取消登陆");
+            loginCts.Cancel();
+        }
+    }
+
+    public void SwitchMode() =>
+        SwitchCard(LoginCardTransitionerIndex == (int)LoginCard.InjectMode ? LoginCard.MainPage : LoginCard.InjectMode);
+
+    public void RefreshFfxivProcess()
+    {
+        if (!PlatformHelpers.IsElevated())
+        {
+            Log.Error("当前XLCN并非管理器权限");
+            var proc = new ProcessStartInfo
+            {
+                UseShellExecute  = true,
+                WorkingDirectory = Environment.CurrentDirectory,
+                FileName         = Process.GetCurrentProcess().MainModule.FileName,
+                Verb             = "runas",
+                Arguments        = "--inject"
+            };
+
+            Process.Start(proc);
+            Environment.Exit(0);
+        }
+
+        loginCts = new CancellationTokenSource();
+        Task.Run
+        (() =>
+            {
+                while (true)
+                {
+                    if (loginCts.IsCancellationRequested)
+                        return;
+                    var currentSelectedProcessId = SelectedProcess?.ProcessId;
+                    var newProcesses             = AppUtil.GetGameProcess();
+                    App.Current.Dispatcher.Invoke
+                    (() =>
+                        {
+                            for (var i = FfxivProcessCollection.Count - 1; i >= 0; i--)
+                            {
+                                if (!newProcesses.Any(p => p.Id == FfxivProcessCollection[i].ProcessId))
+                                {
+                                    FfxivProcessCollection.RemoveAt(i);
+                                    Log.Verbose("Refreshing Processes...(Remove)");
+                                }
+                            }
+
+                            foreach (var newProcess in newProcesses)
+                            {
+                                if (!FfxivProcessCollection.Any(p => p.ProcessId == newProcess.Id))
+                                {
+                                    FfxivProcessCollection.Add(new FfxivProcess(newProcess));
+                                    Log.Verbose("Refreshing Processes...(Add)");
+                                }
+                            }
+
+                            if (currentSelectedProcessId.HasValue)
+                                SelectedProcess = FfxivProcessCollection.FirstOrDefault(p => p.ProcessId == currentSelectedProcessId.Value);
+                        }
+                    );
+
+                    Log.Verbose("Refreshing Processes...");
+                    Thread.Sleep(1000);
+                }
+
+                ;
+            }
+        );
+    }
+
+    public void TryInjectGame()
+    {
+        if (IsInjecting)
+            return;
+        if (SelectedProcess == null)
+            return;
+
+        //if (username == null) username = string.Empty;
+        if (_window.Dispatcher != Dispatcher.CurrentDispatcher)
+        {
+            _window.Dispatcher.Invoke(() => TryInjectGame());
+            return;
+        }
+
+        IsLoadingDialogOpen  = true;
+        LoadingDialogMessage = "注入灵魂中...";
+        Task.Run
+        (() =>
+            {
+                try
+                {
+                    if (!PlatformHelpers.IsElevated())
+                    {
+                        Log.Error("当前XLCN并非管理器权限");
+                        var proc = new ProcessStartInfo
+                        {
+                            UseShellExecute  = true,
+                            WorkingDirectory = Environment.CurrentDirectory,
+                            FileName         = Process.GetCurrentProcess().MainModule.FileName,
+                            Verb             = "runas",
+                            Arguments        = "--inject"
+                        };
+
+                        Process.Start(proc);
+                        Environment.Exit(0);
+                    }
+
+                    var gamePid = SelectedProcess?.ProcessId;
+                    if (gamePid == null)
+                        return;
+
+                    if (SelectedProcess.HasInjected)
+                    {
+                        var dialog = CustomMessageBox.Builder
+                                                     .NewFrom("当前选择的进程已经注入了")
+                                                     .WithButtons(MessageBoxButton.OK)
+                                                     .WithCaption("XIVLauncherCN (Soil)")
+                                                     .WithParentWindow(_window)
+                                                     .Show();
+                    }
+                    else
+                    {
+                        if (InjectGame(gamePid.Value))
+                        {
+                            SelectedProcess.HasInjected = true;
+                            var dialog = CustomMessageBox.Builder
+                                                         .NewFrom("注入完成,是否退出XIVLauncherCN?")
+                                                         .WithButtons(MessageBoxButton.YesNo)
+                                                         .WithCaption("XIVLauncherCN (Soil)")
+                                                         .WithParentWindow(_window)
+                                                         .Show();
+
+                            if (dialog == MessageBoxResult.Yes)
+                            {
+                                Log.CloseAndFlush();
+                                Environment.Exit(0);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    CustomMessageBox.Builder.NewFromUnexpectedException(ex, "InjectGame")
+                                    .WithParentWindow(_window)
+                                    .Show();
+                }
+
+                IsLoadingDialogOpen = false;
+                IsInjecting         = false;
+                Activate();
+            }
+        );
+    }
+
+    public bool InjectGame(int gamePid, bool noThird = false, bool noPlugins = false)
+    {
+        var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;
+        var gameExeFolder = Path.GetDirectoryName(gameExePath);
+        var gamePath      = new DirectoryInfo(gameExeFolder!).Parent;
+        Log.Information($"GameExePath:{gameExePath},GameExeFolder:{gameExeFolder},GamePath;{gamePath}");
+
+        if (!DalamudLauncher.CanRunDalamud(gamePath))
+        {
+            CustomMessageBox.Show
+            (
+                $"""
+                 {Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!")}
+                 GameExePath:{gameExePath}
+                 GameExeFolder:{gameExeFolder}
+                 GamePath:{gamePath}
+                 GameVersion:{Repository.Ffxiv.GetVer(gamePath)}
+                 """,
+                "XIVLauncherCN (Soil)"
+            );
+            return false;
+        }
+
+        var dalamudLauncher = new DalamudLauncher
+        (
+            new WindowsDalamudRunner(),
+            App.DalamudUpdater,
+            DalamudLoadMethod.DllInject,
+            gamePath,
+            new DirectoryInfo(Paths.RoamingPath),
+            new DirectoryInfo(Paths.RoamingPath),
+            ClientLanguage.ChineseSimplified,
+            (int)App.Settings.DalamudInjectionDelayMs,
+            false,
+            noPlugins,
+            noThird,
+            Troubleshooting.GetTroubleshootingJson()
+        );
+
+        var dalamudOk = false;
+
+        var dalamudCompatCheck = new WindowsDalamudCompatibilityCheck();
+
+        try
+        {
+            dalamudCompatCheck.EnsureCompatibility();
+        }
+        catch (IDalamudCompatibilityCheck.NoRedistsException ex)
+        {
+            Log.Error(ex, "No Dalamud Redists found");
+
+            CustomMessageBox.Show
+            (
+                Loc.Localize
+                (
+                    "DalamudVc2019RedistError",
+                    "The XIVLauncher in-game addon needs the Microsoft Visual C++ 2015-2019 redistributable to be installed to continue. Please install it from the Microsoft homepage."
+                ),
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Exclamation,
+                parentWindow: _window
+            );
+        }
+        catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
+        {
+            Log.Error(ex, "Architecture not supported");
+
+            CustomMessageBox.Show
+            (
+                Loc.Localize
+                (
+                    "DalamudArchError",
+                    "Dalamud cannot run your computer's architecture. Please make sure that you are running a 64-bit version of Windows.\nIf you are using Windows on ARM, please make sure that x64-Emulation is enabled for XIVLauncher."
+                ),
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Exclamation,
+                parentWindow: _window
+            );
+        }
+
+        try
+        {
+            var dalamudStatus = dalamudLauncher.HoldForUpdate(App.Settings.GamePath);
+            dalamudOk = dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Couldn't DalamudLauncher::HoldForUpdate()");
+
+            var ensurementErrorMessage = Loc.Localize
+            (
+                "DalamudEnsurementError",
+                "Could not download necessary data files to use Dalamud and plugins.\nThis could be a problem with your internet connection, or might be caused by your antivirus application blocking necessary files. The game will start, but you will not be able to use plugins.\n\nPlease check our FAQ for more information."
+            );
+
+            if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+                ensurementErrorMessage = "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}.\n你的IP可能被WAF封禁, 请前往频道进行上报." + Environment.NewLine + ensurementErrorMessage;
+            else
+                ensurementErrorMessage = "错误: " + ex.Message + Environment.NewLine + ensurementErrorMessage;
+
+            CustomMessageBox.Builder
+                            .NewFrom(ensurementErrorMessage)
+                            .WithImage(MessageBoxImage.Warning)
+                            .WithButtons(MessageBoxButton.OK)
+                            .WithShowHelpLinks()
+                            .WithParentWindow(_window)
+                            .Show();
+        }
+
+        Troubleshooting.LogTroubleshooting();
+
+        if (!dalamudOk)
+        {
+            CustomMessageBox.Show("Dalamud尚未下载完成", "注入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
+        }
+
+        dalamudLauncher.Inject(gamePid, noPlugins);
+        return true;
+    }
+
+    public async Task<Process> StartGameAndAddon(Launcher.LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
+    {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+        var dalamudLauncher = new DalamudLauncher
+        (
+            new WindowsDalamudRunner(),
+            App.DalamudUpdater,
+            App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
+            App.Settings.GamePath,
+            new DirectoryInfo(Paths.RoamingPath),
+            new DirectoryInfo(Paths.RoamingPath),
+            ClientLanguage.ChineseSimplified,
+            (int)App.Settings.DalamudInjectionDelayMs,
+            false,
+            noPlugins,
+            noThird,
+            Troubleshooting.GetTroubleshootingJson()
+        );
+
+        var dalamudOk = false;
+
+        var dalamudCompatCheck = new WindowsDalamudCompatibilityCheck();
+
+        try
+        {
+            dalamudCompatCheck.EnsureCompatibility();
+        }
+        catch (IDalamudCompatibilityCheck.NoRedistsException ex)
+        {
+            Log.Error(ex, "No Dalamud Redists found");
+
+            CustomMessageBox.Show
+            (
+                Loc.Localize
+                (
+                    "DalamudVc2019RedistError",
+                    "The XIVLauncher in-game addon needs the Microsoft Visual C++ 2015-2019 redistributable to be installed to continue. Please install it from the Microsoft homepage."
+                ),
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Exclamation,
+                parentWindow: _window
+            );
+        }
+        catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
+        {
+            Log.Error(ex, "Architecture not supported");
+
+            CustomMessageBox.Show
+            (
+                Loc.Localize
+                (
+                    "DalamudArchError",
+                    "Dalamud cannot run your computer's architecture. Please make sure that you are running a 64-bit version of Windows.\nIf you are using Windows on ARM, please make sure that x64-Emulation is enabled for XIVLauncher."
+                ),
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Exclamation,
+                parentWindow: _window
+            );
+        }
+
+        if (App.Settings.InGameAddonEnabled && !forceNoDalamud)
+        {
+            try
+            {
+                var dalamudStatus = dalamudLauncher.HoldForUpdate(App.Settings.GamePath);
+                dalamudOk = dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Couldn't DalamudLauncher::HoldForUpdate()");
+
+                var ensurementErrorMessage = Loc.Localize
+                (
+                    "DalamudEnsurementError",
+                    "Could not download necessary data files to use Dalamud and plugins.\nThis could be a problem with your internet connection, or might be caused by your antivirus application blocking necessary files. The game will start, but you will not be able to use plugins.\n\nPlease check our FAQ for more information."
+                );
+
+                ensurementErrorMessage = "错误: " + ex.Message + Environment.NewLine + ensurementErrorMessage;
+
+                CustomMessageBox.Builder
+                                .NewFrom(ensurementErrorMessage)
+                                .WithImage(MessageBoxImage.Warning)
+                                .WithButtons(MessageBoxButton.OK)
+                                .WithShowHelpLinks()
+                                .WithParentWindow(_window)
+                                .Show();
+            }
+        }
+
+        var gameRunner = new WindowsGameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
+        stopwatch.Stop();
+
+        if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
+        {
+            CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+            return null;
+        }
+
+        // We won't do any sanity checks here anymore, since that should be handled in StartLogin
+        var launched = Launcher.LaunchGameSdo
+        (
+            gameRunner,
+            loginResult.OauthLogin.SessionId,
+            loginResult.OauthLogin.SndaId,
+            loginResult.DcTravelPort,
+            Area.Areaid,
+            Area.AreaLobby,
+            Area.AreaGm,
+            Area.AreaConfigUpload,
+            Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
+            App.Settings.AdditionalLaunchArgs,
+            App.Settings.GamePath,
+            App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
+            App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware)
+        );
+
+        Troubleshooting.LogTroubleshooting();
+
+        if (launched is not Process)
+        {
+            Log.Information("GameProcess was null...");
+            IsLoggingIn = false;
+            return null;
+        }
+
+        var addonMgr = new AddonManager();
+
+        try
+        {
+            App.Settings.AddonList ??= [];
+
+            var addons = App.Settings.AddonList.Where(x => x.IsEnabled).Select(x => x.Addon).Cast<IAddon>().ToList();
+
+            addonMgr.RunAddons(launched.Id, addons);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Builder
+                            .NewFrom(ex, "Addons")
+                            .WithAppendText("\n\n")
+                            .WithAppendText
+                            (
+                                Loc.Localize
+                                (
+                                    "AddonLoadError",
+                                    "This could be caused by your antivirus, please check its logs and add any needed exclusions."
+                                )
+                            )
+                            .WithParentWindow(_window)
+                            .Show();
+
+            IsLoggingIn = false;
+
+            addonMgr.StopAddons();
+        }
+
+        Log.Debug("等待游戏进程退出");
+
+        if (dalamudOk)
+            await MonitorGameProcess(launched, loginResult, forceNoDalamud, noThird, noPlugins);
+        else
+            await Task.Run(() => launched.WaitForExit()).ConfigureAwait(false);
+
+        Log.Verbose("游戏进程已退出");
+
+        if (addonMgr.IsRunning)
+            addonMgr.StopAddons();
+
+        try
+        {
+            if (App.Steam.IsValid)
+                App.Steam.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Could not shut down Steam");
+        }
+
+        try
+        {
+            dcTravelListener?.Stop();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Could not shut down DcTraveler");
+        }
+
+        return launched;
+    }
+
+    public void OnWindowClosed(object sender, object args) =>
+        Application.Current.Shutdown();
+
+    public void OnWindowClosing(object sender, CancelEventArgs args)
+    {
+        if (IsLoggingIn)
+            args.Cancel = true;
+    }
+
+    private static BitmapImage ConvertByteArrayToBitmapImage(byte[] imageData)
+    {
+        if (imageData == null || imageData.Length == 0) return null;
+
+        var bitmapImage = new BitmapImage();
+
+        using (var stream = new MemoryStream(imageData))
+        {
+            stream.Seek(0, SeekOrigin.Begin); // 确保流的位置在起始处
+            bitmapImage.BeginInit();
+            bitmapImage.CacheOption  = BitmapCacheOption.OnLoad; // 加载后立即释放流
+            bitmapImage.StreamSource = stream;
+            bitmapImage.EndInit();
+            bitmapImage.Freeze(); // 可选：跨线程使用时冻结对象
+        }
+
+        return bitmapImage;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DuplicateHandle
+    (
+        IntPtr                               hSourceProcessHandle,
+        IntPtr                               hSourceHandle,
+        IntPtr                               hTargetProcessHandle,
+        out IntPtr                           lpTargetHandle,
+        uint                                 dwDesiredAccess,
+        [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle,
+        uint                                 dwOptions
+    );
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr hObject);
 
     private Action<object> GetLoginFunc(AfterLoginAction action)
     {
@@ -266,76 +844,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return data;
         }
     }
-
-    public enum LoginCard
-    {
-        Logining   = 0,
-        MainPage   = 1,
-        ScanQrCode = 2,
-        InjectMode = 3
-    }
-
-    public void SwitchCard(LoginCard i)
-    {
-        _window.Dispatcher.Invoke
-        (() =>
-            {
-                CancelLogin();
-                LoginCardTransitionerIndex = (int)i;
-                ModeSwitchIcon             = i == LoginCard.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
-                if (LoginCardTransitionerIndex == (int)LoginCard.InjectMode)
-                    RefreshFfxivProcess();
-            }
-        );
-    }
-
-    public void TryLogin(LoginType loginType, string username, string password, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
-    {
-        if (IsLoggingIn)
-            return;
-
-        //if (username == null) username = string.Empty;
-        if (_window.Dispatcher != Dispatcher.CurrentDispatcher)
-        {
-            _window.Dispatcher.Invoke(() => TryLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
-            return;
-        }
-
-        LoadingDialogCancelButtonVisibility = Visibility.Collapsed;
-
-        IsEnabled = false;
-        //LoginCardTransitionerIndex = 0;
-        var currentCard = (LoginCard)LoginCardTransitionerIndex;
-        SwitchCard(loginType == LoginType.SdoQrCode ? LoginCard.ScanQrCode : LoginCard.Logining);
-        loginCts    = new CancellationTokenSource();
-        IsLoggingIn = true;
-
-        Task.Run
-        (() =>
-            {
-                try
-                {
-                    Login(loginType, username, password, doingAutoLogin, readWeGameInfo, action).Wait();
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Builder.NewFromUnexpectedException(ex, "GetLoginFunc/Task")
-                                    .WithParentWindow(_window)
-                                    .Show();
-                }
-
-                SwitchCard(currentCard);
-                IsLoggingIn = false;
-                IsEnabled   = true;
-
-                ReloadHeadlines();
-                Activate();
-            }
-        );
-    }
-
-    public       DcTravelListener dcTravelListener { get; private set; }
-    public const string           PresudoPassword = "********假的密码********";
 
     private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
     {
@@ -724,36 +1232,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
 
         return true;
-    }
-
-    private CancellationTokenSource loginCts;
-
-    public void CancelLogin()
-    {
-        if (loginCts != null)
-        {
-            Log.Information("取消登陆");
-            loginCts.Cancel();
-        }
-    }
-
-    private static BitmapImage ConvertByteArrayToBitmapImage(byte[] imageData)
-    {
-        if (imageData == null || imageData.Length == 0) return null;
-
-        var bitmapImage = new BitmapImage();
-
-        using (var stream = new MemoryStream(imageData))
-        {
-            stream.Seek(0, SeekOrigin.Begin); // 确保流的位置在起始处
-            bitmapImage.BeginInit();
-            bitmapImage.CacheOption  = BitmapCacheOption.OnLoad; // 加载后立即释放流
-            bitmapImage.StreamSource = stream;
-            bitmapImage.EndInit();
-            bitmapImage.Freeze(); // 可选：跨线程使用时冻结对象
-        }
-
-        return bitmapImage;
     }
 
     private async Task<Launcher.LoginResult> TryLoginToGame
@@ -1231,8 +1709,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return false;
 
 #if !DEBUG
-            //if (!await CheckGateStatus().ConfigureAwait(false))
-            //    return false;
+        //if (!await CheckGateStatus().ConfigureAwait(false))
+        //    return false;
 #endif
 
         Hide();
@@ -1759,6 +2237,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             mutex = null;
         }
         else
+        {
             CustomMessageBox.Show
             (
                 Loc.Localize("PatcherAlreadyInProgress", "XIVLauncher is already patching your game in another instance. Please check if XIVLauncher is still open."),
@@ -1767,6 +2246,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 MessageBoxImage.Error,
                 parentWindow: _window
             );
+        }
 
         return doLogin;
     }
@@ -1823,497 +2303,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         );
 
         Environment.Exit(0);
-    }
-
-    public void SwitchMode()
-    {
-        SwitchCard(LoginCardTransitionerIndex == (int)LoginCard.InjectMode ? LoginCard.MainPage : LoginCard.InjectMode);
-    }
-
-    public class ProcessInfo
-    {
-        public string ProcessName { get; set; }
-        public int    ProcessId   { get; set; }
-    }
-
-    public void RefreshFfxivProcess()
-    {
-        if (!PlatformHelpers.IsElevated())
-        {
-            Log.Error("当前XLCN并非管理器权限");
-            var proc = new ProcessStartInfo
-            {
-                UseShellExecute  = true,
-                WorkingDirectory = Environment.CurrentDirectory,
-                FileName         = Process.GetCurrentProcess().MainModule.FileName,
-                Verb             = "runas",
-                Arguments        = "--inject"
-            };
-
-            Process.Start(proc);
-            Environment.Exit(0);
-        }
-
-        loginCts = new CancellationTokenSource();
-        Task.Run
-        (() =>
-            {
-                while (true)
-                {
-                    if (loginCts.IsCancellationRequested)
-                        return;
-                    var currentSelectedProcessId = SelectedProcess?.ProcessId;
-                    var newProcesses             = AppUtil.GetGameProcess();
-                    App.Current.Dispatcher.Invoke
-                    (() =>
-                        {
-                            for (var i = FfxivProcessCollection.Count - 1; i >= 0; i--)
-                            {
-                                if (!newProcesses.Any(p => p.Id == FfxivProcessCollection[i].ProcessId))
-                                {
-                                    FfxivProcessCollection.RemoveAt(i);
-                                    Log.Verbose("Refreshing Processes...(Remove)");
-                                }
-                            }
-
-                            foreach (var newProcess in newProcesses)
-                            {
-                                if (!FfxivProcessCollection.Any(p => p.ProcessId == newProcess.Id))
-                                {
-                                    FfxivProcessCollection.Add(new FfxivProcess(newProcess));
-                                    Log.Verbose("Refreshing Processes...(Add)");
-                                }
-                            }
-
-                            if (currentSelectedProcessId.HasValue)
-                                SelectedProcess = FfxivProcessCollection.FirstOrDefault(p => p.ProcessId == currentSelectedProcessId.Value);
-                        }
-                    );
-
-                    Log.Verbose("Refreshing Processes...");
-                    Thread.Sleep(1000);
-                }
-
-                ;
-            }
-        );
-    }
-
-    private bool IsInjecting;
-
-    public void TryInjectGame()
-    {
-        if (IsInjecting)
-            return;
-        if (SelectedProcess == null)
-            return;
-
-        //if (username == null) username = string.Empty;
-        if (_window.Dispatcher != Dispatcher.CurrentDispatcher)
-        {
-            _window.Dispatcher.Invoke(() => TryInjectGame());
-            return;
-        }
-
-        IsLoadingDialogOpen  = true;
-        LoadingDialogMessage = "注入灵魂中...";
-        Task.Run
-        (() =>
-            {
-                try
-                {
-                    if (!PlatformHelpers.IsElevated())
-                    {
-                        Log.Error("当前XLCN并非管理器权限");
-                        var proc = new ProcessStartInfo
-                        {
-                            UseShellExecute  = true,
-                            WorkingDirectory = Environment.CurrentDirectory,
-                            FileName         = Process.GetCurrentProcess().MainModule.FileName,
-                            Verb             = "runas",
-                            Arguments        = "--inject"
-                        };
-
-                        Process.Start(proc);
-                        Environment.Exit(0);
-                    }
-
-                    var gamePid = SelectedProcess?.ProcessId;
-                    if (gamePid == null)
-                        return;
-
-                    if (SelectedProcess.HasInjected)
-                    {
-                        var dialog = CustomMessageBox.Builder
-                                                     .NewFrom("当前选择的进程已经注入了")
-                                                     .WithButtons(MessageBoxButton.OK)
-                                                     .WithCaption("XIVLauncherCN (Soil)")
-                                                     .WithParentWindow(_window)
-                                                     .Show();
-                    }
-                    else
-                    {
-                        if (InjectGame(gamePid.Value))
-                        {
-                            SelectedProcess.HasInjected = true;
-                            var dialog = CustomMessageBox.Builder
-                                                         .NewFrom("注入完成,是否退出XIVLauncherCN?")
-                                                         .WithButtons(MessageBoxButton.YesNo)
-                                                         .WithCaption("XIVLauncherCN (Soil)")
-                                                         .WithParentWindow(_window)
-                                                         .Show();
-
-                            if (dialog == MessageBoxResult.Yes)
-                            {
-                                Log.CloseAndFlush();
-                                Environment.Exit(0);
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Builder.NewFromUnexpectedException(ex, "InjectGame")
-                                    .WithParentWindow(_window)
-                                    .Show();
-                }
-
-                IsLoadingDialogOpen = false;
-                IsInjecting         = false;
-                Activate();
-            }
-        );
-    }
-
-    public bool InjectGame(int gamePid, bool noThird = false, bool noPlugins = false)
-    {
-        var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;
-        var gameExeFolder = Path.GetDirectoryName(gameExePath);
-        var gamePath      = new DirectoryInfo(gameExeFolder!).Parent;
-        Log.Information($"GameExePath:{gameExePath},GameExeFolder:{gameExeFolder},GamePath;{gamePath}");
-
-        if (!DalamudLauncher.CanRunDalamud(gamePath))
-        {
-            CustomMessageBox.Show
-            (
-                $"""
-                 {Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!")}
-                 GameExePath:{gameExePath}
-                 GameExeFolder:{gameExeFolder}
-                 GamePath:{gamePath}
-                 GameVersion:{Repository.Ffxiv.GetVer(gamePath)}
-                 """,
-                "XIVLauncherCN (Soil)"
-            );
-            return false;
-        }
-
-        var dalamudLauncher = new DalamudLauncher
-        (
-            new WindowsDalamudRunner(),
-            App.DalamudUpdater,
-            DalamudLoadMethod.DllInject,
-            gamePath,
-            new DirectoryInfo(Paths.RoamingPath),
-            new DirectoryInfo(Paths.RoamingPath),
-            ClientLanguage.ChineseSimplified,
-            (int)App.Settings.DalamudInjectionDelayMs,
-            false,
-            noPlugins,
-            noThird,
-            Troubleshooting.GetTroubleshootingJson()
-        );
-
-        var dalamudOk = false;
-
-        var dalamudCompatCheck = new WindowsDalamudCompatibilityCheck();
-
-        try
-        {
-            dalamudCompatCheck.EnsureCompatibility();
-        }
-        catch (IDalamudCompatibilityCheck.NoRedistsException ex)
-        {
-            Log.Error(ex, "No Dalamud Redists found");
-
-            CustomMessageBox.Show
-            (
-                Loc.Localize
-                (
-                    "DalamudVc2019RedistError",
-                    "The XIVLauncher in-game addon needs the Microsoft Visual C++ 2015-2019 redistributable to be installed to continue. Please install it from the Microsoft homepage."
-                ),
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: _window
-            );
-        }
-        catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
-        {
-            Log.Error(ex, "Architecture not supported");
-
-            CustomMessageBox.Show
-            (
-                Loc.Localize
-                (
-                    "DalamudArchError",
-                    "Dalamud cannot run your computer's architecture. Please make sure that you are running a 64-bit version of Windows.\nIf you are using Windows on ARM, please make sure that x64-Emulation is enabled for XIVLauncher."
-                ),
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: _window
-            );
-        }
-
-        try
-        {
-            var dalamudStatus = dalamudLauncher.HoldForUpdate(App.Settings.GamePath);
-            dalamudOk = dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Couldn't DalamudLauncher::HoldForUpdate()");
-
-            var ensurementErrorMessage = Loc.Localize
-            (
-                "DalamudEnsurementError",
-                "Could not download necessary data files to use Dalamud and plugins.\nThis could be a problem with your internet connection, or might be caused by your antivirus application blocking necessary files. The game will start, but you will not be able to use plugins.\n\nPlease check our FAQ for more information."
-            );
-
-            if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
-                ensurementErrorMessage = "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}.\n你的IP可能被WAF封禁, 请前往频道进行上报." + Environment.NewLine + ensurementErrorMessage;
-            else
-                ensurementErrorMessage = "错误: " + ex.Message + Environment.NewLine + ensurementErrorMessage;
-
-            CustomMessageBox.Builder
-                            .NewFrom(ensurementErrorMessage)
-                            .WithImage(MessageBoxImage.Warning)
-                            .WithButtons(MessageBoxButton.OK)
-                            .WithShowHelpLinks()
-                            .WithParentWindow(_window)
-                            .Show();
-        }
-
-        Troubleshooting.LogTroubleshooting();
-
-        if (!dalamudOk)
-        {
-            CustomMessageBox.Show("Dalamud尚未下载完成", "注入失败", MessageBoxButton.OK, MessageBoxImage.Error);
-            return false;
-        }
-
-        dalamudLauncher.Inject(gamePid, noPlugins);
-        return true;
-    }
-
-    public async Task<Process> StartGameAndAddon(Launcher.LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
-    {
-        var stopwatch = new Stopwatch();
-        stopwatch.Start();
-        var dalamudLauncher = new DalamudLauncher
-        (
-            new WindowsDalamudRunner(),
-            App.DalamudUpdater,
-            App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
-            App.Settings.GamePath,
-            new DirectoryInfo(Paths.RoamingPath),
-            new DirectoryInfo(Paths.RoamingPath),
-            ClientLanguage.ChineseSimplified,
-            (int)App.Settings.DalamudInjectionDelayMs,
-            false,
-            noPlugins,
-            noThird,
-            Troubleshooting.GetTroubleshootingJson()
-        );
-
-        var dalamudOk = false;
-
-        var dalamudCompatCheck = new WindowsDalamudCompatibilityCheck();
-
-        try
-        {
-            dalamudCompatCheck.EnsureCompatibility();
-        }
-        catch (IDalamudCompatibilityCheck.NoRedistsException ex)
-        {
-            Log.Error(ex, "No Dalamud Redists found");
-
-            CustomMessageBox.Show
-            (
-                Loc.Localize
-                (
-                    "DalamudVc2019RedistError",
-                    "The XIVLauncher in-game addon needs the Microsoft Visual C++ 2015-2019 redistributable to be installed to continue. Please install it from the Microsoft homepage."
-                ),
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: _window
-            );
-        }
-        catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
-        {
-            Log.Error(ex, "Architecture not supported");
-
-            CustomMessageBox.Show
-            (
-                Loc.Localize
-                (
-                    "DalamudArchError",
-                    "Dalamud cannot run your computer's architecture. Please make sure that you are running a 64-bit version of Windows.\nIf you are using Windows on ARM, please make sure that x64-Emulation is enabled for XIVLauncher."
-                ),
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: _window
-            );
-        }
-
-        if (App.Settings.InGameAddonEnabled && !forceNoDalamud)
-        {
-            try
-            {
-                var dalamudStatus = dalamudLauncher.HoldForUpdate(App.Settings.GamePath);
-                dalamudOk = dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Couldn't DalamudLauncher::HoldForUpdate()");
-
-                var ensurementErrorMessage = Loc.Localize
-                (
-                    "DalamudEnsurementError",
-                    "Could not download necessary data files to use Dalamud and plugins.\nThis could be a problem with your internet connection, or might be caused by your antivirus application blocking necessary files. The game will start, but you will not be able to use plugins.\n\nPlease check our FAQ for more information."
-                );
-
-                ensurementErrorMessage = "错误: " + ex.Message + Environment.NewLine + ensurementErrorMessage;
-
-                CustomMessageBox.Builder
-                                .NewFrom(ensurementErrorMessage)
-                                .WithImage(MessageBoxImage.Warning)
-                                .WithButtons(MessageBoxButton.OK)
-                                .WithShowHelpLinks()
-                                .WithParentWindow(_window)
-                                .Show();
-            }
-        }
-
-        var gameRunner = new WindowsGameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
-        stopwatch.Stop();
-
-        if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
-        {
-            CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
-            return null;
-        }
-
-        // We won't do any sanity checks here anymore, since that should be handled in StartLogin
-        var launched = Launcher.LaunchGameSdo
-        (
-            gameRunner,
-            loginResult.OauthLogin.SessionId,
-            loginResult.OauthLogin.SndaId,
-            loginResult.DcTravelPort,
-            Area.Areaid,
-            Area.AreaLobby,
-            Area.AreaGm,
-            Area.AreaConfigUpload,
-            Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
-            App.Settings.AdditionalLaunchArgs,
-            App.Settings.GamePath,
-            App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
-            App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware)
-        );
-
-        Troubleshooting.LogTroubleshooting();
-
-        if (launched is not Process)
-        {
-            Log.Information("GameProcess was null...");
-            IsLoggingIn = false;
-            return null;
-        }
-
-        var addonMgr = new AddonManager();
-
-        try
-        {
-            App.Settings.AddonList ??= [];
-
-            var addons = App.Settings.AddonList.Where(x => x.IsEnabled).Select(x => x.Addon).Cast<IAddon>().ToList();
-
-            addonMgr.RunAddons(launched.Id, addons);
-        }
-        catch (Exception ex)
-        {
-            CustomMessageBox.Builder
-                            .NewFrom(ex, "Addons")
-                            .WithAppendText("\n\n")
-                            .WithAppendText
-                            (
-                                Loc.Localize
-                                (
-                                    "AddonLoadError",
-                                    "This could be caused by your antivirus, please check its logs and add any needed exclusions."
-                                )
-                            )
-                            .WithParentWindow(_window)
-                            .Show();
-
-            IsLoggingIn = false;
-
-            addonMgr.StopAddons();
-        }
-
-        Log.Debug("等待游戏进程退出");
-
-        if (dalamudOk)
-        {
-            await MonitorGameProcess(launched, loginResult, forceNoDalamud, noThird, noPlugins);
-        }
-        else
-        {
-            await Task.Run(() => launched.WaitForExit()).ConfigureAwait(false);
-        }
-
-        Log.Verbose("游戏进程已退出");
-
-        if (addonMgr.IsRunning)
-            addonMgr.StopAddons();
-
-        try
-        {
-            if (App.Steam.IsValid)
-                App.Steam.Shutdown();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Could not shut down Steam");
-        }
-
-        try
-        {
-            dcTravelListener?.Stop();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Could not shut down DcTraveler");
-        }
-
-        return launched;
-    }
-
-    public void OnWindowClosed(object sender, object args)
-    {
-        Application.Current.Shutdown();
-    }
-
-    public void OnWindowClosing(object sender, CancelEventArgs args)
-    {
-        if (IsLoggingIn)
-            args.Cancel = true;
     }
 
     private async Task<bool> HandleBootCheck()
@@ -2569,6 +2558,155 @@ public class MainWindowViewModel : INotifyPropertyChanged
         return false;
     }
 
+    private async Task MonitorGameProcess(Process process, Launcher.LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
+    {
+        var processName = process.ProcessName;
+
+        while (true)
+        {
+            var processHandle = IntPtr.Zero;
+
+            try
+            {
+                // PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                var currentProcess = Process.GetCurrentProcess();
+
+                if (!DuplicateHandle(currentProcess.Handle, process.Handle, currentProcess.Handle, out processHandle, 0, false, 2)) // DUPLICATE_SAME_ACCESS = 2
+                {
+                    Log.Error($"DuplicateHandle failed: {Marshal.GetLastWin32Error()}");
+                    processHandle = process.Handle;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to duplicate process handle");
+            }
+
+            await Task.Run(process.WaitForExit);
+
+            int exitCode;
+
+            try
+            {
+                exitCode = process.ExitCode;
+            }
+            catch (InvalidOperationException)
+            {
+                if (processHandle != IntPtr.Zero && GetExitCodeProcess(processHandle, out var nativeExitCode))
+                    exitCode = (int)nativeExitCode;
+                else
+                {
+                    Log.Error($"无法获取进程退出码: {Marshal.GetLastWin32Error()}");
+                    if (processHandle != IntPtr.Zero && processHandle != process.Handle)
+                        CloseHandle(processHandle);
+                    break;
+                }
+            }
+            finally
+            {
+                // 无论如何，清理我们复制的句柄
+                if (processHandle != IntPtr.Zero && processHandle != process.Handle)
+                    CloseHandle(processHandle);
+            }
+
+            if (exitCode != 0x12345678)
+            {
+                Log.Information($"游戏进程正常退出, 退出码: 0x{exitCode:X}");
+                break;
+            }
+
+            Log.Information($"游戏进程请求重启并退出, 退出码: 0x{exitCode:X}, 等待重启后进程");
+
+            var searchStartTime = DateTime.Now.AddSeconds(-30);
+
+            // 搜索新进程
+            var newProcess = await FindNewGameProcess(processName, searchStartTime);
+
+            if (newProcess == null)
+            {
+                Log.Error("无法找到重启后游戏进程");
+                break;
+            }
+
+            Log.Information($"找到重启后游戏进程 {newProcess.Id}，正在终止并重新启动以进行注入...");
+
+            try
+            {
+                newProcess.Kill();
+                await Task.Run(() => newProcess.WaitForExit());
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "无法终止重启后的游戏进程");
+                break;
+            }
+
+            Log.Information("正在重新启动游戏...");
+
+            var restartedProcess = await StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins);
+            if (restartedProcess == null)
+                Log.Error("重启游戏失败");
+
+            break;
+        }
+    }
+
+    private async Task<Process> FindNewGameProcess(string processName, DateTime afterTime)
+    {
+        for (var i = 0; i < 60; i++)
+        {
+            await Task.Delay(1000);
+            var processes = Process.GetProcessesByName(processName);
+
+            foreach (var p in processes)
+            {
+                try
+                {
+                    if (p.StartTime > afterTime)
+                        return p;
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void OnPropertyChanged(string propertyName)
+    {
+        var handler = PropertyChanged;
+        handler?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    public enum AfterLoginAction
+    {
+        Start,
+        StartWithoutDalamud,
+        StartWithoutPlugins,
+        StartWithoutThird,
+        UpdateOnly,
+        Repair,
+        CancelLogin,
+        ForceQR
+    }
+
+    public enum LoginCard
+    {
+        Logining   = 0,
+        MainPage   = 1,
+        ScanQrCode = 2,
+        InjectMode = 3
+    }
+
+    public class ProcessInfo
+    {
+        public string ProcessName { get; set; }
+        public int    ProcessId   { get; set; }
+    }
+
     #region Commands
 
     public ICommand StartLoginCommand { get; set; }
@@ -2806,9 +2944,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public class FfxivProcess
     {
+        public int    ProcessId;
         public string DisplayName { get; set; }
         public bool   HasInjected { get; set; }
-        public int    ProcessId;
 
         public FfxivProcess(Process p)
         {
@@ -2818,10 +2956,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
             //this.HasInjected = true;
         }
 
-        public static bool DetectDalamud(Process p)
-        {
-            return p.Modules.Cast<ProcessModule>().Any(m => m.ModuleName.Contains("Dalamud.dll"));
-        }
+        public static bool DetectDalamud(Process p) =>
+            p.Modules.Cast<ProcessModule>().Any(m => m.ModuleName.Contains("Dalamud.dll"));
     }
 
     private ObservableCollection<FfxivProcess> _ffxivProcessCollection;
@@ -2901,141 +3037,4 @@ public class MainWindowViewModel : INotifyPropertyChanged
     #endregion
 
     public event PropertyChangedEventHandler PropertyChanged;
-
-    private async Task MonitorGameProcess(Process process, Launcher.LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
-    {
-        var processName = process.ProcessName;
-
-        while (true)
-        {
-            var processHandle = IntPtr.Zero;
-            try
-            {
-                // PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-                var currentProcess = Process.GetCurrentProcess();
-                if (!DuplicateHandle(currentProcess.Handle, process.Handle, currentProcess.Handle, out processHandle, 0, false, 2)) // DUPLICATE_SAME_ACCESS = 2
-                {
-                    Log.Error($"DuplicateHandle failed: {Marshal.GetLastWin32Error()}");
-                    processHandle = process.Handle;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to duplicate process handle");
-            }
-
-            await Task.Run(process.WaitForExit);
-
-            int exitCode;
-            try
-            {
-                exitCode = process.ExitCode;
-            }
-            catch (InvalidOperationException)
-            {
-                if (processHandle != IntPtr.Zero && GetExitCodeProcess(processHandle, out var nativeExitCode))
-                {
-                    exitCode = (int)nativeExitCode;
-                }
-                else
-                {
-                    Log.Error($"无法获取进程退出码: {Marshal.GetLastWin32Error()}");
-                    if (processHandle != IntPtr.Zero && processHandle != process.Handle)
-                        CloseHandle(processHandle);
-                    break;
-                }
-            }
-            finally
-            {
-                // 无论如何，清理我们复制的句柄
-                if (processHandle != IntPtr.Zero && processHandle != process.Handle)
-                {
-                    CloseHandle(processHandle);
-                }
-            }
-
-            if (exitCode != 0x12345678)
-            {
-                Log.Information($"游戏进程正常退出, 退出码: 0x{exitCode:X}");
-                break;
-            }
-
-            Log.Information($"游戏进程请求重启并退出, 退出码: 0x{exitCode:X}, 等待重启后进程");
-
-            var searchStartTime = DateTime.Now.AddSeconds(-30);
-
-            // 搜索新进程
-            var newProcess = await FindNewGameProcess(processName, searchStartTime);
-
-            if (newProcess == null)
-            {
-                Log.Error("无法找到重启后游戏进程");
-                break;
-            }
-
-            Log.Information($"找到重启后游戏进程 {newProcess.Id}，正在终止并重新启动以进行注入...");
-            
-            try 
-            {
-                newProcess.Kill();
-                await Task.Run(() => newProcess.WaitForExit());
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "无法终止重启后的游戏进程");
-                break;
-            }
-
-            Log.Information("正在重新启动游戏...");
-            
-            var restartedProcess = await StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins);
-            if (restartedProcess == null)
-            {
-                Log.Error("重启游戏失败");
-                break;
-            }
-
-            break; 
-        }
-    }
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DuplicateHandle(IntPtr hSourceProcessHandle, IntPtr hSourceHandle, IntPtr hTargetProcessHandle, out IntPtr lpTargetHandle, uint dwDesiredAccess, [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, uint dwOptions);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CloseHandle(IntPtr hObject);
-
-    private async Task<Process> FindNewGameProcess(string processName, DateTime afterTime)
-    {
-        for (var i = 0; i < 60; i++)
-        {
-            await Task.Delay(1000);
-            var processes = Process.GetProcessesByName(processName);
-            foreach (var p in processes)
-            {
-                try
-                {
-                    if (p.StartTime > afterTime)
-                        return p;
-                }
-                catch
-                {
-                    // ignored
-                }
-            }
-        }
-        return null;
-    }
-
-    private void OnPropertyChanged(string propertyName)
-    {
-        var handler = PropertyChanged;
-        handler?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
 }

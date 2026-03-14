@@ -11,9 +11,20 @@ public class SharedMemoryRpc : IRpc, IDisposable
 {
     private readonly RpcBuffer rpcBuffer;
 
-    public SharedMemoryRpc(string channelName)
+    public SharedMemoryRpc(string channelName) =>
+        rpcBuffer = new RpcBuffer(channelName, RemoteCallHandler);
+
+    #region Disposal
+
+    public void Dispose() =>
+        rpcBuffer?.Dispose();
+
+    #endregion
+
+    public void SendMessage(PatcherIpcEnvelope envelope)
     {
-        this.rpcBuffer = new RpcBuffer(channelName, RemoteCallHandler);
+        var json = IpcHelpers.Base64Encode(JsonConvert.SerializeObject(envelope, IpcHelpers.JsonSettings));
+        rpcBuffer.RemoteRequest(Encoding.ASCII.GetBytes(json));
     }
 
     private void RemoteCallHandler(ulong msgId, byte[] payload)
@@ -25,16 +36,5 @@ public class SharedMemoryRpc : IRpc, IDisposable
         MessageReceived?.Invoke(msg);
     }
 
-    public void SendMessage(PatcherIpcEnvelope envelope)
-    {
-        var json = IpcHelpers.Base64Encode(JsonConvert.SerializeObject(envelope, IpcHelpers.JsonSettings));
-        this.rpcBuffer.RemoteRequest(Encoding.ASCII.GetBytes(json));
-    }
-
     public event Action<PatcherIpcEnvelope> MessageReceived;
-
-    public void Dispose()
-    {
-        rpcBuffer?.Dispose();
-    }
 }

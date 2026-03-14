@@ -1,8 +1,7 @@
-namespace XIVLauncher.Common
+namespace XIVLauncher.Common;
+
+public enum DpiAwareness
 {
-    public enum DpiAwareness
-    {
-        Aware,
-        Unaware,
-    }
+    Aware,
+    Unaware
 }

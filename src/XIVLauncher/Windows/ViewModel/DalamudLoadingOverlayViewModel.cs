@@ -1,19 +1,14 @@
 ﻿using CheapLoc;
 
-namespace XIVLauncher.Windows.ViewModel
+namespace XIVLauncher.Windows.ViewModel;
+
+internal class DalamudLoadingOverlayViewModel
 {
-    class DalamudLoadingOverlayViewModel
-    {
-        public DalamudLoadingOverlayViewModel()
-        {
-            SetupLoc();
-        }
+    public string DalamudUpdateLoc { get; private set; }
 
-        public void SetupLoc()
-        {
-            DalamudUpdateLoc = Loc.Localize("DalamudUpdate", "Updating Dalamud...");
-        }
+    public DalamudLoadingOverlayViewModel() =>
+        SetupLoc();
 
-        public string DalamudUpdateLoc { get; private set; }
-    }
+    public void SetupLoc() =>
+        DalamudUpdateLoc = Loc.Localize("DalamudUpdate", "Updating Dalamud...");
 }

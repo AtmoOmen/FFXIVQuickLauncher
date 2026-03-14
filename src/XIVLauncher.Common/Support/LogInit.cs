@@ -10,33 +10,14 @@ namespace XIVLauncher.Common.Support;
 
 public static class LogInit
 {
-    // ReSharper disable once ClassNeverInstantiated.Local
-    private class LogOptions
-    {
-        [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
-        public bool Verbose { get; set; }
-
-        [Option("log-file-path", Required = false, HelpText = "Set path for log file.")]
-        public string? LogPath { get; set; }
-    }
-
     public static LoggingLevelSwitch LevelSwitch;
 
     public static void Setup(string defaultLogPath, string[] args)
     {
         ParserResult<LogOptions> result = null;
 
-        try
-        {
-            var parser = new Parser(c => { c.IgnoreUnknownArguments = true; });
-            result = parser.ParseArguments<LogOptions>(args);
-        }
-        catch
-        {
-#if DEBUG
-            throw;
-#endif
-        }
+        var parser = new Parser(c => { c.IgnoreUnknownArguments = true; });
+        result = parser.ParseArguments<LogOptions>(args);
 
         var config = new LoggerConfiguration()
                      .WriteTo.Sink(SerilogEventSink.Instance);
@@ -45,17 +26,11 @@ public static class LogInit
 
         if (!string.IsNullOrEmpty(parsed.LogPath))
         {
-            config.WriteTo.Async(a =>
-            {
-                a.File(parsed.LogPath);
-            });
+            config.WriteTo.Async(a => { a.File(parsed.LogPath); });
         }
         else
         {
-            config.WriteTo.Async(a =>
-            {
-                a.File(defaultLogPath);
-            });
+            config.WriteTo.Async(a => { a.File(defaultLogPath); });
         }
 
 #if DEBUG
@@ -64,14 +39,16 @@ public static class LogInit
         //config.MinimumLevel.Verbose();
         LevelSwitch = new LoggingLevelSwitch(GetDefaultLevel());
 
-        config.Enrich.WithSensitiveDataMasking(o =>
-        {
-            o.MaskingOperators = new List<IMaskingOperator>()
+        config.Enrich.WithSensitiveDataMasking
+        (o =>
             {
-                new SeEncryptedArgsMaskingOperator(),
-                new SeTestSidMaskingOperator(),
-            };
-        });
+                o.MaskingOperators = new List<IMaskingOperator>
+                {
+                    new SeEncryptedArgsMaskingOperator(),
+                    new SeTestSidMaskingOperator()
+                };
+            }
+        );
 
         config.MinimumLevel.ControlledBy(LevelSwitch);
 
@@ -80,6 +57,7 @@ public static class LogInit
 
         Log.Logger = config.CreateLogger();
     }
+
     public static LogEventLevel GetDefaultLevel()
     {
         var logLevel = LogEventLevel.Information;
@@ -89,6 +67,15 @@ public static class LogInit
         return logLevel;
     }
 
+    // ReSharper disable once ClassNeverInstantiated.Local
+    private class LogOptions
+    {
+        [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
+        public bool Verbose { get; set; }
+
+        [Option("log-file-path", Required = false, HelpText = "Set path for log file.")]
+        public string? LogPath { get; set; }
+    }
 
     private class SeTestSidMaskingOperator : RegexMaskingOperator
     {
@@ -100,10 +87,8 @@ public static class LogInit
         {
         }
 
-        protected override bool ShouldMaskInput(string input)
-        {
-            return input != "DEV.TestSID=0";
-        }
+        protected override bool ShouldMaskInput(string input) =>
+            input != "DEV.TestSID=0";
     }
 
     private class SeEncryptedArgsMaskingOperator : RegexMaskingOperator

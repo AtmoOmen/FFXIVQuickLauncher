@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -12,20 +12,27 @@ using XIVLauncher.Common.Http;
 
 namespace XIVLauncher.Common.Util;
 
-public class HttpClientDownloadWithProgress(string downloadUrl, string destinationFilePath) : IDisposable
+public class HttpClientDownloadWithProgress
+(
+    string downloadUrl,
+    string destinationFilePath
+) : IDisposable
 {
     private int        parallelParts = 32;
     private HttpClient httpClient;
 
-    public delegate void ProgressChangedHandler(long? totalFileSize, long totalBytesDownloaded, double? progressPercentage);
+    #region Disposal
 
-    public event ProgressChangedHandler ProgressChanged;
-    
+    public void Dispose() =>
+        httpClient?.Dispose();
+
+    #endregion
+
     public async Task Download(TimeSpan? timeout = null, bool isNuGet = false)
     {
-        timeout            ??= TimeSpan.FromMinutes(10);
-        this.parallelParts =   Environment.ProcessorCount;
-        Log.Information("[DUPDATE] 下载线程数: {0}", this.parallelParts);
+        timeout       ??= TimeSpan.FromMinutes(10);
+        parallelParts =   Environment.ProcessorCount;
+        Log.Information("[DUPDATE] 下载线程数: {0}", parallelParts);
 
         var handler = new SocketsHttpHandler
         {
@@ -33,33 +40,45 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
             MaxConnectionsPerServer        = 20,
             EnableMultipleHttp2Connections = true,
             ConnectTimeout                 = TimeSpan.FromSeconds(5),
-            ConnectCallback = HappyEyeballsCallback.ConnectCallback
+            ConnectCallback                = HappyEyeballsCallback.ConnectCallback
         };
-        this.httpClient = new HttpClient(handler) { Timeout = timeout.Value };
-        this.httpClient.DefaultRequestHeaders.Add("User-Agent",      PlatformHelpers.GetVersion());
+        httpClient = new HttpClient(handler) { Timeout = timeout.Value };
+        httpClient.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
 
-        var probeTotalSize = await this.ProbeRangeSupport(isNuGet).ConfigureAwait(false);
+        var probeTotalSize = await ProbeRangeSupport(isNuGet).ConfigureAwait(false);
 
         if (probeTotalSize > 0)
         {
-            await this.DownloadSegmented(probeTotalSize.Value, isNuGet).ConfigureAwait(false);
+            await DownloadSegmented(probeTotalSize.Value, isNuGet).ConfigureAwait(false);
             return;
         }
 
-        using var response = await this.SendWithRetry(() =>
-        {
-            var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
+        using var response = await SendWithRetry
+                             (
+                                 () =>
+                                 {
+                                     var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
 
-            if (isNuGet)
-            {
-                request.Headers.Add("User-Agent",             "NuGet VS VSIX/6.14.0 (WINDOWS, Community/17.0)");
-                request.Headers.Add("X-NuGet-Client-Version", "6.14.0");
-                request.Headers.Add("X-NuGet-Session-Id",     Guid.NewGuid().ToString("D"));
-            }
+                                     if (isNuGet)
+                                     {
+                                         request.Headers.Add("User-Agent",             "NuGet VS VSIX/6.14.0 (WINDOWS, Community/17.0)");
+                                         request.Headers.Add("X-NuGet-Client-Version", "6.14.0");
+                                         request.Headers.Add("X-NuGet-Session-Id",     Guid.NewGuid().ToString("D"));
+                                     }
 
-            return request;
-        }, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-        await this.DownloadFileFromHttpResponseMessage(response).ConfigureAwait(false);
+                                     return request;
+                                 },
+                                 HttpCompletionOption.ResponseHeadersRead
+                             ).ConfigureAwait(false);
+        await DownloadFileFromHttpResponseMessage(response).ConfigureAwait(false);
+    }
+
+    private static bool IsRetryableStatus(HttpStatusCode code)
+    {
+        if (code == HttpStatusCode.RequestTimeout)
+            return true;
+        var n = (int)code;
+        return n >= 500 && n <= 599;
     }
 
     private async Task DownloadFileFromHttpResponseMessage(HttpResponseMessage response)
@@ -69,15 +88,15 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
         var totalBytes = response.Content.Headers.ContentLength;
 
         using var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-        await this.ProcessContentStream(totalBytes, contentStream).ConfigureAwait(false);
+        await ProcessContentStream(totalBytes, contentStream).ConfigureAwait(false);
     }
 
     private async Task ProcessContentStream(long? totalDownloadSize, Stream contentStream)
     {
-        var totalBytesRead = 0L;
-        var readCount      = 0L;
-        var buffer         = new byte[8192];
-        var isMoreToRead   = true;
+        var totalBytesRead   = 0L;
+        var readCount        = 0L;
+        var buffer           = new byte[8192];
+        var isMoreToRead     = true;
         var lastProgressTick = Environment.TickCount64;
 
         using var fileStream = new FileStream(destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
@@ -89,7 +108,7 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
             if (bytesRead == 0)
             {
                 isMoreToRead = false;
-                this.TriggerProgressChanged(totalDownloadSize, totalBytesRead);
+                TriggerProgressChanged(totalDownloadSize, totalBytesRead);
                 continue;
             }
 
@@ -99,11 +118,12 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
             readCount      += 1;
 
             if (readCount % 100 == 0)
-                this.TriggerProgressChanged(totalDownloadSize, totalBytesRead);
+                TriggerProgressChanged(totalDownloadSize, totalBytesRead);
             var now = Environment.TickCount64;
+
             if (now - lastProgressTick >= 500)
             {
-                this.TriggerProgressChanged(totalDownloadSize, totalBytesRead);
+                TriggerProgressChanged(totalDownloadSize, totalBytesRead);
                 lastProgressTick = now;
             }
         }
@@ -123,18 +143,17 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
                 request.Headers.Add("X-NuGet-Client-Version", "6.14.0");
                 request.Headers.Add("X-NuGet-Session-Id",     Guid.NewGuid().ToString("D"));
             }
-            
-            using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-            
+
+            using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+
             if (response.StatusCode == HttpStatusCode.PartialContent && response.Content.Headers.ContentRange?.Length != null)
-            {
                 return response.Content.Headers.ContentRange.Length.Value;
-            }
         }
         catch (Exception ex)
         {
             Log.Warning("[DUPDATE] [{url}] 探测 Range 支持失败或超时: {Msg}. 将降级为直接下载。", downloadUrl, ex.Message);
         }
+
         return null;
     }
 
@@ -145,92 +164,105 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
         await prealloc.FlushAsync().ConfigureAwait(false);
         prealloc.Dispose();
 
-        var totalBytesRead = 0L;
-        var readCount      = 0L;
+        var totalBytesRead   = 0L;
+        var readCount        = 0L;
         var lastProgressTick = Environment.TickCount64;
 
-        var chunks = BuildChunks(totalSize);
-        var queue  = new ConcurrentQueue<(long Start, long End)>(chunks);
+        var chunks    = BuildChunks(totalSize);
+        var queue     = new ConcurrentQueue<(long Start, long End)>(chunks);
         var remaining = chunks.Count;
 
-        var tasks = new List<Task>(this.parallelParts);
-        for (var i = 0; i < this.parallelParts; i++)
+        var tasks = new List<Task>(parallelParts);
+
+        for (var i = 0; i < parallelParts; i++)
         {
-            tasks.Add(Task.Run(async () =>
-            {
-                using var fileStream = new FileStream(destinationFilePath, FileMode.Open, FileAccess.Write, FileShare.Write, 65536, true);
-                var buffer = new byte[65536];
-
-                while (true)
-                {
-                    if (!queue.TryDequeue(out var chunk))
+            tasks.Add
+            (
+                Task.Run
+                (async () =>
                     {
-                        if (Volatile.Read(ref remaining) == 0)
-                            break;
-                        await Task.Delay(25).ConfigureAwait(false);
-                        continue;
-                    }
+                        using var fileStream = new FileStream(destinationFilePath, FileMode.Open, FileAccess.Write, FileShare.Write, 65536, true);
+                        var       buffer     = new byte[65536];
 
-                    using var resp = await this.SendWithRetry(() =>
-                    {
-                        var req = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
-                        req.Headers.Range = new RangeHeaderValue(chunk.Start, chunk.End);
-                        if (isNuGet)
+                        while (true)
                         {
-                            req.Headers.Add("User-Agent",             "NuGet VS VSIX/6.14.0 (WINDOWS, Community/17.0)");
-                            req.Headers.Add("X-NuGet-Client-Version", "6.14.0");
-                            req.Headers.Add("X-NuGet-Session-Id",     Guid.NewGuid().ToString("D"));
-                        }
+                            if (!queue.TryDequeue(out var chunk))
+                            {
+                                if (Volatile.Read(ref remaining) == 0)
+                                    break;
+                                await Task.Delay(25).ConfigureAwait(false);
+                                continue;
+                            }
 
-                        return req;
-                    }, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+                            using var resp = await SendWithRetry
+                                             (
+                                                 () =>
+                                                 {
+                                                     var req = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
+                                                     req.Headers.Range = new RangeHeaderValue(chunk.Start, chunk.End);
 
-                    resp.EnsureSuccessStatusCode();
-                    using var contentStream = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                    fileStream.Seek(chunk.Start, SeekOrigin.Begin);
-                    while (true)
-                    {
-                        var bytesRead = await contentStream.ReadAsync(buffer).ConfigureAwait(false);
-                        if (bytesRead == 0)
-                            break;
-                        await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead)).ConfigureAwait(false);
-                        Interlocked.Add(ref totalBytesRead, bytesRead);
-                        var rc = Interlocked.Increment(ref readCount);
-                        if (rc % 100 == 0)
-                            this.TriggerProgressChanged(totalSize, Interlocked.Read(ref totalBytesRead));
-                        var now = Environment.TickCount64;
-                        if (now - lastProgressTick >= 500)
-                        {
-                            this.TriggerProgressChanged(totalSize, Interlocked.Read(ref totalBytesRead));
-                            lastProgressTick = now;
+                                                     if (isNuGet)
+                                                     {
+                                                         req.Headers.Add("User-Agent",             "NuGet VS VSIX/6.14.0 (WINDOWS, Community/17.0)");
+                                                         req.Headers.Add("X-NuGet-Client-Version", "6.14.0");
+                                                         req.Headers.Add("X-NuGet-Session-Id",     Guid.NewGuid().ToString("D"));
+                                                     }
+
+                                                     return req;
+                                                 },
+                                                 HttpCompletionOption.ResponseHeadersRead
+                                             ).ConfigureAwait(false);
+
+                            resp.EnsureSuccessStatusCode();
+                            using var contentStream = await resp.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                            fileStream.Seek(chunk.Start, SeekOrigin.Begin);
+
+                            while (true)
+                            {
+                                var bytesRead = await contentStream.ReadAsync(buffer).ConfigureAwait(false);
+                                if (bytesRead == 0)
+                                    break;
+                                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead)).ConfigureAwait(false);
+                                Interlocked.Add(ref totalBytesRead, bytesRead);
+                                var rc = Interlocked.Increment(ref readCount);
+                                if (rc % 100 == 0)
+                                    TriggerProgressChanged(totalSize, Interlocked.Read(ref totalBytesRead));
+                                var now = Environment.TickCount64;
+
+                                if (now - lastProgressTick >= 500)
+                                {
+                                    TriggerProgressChanged(totalSize, Interlocked.Read(ref totalBytesRead));
+                                    lastProgressTick = now;
+                                }
+                            }
+
+                            Interlocked.Decrement(ref remaining);
                         }
                     }
-
-                    Interlocked.Decrement(ref remaining);
-                }
-            }));
+                )
+            );
         }
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
-        this.TriggerProgressChanged(totalSize, Interlocked.Read(ref totalBytesRead));
+        TriggerProgressChanged(totalSize, Interlocked.Read(ref totalBytesRead));
     }
 
     private void TriggerProgressChanged(long? totalDownloadSize, long totalBytesRead)
     {
-        if (this.ProgressChanged == null)
+        if (ProgressChanged == null)
             return;
 
         double? progressPercentage = null;
         if (totalDownloadSize.HasValue)
             progressPercentage = Math.Round((double)totalBytesRead / totalDownloadSize.Value * 100, 2);
 
-        this.ProgressChanged(totalDownloadSize, totalBytesRead, progressPercentage);
+        ProgressChanged(totalDownloadSize, totalBytesRead, progressPercentage);
     }
 
     private List<(long Start, long End)> BuildChunks(long totalSize)
     {
-        const long MIN_CHUNK     = 1L << 20;
-        const long MAX_CHUNK     = 8L << 20;
+        const long MIN_CHUNK = 1L << 20;
+        const long MAX_CHUNK = 8L << 20;
 
         var targetChunks = parallelParts * 64;
         var result       = new List<(long Start, long End)>();
@@ -238,12 +270,14 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
         var chunkSize    = Math.Min(estimated, MAX_CHUNK);
 
         long pos = 0;
+
         while (pos < totalSize)
         {
             var end = Math.Min(pos + chunkSize - 1, totalSize - 1);
             result.Add((pos, end));
             pos = end + 1;
         }
+
         return result;
     }
 
@@ -257,7 +291,7 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
 
             try
             {
-                var response = await this.httpClient.SendAsync(request, completionOption).ConfigureAwait(false);
+                var response = await httpClient.SendAsync(request, completionOption).ConfigureAwait(false);
 
                 if (IsRetryableStatus(response.StatusCode) && attempt < maxRetries)
                 {
@@ -296,16 +330,7 @@ public class HttpClientDownloadWithProgress(string downloadUrl, string destinati
         throw new InvalidOperationException("Send retry attempts exhausted");
     }
 
-    private static bool IsRetryableStatus(HttpStatusCode code)
-    {
-        if (code == HttpStatusCode.RequestTimeout)
-            return true;
-        var n = (int)code;
-        return n >= 500 && n <= 599;
-    }
+    public delegate void ProgressChangedHandler(long? totalFileSize, long totalBytesDownloaded, double? progressPercentage);
 
-    public void Dispose()
-    {
-        this.httpClient?.Dispose();
-    }
+    public event ProgressChangedHandler ProgressChanged;
 }

@@ -47,10 +47,8 @@ public class WindowsDalamudCompatibilityCheck : IDalamudCompatibilityCheck
             Log.Debug("Found " + fileName);
             return true;
         }
-        else
-        {
-            Log.Error("Could not find " + fileName);
-        }
+
+        Log.Error("Could not find " + fileName);
         return false;
     }
 
@@ -91,7 +89,7 @@ public class WindowsDalamudCompatibilityCheck : IDalamudCompatibilityCheck
             "vcruntime140_1"
         };
 
-        var passedRegistry = false;
+        var passedRegistry  = false;
         var passedDllChecks = true;
 
         foreach (var path in vc2022Paths)
@@ -102,7 +100,7 @@ public class WindowsDalamudCompatibilityCheck : IDalamudCompatibilityCheck
 
             var vcVersioncheck = vcregcheck.GetValue("Version") ?? "";
 
-            if (((string)vcVersioncheck).StartsWith("14", StringComparison.Ordinal) 
+            if (((string)vcVersioncheck).StartsWith("14",     StringComparison.Ordinal)
                 || ((string)vcVersioncheck).StartsWith("v14", StringComparison.Ordinal))
             {
                 passedRegistry = true;
@@ -121,15 +119,11 @@ public class WindowsDalamudCompatibilityCheck : IDalamudCompatibilityCheck
 
         // Display our findings
         if (!passedRegistry)
-        {
             Log.Error("Failed all registry checks to find any Visual C++ 2015-2022 Runtimes.");
-        }
 
         if (!passedDllChecks)
-        {
             Log.Error("Missing DLL files required by Dalamud. Please try installing vcredist bundle again.");
-        }
 
-        return (passedRegistry && passedDllChecks);
+        return passedRegistry && passedDllChecks;
     }
 }

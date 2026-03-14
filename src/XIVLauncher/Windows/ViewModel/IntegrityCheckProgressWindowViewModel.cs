@@ -1,19 +1,14 @@
 ﻿using CheapLoc;
 
-namespace XIVLauncher.Windows.ViewModel
+namespace XIVLauncher.Windows.ViewModel;
+
+internal class IntegrityCheckProgressWindowViewModel
 {
-    class IntegrityCheckProgressWindowViewModel
-    {
-        public IntegrityCheckProgressWindowViewModel()
-        {
-            SetupLoc();
-        }
+    public string IntegrityCheckRunningLoc { get; private set; }
 
-        private void SetupLoc()
-        {
-            IntegrityCheckRunningLoc = Loc.Localize("IntegrityCheckRunning", "Running integrity check...");
-        }
+    public IntegrityCheckProgressWindowViewModel() =>
+        SetupLoc();
 
-        public string IntegrityCheckRunningLoc { get; private set; }
-    }
+    private void SetupLoc() =>
+        IntegrityCheckRunningLoc = Loc.Localize("IntegrityCheckRunning", "Running integrity check...");
 }

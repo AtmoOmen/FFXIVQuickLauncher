@@ -1,7 +1,6 @@
-﻿namespace XIVLauncher.Common.Addon
+﻿namespace XIVLauncher.Common.Addon;
+
+internal interface IPersistentAddon : IAddon
 {
-    interface IPersistentAddon : IAddon
-    {
-        void DoWork(object state);
-    }
+    void DoWork(object state);
 }

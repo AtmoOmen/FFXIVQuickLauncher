@@ -16,10 +16,8 @@ public class IndexRpcTestCommand
 {
     public static readonly Command Command = new("index-rpc-test") { IsHidden = true };
 
-    static IndexRpcTestCommand()
-    {
+    static IndexRpcTestCommand() =>
         Command.SetHandler(x => new IndexRpcTestCommand(x.ParseResult).Handle());
-    }
 
     private IndexRpcTestCommand(ParseResult parseResult)
     {
@@ -27,22 +25,22 @@ public class IndexRpcTestCommand
 
     private async Task<int> Handle()
     {
-        const int maxConcurrentConnectionsForPatchSet = 1;
-        const string baseDir = @"Z:\tgame";
+        const int    maxConcurrentConnectionsForPatchSet = 1;
+        const string baseDir                             = @"Z:\tgame";
 
         // Cancel in 15 secs
         var cancellationTokenSource = new CancellationTokenSource();
-        var cancellationToken = cancellationTokenSource.Token;
+        var cancellationToken       = cancellationTokenSource.Token;
 
         var availableSourceUrls = new Dictionary<string, string>
         {
             { "boot:D2013.06.18.0000.0000.patch", "http://patch-dl.ffxiv.com/boot/2b5cbc63/D2013.06.18.0000.0000.patch" },
-            { "boot:D2021.11.16.0000.0001.patch", "http://patch-dl.ffxiv.com/boot/2b5cbc63/D2021.11.16.0000.0001.patch" },
+            { "boot:D2021.11.16.0000.0001.patch", "http://patch-dl.ffxiv.com/boot/2b5cbc63/D2021.11.16.0000.0001.patch" }
         };
 
         var rootAndPatchPairs = new List<Tuple<string, string>>
         {
-            Tuple.Create(@$"{baseDir}\boot", @"Z:\patch-dl.ffxiv.com\boot\2b5cbc63\D2021.11.16.0000.0001.patch.index"),
+            Tuple.Create(@$"{baseDir}\boot", @"Z:\patch-dl.ffxiv.com\boot\2b5cbc63\D2021.11.16.0000.0001.patch.index")
         };
 
         // Run verifier as subprocess
@@ -56,7 +54,7 @@ public class IndexRpcTestCommand
 
             await verifier.ConstructFromPatchFile(patchIndex, TimeSpan.FromSeconds(1));
 
-            verifier.OnVerifyProgress += ReportCheckProgress;
+            verifier.OnVerifyProgress  += ReportCheckProgress;
             verifier.OnInstallProgress += ReportInstallProgress;
 
             for (var attemptIndex = 0; attemptIndex < 5; attemptIndex++)
@@ -86,22 +84,35 @@ public class IndexRpcTestCommand
                 await verifier.WriteVersionFiles(gameRootPath, cancellationToken);
             }
 
-            verifier.OnVerifyProgress -= ReportCheckProgress;
+            verifier.OnVerifyProgress  -= ReportCheckProgress;
             verifier.OnInstallProgress -= ReportInstallProgress;
 
             continue;
 
-            void ReportCheckProgress(int index, long progress, long max)
-            {
-                Log.Information("[{0}/{1}] Checking file {2}... {3:0.00}/{4:0.00}MB ({5:00.00}%)", index + 1, patchIndex.Length, patchIndex[Math.Min(index, patchIndex.Length - 1)].RelativePath,
-                                progress / 1048576.0, max / 1048576.0, 100.0 * progress / max);
-            }
+            void ReportCheckProgress(int index, long progress, long max) =>
+                Log.Information
+                (
+                    "[{0}/{1}] Checking file {2}... {3:0.00}/{4:0.00}MB ({5:00.00}%)",
+                    index + 1,
+                    patchIndex.Length,
+                    patchIndex[Math.Min(index, patchIndex.Length - 1)].RelativePath,
+                    progress         / 1048576.0,
+                    max              / 1048576.0,
+                    100.0 * progress / max
+                );
 
-            void ReportInstallProgress(int index, long progress, long max, IndexedZiPatchInstaller.InstallTaskState state)
-            {
-                Log.Information("[{0}/{1}] {2} {3}... {4:0.00}/{5:0.00}MB ({6:00.00}%)", index + 1, patchIndex.Sources.Count, state, patchIndex.Sources[Math.Min(index, patchIndex.Sources.Count - 1)],
-                                progress / 1048576.0, max / 1048576.0, 100.0 * progress / max);
-            }
+            void ReportInstallProgress(int index, long progress, long max, IndexedZiPatchInstaller.InstallTaskState state) =>
+                Log.Information
+                (
+                    "[{0}/{1}] {2} {3}... {4:0.00}/{5:0.00}MB ({6:00.00}%)",
+                    index + 1,
+                    patchIndex.Sources.Count,
+                    state,
+                    patchIndex.Sources[Math.Min(index, patchIndex.Sources.Count - 1)],
+                    progress         / 1048576.0,
+                    max              / 1048576.0,
+                    100.0 * progress / max
+                );
         }
 
         return 0;

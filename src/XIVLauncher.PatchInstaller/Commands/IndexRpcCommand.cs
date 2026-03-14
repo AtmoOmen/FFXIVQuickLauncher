@@ -17,6 +17,9 @@ public class IndexRpcCommand
 
     private static readonly Argument<string> ChannelNameArgument = new("channel-name");
 
+    private readonly int    monitorProcessId;
+    private readonly string channelName;
+
     static IndexRpcCommand()
     {
         Command.AddArgument(MonitorProcessIDArgument);
@@ -24,13 +27,10 @@ public class IndexRpcCommand
         Command.SetHandler(x => new IndexRpcCommand(x.ParseResult).Handle());
     }
 
-    private readonly int monitorProcessId;
-    private readonly string channelName;
-
     private IndexRpcCommand(ParseResult parseResult)
     {
-        this.monitorProcessId = parseResult.GetValueForArgument(MonitorProcessIDArgument);
-        this.channelName = parseResult.GetValueForArgument(ChannelNameArgument);
+        monitorProcessId = parseResult.GetValueForArgument(MonitorProcessIDArgument);
+        channelName      = parseResult.GetValueForArgument(ChannelNameArgument);
     }
 
     private Task<int> Handle()
@@ -42,7 +42,7 @@ public class IndexRpcCommand
                      .MinimumLevel.Verbose()
                      .CreateLogger();
 
-        new IndexedZiPatchIndexRemoteInstaller.WorkerSubprocessBody(this.monitorProcessId, this.channelName).RunToDisposeSelf();
+        new IndexedZiPatchIndexRemoteInstaller.WorkerSubprocessBody(monitorProcessId, channelName).RunToDisposeSelf();
         return Task.FromResult(0);
     }
 }

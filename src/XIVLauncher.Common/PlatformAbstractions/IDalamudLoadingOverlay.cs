@@ -2,20 +2,20 @@ namespace XIVLauncher.Common.PlatformAbstractions;
 
 public interface IDalamudLoadingOverlay
 {
-    public enum DalamudUpdateStep
+    void SetStep(DalamudUpdateStep step);
+
+    void SetVisible();
+
+    void SetInvisible();
+
+    void ReportProgress(long? size, long downloaded, double? progress);
+
+    enum DalamudUpdateStep
     {
         Dalamud,
         Assets,
         Runtime,
         Unavailable,
-        Starting,
+        Starting
     }
-
-    public void SetStep(DalamudUpdateStep step);
-
-    public void SetVisible();
-
-    public void SetInvisible();
-
-    public void ReportProgress(long? size, long downloaded, double? progress);
 }

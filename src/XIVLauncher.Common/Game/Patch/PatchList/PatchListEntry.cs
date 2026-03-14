@@ -1,56 +1,54 @@
 using System.IO;
 using System.Text.RegularExpressions;
 
-namespace XIVLauncher.Common.Game.Patch.PatchList
+namespace XIVLauncher.Common.Game.Patch.PatchList;
+
+public class PatchListEntry
 {
-    public class PatchListEntry
+    public                  string   VersionId     { get; set; }
+    public                  string   HashType      { get; set; }
+    public                  string   Url           { get; set; }
+    public                  long     HashBlockSize { get; set; }
+    public                  string[] Hashes        { get; set; }
+    public                  long     Length        { get; set; }
+    private static readonly Regex    urlRegex = new(".*/((game|boot)/([a-zA-Z0-9]+)/.*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    public override string ToString() => $"{GetRepoName()}/{VersionId}";
+
+    public string GetRepoName()
     {
-        private static Regex urlRegex = new Regex(".*/((game|boot)/([a-zA-Z0-9]+)/.*)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        var name = Deconstruct().Groups[3].Captures[0].Value;
 
-        public string VersionId { get; set; }
-        public string HashType { get; set; }
-        public string Url { get; set; }
-        public long HashBlockSize { get; set; }
-        public string[] Hashes { get; set; }
-        public long Length { get; set; }
-
-        public override string ToString() => $"{this.GetRepoName()}/{VersionId}";
-
-        private Match Deconstruct() => urlRegex.Match(this.Url);
-
-        public string GetRepoName()
-        {
-            var name = this.Deconstruct().Groups[3].Captures[0].Value;
-
-            // The URL doesn't have the "ffxiv" part for ffxiv repo. Let's fake it for readability.
-            return name == "c38effbc" ? "ffxiv" : name;
-        }
-
-        public Repository GetRepo()
-        {
-            if (Url.Contains("boot"))
-                return Repository.Boot;
-
-            if (Url.Contains("ex1"))
-                return Repository.Ex1;
-
-            if (Url.Contains("ex2"))
-                return Repository.Ex2;
-
-            if (Url.Contains("ex3"))
-                return Repository.Ex3;
-
-            if (Url.Contains("ex4"))
-                return Repository.Ex4;
-
-            if (Url.Contains("ex5"))
-                return Repository.Ex5;
-
-            return Repository.Ffxiv;
-        }
-
-        public string GetUrlPath() => this.Deconstruct().Groups[1].Captures[0].Value;
-
-        public string GetFilePath() => GetUrlPath().Replace('/', Path.DirectorySeparatorChar);
+        // The URL doesn't have the "ffxiv" part for ffxiv repo. Let's fake it for readability.
+        return name == "c38effbc" ? "ffxiv" : name;
     }
+
+    public Repository GetRepo()
+    {
+        if (Url.Contains("boot"))
+            return Repository.Boot;
+
+        if (Url.Contains("ex1"))
+            return Repository.Ex1;
+
+        if (Url.Contains("ex2"))
+            return Repository.Ex2;
+
+        if (Url.Contains("ex3"))
+            return Repository.Ex3;
+
+        if (Url.Contains("ex4"))
+            return Repository.Ex4;
+
+        if (Url.Contains("ex5"))
+            return Repository.Ex5;
+
+        return Repository.Ffxiv;
+    }
+
+    public string GetUrlPath() => Deconstruct().Groups[1].Captures[0].Value;
+
+    public string GetFilePath() => GetUrlPath().Replace('/', Path.DirectorySeparatorChar);
+
+    private Match Deconstruct() => urlRegex.Match(Url);
 }

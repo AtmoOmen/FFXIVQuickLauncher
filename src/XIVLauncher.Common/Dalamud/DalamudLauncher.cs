@@ -25,11 +25,8 @@ public class DalamudLauncher
     string            troubleshootingData
 )
 {
-    public enum DalamudInstallState
-    {
-        Ok,
-        OutOfDate
-    }
+    // always return true
+    public static bool CanRunDalamud(DirectoryInfo gamePath) => true;
 
     public DalamudInstallState HoldForUpdate(DirectoryInfo gamePathDir)
     {
@@ -165,6 +162,9 @@ public class DalamudLauncher
         return process;
     }
 
-    // always return true
-    public static bool CanRunDalamud(DirectoryInfo gamePath) => true;
+    public enum DalamudInstallState
+    {
+        Ok,
+        OutOfDate
+    }
 }

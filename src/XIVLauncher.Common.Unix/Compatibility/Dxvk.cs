@@ -15,10 +15,10 @@ public static class Dxvk
 #if WINE_XIV_MACOS
     // private const string DXVK_DOWNLOAD = "https://github.com/Gcenx/DXVK-macOS/releases/download/v1.10.3-20230507-repack/dxvk-macOS-async-v1.10.3-20230507-repack.tar.gz";
     private const string DXVK_DOWNLOAD = ServerAddress.S3Address + "/xlcore/deps/dxvk/osx/dxvk-macOS-async-v1.10.3-20230507-repack.tar.gz";
-    private const string DXVK_NAME = "dxvk-macOS-async-v1.10.3-20230507-repack";
+    private const string DXVK_NAME     = "dxvk-macOS-async-v1.10.3-20230507-repack";
 #else
     private const string DXVK_DOWNLOAD = "https://github.com/Sporif/dxvk-async/releases/download/1.10.1/dxvk-async-1.10.1.tar.gz";
-    private const string DXVK_NAME = "dxvk-async-1.10.1";
+    private const string DXVK_NAME     = "dxvk-async-1.10.1";
 #endif
 
     public static async Task InstallDxvk(DirectoryInfo prefix, DirectoryInfo installDirectory)
@@ -32,20 +32,19 @@ public static class Dxvk
         }
 
         var system32 = Path.Combine(prefix.FullName, "drive_c", "windows", "system32");
-        var files = Directory.GetFiles(dxvkPath);
+        var files    = Directory.GetFiles(dxvkPath);
 
         Log.Information("Extracting DXVK files");
-        foreach (string fileName in files)
-        {
+        foreach (var fileName in files)
             File.Copy(fileName, Path.Combine(system32, Path.GetFileName(fileName)), true);
-        }
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
             Log.Information("Copying dxvk cache for Mac OSX");
-            File.Copy(
+            File.Copy
+            (
                 Path.Combine(Paths.ResourcesPath, "ffxiv_dx11.dxvk-cache-base"),
-                Path.Combine(prefix.FullName, "drive_c", "ffxiv_dx11.dxvk-cache"),
+                Path.Combine(prefix.FullName,     "drive_c", "ffxiv_dx11.dxvk-cache"),
                 true
             );
         }
@@ -53,14 +52,17 @@ public static class Dxvk
 
     private static async Task DownloadDxvk(DirectoryInfo installDirectory)
     {
-        using var client = new HttpClient(new SocketsHttpHandler
-        {
-            AutomaticDecompression         = DecompressionMethods.All,
-            MaxConnectionsPerServer        = 20,
-            EnableMultipleHttp2Connections = true,
-            ConnectTimeout                 = TimeSpan.FromSeconds(5),
-            ConnectCallback = HappyEyeballsCallback.ConnectCallback
-        });
+        using var client = new HttpClient
+        (
+            new SocketsHttpHandler
+            {
+                AutomaticDecompression         = DecompressionMethods.All,
+                MaxConnectionsPerServer        = 20,
+                EnableMultipleHttp2Connections = true,
+                ConnectTimeout                 = TimeSpan.FromSeconds(5),
+                ConnectCallback                = HappyEyeballsCallback.ConnectCallback
+            }
+        );
         client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
         var tempPath = PlatformHelpers.GetTempFileName();
 
@@ -79,6 +81,6 @@ public static class Dxvk
         Fps,
 
         [SettingsDescription("Full", "Show everything")]
-        Full,
+        Full
     }
 }

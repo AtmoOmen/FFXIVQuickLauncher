@@ -13,8 +13,11 @@ public class IndexCreateCommand
 
     private static readonly Argument<string[]> PatchFilesArgument = new("patch-file", "Path to patch file(s).")
     {
-        Arity = ArgumentArity.OneOrMore,
+        Arity = ArgumentArity.OneOrMore
     };
+
+    private readonly int      expacVersion;
+    private readonly string[] patchFiles;
 
     static IndexCreateCommand()
     {
@@ -23,18 +26,15 @@ public class IndexCreateCommand
         Command.SetHandler(x => new IndexCreateCommand(x.ParseResult).Handle());
     }
 
-    private readonly int expacVersion;
-    private readonly string[] patchFiles;
-
     private IndexCreateCommand(ParseResult parseResult)
     {
-        this.expacVersion = parseResult.GetValueForArgument(ExpacVersionArgument);
-        this.patchFiles = parseResult.GetValueForArgument(PatchFilesArgument);
+        expacVersion = parseResult.GetValueForArgument(ExpacVersionArgument);
+        patchFiles   = parseResult.GetValueForArgument(PatchFilesArgument);
     }
 
     private async Task<int> Handle()
     {
-        await IndexedZiPatchOperations.CreateZiPatchIndices(this.expacVersion, this.patchFiles);
+        await IndexedZiPatchOperations.CreateZiPatchIndices(expacVersion, patchFiles);
         return 0;
     }
 }

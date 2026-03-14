@@ -17,8 +17,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\FfxivArgLauncher\FfxivArgLauncher.csproj" />
-      <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />
+        <ProjectReference Include="..\FfxivArgLauncher\FfxivArgLauncher.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
     </ItemGroup>
 
     <PropertyGroup Label="Configuration" Condition="'$(Configuration)'=='Release'">
@@ -27,11 +27,11 @@
     </PropertyGroup>
 
     <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-        <None Remove="steam_api64.dll" />
+        <None Remove="steam_api64.dll"/>
         <Content Include="steam_api64.dll">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <None Remove="steam_api.dll" />
+        <None Remove="steam_api.dll"/>
         <Content Include="steam_api.dll">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
@@ -40,19 +40,19 @@
     <ItemGroup>
 
         <!-- Custom steamworks, based on the chippy branch of Facepunch.Steamworks -->
-        <PackageReference Include="goaaats.Steamworks" Version="2.3.4" />
-        <PackageReference Include="PInvoke.Kernel32" Version="0.7.124" />
-        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
+        <PackageReference Include="goaaats.Steamworks" Version="2.3.4"/>
+        <PackageReference Include="PInvoke.Kernel32" Version="0.7.124"/>
+        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Iced" Version="1.17.0" />
-        <PackageReference Include="Reloaded.Memory" Version="7.0.0" />
-        <PackageReference Include="Reloaded.Memory.Buffers" Version="2.0.0" />
-        <PackageReference Include="Reloaded.Memory.Sigscan" Version="3.0.0" />
-        <PackageReference Include="Serilog" Version="4.0.2" />
-        <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0" />
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-        <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+        <PackageReference Include="Iced" Version="1.17.0"/>
+        <PackageReference Include="Reloaded.Memory" Version="7.0.0"/>
+        <PackageReference Include="Reloaded.Memory.Buffers" Version="2.0.0"/>
+        <PackageReference Include="Reloaded.Memory.Sigscan" Version="3.0.0"/>
+        <PackageReference Include="Serilog" Version="4.0.2"/>
+        <PackageReference Include="Serilog.Sinks.Async" Version="1.5.0"/>
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
+        <PackageReference Include="Serilog.Sinks.File" Version="5.0.0"/>
     </ItemGroup>
 </Project>

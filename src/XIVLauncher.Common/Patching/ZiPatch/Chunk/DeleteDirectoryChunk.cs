@@ -3,40 +3,40 @@ using System.IO;
 using Serilog;
 using XIVLauncher.Common.Patching.Util;
 
-namespace XIVLauncher.Common.Patching.ZiPatch.Chunk
+namespace XIVLauncher.Common.Patching.ZiPatch.Chunk;
+
+public class DeleteDirectoryChunk : ZiPatchChunk
 {
-    public class DeleteDirectoryChunk : ZiPatchChunk
+    public new static string Type = "DELD";
+
+    public string DirName { get; protected set; }
+
+    public DeleteDirectoryChunk(BinaryReader reader, long offset, long size)
+        : base(reader, offset, size)
     {
-        public new static string Type = "DELD";
+    }
 
-        public string DirName { get; protected set; }
-
-        public DeleteDirectoryChunk(BinaryReader reader, long offset, long size) : base(reader, offset, size) {}
-
-        protected override void ReadChunk()
+    public override void ApplyChunk(ZiPatchConfig config)
+    {
+        try
         {
-            using var advanceAfter = this.GetAdvanceOnDispose();
-            var dirNameLen = this.Reader.ReadUInt32BE();
-
-            DirName = this.Reader.ReadFixedLengthString(dirNameLen);
+            Directory.Delete(config.GamePath + DirName);
         }
-
-        public override void ApplyChunk(ZiPatchConfig config)
+        catch (Exception e)
         {
-            try
-            {
-                Directory.Delete(config.GamePath + DirName);
-            }
-            catch (Exception e)
-            {
-                Log.Debug(e, "Ran into {This}, failed at deleting the dir", this);
-                throw;
-            }
+            Log.Debug(e, "Ran into {This}, failed at deleting the dir", this);
+            throw;
         }
+    }
 
-        public override string ToString()
-        {
-            return $"{Type}:{DirName}";
-        }
+    public override string ToString() =>
+        $"{Type}:{DirName}";
+
+    protected override void ReadChunk()
+    {
+        using var advanceAfter = GetAdvanceOnDispose();
+        var       dirNameLen   = Reader.ReadUInt32BE();
+
+        DirName = Reader.ReadFixedLengthString(dirNameLen);
     }
 }

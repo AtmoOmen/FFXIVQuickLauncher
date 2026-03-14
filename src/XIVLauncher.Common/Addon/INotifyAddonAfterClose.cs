@@ -1,7 +1,6 @@
-﻿namespace XIVLauncher.Common.Addon
+﻿namespace XIVLauncher.Common.Addon;
+
+internal interface INotifyAddonAfterClose : IAddon
 {
-    interface INotifyAddonAfterClose : IAddon
-    {
-        void GameClosed();
-    }
+    void GameClosed();
 }

@@ -27,16 +27,6 @@
                         VerticalAlignment="Center"
                         x:Name="OtpInputPrompt">
                         <TextBlock.Resources>
-                            <Storyboard x:Key="InvalidShake">
-                                <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)">
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0.0" Value="10"/>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0.1" Value="-7"/>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="5"/>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="-3"/>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="1"/>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="0"/>
-                                </DoubleAnimationUsingKeyFrames>
-                            </Storyboard>
                         </TextBlock.Resources>
                         <TextBlock.RenderTransform>
                             <TranslateTransform X="0" Y="0" />
@@ -54,12 +44,13 @@
                         MaxLength="6"
                         Foreground="{DynamicResource MaterialDesignBody}"
                         x:Name="OtpTextBox" />
-                    <Button 
+                    <Button
                         x:Name="PasteButton"
                         Style="{DynamicResource MaterialDesignFlatButton}"
                         ToolTip="{Binding PasteButtonLoc}"
-                        HorizontalAlignment="Right" Click="PasteButton_OnClick" Width="32" Padding="4,4,4,4" UseLayoutRounding="False" Margin="1,-10,0,0">
-                        <materialDesign:PackIcon Kind="ContentPaste" Height="24" Width="24"/>
+                        HorizontalAlignment="Right" Click="PasteButton_OnClick" Width="32" Padding="4,4,4,4"
+                        UseLayoutRounding="False" Margin="1,-10,0,0">
+                        <materialDesign:PackIcon Kind="ContentPaste" Height="24" Width="24" />
                     </Button>
                 </Grid>
 
@@ -75,7 +66,8 @@
                         Width="100"
                         Click="CancelButton_OnClick" />
                 </StackPanel>
-                <TextBlock Foreground="DarkGray" Margin="0,8,0,0" TextAlignment="Center" Cursor="Hand" MouseUp="OpenShortcutInfo_MouseUp" Text="{Binding OtpOneClickHintLoc}"/>
+                <TextBlock Foreground="DarkGray" Margin="0,8,0,0" TextAlignment="Center" Cursor="Hand"
+                           MouseUp="OpenShortcutInfo_MouseUp" Text="{Binding OtpOneClickHintLoc}" />
             </StackPanel>
         </materialDesign:Card>
     </Grid>

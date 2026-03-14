@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -15,7 +16,7 @@ namespace XIVLauncher.Common.Unix;
 public class UnixDalamudRunner : IDalamudRunner
 {
     private readonly CompatibilityTools compatibility;
-    private readonly DirectoryInfo dotnetRuntime;
+    private readonly DirectoryInfo      dotnetRuntime;
 
     public UnixDalamudRunner(CompatibilityTools compatibility, DirectoryInfo dotnetRuntime)
     {
@@ -23,19 +24,31 @@ public class UnixDalamudRunner : IDalamudRunner
         this.dotnetRuntime = dotnetRuntime;
     }
 
-    public Process? Run(FileInfo runner, bool fakeLogin, bool noPlugins, bool noThirdPlugins, FileInfo gameExe, string gameArgs, IDictionary<string, string> environment, DalamudLoadMethod loadMethod, DalamudStartInfo startInfo)
+    public Process? Run
+    (
+        FileInfo                    runner,
+        bool                        fakeLogin,
+        bool                        noPlugins,
+        bool                        noThirdPlugins,
+        FileInfo                    gameExe,
+        string                      gameArgs,
+        IDictionary<string, string> environment,
+        DalamudLoadMethod           loadMethod,
+        DalamudStartInfo            startInfo
+    )
     {
-        var gameExePath = "";
+        var gameExePath       = "";
         var dotnetRuntimePath = "";
 
-        Parallel.Invoke(
-            () => { gameExePath = compatibility.UnixToWinePath(gameExe.FullName); },
-            () => { dotnetRuntimePath = compatibility.UnixToWinePath(dotnetRuntime.FullName); },
-            () => { startInfo.LoggingPath = compatibility.UnixToWinePath(startInfo.LoggingPath); },
-            () => { startInfo.WorkingDirectory = compatibility.UnixToWinePath(startInfo.WorkingDirectory); },
+        Parallel.Invoke
+        (
+            () => { gameExePath                 = compatibility.UnixToWinePath(gameExe.FullName); },
+            () => { dotnetRuntimePath           = compatibility.UnixToWinePath(dotnetRuntime.FullName); },
+            () => { startInfo.LoggingPath       = compatibility.UnixToWinePath(startInfo.LoggingPath); },
+            () => { startInfo.WorkingDirectory  = compatibility.UnixToWinePath(startInfo.WorkingDirectory); },
             () => { startInfo.ConfigurationPath = compatibility.UnixToWinePath(startInfo.ConfigurationPath); },
-            () => { startInfo.PluginDirectory = compatibility.UnixToWinePath(startInfo.PluginDirectory); },
-            () => { startInfo.AssetDirectory = compatibility.UnixToWinePath(startInfo.AssetDirectory); }
+            () => { startInfo.PluginDirectory   = compatibility.UnixToWinePath(startInfo.PluginDirectory); },
+            () => { startInfo.AssetDirectory    = compatibility.UnixToWinePath(startInfo.AssetDirectory); }
         );
 
         var prevDalamudRuntime = Environment.GetEnvironmentVariable("DALAMUD_RUNTIME");
@@ -55,7 +68,7 @@ public class UnixDalamudRunner : IDalamudRunner
             DalamudInjectorArgs.AssetDirectory(startInfo.AssetDirectory),
             DalamudInjectorArgs.ClientLanguage((int)startInfo.Language),
             DalamudInjectorArgs.DelayInitialize(startInfo.DelayInitializeMs),
-            DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData))),
+            DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData))),
             DalamudInjectorArgs.LauncherDirectory(startInfo.LauncherDirectory)
         };
 
@@ -75,27 +88,27 @@ public class UnixDalamudRunner : IDalamudRunner
         launchArguments.Add(gameArgs);
 
         var dalamudProcess = compatibility.RunInPrefix(string.Join(" ", launchArguments), environment: environment, redirectOutput: true, writeLog: true);
-        var output = dalamudProcess.StandardOutput.ReadLine();
+        var output         = dalamudProcess.StandardOutput.ReadLine();
 
         if (output == null)
             throw new DalamudRunnerException("An internal Dalamud error has occured");
 
-        new Thread(() =>
-        {
-            while (!dalamudProcess.StandardOutput.EndOfStream)
+        new Thread
+        (() =>
             {
-                var tempOutput = dalamudProcess.StandardOutput.ReadLine();
-
-                if (tempOutput != null)
+                while (!dalamudProcess.StandardOutput.EndOfStream)
                 {
-                    Console.WriteLine(tempOutput);
-                    if (tempOutput.Contains("pid"))
+                    var tempOutput = dalamudProcess.StandardOutput.ReadLine();
+
+                    if (tempOutput != null)
                     {
-                        output = tempOutput;
+                        Console.WriteLine(tempOutput);
+                        if (tempOutput.Contains("pid"))
+                            output = tempOutput;
                     }
                 }
             }
-        }).Start();
+        ).Start();
 
         var totalWaitSeconds = 0;
 
@@ -112,7 +125,7 @@ public class UnixDalamudRunner : IDalamudRunner
         try
         {
             var dalamudConsoleOutput = JsonConvert.DeserializeObject<DalamudConsoleOutput>(output);
-            var unixPid = compatibility.GetUnixProcessId(dalamudConsoleOutput.Pid);
+            var unixPid              = compatibility.GetUnixProcessId(dalamudConsoleOutput.Pid);
 
             if (unixPid == 0)
             {
@@ -121,8 +134,10 @@ public class UnixDalamudRunner : IDalamudRunner
             }
 
             var gameProcess = Process.GetProcessById(unixPid);
-            Log.Verbose(
-                $"Got game process handle {gameProcess.Handle} with Unix pid {gameProcess.Id} and Wine pid {dalamudConsoleOutput.Pid}");
+            Log.Verbose
+            (
+                $"Got game process handle {gameProcess.Handle} with Unix pid {gameProcess.Id} and Wine pid {dalamudConsoleOutput.Pid}"
+            );
             return gameProcess;
         }
         catch (JsonReaderException ex)

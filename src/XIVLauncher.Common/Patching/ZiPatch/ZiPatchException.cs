@@ -1,11 +1,11 @@
 ﻿using System;
 
-namespace XIVLauncher.Common.Patching.ZiPatch
+namespace XIVLauncher.Common.Patching.ZiPatch;
+
+public class ZiPatchException : Exception
 {
-    public class ZiPatchException : Exception
+    public ZiPatchException(string message = "ZiPatch error", Exception? innerException = null)
+        : base(message, innerException)
     {
-        public ZiPatchException(string message = "ZiPatch error", Exception? innerException = null) : base(message, innerException)
-        {
-        }
     }
 }

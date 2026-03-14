@@ -1,9 +1,8 @@
-﻿namespace XIVLauncher.Common.Game.Patch.Acquisition
+﻿namespace XIVLauncher.Common.Game.Patch.Acquisition;
+
+public enum AcquisitionResult
 {
-    public enum AcquisitionResult
-    {
-        Success,
-        Error,
-        Cancelled,
-    }
+    Success,
+    Error,
+    Cancelled
 }

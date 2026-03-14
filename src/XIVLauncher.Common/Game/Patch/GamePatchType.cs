@@ -1,8 +1,7 @@
-﻿namespace XIVLauncher.Common.Game.Patch
+﻿namespace XIVLauncher.Common.Game.Patch;
+
+public enum GamePatchType
 {
-    public enum GamePatchType
-    {
-        Boot,
-        Game
-    }
+    Boot,
+    Game
 }

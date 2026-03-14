@@ -1,9 +1,7 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"                                     
-                    xmlns:materialDesign="clr-namespace:MaterialDesignThemes.Wpf;assembly=MaterialDesignThemes.Wpf">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <Style x:Key="MaterialDesignToggleButtonWithIcon" BasedOn="{StaticResource MaterialDesignFloatingActionButton}" TargetType="{x:Type ToggleButton}">
-        
-    </Style>
+    <Style x:Key="MaterialDesignToggleButtonWithIcon" BasedOn="{StaticResource MaterialDesignFloatingActionButton}"
+           TargetType="{x:Type ToggleButton}" />
 
 </ResourceDictionary>

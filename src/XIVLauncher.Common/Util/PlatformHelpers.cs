@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -9,7 +10,6 @@ using System.Security.Principal;
 using Serilog;
 using SharpCompress.Archives;
 using SharpCompress.Common;
-using SharpCompress.Readers;
 
 namespace XIVLauncher.Common.Util;
 
@@ -19,12 +19,11 @@ public static class PlatformHelpers
     {
         if (EnvironmentSettings.IsWine)
             return Platform.Win32OnLinux;
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             return Platform.Linux;
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             return Platform.Mac;
-        else
-            return Platform.Win32;
+        return Platform.Win32;
 
         // TODO(goat): Add mac here, once it's merged
     }
@@ -42,9 +41,7 @@ public static class PlatformHelpers
     public static void DeleteAndRecreateDirectory(DirectoryInfo dir)
     {
         if (!dir.Exists)
-        {
             dir.Create();
-        }
         else
         {
             dir.Delete(true);
@@ -70,17 +67,11 @@ public static class PlatformHelpers
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
             Process.Start("xdg-open", url);
-        }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
             Process.Start("open", url);
-        }
         else
-        {
             throw new NotImplementedException();
-        }
     }
 
     [DllImport("libc")]
@@ -122,10 +113,11 @@ public static class PlatformHelpers
     public static void Unzip7ZAsset(string path, string output)
     {
         Log.Information("[DUPDATE] 正在解压 7z 包...");
+
         try
         {
             var unzipPath = Path.Combine(Paths.ResourcesPath, "7zr.exe");
-            
+
             var psi = new ProcessStartInfo
             {
                 FileName        = unzipPath,
@@ -135,18 +127,18 @@ public static class PlatformHelpers
             };
 
             var proc = Process.Start(psi);
+
             if (proc != null)
             {
                 proc.WaitForExit();
+
                 if (proc.ExitCode == 0)
                 {
                     Log.Information("[DUPDATE] 7z 解压完成。");
                     return;
                 }
-                else
-                {
-                    Log.Warning("[DUPDATE] 系统 7z 解压失败，退出码 {ExitCode}，回退到托管解压。", proc.ExitCode);
-                }
+
+                Log.Warning("[DUPDATE] 系统 7z 解压失败，退出码 {ExitCode}，回退到托管解压。", proc.ExitCode);
             }
         }
         catch (Exception ex)
@@ -155,13 +147,11 @@ public static class PlatformHelpers
         }
 
         using (var archive = ArchiveFactory.Open(path))
-        {
             archive.WriteToDirectory(output, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
-        }
         Log.Information("[DUPDATE] 托管解压完成。");
     }
 
-    private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, port: 0);
+    private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, 0);
 
     public static int GetAvailablePort()
     {
@@ -176,13 +166,29 @@ public static class PlatformHelpers
      * WINE: The APIs DriveInfo uses are buggy on Wine. Let's just use the kernel32 API instead.
      */
 
-    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-    public static extern bool GetDiskFreeSpaceEx(string lpDirectoryName,
-                                                 out ulong lpFreeBytesAvailable,
-                                                 out ulong lpTotalNumberOfBytes,
-                                                 out ulong lpTotalNumberOfFreeBytes);
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetDiskFreeSpaceEx
+    (
+        string    lpDirectoryName,
+        out ulong lpFreeBytesAvailable,
+        out ulong lpTotalNumberOfBytes,
+        out ulong lpTotalNumberOfFreeBytes
+    );
 
+    public static long GetDiskFreeSpace(DirectoryInfo info)
+    {
+        if (info == null)
+            throw new ArgumentNullException(nameof(info));
+
+        ulong dummy = 0;
+
+        if (!GetDiskFreeSpaceEx(info.Root.FullName, out var freeSpace, out dummy, out dummy))
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+
+        return (long)freeSpace;
+    }
+#else
     public static long GetDiskFreeSpace(DirectoryInfo info)
     {
         if (info == null)
@@ -190,34 +196,17 @@ public static class PlatformHelpers
             throw new ArgumentNullException(nameof(info));
         }
 
-        ulong dummy = 0;
+        DriveInfo drive = new DriveInfo(info.FullName);
 
-        if (!GetDiskFreeSpaceEx(info.Root.FullName, out ulong freeSpace, out dummy, out dummy))
-        {
-            throw new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error());
-        }
-
-        return (long)freeSpace;
+        return drive.AvailableFreeSpace;
     }
-#else
-        public static long GetDiskFreeSpace(DirectoryInfo info)
-        {
-            if (info == null)
-            {
-                throw new ArgumentNullException(nameof(info));
-            }
-
-            DriveInfo drive = new DriveInfo(info.FullName);
-
-            return drive.AvailableFreeSpace;
-        }
 #endif
 
     public static string GetVersion()
     {
-        Assembly assembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-        AssemblyInformationalVersionAttribute attribute = (AssemblyInformationalVersionAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyInformationalVersionAttribute));
-        AssemblyProductAttribute name = (AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyProductAttribute));
+        var assembly  = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+        var attribute = (AssemblyInformationalVersionAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyInformationalVersionAttribute));
+        var name      = (AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly,              typeof(AssemblyProductAttribute));
         Console.WriteLine(name?.Product + " v" + attribute?.InformationalVersion);
         return name?.Product + " v" + attribute?.InformationalVersion;
     }

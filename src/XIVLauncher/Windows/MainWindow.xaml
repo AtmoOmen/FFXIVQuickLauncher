@@ -33,7 +33,8 @@
                     <materialDesign:FadeWipe />
                 </materialDesign:TransitionerSlide.ForwardWipe>
                 <windows:SettingsControl x:Name="SettingsControl"
-                                         SettingsDismissed="SettingsControl_OnSettingsDismissed" CloseMainWindowGracefully="SettingsControl_OnCloseMainWindowGracefully"/>
+                                         SettingsDismissed="SettingsControl_OnSettingsDismissed"
+                                         CloseMainWindowGracefully="SettingsControl_OnCloseMainWindowGracefully" />
             </materialDesign:TransitionerSlide>
 
             <materialDesign:TransitionerSlide>
@@ -67,25 +68,29 @@
                                 </Viewbox>
                             </materialDesign:Card>
 
-                            <Border CornerRadius="8" Background="#aa333333" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,8">
-                                <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}" Opacity="1"  >
+                            <Border CornerRadius="8" Background="#aa333333" VerticalAlignment="Bottom"
+                                    HorizontalAlignment="Right" Margin="0,0,8,8">
+                                <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}" Opacity="1">
                                     <ItemsControl.LayoutTransform>
                                         <TransformGroup>
-                                            <ScaleTransform/>
-                                            <SkewTransform/>
-                                            <RotateTransform Angle="-90"/>
-                                            <TranslateTransform/>
+                                            <ScaleTransform />
+                                            <SkewTransform />
+                                            <RotateTransform Angle="-90" />
+                                            <TranslateTransform />
                                         </TransformGroup>
                                     </ItemsControl.LayoutTransform>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <RadioButton GroupName="banner" IsChecked="{Binding Active}" RenderTransformOrigin="0.5,0.5" MouseEnter="RadioButton_MouseEnter" MouseLeave="RadioButton_MouseLeave">
+                                            <RadioButton GroupName="banner" IsChecked="{Binding Active}"
+                                                         RenderTransformOrigin="0.5,0.5"
+                                                         MouseEnter="RadioButton_MouseEnter"
+                                                         MouseLeave="RadioButton_MouseLeave">
                                                 <RadioButton.RenderTransform>
                                                     <TransformGroup>
-                                                        <ScaleTransform ScaleX="0.75" ScaleY="0.75"/>
-                                                        <SkewTransform/>
-                                                        <RotateTransform/>
-                                                        <TranslateTransform/>
+                                                        <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
+                                                        <SkewTransform />
+                                                        <RotateTransform />
+                                                        <TranslateTransform />
                                                     </TransformGroup>
                                                 </RadioButton.RenderTransform>
                                             </RadioButton>
@@ -100,9 +105,12 @@
                                 Margin="0 10 0 0"
                                 Height="94"
                                 HorizontalAlignment="Left" Width="{DynamicResource BannerCardWidth}">
-                                <ListView x:Name="NewsListView" MouseUp="NewsListView_OnMouseUp" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+                                <ListView x:Name="NewsListView" MouseUp="NewsListView_OnMouseUp"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                          HorizontalContentAlignment="Stretch">
                                     <ListView.ItemContainerStyle>
-                                        <Style TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+                                        <Style TargetType="ListViewItem"
+                                               BasedOn="{StaticResource {x:Type ListViewItem}}">
                                             <Setter Property="Padding" Value="6,4,6,4" />
                                             <Setter Property="MinHeight" Value="0" />
                                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -117,30 +125,30 @@
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <materialDesign:PackIcon
-                                                                         Grid.Column="0"
-                                                                         VerticalAlignment="Top"
-                                                                         Margin="0,2,0,0"
-                                                                         Height="15" Width="15">
+                                                    Grid.Column="0"
+                                                    VerticalAlignment="Top"
+                                                    Margin="0,2,0,0"
+                                                    Height="15" Width="15">
                                                     <materialDesign:PackIcon.Style>
                                                         <Style TargetType="materialDesign:PackIcon">
                                                             <Setter Property="Kind" Value="Newspaper" />
                                                             <Style.Triggers>
                                                                 <DataTrigger
-                                                                             Binding="{Binding Tag}" Value="Important">
+                                                                    Binding="{Binding Tag}" Value="Important">
                                                                     <Setter Property="Kind"
                                                                             Value="AlertCircle" />
                                                                     <Setter Property="Foreground"
                                                                             Value="Red" />
                                                                 </DataTrigger>
                                                                 <DataTrigger
-                                                                             Binding="{Binding Tag}" Value="Follow-up">
+                                                                    Binding="{Binding Tag}" Value="Follow-up">
                                                                     <Setter Property="Kind"
                                                                             Value="InformationOutline" />
                                                                     <Setter Property="Foreground"
                                                                             Value="#FFFFB900" />
                                                                 </DataTrigger>
                                                                 <DataTrigger
-                                                                             Binding="{Binding Tag}" Value="DlError">
+                                                                    Binding="{Binding Tag}" Value="DlError">
                                                                     <Setter Property="Kind"
                                                                             Value="LanDisconnect" />
                                                                 </DataTrigger>
@@ -172,7 +180,7 @@
                                     Command="{Binding Path=InjectModeSwitchCommand}" Cursor="Hand">
                                     <StackPanel Orientation="Vertical"
                                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                                        <materialDesign:PackIcon 
+                                        <materialDesign:PackIcon
                                             Kind="{Binding ModeSwitchIcon}"
                                             Height="Auto" Width="Auto" />
                                     </StackPanel>
@@ -228,7 +236,7 @@
                                                        HorizontalAlignment="Stretch"
                                                        VerticalAlignment="Top"
                                                        TextAlignment="Center"
-                                                       Margin="0,20,0,0"/>
+                                                       Margin="0,20,0,0" />
                                             <ProgressBar
                                                 x:Name="ProgressBar"
                                                 DockPanel.Dock="Top"
@@ -242,14 +250,13 @@
                                                        HorizontalAlignment="Stretch"
                                                        VerticalAlignment="Top"
                                                        TextAlignment="Center"
-                                                       Margin="0,18,0,0"/>
+                                                       Margin="0,18,0,0" />
                                             <Button
                                                 Content="取消登录"
                                                 Command="{Binding Path=LoginCancelCommand}"
                                                 Margin="0,0,7,0" Width="142"
                                                 HorizontalAlignment="Center"
-                                                ToolTip="取消登录">
-                                            </Button>
+                                                ToolTip="取消登录" />
 
                                         </DockPanel>
 
@@ -268,7 +275,7 @@
                                                 Margin="0,10,0,0"
                                                 Height="24"
                                                 VerticalAlignment="Top"
-                                                SelectedItem="{Binding Path=GuiLoginType}"  
+                                                SelectedItem="{Binding Path=GuiLoginType}"
                                                 SelectedValuePath="LoginType"
                                                 DisplayMemberPath="DisplayName"
                                                 SelectionChanged="LoginTypeSelection_OnSelectionChanged"
@@ -294,7 +301,8 @@
                                                 </ListBox.Template>
                                                 <ListBox.ItemsPanel>
                                                     <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Horizontal" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                                        <StackPanel Orientation="Horizontal"
+                                                                    ScrollViewer.VerticalScrollBarVisibility="Disabled" />
                                                         <!--  横向排列并自动换行  -->
                                                     </ItemsPanelTemplate>
                                                 </ListBox.ItemsPanel>
@@ -364,18 +372,18 @@
                                                 VerticalAlignment="Top"
                                                 materialDesign:HintAssist.Hint="盛趣账号"
                                                 TextChanged="LoginUsername_OnTextChanged"
-                                                Text="{Binding Username}" Cursor="IBeam"
-                                                />
+                                                Text="{Binding Username}" Cursor="IBeam" />
                                             <PasswordBox
                                                 IsEnabled="True"
                                                 DockPanel.Dock="Top"
-                                                x:Name="LoginPassword"                           
+                                                x:Name="LoginPassword"
                                                 HorizontalAlignment="Stretch"
                                                 Height="24"
                                                 Margin="0,8,0,0"
-                                                VerticalAlignment="Top"                                             
+                                                VerticalAlignment="Top"
                                                 PasswordChanged="LoginPassword_OnPasswordChanged"
-                                                materialDesign:HintAssist.Hint="{Binding LoginPasswordLoc}" Cursor="IBeam" />
+                                                materialDesign:HintAssist.Hint="{Binding LoginPasswordLoc}"
+                                                Cursor="IBeam" />
 
                                             <CheckBox
                                                 Visibility="Visible"
@@ -415,14 +423,14 @@
                                                         <ContextMenu x:Name="LoginContextMenu">
                                                             <MenuItem Header="{Binding LoginRepairLoc}"
                                                                       Command="{Binding Path=LoginRepairCommand}" />
-                                                            <Separator/>
+                                                            <Separator />
                                                             <MenuItem Header="{Binding LoginNoDalamudLoc}"
                                                                       Command="{Binding Path=LoginNoDalamudCommand}" />
                                                             <MenuItem Header="{Binding LoginNoPluginsLoc}"
                                                                       Command="{Binding Path=LoginNoPluginsCommand}" />
                                                             <MenuItem Header="{Binding LoginNoThirdLoc}"
                                                                       Command="{Binding Path=LoginNoThirdCommand}" />
-                                                            <Separator/>
+                                                            <Separator />
                                                             <MenuItem Header="{Binding LoginNoStartLoc}"
                                                                       Command="{Binding Path=LoginNoStartCommand}" />
                                                         </ContextMenu>
@@ -436,25 +444,24 @@
                                                                          HorizontalAlignment="Left"
                                                                          VerticalAlignment="Center"
                                                                          Margin="0,0,7,0"
-                                                                         ToolTip="{Binding Path=LaunchOptionsLoc}"
-                                                                         >
+                                                                         ToolTip="{Binding Path=LaunchOptionsLoc}">
 
                                                     <materialDesign:PopupBox.ToggleContent>
                                                         <Border Margin="0,0,0,0"
-                                                            BorderBrush="{DynamicResource PrimaryHueMidBrush}"
-                                                            BorderThickness="1" 
-                                                            CornerRadius="2"
-                                                            >
+                                                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+                                                                BorderThickness="1"
+                                                                CornerRadius="2">
                                                             <Border.Effect>
                                                                 <DropShadowEffect BlurRadius="2"
-                                                                    Opacity="0.4"
-                                                                    ShadowDepth="2"
-                                                                    Direction="315"/>
+                                                                        Opacity="0.4"
+                                                                        ShadowDepth="2"
+                                                                        Direction="315" />
                                                             </Border.Effect>
 
                                                             <StackPanel Orientation="Horizontal">
-                                                                <materialDesign:PackIcon Kind="ChevronDoubleDown" Background="{DynamicResource PrimaryHueMidBrush}"
-                                                                 Foreground="White" Height="30" />
+                                                                <materialDesign:PackIcon Kind="ChevronDoubleDown"
+                                                                        Background="{DynamicResource PrimaryHueMidBrush}"
+                                                                        Foreground="White" Height="30" />
                                                             </StackPanel>
 
                                                         </Border>
@@ -470,14 +477,14 @@
                                                             </Menu.ItemsPanel>
                                                             <MenuItem Header="{Binding LoginRepairLoc}"
                                                                       Command="{Binding Path=LoginRepairCommand}" />
-                                                            <Separator/>
+                                                            <Separator />
                                                             <MenuItem Header="{Binding LoginNoDalamudLoc}"
                                                                       Command="{Binding Path=LoginNoDalamudCommand}" />
                                                             <MenuItem Header="{Binding LoginNoPluginsLoc}"
                                                                       Command="{Binding Path=LoginNoPluginsCommand}" />
                                                             <MenuItem Header="{Binding LoginNoThirdLoc}"
                                                                       Command="{Binding Path=LoginNoThirdCommand}" />
-                                                            <Separator/>
+                                                            <Separator />
                                                             <MenuItem Header="{Binding LoginNoStartLoc}"
                                                                       Command="{Binding Path=LoginNoStartCommand}" />
 
@@ -506,29 +513,28 @@
                                         </materialDesign:TransitionerSlide.BackwardWipe>
 
                                         <DockPanel
-                                                Margin="30,18,30,18">
-                                            <Image 
-                                                    Width="130" Height="130"
-                                                    DockPanel.Dock="Top"
-                                                    x:Name="QrImage"
-                                                    Stretch="Uniform"
-                                                    Source="{Binding QrCodeBitmapImage}"
-                                                    />
+                                            Margin="30,18,30,18">
+                                            <Image
+                                                Width="130" Height="130"
+                                                DockPanel.Dock="Top"
+                                                x:Name="QrImage"
+                                                Stretch="Uniform"
+                                                Source="{Binding QrCodeBitmapImage}" />
 
                                             <Button HorizontalAlignment="Center"
-                                                        Visibility="Visible"
-                                                        x:Name="BackToMain" Margin="0 0 0 0"
-                                                        ToolTip="返回登录页面"
-                                                        Click="BackToLoginPageButton_OnClick">
+                                                    Visibility="Visible"
+                                                    x:Name="BackToMain" Margin="0 0 0 0"
+                                                    ToolTip="返回登录页面"
+                                                    Click="BackToLoginPageButton_OnClick">
                                                 <StackPanel Orientation="Horizontal" Margin="0">
                                                     <materialDesign:PackIcon
-                                                            Kind="RedoVariant" RenderTransformOrigin="0.5,0.5" Cursor="">
+                                                        Kind="RedoVariant" RenderTransformOrigin="0.5,0.5" Cursor="">
                                                         <materialDesign:PackIcon.RenderTransform>
                                                             <TransformGroup>
-                                                                <ScaleTransform/>
-                                                                <SkewTransform/>
-                                                                <RotateTransform Angle="180"/>
-                                                                <TranslateTransform/>
+                                                                <ScaleTransform />
+                                                                <SkewTransform />
+                                                                <RotateTransform Angle="180" />
+                                                                <TranslateTransform />
                                                             </TransformGroup>
                                                         </materialDesign:PackIcon.RenderTransform>
                                                     </materialDesign:PackIcon>
@@ -543,7 +549,7 @@
                                             <materialDesign:SlideWipe />
                                         </materialDesign:TransitionerSlide.BackwardWipe>
                                         <DockPanel
-                                                Margin="30,18,30,18">
+                                            Margin="30,18,30,18">
                                             <ComboBox
                                                 DockPanel.Dock="Top"
                                                 x:Name="ProcessSelection"
@@ -553,16 +559,15 @@
                                                 VerticalAlignment="Top"
                                                 ItemsSource="{Binding FfxivProcessCollection}"
                                                 SelectedItem="{Binding SelectedProcess}"
-                                                materialDesign:HintAssist.Hint="选择要注入的进程"
-                                                >
+                                                materialDesign:HintAssist.Hint="选择要注入的进程">
                                                 <ComboBox.ItemTemplate>
                                                     <DataTemplate>
                                                         <StackPanel Orientation="Horizontal">
-                                                            <materialDesign:PackIcon 
+                                                            <materialDesign:PackIcon
                                                                 Kind="Forbid"
-                                                                Height="16" Width="16" 
-                                                                Visibility="{Binding HasInjected, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                                            <TextBlock Text="{Binding DisplayName}" Margin="0,0,5,0"/>
+                                                                Height="16" Width="16"
+                                                                Visibility="{Binding HasInjected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <TextBlock Text="{Binding DisplayName}" Margin="0,0,5,0" />
                                                         </StackPanel>
                                                     </DataTemplate>
                                                 </ComboBox.ItemTemplate>
@@ -577,15 +582,13 @@
                                                     Content="带到前台"
                                                     Click="InjectButton_Click"
                                                     Margin="0,0,10,0" Width="90"
-                                                    ToolTip="{Binding LoginTooltipLoc}">
-                                                </Button>
+                                                    ToolTip="{Binding LoginTooltipLoc}" />
                                                 <Button
                                                     x:Name="BringUp"
                                                     Content="注入"
                                                     Command="{Binding Path=InjectGameCommand}"
                                                     Margin="0,0,0,0" Width="90"
-                                                    ToolTip="{Binding LoginTooltipLoc}">
-                                                </Button>
+                                                    ToolTip="{Binding LoginTooltipLoc}" />
                                             </StackPanel>
                                         </DockPanel>
 
@@ -615,8 +618,9 @@
                                             Style="{StaticResource MaterialDesignFlatButton}"
                                             IsCancel="True"
                                             Margin="0 8 0 0"
-                                            Click="QuitMaintenanceQueueButton_OnClick" Content="{Binding CancelWithShortcutLoc}"
-                                            Visibility="{Binding LoadingDialogCancelButtonVisibility}"/>
+                                            Click="QuitMaintenanceQueueButton_OnClick"
+                                            Content="{Binding CancelWithShortcutLoc}"
+                                            Visibility="{Binding LoadingDialogCancelButtonVisibility}" />
                                     </StackPanel>
                                 </StackPanel>
                             </materialDesign:DialogHost.DialogContent>

@@ -1,8 +1,8 @@
-using Serilog;
 using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Serilog;
 
 namespace XIVLauncher.Accounts.Cred;
 
@@ -15,18 +15,18 @@ public enum CredType
 
 public class CredData
 {
-    public string PackageName { get; set; }
-    public string Account { get; set; }
+    public string PackageName          { get; set; }
+    public string Account              { get; set; }
     public string PasswordProtectedKey { get; set; }
-    public string LoginSalt { get; set; }
+    public string LoginSalt            { get; set; }
 
     [JsonConstructor]
     public CredData(string packageName, string account, string passwordProtectedKey, string loginSalt)
     {
-        PackageName = packageName;
-        Account = account;
+        PackageName          = packageName;
+        Account              = account;
         PasswordProtectedKey = passwordProtectedKey;
-        LoginSalt = loginSalt;
+        LoginSalt            = loginSalt;
     }
 
     public CredData(string packageName, string filename)
@@ -37,15 +37,15 @@ public class CredData
             {
                 var options = new JsonSerializerOptions
                 {
-                    IncludeFields = true,
+                    IncludeFields               = true,
                     PropertyNameCaseInsensitive = true
                 };
 
                 var data = JsonSerializer.Deserialize<CredData>(File.ReadAllText(filename), options);
-                PackageName = data.PackageName;
-                Account = data.Account;
+                PackageName          = data.PackageName;
+                Account              = data.Account;
                 PasswordProtectedKey = data.PasswordProtectedKey;
-                LoginSalt = data.LoginSalt;
+                LoginSalt            = data.LoginSalt;
                 Log.Information($"[Cred] Loaded keys from {filename}");
                 return;
             }
@@ -55,12 +55,12 @@ public class CredData
             Log.Error($"[Cred] Loaded keys from {filename} failed\n{ex}");
         }
 
-        this.PackageName = packageName;
-        this.PasswordProtectedKey = EncryptionHelper.GetRandomBase64String(128);
-        this.Account = EncryptionHelper.GetRandomHexString(8);
-        this.LoginSalt = EncryptionHelper.GenerateSalt();
-        Log.Information($"[Cred] Make new keys");
-        var text = JsonSerializer.Serialize<CredData>(this);
+        PackageName          = packageName;
+        PasswordProtectedKey = EncryptionHelper.GetRandomBase64String(128);
+        Account              = EncryptionHelper.GetRandomHexString(8);
+        LoginSalt            = EncryptionHelper.GenerateSalt();
+        Log.Information("[Cred] Make new keys");
+        var text = JsonSerializer.Serialize(this);
         File.WriteAllText(filename, text);
         Log.Information($"[Cred] Save keys from {filename}");
     }

@@ -1,10 +1,9 @@
-namespace XIVLauncher.Common
+namespace XIVLauncher.Common;
+
+public enum Platform
 {
-    public enum Platform
-    {
-        Win32,
-        Win32OnLinux,
-        Linux,
-        Mac,
-    }
+    Win32,
+    Win32OnLinux,
+    Linux,
+    Mac
 }

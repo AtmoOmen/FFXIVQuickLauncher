@@ -4,13 +4,6 @@ namespace XIVLauncher.Common.Game.Patch;
 
 public class NotEnoughSpaceException : Exception
 {
-    public enum SpaceKind
-    {
-        Patches,
-        AllPatches,
-        Game,
-    }
-
     public SpaceKind Kind { get; private set; }
 
     public long BytesRequired { get; set; }
@@ -19,8 +12,15 @@ public class NotEnoughSpaceException : Exception
 
     public NotEnoughSpaceException(SpaceKind kind, long required, long free)
     {
-        this.Kind = kind;
-        this.BytesRequired = required;
-        this.BytesFree = free;
+        Kind          = kind;
+        BytesRequired = required;
+        BytesFree     = free;
+    }
+
+    public enum SpaceKind
+    {
+        Patches,
+        AllPatches,
+        Game
     }
 }

@@ -6,7 +6,7 @@ namespace XIVLauncher.Common.Util;
 public static class DebugHelpers
 {
     /// <summary>
-    /// Create a hexdump of the provided bytes.
+    ///     Create a hexdump of the provided bytes.
     /// </summary>
     /// <param name="bytes">The bytes to hexdump.</param>
     /// <param name="offset">The offset in the byte array to start at.</param>
@@ -19,11 +19,11 @@ public static class DebugHelpers
         var hexChars = "0123456789ABCDEF".ToCharArray();
 
         const int OFFSET_BLOCK = 8 + 3;
-        var byteBlock = OFFSET_BLOCK + (bytesPerLine * 3) + ((bytesPerLine - 1) / 8) + 2;
-        var lineLength = byteBlock + bytesPerLine + Environment.NewLine.Length;
+        var       byteBlock    = OFFSET_BLOCK + bytesPerLine * 3 + (bytesPerLine - 1) / 8 + 2;
+        var       lineLength   = byteBlock    + bytesPerLine     + Environment.NewLine.Length;
 
-        var line = (new string(' ', lineLength - Environment.NewLine.Length) + Environment.NewLine).ToCharArray();
-        var numLines = (bytes.Length + bytesPerLine - 1) / bytesPerLine;
+        var line     = (new string(' ', lineLength - Environment.NewLine.Length) + Environment.NewLine).ToCharArray();
+        var numLines = (bytes.Length + bytesPerLine                              - 1) / bytesPerLine;
 
         var sb = new StringBuilder(numLines * lineLength);
 
@@ -31,16 +31,16 @@ public static class DebugHelpers
         {
             var h = i + offset;
 
-            line[0] = hexChars[(h >> 28) & 0xF];
-            line[1] = hexChars[(h >> 24) & 0xF];
-            line[2] = hexChars[(h >> 20) & 0xF];
-            line[3] = hexChars[(h >> 16) & 0xF];
-            line[4] = hexChars[(h >> 12) & 0xF];
-            line[5] = hexChars[(h >> 8) & 0xF];
-            line[6] = hexChars[(h >> 4) & 0xF];
-            line[7] = hexChars[(h >> 0) & 0xF];
+            line[0] = hexChars[h >> 28 & 0xF];
+            line[1] = hexChars[h >> 24 & 0xF];
+            line[2] = hexChars[h >> 20 & 0xF];
+            line[3] = hexChars[h >> 16 & 0xF];
+            line[4] = hexChars[h >> 12 & 0xF];
+            line[5] = hexChars[h >> 8  & 0xF];
+            line[6] = hexChars[h >> 4  & 0xF];
+            line[7] = hexChars[h >> 0  & 0xF];
 
-            var hexColumn = OFFSET_BLOCK;
+            var hexColumn  = OFFSET_BLOCK;
             var charColumn = byteBlock;
 
             for (var j = 0; j < bytesPerLine; j++)
@@ -49,16 +49,16 @@ public static class DebugHelpers
 
                 if (i + j >= bytes.Length)
                 {
-                    line[hexColumn] = ' ';
+                    line[hexColumn]     = ' ';
                     line[hexColumn + 1] = ' ';
-                    line[charColumn] = ' ';
+                    line[charColumn]    = ' ';
                 }
                 else
                 {
                     var by = bytes[i + j];
-                    line[hexColumn] = hexChars[(by >> 4) & 0xF];
-                    line[hexColumn + 1] = hexChars[by & 0xF];
-                    line[charColumn] = by < 32 ? '.' : (char)by;
+                    line[hexColumn]     = hexChars[by >> 4 & 0xF];
+                    line[hexColumn + 1] = hexChars[by      & 0xF];
+                    line[charColumn]    = by < 32 ? '.' : (char)by;
                 }
 
                 hexColumn += 3;

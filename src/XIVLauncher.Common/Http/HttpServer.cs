@@ -6,85 +6,86 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace XIVLauncher.Common.Http
+namespace XIVLauncher.Common.Http;
+
+// This is a very dumb HTTP server that just accepts GETs and fires events with the requested URL
+internal class HttpServer
 {
-    // This is a very dumb HTTP server that just accepts GETs and fires events with the requested URL
-    internal class HttpServer
+    public           EventHandler<HttpServerGetEvent> GetReceived;
+    private readonly TcpListener                      listener;
+
+    private readonly byte[] httpResponse;
+
+    private bool _isRunning;
+
+    public HttpServer(int port, string version)
     {
-        private readonly TcpListener listener;
+        listener = new TcpListener(IPAddress.Any, port);
 
-        private readonly byte[] httpResponse;
+        httpResponse = Encoding.Default.GetBytes
+        (
+            "HTTP/1.0 200 OK\n" + "Content-Type: application/json; charset=UTF-8\n" + "\n{\"app\":\"XIVLauncher\", \"version\":\"" + version + "\"}"
+        );
+    }
 
-        public EventHandler<HttpServerGetEvent> GetReceived;
-
-        private bool _isRunning = false;
-
-        public class HttpServerGetEvent
+    public void Start()
+    {
+        try
         {
-            public string Path { get; set; }
-        }
+            listener.Start();
+            _isRunning = true;
 
-        public HttpServer(int port, string version)
-        {
-            this.listener = new TcpListener(IPAddress.Any, port);
-
-            this.httpResponse = Encoding.Default.GetBytes(
-                "HTTP/1.0 200 OK\n" +
-                "Content-Type: application/json; charset=UTF-8\n" +
-                "\n{\"app\":\"XIVLauncher\", \"version\":\"" + version + "\"}"
-            );
-        }
-
-        public void Start()
-        {
-            try
+            while (_isRunning)
             {
-                this.listener.Start();
-                _isRunning = true;
-
-                while (_isRunning)
+                if (!listener.Pending())
                 {
-                    if (!this.listener.Pending())
-                    {
-                        Thread.Sleep(200);
-                        continue;
-                    }
+                    Thread.Sleep(200);
+                    continue;
+                }
 
-                    var client = this.listener.AcceptTcpClient();
+                var client = listener.AcceptTcpClient();
 
-                    while (client.Connected)
-                    {
-                        var networkStream = client.GetStream();
+                while (client.Connected)
+                {
+                    var networkStream = client.GetStream();
 
-                        var message = new byte[1024];
-                        networkStream.Read(message, 0, message.Length);
+                    var message = new byte[1024];
+                    networkStream.Read(message, 0, message.Length);
 
-                        var messageString = Encoding.Default.GetString(message);
-                        Debug.WriteLine(Encoding.Default.GetString(message));
+                    var messageString = Encoding.Default.GetString(message);
+                    Debug.WriteLine(Encoding.Default.GetString(message));
 
-                        networkStream.Write(httpResponse, 0, httpResponse.Length);
+                    networkStream.Write(httpResponse, 0, httpResponse.Length);
 
-                        networkStream.Close(3);
+                    networkStream.Close(3);
 
-                        GetReceived?.Invoke(this, new HttpServerGetEvent
+                    GetReceived?.Invoke
+                    (
+                        this,
+                        new HttpServerGetEvent
                         {
                             Path = Regex.Match(messageString, "GET (?<url>.+) HTTP").Groups["url"].Value
-                        });
-                    }
-
-                    client.Close();
+                        }
+                    );
                 }
-            }
-            catch
-            {
-                // ignored
-            }
-        }
 
-        public void Stop()
-        {
-            _isRunning = false;
-            this.listener.Stop();
+                client.Close();
+            }
         }
+        catch
+        {
+            // ignored
+        }
+    }
+
+    public void Stop()
+    {
+        _isRunning = false;
+        listener.Stop();
+    }
+
+    public class HttpServerGetEvent
+    {
+        public string Path { get; set; }
     }
 }

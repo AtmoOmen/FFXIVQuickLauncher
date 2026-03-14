@@ -1,67 +1,68 @@
 ﻿using System.Linq;
 
-namespace XIVLauncher.Common.Patching.Util
-{
-    /// <summary>
-    /// Performs the 32-bit reversed variant of the cyclic redundancy check algorithm
-    /// </summary>
-    public class Crc32
-    {
-        private const uint POLY = 0xedb88320;
+namespace XIVLauncher.Common.Patching.Util;
 
-        private static readonly uint[] CrcArray =
-            Enumerable.Range(0, 256).Select(i =>
+/// <summary>
+///     Performs the 32-bit reversed variant of the cyclic redundancy check algorithm
+/// </summary>
+public class Crc32
+{
+    public        uint Checksum => ~_crc32;
+    private const uint POLY = 0xedb88320;
+
+    private static readonly uint[] CrcArray =
+        Enumerable.Range(0, 256).Select
+        (i =>
             {
                 var k = (uint)i;
+
                 for (var j = 0; j < 8; j++)
-                    k = (k & 1) != 0 ? 
-                        (k >> 1) ^ POLY :
-                        k >> 1;
+                {
+                    k = (k & 1) != 0 ? k >> 1 ^ POLY : k >> 1;
+                }
 
                 return k;
-            }).ToArray();
+            }
+        ).ToArray();
 
-        public uint Checksum => ~_crc32;
+    private uint _crc32 = 0xFFFFFFFF;
 
-        private uint _crc32 = 0xFFFFFFFF;
+    public static uint Calculate(byte[] data, int offset, int length)
+    {
+        var v = 0xFFFFFFFF;
 
-        /// <summary>
-        /// Initializes Crc32's state
-        /// </summary>
-        public void Init()
+        for (int i = offset, readIndex = offset + length; i < readIndex; i++)
         {
-            _crc32 = 0xFFFFFFFF;
+            v = CrcArray[(v ^ data[i]) & 0xFF] ^ v >> 8 & 0x00FFFFFF;
         }
 
-        /// <summary>
-        /// Updates Crc32's state with new data
-        /// </summary>
-        /// <param name="data">Data to calculate the new CRC from</param>
-        public void Update(byte[] data)
-        {
-            foreach (var b in data)
-                Update(b);
-        }
+        return ~v;
+    }
 
-        public void Update(byte[] data, int offset, int length)
-        {
-            for (int i = offset, readIndex = offset + length; i < readIndex; i++)
-                Update(data[i]);
-        }
+    /// <summary>
+    ///     Initializes Crc32's state
+    /// </summary>
+    public void Init() =>
+        _crc32 = 0xFFFFFFFF;
 
-        public void Update(byte b)
-        {
-            _crc32 = CrcArray[(_crc32 ^ b) & 0xFF] ^
-                     ((_crc32 >> 8) & 0x00FFFFFF);
-        }
+    /// <summary>
+    ///     Updates Crc32's state with new data
+    /// </summary>
+    /// <param name="data">Data to calculate the new CRC from</param>
+    public void Update(byte[] data)
+    {
+        foreach (var b in data)
+            Update(b);
+    }
 
-        public static uint Calculate(byte[] data, int offset, int length)
-        {
-            uint v = 0xFFFFFFFF;
-            for (int i = offset, readIndex = offset + length; i < readIndex; i++)
-                v = CrcArray[(v ^ data[i]) & 0xFF] ^
-                         ((v >> 8) & 0x00FFFFFF);
-            return ~v;
-        }
+    public void Update(byte[] data, int offset, int length)
+    {
+        for (int i = offset, readIndex = offset + length; i < readIndex; i++)
+            Update(data[i]);
+    }
+
+    public void Update(byte b)
+    {
+        _crc32 = CrcArray[(_crc32 ^ b) & 0xFF] ^ _crc32 >> 8 & 0x00FFFFFF;
     }
 }

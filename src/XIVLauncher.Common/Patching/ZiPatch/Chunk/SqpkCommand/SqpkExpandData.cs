@@ -2,47 +2,43 @@
 using XIVLauncher.Common.Patching.Util;
 using XIVLauncher.Common.Patching.ZiPatch.Util;
 
-namespace XIVLauncher.Common.Patching.ZiPatch.Chunk.SqpkCommand
+namespace XIVLauncher.Common.Patching.ZiPatch.Chunk.SqpkCommand;
+
+internal class SqpkExpandData : SqpkChunk
 {
-    class SqpkExpandData : SqpkChunk
+    public new static string Command = "E";
+
+    public SqpackDatFile TargetFile  { get; protected set; }
+    public long          BlockOffset { get; protected set; }
+    public long          BlockNumber { get; protected set; }
+
+    public SqpkExpandData(BinaryReader reader, long offset, long size)
+        : base(reader, offset, size)
     {
-        public new static string Command = "E";
+    }
 
+    public override void ApplyChunk(ZiPatchConfig config)
+    {
+        TargetFile.ResolvePath(config.Platform);
 
-        public SqpackDatFile TargetFile { get; protected set; }
-        public long BlockOffset { get; protected set; }
-        public long BlockNumber { get; protected set; }
+        var file = config.Store == null ? TargetFile.OpenStream(config.GamePath, FileMode.OpenOrCreate) : TargetFile.OpenStream(config.Store, config.GamePath, FileMode.OpenOrCreate);
 
+        SqpackDatFile.WriteEmptyFileBlockAt(file, BlockOffset, BlockNumber);
+    }
 
-        public SqpkExpandData(BinaryReader reader, long offset, long size) : base(reader, offset, size) {}
+    public override string ToString() =>
+        $"{Type}:{Command}:{BlockOffset}:{BlockNumber}";
 
-        protected override void ReadChunk()
-        {
-            using var advanceAfter = this.GetAdvanceOnDispose();
-            this.Reader.ReadBytes(3);
+    protected override void ReadChunk()
+    {
+        using var advanceAfter = GetAdvanceOnDispose();
+        Reader.ReadBytes(3);
 
-            TargetFile = new SqpackDatFile(this.Reader);
+        TargetFile = new SqpackDatFile(Reader);
 
-            BlockOffset = (long)this.Reader.ReadUInt32BE() << 7;
-            BlockNumber = (long)this.Reader.ReadUInt32BE();
+        BlockOffset = (long)Reader.ReadUInt32BE() << 7;
+        BlockNumber = Reader.ReadUInt32BE();
 
-            this.Reader.ReadUInt32(); // Reserved
-        }
-
-        public override void ApplyChunk(ZiPatchConfig config)
-        {
-            TargetFile.ResolvePath(config.Platform);
-
-            var file = config.Store == null ?
-                TargetFile.OpenStream(config.GamePath, FileMode.OpenOrCreate) :
-                TargetFile.OpenStream(config.Store, config.GamePath, FileMode.OpenOrCreate);
-
-            SqpackDatFile.WriteEmptyFileBlockAt(file, BlockOffset, BlockNumber);
-        }
-
-        public override string ToString()
-        {
-            return $"{Type}:{Command}:{BlockOffset}:{BlockNumber}";
-        }
+        Reader.ReadUInt32(); // Reserved
     }
 }

@@ -1,19 +1,18 @@
-namespace XIVLauncher.Common.PatcherIpc
-{
-    public enum PatcherIpcOpCode
-    {
-        Hello,
-        Bye,
-        StartInstall,
-        InstallRunning,
-        InstallOk,
-        InstallFailed,
-        Finish,
+namespace XIVLauncher.Common.PatcherIpc;
 
-//for ArgReader
-        OpenProcess,
-        ReadArgs,
-        ArgReadFail,
-        ArgReadOk,
-    }
+public enum PatcherIpcOpCode
+{
+    Hello,
+    Bye,
+    StartInstall,
+    InstallRunning,
+    InstallOk,
+    InstallFailed,
+    Finish,
+
+    //for ArgReader
+    OpenProcess,
+    ReadArgs,
+    ArgReadFail,
+    ArgReadOk
 }

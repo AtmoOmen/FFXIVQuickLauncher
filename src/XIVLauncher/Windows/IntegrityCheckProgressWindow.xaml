@@ -16,11 +16,15 @@
     <Grid>
         <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="114" Margin="0,0,10,0">
             <StackPanel Margin="16,16,10,10">
-                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center" Margin="0,0,0,10" Text="{Binding IntegrityCheckRunningLoc}"/>
+                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center"
+                           Margin="0,0,0,10" Text="{Binding IntegrityCheckRunningLoc}" />
                 <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
                              Value="0"
-                             IsIndeterminate="True" Height="35" Width="35" Margin="0,0,0,10"/>
-                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center" x:Name="InfoTextBlock">FileName</TextBlock>
+                             IsIndeterminate="True" Height="35" Width="35" Margin="0,0,0,10" />
+                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center"
+                           x:Name="InfoTextBlock">
+                    FileName
+                </TextBlock>
             </StackPanel>
         </materialDesign:Card>
     </Grid>

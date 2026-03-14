@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -21,25 +20,28 @@ public class AssetManager
 
     public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir)
     {
-        using var metaClient = new HttpClient(new SocketsHttpHandler
-        {
-            UseProxy = true,
-            ConnectTimeout = TimeSpan.FromSeconds(10),
-            MaxConnectionsPerServer = 50,
-            EnableMultipleHttp2Connections = true,
-            PooledConnectionLifetime = TimeSpan.FromMinutes(1),
-            Expect100ContinueTimeout = TimeSpan.Zero,
-            ConnectCallback = HappyEyeballsCallback.ConnectCallback,
-            // Don't Remove!!!
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-        });
+        using var metaClient = new HttpClient
+        (
+            new SocketsHttpHandler
+            {
+                UseProxy                       = true,
+                ConnectTimeout                 = TimeSpan.FromSeconds(10),
+                MaxConnectionsPerServer        = 50,
+                EnableMultipleHttp2Connections = true,
+                PooledConnectionLifetime       = TimeSpan.FromMinutes(1),
+                Expect100ContinueTimeout       = TimeSpan.Zero,
+                ConnectCallback                = HappyEyeballsCallback.ConnectCallback,
+                // Don't Remove!!!
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+            }
+        );
         metaClient.Timeout = TimeSpan.FromMinutes(4);
 
         metaClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue
         {
             NoCache = true
         };
-        
+
         metaClient.DefaultRequestHeaders.Add("User-Agent",      PlatformHelpers.GetVersion());
         metaClient.DefaultRequestHeaders.Add("accept-encoding", "gzip, deflate");
 
@@ -48,7 +50,7 @@ public class AssetManager
         Log.Verbose("[DASSET] 开始检查 Dalamud 资源文件更新");
 
         var (isRefreshNeeded, info) = await CheckAssetRefreshNeeded(metaClient, baseDir);
-        
+
         var currentDir = new DirectoryInfo(Path.Combine(baseDir.FullName, info.Version.ToString()));
         var devDir     = new DirectoryInfo(Path.Combine(baseDir.FullName, "dev"));
 
@@ -90,6 +92,7 @@ public class AssetManager
         }
 
         var tasks = new List<Task>();
+
         foreach (var entry in assetFileDownloadList)
         {
             var oldFilePath = Path.Combine(devDir.FullName,     entry.FileName);
@@ -117,7 +120,7 @@ public class AssetManager
             {
                 Log.Error(ex, "[DASSET] 无法从原资源文件中复制资源至新版本资源文件中: {0}", entry.FileName);
             }
-            
+
             tasks.Add(Download(entry.Url, newFilePath));
             await Task.WhenAll(tasks);
         }
@@ -165,7 +168,7 @@ public class AssetManager
         }
     }
 
-    private static string GetAssetVerPath(DirectoryInfo baseDir) => 
+    private static string GetAssetVerPath(DirectoryInfo baseDir) =>
         Path.Combine(baseDir.FullName, "asset.ver");
 
     private static async Task<(bool isRefreshNeeded, AssetInfo info)> CheckAssetRefreshNeeded(HttpClient client, DirectoryInfo baseDir)
@@ -225,28 +228,22 @@ public class AssetManager
 
         Log.Verbose("[DASSET] 清理完成");
     }
-    
+
     internal class AssetInfo
     {
-        [JsonPropertyName("version")]
-        public int Version { get; set; }
+        [JsonPropertyName("version")] public int Version { get; set; }
 
-        [JsonPropertyName("assets")]
-        public IReadOnlyList<Asset> Assets { get; set; }
+        [JsonPropertyName("assets")] public IReadOnlyList<Asset> Assets { get; set; }
 
-        [JsonPropertyName("packageUrl")]
-        public string PackageUrl { get; set; }
+        [JsonPropertyName("packageUrl")] public string PackageUrl { get; set; }
 
         public class Asset
         {
-            [JsonPropertyName("url")]
-            public string Url { get; set; }
+            [JsonPropertyName("url")] public string Url { get; set; }
 
-            [JsonPropertyName("fileName")]
-            public string FileName { get; set; }
+            [JsonPropertyName("fileName")] public string FileName { get; set; }
 
-            [JsonPropertyName("hash")]
-            public string Hash { get; set; }
+            [JsonPropertyName("hash")] public string Hash { get; set; }
         }
     }
 }
