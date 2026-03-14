@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -458,7 +459,7 @@ public partial class App : Application
                 {
                     MessageBox.Show
                     (
-                        "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}.\n你的IP可能被WAF封禁, 请前往频道进行上报." + Environment.NewLine + "XIVLauncher could not check for updates. Please check your internet connection or try again.\n\n" + ex,
+                        "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}" + ex,
                         "XIVLauncher Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error
