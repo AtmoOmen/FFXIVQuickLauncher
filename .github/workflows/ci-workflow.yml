@@ -9,6 +9,7 @@ jobs:
   build-release:
     name: Build Release on Windows
     runs-on: windows-latest
+    if: "startsWith(github.ref, 'refs/tags/')"
     permissions:
       contents: write
     steps:
@@ -65,7 +66,7 @@ jobs:
 
   build:
     name: Build on Windows
-    runs-on: windows-2022
+    runs-on: windows-latest
     if: "!startsWith(github.ref, 'refs/tags/')"
     permissions:
       contents: read
