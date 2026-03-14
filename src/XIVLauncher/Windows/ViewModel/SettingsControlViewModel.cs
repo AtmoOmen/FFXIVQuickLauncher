@@ -94,7 +94,6 @@ internal class SettingsControlViewModel : INotifyPropertyChanged
     public string GamePathLoc                 { get; private set; }
     public string GamePathSafeguardLoc        { get; private set; }
     public string GamePathSafeguardRegionLoc  { get; private set; }
-    public string SteamCheckBoxLoc            { get; private set; }
     public string OtpServerCheckBoxLoc        { get; private set; }
     public string OtpServerTooltipLoc         { get; private set; }
     public string LearnMoreLoc                { get; private set; }
@@ -106,8 +105,6 @@ internal class SettingsControlViewModel : INotifyPropertyChanged
     public string DpiAwarenessUnawareLoc      { get; private set; }
     public string RunIntegrityCheckLoc        { get; private set; }
     public string RunIntegrityCheckTooltipLoc { get; private set; }
-    public string AutoStartSteamLoc           { get; private set; }
-    public string AutoStartSteamTooltipLoc    { get; private set; }
 
     public string SettingsGameSettingsLoc   { get; private set; }
     public string DirectXLoc                { get; private set; }
@@ -162,7 +159,6 @@ internal class SettingsControlViewModel : INotifyPropertyChanged
     public string OpenFaqLoc                 { get; private set; }
     public string StartBackupToolLoc         { get; private set; }
     public string StartOriginalLauncherLoc   { get; private set; }
-    public string IsFreeTrialLoc             { get; private set; }
     public string OpenAdvancedSettingsLoc    { get; private set; }
     public string OpenAdvancedSettingsTipLoc { get; private set; }
 
@@ -240,7 +236,6 @@ internal class SettingsControlViewModel : INotifyPropertyChanged
             "GamePathSafeguardRegionWarning",
             "XIVLauncher does not support Chinese or Korean version of the game. Make sure this path indeed is for the international version."
         );
-        SteamCheckBoxLoc = Loc.Localize("FirstTimeSteamCheckBox", "Enable Steam integration");
         OtpServerCheckBoxLoc = Loc.Localize("OtpServerCheckBox", "Enable XL Authenticator app/OTP macro support");
         OtpServerTooltipLoc = Loc.Localize("OtpServerTooltip", "This will allow you to send your OTP code to XIVLauncher directly from your phone.\nClick \"Learn more\" to see how to set this up.");
         LearnMoreLoc = Loc.Localize("LearnMore", "Learn More");
@@ -253,10 +248,6 @@ internal class SettingsControlViewModel : INotifyPropertyChanged
         RunIntegrityCheckLoc = Loc.Localize("RunIntegrityCheck", "Run integrity check");
         RunIntegrityCheckTooltipLoc =
             Loc.Localize("RunIntegrityCheckTooltip", "Run integrity check on game files.");
-        AutoStartSteamLoc = Loc.Localize("AutoStartSteam", "Start Steam when starting XIVLauncher");
-        AutoStartSteamTooltipLoc = Loc.Localize
-            ("AutoStartSteamTooltip", "Whenever you open XIVLauncher, it will check if Steam is running and start it if it isn't.\nYou will automatically show as \"Playing\" on Steam.");
-
         SettingsGameSettingsLoc   = Loc.Localize("SettingsGameSettings",   "Game Settings");
         LauncherLanguageNoticeLoc = Loc.Localize("LauncherLanguageNotice", "A restart is required to apply the launcher language setting.");
 
@@ -368,8 +359,6 @@ internal class SettingsControlViewModel : INotifyPropertyChanged
         OpenFaqLoc               = Loc.Localize("OpenFaq",               "Open FAQ");
         StartBackupToolLoc       = Loc.Localize("StartBackupTool",       "Start Backup Tool");
         StartOriginalLauncherLoc = Loc.Localize("StartOriginalLauncher", "Start Original Launcher");
-        IsFreeTrialLoc           = Loc.Localize("IsFreeTrial",           "Using free trial account");
-
         OpenAdvancedSettingsLoc    = Loc.Localize("OpenAdvancedSettings",    "Open Advanced Settings");
         OpenAdvancedSettingsTipLoc = Loc.Localize("OpenAdvancedSettingsTip", "Opens some settings for advanced users. Please only use these if you know what you're doing.");
 

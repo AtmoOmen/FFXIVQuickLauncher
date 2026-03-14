@@ -44,8 +44,6 @@ public interface ILauncherSettingsV3
     int?               VersionUpgradeLevel           { get; set; }
     bool?              TreatNonZeroExitCodeAsFailure { get; set; }
     bool?              ExitLauncherAfterGameExit     { get; set; }
-    bool?              IsFt                          { get; set; }
-    bool?              AutoStartSteam                { get; set; }
     bool?              ForceNorthAmerica             { get; set; }
 
     PreserveWindowPosition.WindowPlacement? MainWindowPlacement  { get; set; }

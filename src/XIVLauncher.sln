@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.32014.148
@@ -19,8 +19,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XIVLauncher.Common.Tests", "XIVLauncher.Common.Tests\XIVLauncher.Common.Tests.csproj", "{FE0EAE21-4812-4565-8766-856AE9F9E99B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XIVLauncher.Common.Windows", "XIVLauncher.Common.Windows\XIVLauncher.Common.Windows.csproj", "{4BD8A159-1B5E-41ED-A215-75B9871BA929}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XIVLauncher.Common.Unix", "XIVLauncher.Common.Unix\XIVLauncher.Common.Unix.csproj", "{08CE4E78-7C47-43D6-98CB-68655DEAF66A}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FfxivArgLauncher", "FfxivArgLauncher\FfxivArgLauncher.csproj", "{B4C54256-C18B-4619-A888-AC820BDD6020}"
 EndProject
@@ -129,20 +127,6 @@ Global
 		{4BD8A159-1B5E-41ED-A215-75B9871BA929}.ReleaseNoUpdate|x64.Build.0 = Release|Any CPU
 		{4BD8A159-1B5E-41ED-A215-75B9871BA929}.ReleaseNoUpdate|x86.ActiveCfg = Release|Any CPU
 		{4BD8A159-1B5E-41ED-A215-75B9871BA929}.ReleaseNoUpdate|x86.Build.0 = Release|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.Release|x64.ActiveCfg = Release|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.Release|x86.ActiveCfg = Release|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.ReleaseNoUpdate|Any CPU.ActiveCfg = Debug|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.ReleaseNoUpdate|Any CPU.Build.0 = Debug|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.ReleaseNoUpdate|x64.ActiveCfg = Release|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.ReleaseNoUpdate|x64.Build.0 = Release|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.ReleaseNoUpdate|x86.ActiveCfg = Release|Any CPU
-		{08CE4E78-7C47-43D6-98CB-68655DEAF66A}.ReleaseNoUpdate|x86.Build.0 = Release|Any CPU
 		{B4C54256-C18B-4619-A888-AC820BDD6020}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B4C54256-C18B-4619-A888-AC820BDD6020}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B4C54256-C18B-4619-A888-AC820BDD6020}.Debug|x64.ActiveCfg = Debug|Any CPU

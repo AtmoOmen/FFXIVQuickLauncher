@@ -26,21 +26,7 @@
         <PathMap>$(AppOutputBase)=C:\goatsoft\xl\XIVLauncher.Common.Windows\</PathMap>
     </PropertyGroup>
 
-    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-        <None Remove="steam_api64.dll"/>
-        <Content Include="steam_api64.dll">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <None Remove="steam_api.dll"/>
-        <Content Include="steam_api.dll">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-    </ItemGroup>
-
     <ItemGroup>
-
-        <!-- Custom steamworks, based on the chippy branch of Facepunch.Steamworks -->
-        <PackageReference Include="goaaats.Steamworks" Version="2.3.4"/>
         <PackageReference Include="PInvoke.Kernel32" Version="0.7.124"/>
         <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0"/>
     </ItemGroup>

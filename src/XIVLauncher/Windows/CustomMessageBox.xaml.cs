@@ -364,47 +364,7 @@ public partial class CustomMessageBox : Window
             return;
         }
 
-        switch (Builder
-                .NewFrom(Loc.Localize("RunOfficialLauncherConfirmSteam", "Do you have your game account associated with a Steam account? If so, Steam must be installed to continue."))
-                .WithImage(MessageBoxImage.Question)
-                .WithButtons(MessageBoxButton.YesNoCancel)
-                .WithParentWindow(this)
-                .Show())
-        {
-            case MessageBoxResult.Yes:
-                var steam = App.Steam;
-
-                try
-                {
-                    if (!steam.IsValid)
-                        steam.Initialize(App.Settings.IsFt.GetValueOrDefault(false) ? Constants.STEAM_FT_APP_ID : Constants.STEAM_APP_ID);
-
-                    Thread.Sleep(5000);
-
-                    GameHelpers.StartOfficialLauncher(App.Settings.GamePath, true, App.Settings.IsFt.GetValueOrDefault(false));
-                }
-                catch (Exception)
-                {
-                    Show
-                    (
-                        Loc.Localize("RunOfficialLauncherSteamError", "Steam couldn't be loaded. Please start the game directly via Steam."),
-                        "Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error,
-                        parentWindow: this
-                    );
-                    return;
-                }
-
-                break;
-
-            case MessageBoxResult.No:
-                GameHelpers.StartOfficialLauncher(App.Settings.GamePath, false, App.Settings.IsFt.GetValueOrDefault(false));
-                break;
-
-            case MessageBoxResult.Cancel:
-                return;
-        }
+        GameHelpers.StartOfficialLauncher(App.Settings.GamePath);
 
         Environment.Exit(0);
     }

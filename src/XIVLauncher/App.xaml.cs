@@ -57,9 +57,6 @@ public partial class App : Application
         [CommandLine.Option("account", Required = false, HelpText = "Account name to use.")]
         public string AccountName { get; set; }
 
-        [CommandLine.Option("steamticket", Required = false, HelpText = "Steam ticket to use.")]
-        public string SteamTicket { get; set; }
-
         [CommandLine.Option("clientlang", Required = false, HelpText = "Client language to use.")]
         public ClientLanguage? ClientLanguage { get; set; }
 
@@ -86,7 +83,6 @@ public partial class App : Application
     public const string REPO_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
 
     public static ILauncherSettingsV3 Settings;
-    public static WindowsSteam        Steam;
     public static CommonUniqueIdCache UniqueIdCache;
     public static AccountManager      AccountManager;
 #if !XL_NOAUTOUPDATE
@@ -100,7 +96,6 @@ public partial class App : Application
 
     public static bool           GlobalIsDisableAutologin { get; private set; }
     public static bool           InjectMode               { get; private set; }
-    public static byte[]         GlobalSteamTicket        { get; private set; }
     public static DalamudUpdater DalamudUpdater           { get; private set; }
 
     public static Brush UaBrush = new LinearGradientBrush
@@ -165,9 +160,6 @@ public partial class App : Application
                 Settings.CurrentAccountId = CommandLine.AccountName;
                 Log.Verbose("Account override: '{0}'", CommandLine.AccountName);
             }
-
-            if (!string.IsNullOrEmpty(CommandLine.SteamTicket))
-                GlobalSteamTicket = Convert.FromBase64String(CommandLine.SteamTicket);
 
             if (CommandLine.ClientLanguage != null)
                 Settings.Language = ClientLanguage.ChineseSimplified;
@@ -411,18 +403,6 @@ public partial class App : Application
         // Force all fallbacks
         Loc.Setup("{}");
 #endif
-
-        try
-        {
-            Steam = new WindowsSteam();
-
-            if (Settings.AutoStartSteam.GetValueOrDefault(false))
-                Steam.KickoffAsyncStartup(Settings.IsFt.GetValueOrDefault(false) ? Constants.STEAM_FT_APP_ID : Constants.STEAM_APP_ID);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Could not set up Steam");
-        }
 
         VelopackApp.Build().Run();
 #if !XL_NOAUTOUPDATE

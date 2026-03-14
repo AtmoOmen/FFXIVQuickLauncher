@@ -106,7 +106,7 @@ public class IndexCreateIntegrityCommand
 
                     case 0:
                         result.GameVersion     = pi.VersionName;
-                        result.LastGameVersion = Path.GetFileNameWithoutExtension(pi.Sources[pi.Sources.Count - 2].Substring(1));
+                        result.LastGameVersion = Path.GetFileNameWithoutExtension(pi.Sources[^2][1..]);
                         result.Hashes[@"\game\ffxivgame.bck"] =
                             result.Hashes[@"\game\ffxivgame.ver"] =
                                 HashFromBytes(Encoding.UTF8.GetBytes(pi.VersionName));

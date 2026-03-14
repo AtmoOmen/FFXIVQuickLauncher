@@ -17,16 +17,13 @@ internal static class ProblemCheck
 {
     public static void RunCheck(Window parentWindow)
     {
-        if (EnvironmentSettings.IsWine)
-            return;
-
         var compatFlagKey = Registry.CurrentUser.OpenSubKey
         (
             "Software\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers",
             true
         );
 
-        if (compatFlagKey != null && !EnvironmentSettings.IsWine && !App.Settings.HasComplainedAboutAdmin.GetValueOrDefault(false))
+        if (compatFlagKey != null && !App.Settings.HasComplainedAboutAdmin.GetValueOrDefault(false))
         {
             var compatEntries = compatFlagKey.GetValueNames();
 
@@ -65,7 +62,7 @@ internal static class ProblemCheck
             App.Settings.HasComplainedAboutAdmin = true;
         }
 
-        if (PlatformHelpers.IsElevated() && !App.Settings.HasComplainedAboutAdmin.GetValueOrDefault(false) && !EnvironmentSettings.IsWine)
+        if (PlatformHelpers.IsElevated() && !App.Settings.HasComplainedAboutAdmin.GetValueOrDefault(false))
         {
             CustomMessageBox.Show
             (

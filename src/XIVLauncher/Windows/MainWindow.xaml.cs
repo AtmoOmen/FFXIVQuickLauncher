@@ -98,9 +98,6 @@ public partial class MainWindow : Window
         {
         }
 
-        if (EnvironmentSettings.IsWine)
-            Title += " - Wine on Linux";
-
     }
 
     public void Initialize()
@@ -331,13 +328,10 @@ public partial class MainWindow : Window
     private void SetDefaults()
     {
         // Set the default patch acquisition method
-        App.Settings.PatchAcquisitionMethod ??=
-            EnvironmentSettings.IsWine ? AcquisitionMethod.NetDownloader : AcquisitionMethod.Aria;
+        App.Settings.PatchAcquisitionMethod ??= AcquisitionMethod.Aria;
 
         // Set the default Dalamud injection method
-        App.Settings.InGameAddonLoadMethod ??= EnvironmentSettings.IsWine
-                                                   ? DalamudLoadMethod.DllInject
-                                                   : DalamudLoadMethod.EntryPoint;
+        App.Settings.InGameAddonLoadMethod ??= DalamudLoadMethod.EntryPoint;
 
         // Clean up invalid addons
         if (App.Settings.AddonList != null)
@@ -350,12 +344,9 @@ public partial class MainWindow : Window
         App.Settings.TreatNonZeroExitCodeAsFailure ??= false;
         App.Settings.ExitLauncherAfterGameExit     ??= true;
 
-        App.Settings.IsFt                 = false;
         App.Settings.UniqueIdCacheEnabled = false;
         //App.Settings.EncryptArguments = false;
         App.Settings.EnableBeta ??= false;
-
-        App.Settings.AutoStartSteam ??= false;
 
         App.Settings.ForceNorthAmerica ??= false;
 
@@ -606,7 +597,6 @@ public partial class MainWindow : Window
 
         Model.Username = account.UserName;
         //Model.IsOtp = account.UseOtp;
-        //Model.IsSteam = account.UseSteamServiceAccount;
         Model.IsFastLogin      = account.AutoLogin;
         Model.Area             = Model.SdoAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
         LoginPassword.Password = string.Empty;

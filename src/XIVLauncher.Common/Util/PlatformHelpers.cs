@@ -16,17 +16,7 @@ namespace XIVLauncher.Common.Util;
 public static class PlatformHelpers
 {
     public static Platform GetPlatform()
-    {
-        if (EnvironmentSettings.IsWine)
-            return Platform.Win32OnLinux;
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return Platform.Linux;
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return Platform.Mac;
-        return Platform.Win32;
-
-        // TODO(goat): Add mac here, once it's merged
-    }
+        => Platform.Win32;
 
     /// <summary>
     ///     Generates a temporary file name.
@@ -60,37 +50,12 @@ public static class PlatformHelpers
 
     public static void OpenBrowser(string url)
     {
-        // https://github.com/dotnet/corefx/issues/10361
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            url = url.Replace("&", "^&");
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            Process.Start("xdg-open", url);
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            Process.Start("open", url);
-        else
-            throw new NotImplementedException();
+        url = url.Replace("&", "^&");
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 
-    [DllImport("libc")]
-    private static extern uint geteuid();
-
-    public static bool IsElevated()
-    {
-        switch (Environment.OSVersion.Platform)
-        {
-            case PlatformID.Win32NT:
-                return new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
-
-            case PlatformID.Unix:
-                return geteuid() == 0;
-
-            default:
-                return false;
-        }
-    }
+    public static bool IsElevated() =>
+        new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
 
     public static void Untar(string path, string output)
     {
@@ -161,11 +126,6 @@ public static class PlatformHelpers
         return ((IPEndPoint)socket.LocalEndPoint).Port;
     }
 
-#if WIN32
-    /*
-     * WINE: The APIs DriveInfo uses are buggy on Wine. Let's just use the kernel32 API instead.
-     */
-
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetDiskFreeSpaceEx
@@ -188,19 +148,6 @@ public static class PlatformHelpers
 
         return (long)freeSpace;
     }
-#else
-    public static long GetDiskFreeSpace(DirectoryInfo info)
-    {
-        if (info == null)
-        {
-            throw new ArgumentNullException(nameof(info));
-        }
-
-        DriveInfo drive = new DriveInfo(info.FullName);
-
-        return drive.AvailableFreeSpace;
-    }
-#endif
 
     public static string GetVersion()
     {

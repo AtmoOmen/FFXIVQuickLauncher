@@ -5,7 +5,6 @@ using System.Management;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using DeviceId;
 using Serilog;
 
 namespace XIVLauncher.Common;
@@ -38,18 +37,6 @@ public static class SdoUtils
 
     public static string GetMacAddress()
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            var macId = new DeviceIdBuilder().OnLinux(linux => linux.AddMachineId()).ToString();
-            return GetMD5(Encoding.ASCII.GetBytes(macId));
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            var macId = new DeviceIdBuilder().OnMac(mac => mac.AddPlatformSerialNumber().AddSystemDriveSerialNumber()).ToString();
-            return GetMD5(Encoding.ASCII.GetBytes(macId));
-        }
-
         var result = string.Empty;
 
         try
@@ -67,12 +54,6 @@ public static class SdoUtils
 
     public static string GetMac()
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            return new DeviceIdBuilder().OnLinux(linux => linux.AddMachineId()).ToString();
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return new DeviceIdBuilder().OnMac(mac => mac.AddPlatformSerialNumber().AddSystemDriveSerialNumber()).ToString();
-
         var result = string.Empty;
 
         try
@@ -88,7 +69,7 @@ public static class SdoUtils
     }
 
     public static string GetHostName() =>
-        // 给盛趣一些MacBook和SteamDick震撼
+        // 给盛趣一些设备名震撼
         // 不会返回一个 张二狗的MacBook吧？实名上网？
         Environment.MachineName;
 
@@ -100,19 +81,6 @@ public static class SdoUtils
 
     private static string GetCPUID()
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            var processorID = new DeviceIdBuilder().OnLinux(linux => linux.AddCpuInfo()).ToString();
-            return GetMD5(Encoding.ASCII.GetBytes(processorID));
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            // return String.Empty;
-            var processorID = new DeviceIdBuilder().OnMac(mac => mac.AddPlatformSerialNumber()).ToString();
-            return GetMD5(Encoding.ASCII.GetBytes(processorID));
-        }
-
         var result = string.Empty;
 
         try
@@ -146,18 +114,6 @@ public static class SdoUtils
 
     private static string GetDiskSerialNumber()
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            var diskId = new DeviceIdBuilder().OnLinux(linux => linux.AddSystemDriveSerialNumber()).ToString();
-            return GetMD5(Encoding.ASCII.GetBytes(diskId));
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            var diskId = new DeviceIdBuilder().OnMac(mac => mac.AddSystemDriveSerialNumber()).ToString();
-            return GetMD5(Encoding.ASCII.GetBytes(diskId));
-        }
-
         var result = string.Empty;
 
         try

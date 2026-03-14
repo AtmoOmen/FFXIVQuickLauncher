@@ -55,15 +55,8 @@ public static class GameHelpers
     public static FileInfo GetOfficialLauncherPath(DirectoryInfo gamePath) => new
         (File.Exists(Path.Combine(gamePath.FullName, "boot", "ffxivboot.exe")) ? Path.Combine(gamePath.FullName, "boot", "ffxivboot.exe") : Path.Combine(gamePath.FullName, "ffxivboot.exe"));
 
-    public static void StartOfficialLauncher(DirectoryInfo gamePath, bool isSteam, bool isFreeTrial)
+    public static void StartOfficialLauncher(DirectoryInfo gamePath)
     {
-        var args = string.Empty;
-
-        if (isSteam && isFreeTrial)
-            args = "-issteamfreetrial";
-        else if (isSteam)
-            args = "-issteam";
-
         var startInfo = new ProcessStartInfo(GetOfficialLauncherPath(gamePath).FullName);
         startInfo.WorkingDirectory = gamePath.FullName;
         startInfo.UseShellExecute  = true;

@@ -38,7 +38,7 @@ public class IndexedZiPatchOperations
 
                 var patchFilePath = patchFilePaths[i];
                 sources.Add(new FileStream(patchFilePath, FileMode.Open, FileAccess.Read));
-                patchFiles.Add(new(sources[sources.Count - 1]));
+                patchFiles.Add(new(sources[^1]));
 
                 if (i < firstPatchFileIndex)
                     continue;

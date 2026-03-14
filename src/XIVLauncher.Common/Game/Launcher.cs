@@ -27,8 +27,6 @@ namespace XIVLauncher.Common.Game;
 
 public partial class Launcher
 {
-    private readonly ISteam?         steam;
-    private readonly byte[]?         overriddenSteamTicket;
     private readonly IUniqueIdCache  uniqueIdCache;
     private readonly ISettings       settings;
     private readonly HttpClient      client;
@@ -48,9 +46,8 @@ public partial class Launcher
         // "ffxivupdater64.exe"
     };
 
-    public Launcher(ISteam? steam, IUniqueIdCache uniqueIdCache, ISettings settings, string frontierUrl)
+    public Launcher(IUniqueIdCache uniqueIdCache, ISettings settings, string frontierUrl)
     {
-        this.steam         = steam;
         this.uniqueIdCache = uniqueIdCache;
         this.settings      = settings;
         loginCookies       = new CookieContainer();
@@ -110,11 +107,7 @@ public partial class Launcher
         loginClient = new HttpClient(loginHandler);
     }
 
-    public Launcher(byte[] overriddenSteamTicket, IUniqueIdCache uniqueIdCache, ISettings settings, string frontierUrl)
-        : this(steam: null, uniqueIdCache, settings, frontierUrl) =>
-        this.overriddenSteamTicket = overriddenSteamTicket;
-
-    public async Task<LoginResult> Login(string userName, string password, string otp, bool isSteam, bool useCache, DirectoryInfo gamePath, bool forceBaseVersion, bool isFreeTrial)
+    public async Task<LoginResult> Login(string userName, string password, string otp, bool useCache, DirectoryInfo gamePath, bool forceBaseVersion)
     {
         string? uid;
         var     pendingPatches = Array.Empty<PatchListEntry>();
@@ -123,64 +116,11 @@ public partial class Launcher
 
         LoginState loginState;
 
-        Log.Information("XivGame::Login(steamServiceAccount:{IsSteam}, cache:{UseCache})", isSteam, useCache);
-
-        Ticket? steamTicket = null;
-
-        if (isSteam)
-        {
-            if (overriddenSteamTicket != null)
-            {
-                steamTicket = Ticket.EncryptAuthSessionTicket(overriddenSteamTicket, (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                Log.Information("Using predefined steam ticket");
-            }
-            else
-            {
-                if (steam == null)
-                    throw new InvalidOperationException("No Steam instance provided, but tried to log in with Steam");
-
-                try
-                {
-                    if (!steam.IsValid)
-                        steam.Initialize(isFreeTrial ? Constants.STEAM_FT_APP_ID : Constants.STEAM_APP_ID);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Could not initialize Steam");
-                    throw new SteamException("SteamAPI_Init() failed.", ex);
-                }
-
-                if (!steam.IsValid)
-                    throw new SteamException("Steam did not initialize successfully. Please restart Steam and try again.");
-
-                if (!steam.BLoggedOn)
-                    throw new SteamException("Not logged into Steam, or Steam is running in offline mode. Please log in and try again.");
-
-                const int NUM_TRIES = 5;
-
-                for (var i = 0; i < NUM_TRIES; i++)
-                {
-                    try
-                    {
-                        steamTicket = await Ticket.Get(steam).ConfigureAwait(true);
-
-                        if (steamTicket != null)
-                            break;
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new SteamException($"Could not request auth ticket (try {i + 1}/{NUM_TRIES})", ex);
-                    }
-                }
-            }
-
-            if (steamTicket == null)
-                throw new SteamTicketNullException();
-        }
+        Log.Information("XivGame::Login(cache:{UseCache})", useCache);
 
         if (!useCache || !uniqueIdCache.TryGet(userName, out var cached))
         {
-            oauthLoginResult = await OauthLogin(userName, password, otp, isFreeTrial, isSteam, 3, steamTicket);
+            oauthLoginResult = await OauthLogin(userName, password, otp, false, 3);
 
             Log.Information
             (
@@ -245,7 +185,6 @@ public partial class Launcher
         string         sessionId,
         int            region,
         int            expansionLevel,
-        bool           isSteamServiceAccount,
         string         additionalArguments,
         DirectoryInfo  gamePath,
         ClientLanguage language,
@@ -255,8 +194,7 @@ public partial class Launcher
     {
         Log.Information
         (
-            "XivGame::LaunchGame(steamServiceAccount:{IsSteam}, args:{AdditionalArguments})",
-            isSteamServiceAccount,
+            "XivGame::LaunchGame(args:{AdditionalArguments})",
             additionalArguments
         );
 
@@ -272,13 +210,6 @@ public partial class Launcher
                               .Append("language",                   ((int)language).ToString())
                               .Append("resetConfig",                "0")
                               .Append("ver",                        Repository.Ffxiv.GetVer(gamePath));
-
-        if (isSteamServiceAccount)
-        {
-            // These environment variable and arguments seems to be set when ffxivboot is started with "-issteam" (27.08.2019)
-            environment.Add("IS_FFXIV_LAUNCH_FROM_STEAM", "1");
-            argumentBuilder.Append("IsSteam", "1");
-        }
 
         // This is a bit of a hack; ideally additionalArguments would be a dictionary or some KeyValue structure
         if (!string.IsNullOrEmpty(additionalArguments))
@@ -501,24 +432,10 @@ public partial class Launcher
         return result;
     }
 
-    private static string GetOauthTopUrl(int region, bool isFreeTrial, bool isSteam, Ticket? steamTicket)
+    private static string GetOauthTopUrl(int region, bool isFreeTrial)
     {
         var url =
             $"https://ffxiv-login.square-enix.com/oauth/ffxivarr/login/top?lng=en&rgn={region}&isft={(isFreeTrial ? "1" : "0")}&cssmode=1&isnew=1&launchver=3";
-
-        if (isSteam)
-        {
-            if (steamTicket == null)
-                throw new ArgumentNullException(nameof(steamTicket), "isSteam, but steamTicket == null");
-
-            if (string.IsNullOrWhiteSpace(steamTicket.Text))
-                throw new ArgumentException("Steam ticket is empty", nameof(steamTicket));
-
-            url += "&issteam=1";
-
-            url += $"&session_ticket={steamTicket.Text}";
-            url += $"&ticket_size={steamTicket.Length}";
-        }
 
         return url;
     }
@@ -640,7 +557,7 @@ public partial class Launcher
         return (uid, LoginState.NeedsPatchGame, pendingPatches);
     }
 
-    private async Task<(string Stored, string? SteamLinkedId)> GetOauthTop(string url, bool isSteam)
+    private async Task<string> GetOauthTop(string url)
     {
         // This is needed to be able to access the login site correctly
         var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -657,12 +574,7 @@ public partial class Launcher
         var text = await reply.Content.ReadAsStringAsync();
 
         if (text.Contains("window.external.user(\"restartup\");"))
-        {
-            if (isSteam)
-                throw new SteamLinkNeededException();
-
-            throw new InvalidResponseException("restartup, but not isSteam?", text);
-        }
+            throw new InvalidResponseException("restartup", text);
 
         var storedRegex = new Regex(@"\t<\s*input .* name=""_STORED_"" value=""(?<stored>.*)"">");
         var matches     = storedRegex.Matches(text);
@@ -673,32 +585,13 @@ public partial class Launcher
             throw new InvalidResponseException("Could not get STORED.", text);
         }
 
-        string? steamUsername = null;
-
-        if (isSteam)
-        {
-            var steamRegex   = new Regex(@"<input name=""sqexid"" type=""hidden"" value=""(?<sqexid>.*)""\/>");
-            var steamMatches = steamRegex.Matches(text);
-
-            if (steamMatches.Count == 0)
-            {
-                Log.Error("Could not get steam username. Page:\n{Text}", text);
-                throw new InvalidResponseException("Could not get steam username.", text);
-            }
-
-            steamUsername = steamMatches[0].Groups["sqexid"].Value;
-        }
-
-        return (matches[0].Groups["stored"].Value, steamUsername);
+        return matches[0].Groups["stored"].Value;
     }
 
-    private async Task<OauthLoginResult> OauthLogin(string userName, string password, string otp, bool isFreeTrial, bool isSteam, int region, Ticket? steamTicket)
+    private async Task<OauthLoginResult> OauthLogin(string userName, string password, string otp, bool isFreeTrial, int region)
     {
-        if (isSteam && steamTicket == null)
-            throw new ArgumentNullException(nameof(steamTicket), "isSteam, but steamTicket == null");
-
-        var topUrl    = GetOauthTopUrl(region, isFreeTrial, isSteam, steamTicket);
-        var topResult = await GetOauthTop(topUrl, isSteam);
+        var topUrl = GetOauthTopUrl(region, isFreeTrial);
+        var stored = await GetOauthTop(topUrl);
 
         var request = new HttpRequestMessage
         (
@@ -717,22 +610,11 @@ public partial class Launcher
         request.Headers.AddWithoutValidation("Cache-Control",   "no-cache");
         request.Headers.AddWithoutValidation("Cookie",          "_rsid=\"\"");
 
-        if (isSteam)
-        {
-            if (!string.Equals(userName, topResult.SteamLinkedId, StringComparison.OrdinalIgnoreCase))
-                throw new SteamWrongAccountException(userName, topResult.SteamLinkedId);
-
-            if (string.IsNullOrEmpty(topResult.SteamLinkedId))
-                throw new SteamException($"Steam linked ID is empty or null. ({topResult.SteamLinkedId})");
-
-            userName = topResult.SteamLinkedId!;
-        }
-
         request.Content = new FormUrlEncodedContent
         (
             new Dictionary<string, string>
             {
-                { "_STORED_", topResult.Stored },
+                { "_STORED_", stored },
                 { "sqexid", userName },
                 { "password", password },
                 { "otppw", otp }

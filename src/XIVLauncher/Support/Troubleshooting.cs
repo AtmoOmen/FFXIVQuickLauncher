@@ -159,8 +159,6 @@ public static class Troubleshooting
 
         public decimal DalamudInjectionDelay { get; set; }
 
-        public bool SteamIntegration { get; set; }
-
         public bool EncryptArguments { get; set; }
 
         public string LauncherVersion { get; set; }

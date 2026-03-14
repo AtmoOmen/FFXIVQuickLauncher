@@ -17,8 +17,6 @@ public enum XivAccountType
 public class XivAccount : IEquatable<XivAccount>
 {
     [Ignore] public bool IsWeGame => AccountType != XivAccountType.Sdo;
-    //public string Id => $"{UserName}-{UseOtp}-{UseSteamServiceAccount}";
-
     //public override string ToString() => Id;
 
     /*

@@ -63,13 +63,6 @@ public class PatchVerifier : IDisposable
         // Expansion version files.
         new(@"^sqpack/ex([1-9][0-9]*)/ex\1\.(?:bck|ver)$", RegexOptions.IgnoreCase),
 
-        // Under WINE, since .dat files are actually WMV videos, the game will become unusable.
-        // Bink videos will be used instead in those cases.
-        new(@"^movie/ffxiv/0000[0-3]\.bk2$", RegexOptions.IgnoreCase),
-
-        // DXVK can deal with corrupted cache files by itself, so let it do the job by itself.
-        new(@"^ffxiv_dx11\.dxvk-cache$", RegexOptions.IgnoreCase),
-
         //  Savadata.
         new(@"^My Games/.*$", RegexOptions.IgnoreCase),
 

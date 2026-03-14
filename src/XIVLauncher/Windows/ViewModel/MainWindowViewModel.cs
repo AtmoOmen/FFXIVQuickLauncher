@@ -103,9 +103,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         frontierUrl ??= "https://launcher.finalfantasyxiv.com/v650/index.html?rc_lang={0}&time={1}";
 #endif
 
-        Launcher = App.GlobalSteamTicket == null
-                       ? new(App.Steam, App.UniqueIdCache, CommonSettings.Instance, frontierUrl)
-                       : new(App.GlobalSteamTicket, App.UniqueIdCache, CommonSettings.Instance, frontierUrl);
+        Launcher = new(App.UniqueIdCache, CommonSettings.Instance, frontierUrl);
 
         // Tried and failed to get this from the theme
         var worldStatusBrushOk = new SolidColorBrush(Color.FromRgb(0x21, 0x96, 0xf3));
@@ -641,16 +639,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (addonMgr.IsRunning)
             addonMgr.StopAddons();
-
-        try
-        {
-            if (App.Steam.IsValid)
-                App.Steam.Shutdown();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Could not shut down Steam");
-        }
 
         try
         {
@@ -1253,9 +1241,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
             var gamePath       = App.Settings.GamePath;
 
             //if (action == AfterLoginAction.Repair)
-            //    return await this.Launcher.LoginSdo(username, password, otp, isSteam, false, gamePath, true, App.Settings.IsFt.GetValueOrDefault(false)).ConfigureAwait(false);
+            //    return await this.Launcher.LoginSdo(username, password, otp, false, gamePath, true).ConfigureAwait(false);
             //else
-            //    return await this.Launcher.LoginSdo(username, password, otp, isSteam, enableUidCache, gamePath, false, App.Settings.IsFt.GetValueOrDefault(false)).ConfigureAwait(false);
+            //    return await this.Launcher.LoginSdo(username, password, otp, enableUidCache, gamePath, false).ConfigureAwait(false);
             var checkResult = await Launcher.CheckGameUpdate(Area, gamePath, action == AfterLoginAction.Repair);
             if (checkResult.State == Launcher.LoginState.NeedsPatchGame || action == AfterLoginAction.UpdateOnly)
                 return checkResult;
@@ -1351,17 +1339,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             var disableAutoLogin = false;
 
-            var steamMaintenanceInfo = string.Empty;
-
-            if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Tuesday && DateTime.UtcNow.Hour >= 15 && DateTime.UtcNow.Hour < 24)
-            {
-                steamMaintenanceInfo = Loc.Localize
-                (
-                    "SteamMaintenanceInfo",
-                    "It's also possible that the Steam servers may be undergoing maintenance at the moment. Maintenance is scheduled every Tuesday and may take up to 20 minutes.\n\nPlease try again later."
-                );
-            }
-
             if (ex is IOException)
             {
                 msgbox
@@ -1394,57 +1371,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     ),
                     ex.Message
                 );
-            }
-            else if (ex is SteamTicketNullException)
-            {
-                var steamTicketWarning = Loc.Localize
-                (
-                    "LoginSteamNullTicket",
-                    "Steam did not authenticate you. This is likely a temporary issue with Steam and you may just have to try again in a few minutes.\n\nIf the issue persists, please make sure that Steam is running and that you are logged in with the account tied to your SE ID.\nIf you play using the Free Trial, please check the \"Using Free Trial account\" checkbox in the \"Game Settings\" tab of the XIVLauncher settings."
-                );
-
-                if (!string.IsNullOrEmpty(steamMaintenanceInfo))
-                    steamTicketWarning += "\n\n" + steamMaintenanceInfo;
-
-                msgbox.WithText(steamTicketWarning);
-            }
-            else if (ex is SteamException)
-            {
-                msgbox.WithTextFormatted
-                (
-                    Loc.Localize
-                    (
-                        "LoginSteamIssue",
-                        "Could not authenticate with Steam. Please make sure that Steam is running and that you are logged in with the account tied to your SE ID.\nIf you play using the Free Trial, please check the \"Using Free Trial account\" checkbox in the \"Game Settings\" tab of the XIVLauncher settings.\n\nContext: {0}"
-                    ),
-                    ex.Message
-                );
-
-                if (ex.InnerException != null)
-                    msgbox.WithAppendDescription(ex.InnerException.ToString());
-            }
-            else if (ex is SteamWrongAccountException wrongAccountException)
-            {
-                var locMsg = Loc.Localize
-                (
-                    "LoginSteamWrongAccount",
-                    "The account you are logging in to is not the one that is linked to the Steam account on your PC. You can only log in with the account tied to your SE ID while using this Steam account.\n\nPlease log into matching accounts. The account that is linked to Steam is \"{0}\" - make sure there are no typos."
-                );
-                locMsg = string.Format(locMsg, wrongAccountException.ImposedUserName);
-
-                msgbox.WithText(locMsg);
-            }
-            else if (ex is SteamLinkNeededException)
-            {
-                msgbox.WithText
-                      (
-                          Loc.Localize
-                          (
-                              "LoginSteamLinkNeeded",
-                              "Before starting the game with this account, you need to link it to your Steam account with the official launcher.\nPlease link your accounts and try again. You can do so by clicking the \"Official Launcher\" button."
-                          )
-                      )
-                      .WithShowOfficialLauncher();
             }
             else if (ex is OauthLoginException oauthLoginException)
             {
@@ -1544,7 +1470,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 Loc.Localize
                 (
                     "LoginNoServiceMessage",
-                    "This account isn't eligible to play the game. Please make sure that you have an active subscription and that it is paid up.\n\nIf you bought the game on Steam, make sure to check the \"Use Steam service account\" checkbox while logging in.\nIf Auto-Login is enabled, hold shift while starting to access settings."
+                    "This account isn't eligible to play the game. Please make sure that you have an active subscription and that it is paid up.\n\nIf Auto-Login is enabled, hold shift while starting to access settings."
                 ),
                 "Error",
                 MessageBoxButton.OK,
@@ -2780,18 +2706,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private bool _isSteam;
-
-    public bool IsSteam
-    {
-        get => _isSteam;
-        set
-        {
-            _isSteam = value;
-            OnPropertyChanged(nameof(IsSteam));
-        }
-    }
-
     private string _username;
 
     public string Username
@@ -2994,7 +2908,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoginPasswordLoc         = Loc.Localize("LoginBoxPassword",         "Password");
         AutoLoginLoc             = Loc.Localize("LoginBoxAutoLogin",        "Log in automatically");
         OtpLoc                   = Loc.Localize("LoginBoxOtp",              "Use One-Time-Passwords");
-        SteamLoc                 = Loc.Localize("LoginBoxSteam",            "Use Steam service account");
         LoginLoc                 = Loc.Localize("LoginBoxLogin",            "Log in");
         LoginNoStartLoc          = Loc.Localize("LoginBoxNoStartLogin",     "Update without starting");
         LoginRepairLoc           = Loc.Localize("LoginBoxRepairLogin",      "Repair game files");
@@ -3017,7 +2930,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public string LoginPasswordLoc         { get; private set; }
     public string AutoLoginLoc             { get; private set; }
     public string OtpLoc                   { get; private set; }
-    public string SteamLoc                 { get; private set; }
     public string LoginLoc                 { get; private set; }
     public string LoginNoStartLoc          { get; private set; }
     public string LoginNoDalamudLoc        { get; private set; }

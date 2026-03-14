@@ -61,9 +61,6 @@
                         </Button>
                     </StackPanel>
 
-                    <CheckBox Foreground="{DynamicResource MaterialDesignBody}" Visibility="Collapsed"
-                              x:Name="AutoStartSteamCheckBox" Margin="0,15,0,0" Content="{Binding AutoStartSteamLoc}"
-                              ToolTip="{Binding AutoStartSteamTooltipLoc}" />
 
                     <TextBox Width="500" VerticalAlignment="Center"
                              HorizontalAlignment="Left" Foreground="{DynamicResource MaterialDesignBody}"
@@ -84,10 +81,6 @@
             </TabItem>
             <TabItem Header="{Binding SettingsGameSettingsLoc}">
                 <StackPanel Margin="10,10,0,0">
-                    <CheckBox x:Name="IsFreeTrialCheckbox" Click="IsFreeTrialCheckbox_OnClick" Visibility="Collapsed"
-                              Content="{Binding IsFreeTrialLoc}" Foreground="{DynamicResource MaterialDesignBody}"
-                              HorizontalAlignment="Left" Margin="0,0,0,15" />
-
                     <TextBlock
                         Margin="0,0,0,0"
                         HorizontalAlignment="Left"

@@ -64,7 +64,6 @@ public partial class SettingsControl
         AskBeforePatchingCheckBox.IsChecked      = App.Settings.AskBeforePatchInstall;
         KeepPatchesCheckBox.IsChecked            = App.Settings.KeepPatches;
         PatchAcquisitionComboBox.SelectedIndex   = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
-        AutoStartSteamCheckBox.IsChecked         = App.Settings.AutoStartSteam;
 
         InjectionDelayUpDown.Value = App.Settings.DalamudInjectionDelayMs;
 
@@ -93,7 +92,6 @@ public partial class SettingsControl
 
         SpeedLimiterUpDown.Value = val;
 
-        IsFreeTrialCheckbox.IsChecked = App.Settings.IsFt;
 
         DynamicDeviceIdCheckBox.IsChecked = App.Settings.DynamicDeviceId;
 
@@ -125,7 +123,6 @@ public partial class SettingsControl
         App.Settings.AskBeforePatchInstall  = AskBeforePatchingCheckBox.IsChecked == true;
         App.Settings.KeepPatches            = KeepPatchesCheckBox.IsChecked       == true;
         App.Settings.PatchAcquisitionMethod = (AcquisitionMethod)PatchAcquisitionComboBox.SelectedIndex;
-        App.Settings.AutoStartSteam         = AutoStartSteamCheckBox.IsChecked == true;
 
         App.Settings.InGameAddonEnabled = EnableHooksCheckBox.IsChecked == true;
 
@@ -148,7 +145,6 @@ public partial class SettingsControl
         App.Settings.SpeedLimitBytes = (long)(SpeedLimiterUpDown.Value * BYTES_TO_MB);
         App.Settings.GitHubToken     = ViewModel.GitHubToken;
 
-        App.Settings.IsFt            = IsFreeTrialCheckbox.IsChecked     == true;
         App.Settings.DynamicDeviceId = DynamicDeviceIdCheckBox.IsChecked == true;
         // Apply setting immediately
         SdoUtils.IsDynamicDeviceId = App.Settings.DynamicDeviceId;
@@ -167,15 +163,7 @@ public partial class SettingsControl
 
     private void OriginalLauncherButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var isSteam = CustomMessageBox.Builder
-                                      .NewFrom(Loc.Localize("LaunchAsSteam", "Launch as a steam user?"))
-                                      .WithButtons(MessageBoxButton.YesNo)
-                                      .WithImage(MessageBoxImage.Question)
-                                      .WithParentWindow(Window.GetWindow(this))
-                                      .Show()
-                      == MessageBoxResult.Yes;
-
-        GameHelpers.StartOfficialLauncher(App.Settings.GamePath, isSteam, App.Settings.IsFt.GetValueOrDefault(false));
+        GameHelpers.StartOfficialLauncher(App.Settings.GamePath);
     }
 
     // All of the list handling is very dirty - but i guess it works
@@ -510,23 +498,6 @@ public partial class SettingsControl
 
     private void LearnMoreButton_OnClick(object sender, RoutedEventArgs e) =>
         PlatformHelpers.OpenBrowser("https://goatcorp.github.io/faq/mobile_otp");
-
-    private void IsFreeTrialCheckbox_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (App.Steam.AsyncStartTask != null)
-        {
-            CustomMessageBox.Show
-            (
-                Loc.Localize("SteamFtToggleAutoStartWarning", "To apply this setting, XIVLauncher needs to restart.\nPlease reopen XIVLauncher."),
-                "XIVLauncherCN (Soil)",
-                image: MessageBoxImage.Information,
-                showDiscordLink: false,
-                showHelpLinks: false
-            );
-            App.Settings.IsFt = IsFreeTrialCheckbox.IsChecked == true;
-            CloseMainWindowGracefully?.Invoke(this, null);
-        }
-    }
 
     private void OpenAdvancedSettings_OnClick(object sender, RoutedEventArgs e)
     {

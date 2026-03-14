@@ -7,24 +7,11 @@
         <Nullable>disable</Nullable>
 
         <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
-
-        <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
-        <IsOSX Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">true</IsOSX>
-        <IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">true</IsLinux>
+        <DefineConstants>$(DefineConstants);WIN32</DefineConstants>
     </PropertyGroup>
 
     <PropertyGroup>
         <DefineConstants Condition=" '$(ExtraDefineConstants)' != '' ">$(DefineConstants);$(ExtraDefineConstants)</DefineConstants>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(IsWindows)'=='true'">
-        <DefineConstants>$(DefineConstants);WIN32</DefineConstants>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(IsOSX)'=='true'">
-        <DefineConstants>$(DefineConstants);OSX;WINE_XIV_MACOS</DefineConstants>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(IsLinux)'=='true'">
-        <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
     </PropertyGroup>
 
     <PropertyGroup Label="Configuration" Condition="'$(Configuration)'=='Release'">
@@ -42,9 +29,6 @@
 
     <ItemGroup>
         <PackageReference Include="CommandLineParser" Version="2.9.1"/>
-        <PackageReference Include="DeviceId" Version="6.2.0"/>
-        <PackageReference Include="DeviceId.Linux" Version="6.2.0"/>
-        <PackageReference Include="DeviceId.Mac" Version="6.2.0"/>
         <PackageReference Include="Downloader" Version="2.2.8"/>
         <PackageReference Include="EmbedIO" Version="3.5.2"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>

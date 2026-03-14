@@ -20,11 +20,6 @@ namespace XIVLauncher;
 
 public static class AppUtil
 {
-    private static readonly int[] ValidSteamAppIds = new[]
-    {
-        39210, // Paid version
-        312060 // Free trial version
-    };
 
     /// <summary>
     ///     Gets the git hash value from the assembly
@@ -106,9 +101,6 @@ public static class AppUtil
                         }
                     }
 
-                    // Should return "C:\Program Files (x86)\Steam\steamapps\common\game Online" if installed with default options.
-                    // foreach (var steamAppId in ValidSteamAppIds)
-                    // {
                     using (var subkey = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\最终幻想14"))
                     {
                         if (subkey != null && subkey.GetValue("InstallLocation", null) is string path)
@@ -121,7 +113,6 @@ public static class AppUtil
                             }
                         }
                     }
-                    // }
                 }
             }
 
@@ -262,8 +253,6 @@ public static class AppUtil
 
         var commonPaths = new[]
         {
-            $"Steam\\steamapps\\common\\{gameName} Online",
-            $"Steam\\steamapps\\common\\{gameName} - {rebootName}",
             $"{companyName1}{companyName2}\\{gameName} - {rebootName}",
             $"\\{gameName} - {rebootName}",
             $"Games\\{companyName1}{companyName2}\\{gameName} - {rebootName}",
