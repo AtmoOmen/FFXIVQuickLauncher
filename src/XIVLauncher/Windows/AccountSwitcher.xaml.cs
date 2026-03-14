@@ -12,7 +12,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using CheapLoc;
-using IWshRuntimeLibrary;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Windows.ViewModel;
@@ -196,9 +195,10 @@ public partial class AccountSwitcher : Window
 
         var shDesktop = (object)"Desktop";
 
-        var shell           = new WshShell();
+        var shellType       = Type.GetTypeFromProgID("WScript.Shell");
+        dynamic shell       = Activator.CreateInstance(shellType);
         var shortcutAddress = (string)shell.SpecialFolders.Item(ref shDesktop) + $@"\XIVLauncherCN - {selectedEntry.Account.UserName}.lnk";
-        var shortcut        = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
+        var shortcut        = shell.CreateShortcut(shortcutAddress);
         shortcut.Description      = $"Open XIVLauncher with the \"{selectedEntry.Account.UserName}\" Sdo account.";
         shortcut.TargetPath       = Path.Combine(new DirectoryInfo(Environment.CurrentDirectory).Parent.FullName, "XIVLauncherCN.exe");
         shortcut.Arguments        = $"--account={selectedEntry.Account.Id}";
