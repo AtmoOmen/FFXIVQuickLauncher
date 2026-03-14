@@ -46,9 +46,7 @@ public partial class MainWindow : Window
     private       bool                  _everShown;
 
     private ObservableCollection<BannerDotInfo> _bannerDotList;
-
-    private Timer _maintenanceQueueTimer;
-
+    
     public MainWindow()
     {
         InitializeComponent();
@@ -102,31 +100,11 @@ public partial class MainWindow : Window
 
     public void Initialize()
     {
-        var fakeStartMenuItem = new MenuItem
-        {
-            Header = "假启动 (调试用)"
-        };
-        fakeStartMenuItem.Click += FakeStart_OnClick;
-
-        LoginContextMenu.Items.Add(fakeStartMenuItem);
-
         SetDefaults();
 
         Model.IsFastLogin = App.Settings.FastLogin;
-        //LoginPassword.IsEnabled = LoginPassword.IsVisible;
-        //Model.EnableInjector = App.Settings.EnableInjector;
-
-        //_accountManager = new AccountManager(App.Settings);
-        //if (this._accountManager.CurrentAccount != null && !_accountManager.CurrentAccount.Password.IsNullOrEmpty()) ShowPassword_OnClick(null, null);
 
         var savedAccount = _accountManager.CurrentAccount;
-
-        if (App.Settings.UniqueIdCacheEnabled && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-        {
-            App.UniqueIdCache.Reset();
-            Console.Beep(523, 150); // Feedback without popup
-        }
-
         if (App.GlobalIsDisableAutologin)
         {
             Log.Information("Autologin was disabled globally, saving into settings...");
@@ -250,16 +228,16 @@ public partial class MainWindow : Window
         {
             _bannerChangeTimer?.Stop();
 
-            _headlines = await Headlines.GetNews(_launcher, ClientLanguage.ChineseSimplified, App.Settings.ForceNorthAmerica.GetValueOrDefault(false))
+            _headlines = await Headlines.GetHeadlines(_launcher)
                                         .ConfigureAwait(false);
             _banners = _headlines.Banner;
 
             _bannerBitmaps = new BitmapImage[_banners.Count];
-            _bannerDotList = new();
+            _bannerDotList = [];
 
             for (var i = 0; i < _banners.Count; i++)
             {
-                var imageBytes = await _launcher.DownloadAsLauncher(_banners[i].LsbBanner.ToString(), ClientLanguage.ChineseSimplified);
+                var imageBytes = await _launcher.DownloadAsLauncher(_banners[i].LsbBanner.ToString());
 
                 using var stream = new MemoryStream(imageBytes);
 
@@ -343,13 +321,7 @@ public partial class MainWindow : Window
 
         App.Settings.TreatNonZeroExitCodeAsFailure ??= false;
         App.Settings.ExitLauncherAfterGameExit     ??= true;
-
-        App.Settings.UniqueIdCacheEnabled = false;
-        //App.Settings.EncryptArguments = false;
-        App.Settings.EnableBeta ??= false;
-
-        App.Settings.ForceNorthAmerica ??= false;
-
+        
         var versionLevel = App.Settings.VersionUpgradeLevel.GetValueOrDefault(0);
 
         while (versionLevel < CURRENT_VERSION_LEVEL)
@@ -457,103 +429,9 @@ public partial class MainWindow : Window
 
     private void WorldStatusButton_Click(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo("https://ff.web.sdo.com/web8/index.html#/servers") { UseShellExecute = true });
-
-    private void QueueButton_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (_maintenanceQueueTimer == null)
-            SetupMaintenanceQueueTimer();
-
-        Model.LoadingDialogCancelButtonVisibility = Visibility.Visible;
-        Model.LoadingDialogMessage                = Model.WaitingForMaintenanceLoc;
-        Model.IsLoadingDialogOpen                 = true;
-
-        _maintenanceQueueTimer.Start();
-
-        // Manually fire the first event, avoid waiting the first timer interval
-        Task.Run(() => { OnMaintenanceQueueTimerEvent(null, null); });
-    }
-
-    private void SetupMaintenanceQueueTimer()
-    {
-        // This is a good indicator that we should clear the UID cache
-        App.UniqueIdCache.Reset();
-
-        _maintenanceQueueTimer = new Timer
-        {
-            Interval = 20000
-        };
-
-        _maintenanceQueueTimer.Elapsed += OnMaintenanceQueueTimerEvent;
-    }
-
-    private async void OnMaintenanceQueueTimerEvent(object source, ElapsedEventArgs e)
-    {
-        var bootPatches = await _launcher.CheckBootVersion(App.Settings.GamePath);
-
-        var gateStatus = false;
-
-        try
-        {
-            //gateStatus = Task.Run(() => _launcher.GetGateStatus(App.Settings.Language.GetValueOrDefault(ClientLanguage.English))).Result.Status;
-        }
-        catch
-        {
-            // ignored
-        }
-
-        var hasBootPatch = bootPatches.Length > 0;
-
-        if (gateStatus || hasBootPatch)
-        {
-            if (hasBootPatch)
-            {
-                CustomMessageBox.Show
-                (
-                    Loc.Localize
-                    (
-                        "MaintenanceQueueBootPatch",
-                        "A patch for the official launcher was detected.\nThis usually means that there is a patch for the game as well.\n\nYou will now be logged in."
-                    ),
-                    "XIVLauncherCN (Soil)",
-                    parentWindow: this
-                );
-            }
-
-            Dispatcher.Invoke
-            (() =>
-                {
-                    QuitMaintenanceQueueButton_OnClick(null, null);
-
-                    Model.TryLogin(Model.GuiLoginType.LoginType, Model.Username, LoginPassword.Password, Model.IsFastLogin, Model.IsReadWegameInfo, MainWindowViewModel.AfterLoginAction.Start);
-                }
-            );
-
-            Console.Beep(523, 150);
-            Thread.Sleep(25);
-            Console.Beep(523, 150);
-            Thread.Sleep(25);
-            Console.Beep(523, 150);
-            Thread.Sleep(25);
-            Console.Beep(523, 300);
-            Thread.Sleep(150);
-            Console.Beep(415, 300);
-            Thread.Sleep(150);
-            Console.Beep(466, 300);
-            Thread.Sleep(150);
-            Console.Beep(523, 300);
-            Thread.Sleep(25);
-            Console.Beep(466, 150);
-            Thread.Sleep(25);
-            Console.Beep(523, 900);
-        }
-    }
-
-    private void QuitMaintenanceQueueButton_OnClick(object sender, RoutedEventArgs e)
-    {
-        //_maintenanceQueueTimer.Stop();
-        //Model.EnableInjector = false;
+    
+    private void QuitMaintenanceQueueButton_OnClick(object sender, RoutedEventArgs e) =>
         Model.IsLoadingDialogOpen = false;
-    }
 
     private void Card_KeyDown(object sender, KeyEventArgs e)
     {

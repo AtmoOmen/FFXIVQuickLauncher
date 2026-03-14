@@ -103,7 +103,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         frontierUrl ??= "https://launcher.finalfantasyxiv.com/v650/index.html?rc_lang={0}&time={1}";
 #endif
 
-        Launcher = new(App.UniqueIdCache, CommonSettings.Instance, frontierUrl);
+        Launcher = new();
 
         // Tried and failed to get this from the theme
         var worldStatusBrushOk = new SolidColorBrush(Color.FromRgb(0x21, 0x96, 0xf3));
@@ -153,9 +153,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             _window.Dispatcher.Invoke(() => TryLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
             return;
         }
-
-        LoadingDialogCancelButtonVisibility = Visibility.Collapsed;
-
+        
         IsEnabled = false;
         //LoginCardTransitionerIndex = 0;
         var currentCard = (LoginCard)LoginCardTransitionerIndex;
@@ -878,24 +876,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (Repository.Ffxiv.GetVer(App.Settings.GamePath) == Constants.BASE_GAME_VERSION && App.Settings.UniqueIdCacheEnabled)
-        {
-            CustomMessageBox.Show
-            (
-                Loc.Localize
-                (
-                    "UidCacheInstallError",
-                    "You enabled the UID cache in the patcher settings.\nThis setting does not allow you to reinstall the game.\n\nIf you want to reinstall the game, please take care to disable it first."
-                ),
-                "XIVLauncher Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error,
-                parentWindow: _window
-            );
-
-            return;
-        }
-
         if (!doingAutoLogin) App.Settings.AutologinEnabled = IsAutoLogin;
         App.Settings.FastLogin = IsFastLogin;
         // TODO: 太jb乱了，得重构
@@ -1048,11 +1028,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
         //await dc.GetValidCookie();
         //var groupList = await dc.QueryGroupListTravelSource();
         //var orders = await dc.QueryMigrationOrders();
-        var dcTraveler = new DcTraveler(string.Empty);
-        dcTraveler.SetSdoAreaFunc = name =>
+        var dcTraveler = new DcTraveler(string.Empty)
         {
-            App.AccountManager.CurrentAccount.AreaName = name;
-            App.AccountManager.Save();
+            SetSdoAreaFunc = name =>
+            {
+                App.AccountManager.CurrentAccount.AreaName = name;
+                App.AccountManager.Save();
+            }
         };
 
         var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, dcTraveler, action).ConfigureAwait(false);
@@ -1153,75 +1135,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 Environment.Exit(0);
         }
     }
-
-    private async Task<bool> CheckGateStatus()
-    {
-        return true;
-        GateStatus? gateStatus = null;
-
-        try
-        {
-            gateStatus = await Launcher.GetGateStatus(App.Settings.Language.GetValueOrDefault(ClientLanguage.English)).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Could not obtain gate status");
-        }
-
-        if (gateStatus == null)
-        {
-            CustomMessageBox.Builder.NewFrom
-                            (
-                                Loc.Localize
-                                (
-                                    "GateUnreachable",
-                                    "The login servers could not be reached. This usually indicates that the game is under maintenance, or that your connection to the login servers is unstable.\n\nPlease try again later."
-                                )
-                            )
-                            .WithImage(MessageBoxImage.Asterisk)
-                            .WithButtons(MessageBoxButton.OK)
-                            .WithShowHelpLinks()
-                            .WithCaption("XIVLauncher")
-                            .WithParentWindow(_window)
-                            .Show();
-
-            return false;
-        }
-
-        if (!gateStatus.Status)
-        {
-            var message = Loc.Localize("GateClosed", "The game is currently under maintenance. Please try again later or see official sources for more information.");
-
-            if (gateStatus.Message != null)
-            {
-                var gateMessage = gateStatus.Message.Aggregate("", (current, s) => current + s + "\n");
-
-                if (!string.IsNullOrEmpty(gateMessage))
-                    message = gateMessage;
-            }
-
-            var builder = CustomMessageBox.Builder.NewFrom(message)
-                                          .WithImage(MessageBoxImage.Asterisk)
-                                          .WithButtons(MessageBoxButton.OK)
-                                          .WithCaption("XIVLauncher")
-                                          .WithParentWindow(_window);
-
-            if (gateStatus.News != null && gateStatus.News.Count > 0)
-            {
-                var description = gateStatus.News.Aggregate("", (current, s) => current + s + "\n");
-
-                if (!string.IsNullOrEmpty(description))
-                    builder.WithDescription(description);
-            }
-
-            builder.Show();
-
-            return false;
-        }
-
-        return true;
-    }
-
+    
     private async Task<Launcher.LoginResult> TryLoginToGame
     (
         LoginType        type,
@@ -1237,13 +1151,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            var enableUidCache = App.Settings.UniqueIdCacheEnabled;
-            var gamePath       = App.Settings.GamePath;
+            var gamePath = App.Settings.GamePath;
 
-            //if (action == AfterLoginAction.Repair)
-            //    return await this.Launcher.LoginSdo(username, password, otp, false, gamePath, true).ConfigureAwait(false);
-            //else
-            //    return await this.Launcher.LoginSdo(username, password, otp, enableUidCache, gamePath, false).ConfigureAwait(false);
             var checkResult = await Launcher.CheckGameUpdate(Area, gamePath, action == AfterLoginAction.Repair);
             if (checkResult.State == Launcher.LoginState.NeedsPatchGame || action == AfterLoginAction.UpdateOnly)
                 return checkResult;
@@ -2210,16 +2119,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private void InstallerOnFail()
     {
-        try
-        {
-            // Reset UID cache, we need users to log in again
-            App.UniqueIdCache.Reset();
-        }
-        catch
-        {
-            // ignored
-        }
-
         CustomMessageBox.Show
         (
             Loc.Localize("PatchInstallerInstallFailed", "The patch installer ran into an error.\nPlease report this error.\n\nPlease try again or use the official launcher."),
@@ -2781,18 +2680,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             _isLoadingDialogOpen = value;
             OnPropertyChanged(nameof(IsLoadingDialogOpen));
-        }
-    }
-
-    private Visibility _loadingDialogCancelButtonVisibility;
-
-    public Visibility LoadingDialogCancelButtonVisibility
-    {
-        get => _loadingDialogCancelButtonVisibility;
-        set
-        {
-            _loadingDialogCancelButtonVisibility = value;
-            OnPropertyChanged(nameof(LoadingDialogCancelButtonVisibility));
         }
     }
 

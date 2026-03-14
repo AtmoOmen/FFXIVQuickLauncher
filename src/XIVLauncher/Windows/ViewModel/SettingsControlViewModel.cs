@@ -156,9 +156,7 @@ internal class SettingsControlViewModel : INotifyPropertyChanged
     public string CreditsLoc                 { get; private set; }
     public string LicenseLoc                 { get; private set; }
     public string JoinDiscordLoc             { get; private set; }
-    public string OpenFaqLoc                 { get; private set; }
     public string StartBackupToolLoc         { get; private set; }
-    public string StartOriginalLauncherLoc   { get; private set; }
     public string OpenAdvancedSettingsLoc    { get; private set; }
     public string OpenAdvancedSettingsTipLoc { get; private set; }
 
@@ -356,9 +354,7 @@ internal class SettingsControlViewModel : INotifyPropertyChanged
         );
         LicenseLoc               = Loc.Localize("License",               "Licensed under GPLv3 or later. Click here for more.");
         JoinDiscordLoc           = Loc.Localize("JoinDiscord",           "Join Discord");
-        OpenFaqLoc               = Loc.Localize("OpenFaq",               "Open FAQ");
         StartBackupToolLoc       = Loc.Localize("StartBackupTool",       "Start Backup Tool");
-        StartOriginalLauncherLoc = Loc.Localize("StartOriginalLauncher", "Start Original Launcher");
         OpenAdvancedSettingsLoc    = Loc.Localize("OpenAdvancedSettings",    "Open Advanced Settings");
         OpenAdvancedSettingsTipLoc = Loc.Localize("OpenAdvancedSettingsTip", "Opens some settings for advanced users. Please only use these if you know what you're doing.");
 

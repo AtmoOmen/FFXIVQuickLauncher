@@ -28,41 +28,37 @@ public class DalamudUpdater
     public        DownloadState           State               { get; private set; } = DownloadState.Unknown;
     public        Exception?              EnsurementException { get; private set; }
     public        FileInfo?               RunnerOverride      { get; set; }
-    public        DirectoryInfo           AssetDirectory      { get; private set; }
+    public        DirectoryInfo?          AssetDirectory      { get; private set; }
     public        IDalamudLoadingOverlay? Overlay             { get; set; }
     public static string                  OnlineHash          { get; private set; } = string.Empty;
     public static string                  Version             { get; private set; } = string.Empty;
 
-    public FileInfo Runner
+    public FileInfo? Runner
     {
-        get => RunnerOverride ?? runnerInternal;
-        private set => runnerInternal = value;
+        get => RunnerOverride ?? field;
+        private set;
     }
 
     private readonly DirectoryInfo   addonDirectory;
     private readonly DirectoryInfo   assetDirectory;
-    private readonly IUniqueIdCache? cache;
     private readonly string?         githubToken;
 
     private readonly TimeSpan   defaultTimeout = TimeSpan.FromMinutes(1);
     private readonly HttpClient httpClient;
 
-    private bool     forceProxy;
-    private FileInfo runnerInternal;
+    private bool forceProxy;
 
     public DalamudUpdater
     (
         DirectoryInfo   addonDirectory,
         DirectoryInfo   runtimeDirectory,
         DirectoryInfo   assetDirectory,
-        IUniqueIdCache? cache,
         string?         githubToken
     )
     {
         this.addonDirectory = addonDirectory;
         Runtime             = runtimeDirectory;
         this.assetDirectory = assetDirectory;
-        this.cache          = cache;
         this.githubToken    = githubToken;
         httpClient = new HttpClient
         (
@@ -132,9 +128,7 @@ public class DalamudUpdater
         try
         {
             Log.Information("[DUPDATE] 开始 Dalamud 更新进程");
-
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
+            
             await InitVersionInfoAsync();
             var paths = PreparePaths();
             await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath);
@@ -218,7 +212,6 @@ public class DalamudUpdater
             Log.Information("[DUPDATE] 清理旧版本 Dalamud 文件");
             CleanUpOld(addonPath, Version);
 
-            cache?.Reset();
             Log.Information("[DUPDATE] Dalamud 本体更新完成");
         }
         catch (Exception ex)
@@ -356,7 +349,7 @@ public class DalamudUpdater
             var version = jsonDoc.RootElement.GetProperty("tag_name").GetString();
             if (string.IsNullOrWhiteSpace(version))
                 throw new NullReferenceException("[DUPDATE] 未能找到对应的版本信息");
-            Version = version!;
+            Version = version;
 
             var assets = jsonDoc.RootElement.GetProperty("assets");
 

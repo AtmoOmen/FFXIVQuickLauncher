@@ -20,7 +20,6 @@ using XIVLauncher.Common.Patching.IndexedZiPatch;
 using XIVLauncher.Common.Patching.ZiPatch;
 using XIVLauncher.Common.Patching.ZiPatch.Util;
 using XIVLauncher.Common.PlatformAbstractions;
-using XIVLauncher.PlatformAbstractions;
 
 namespace XIVLauncher.PatchInstaller.Commands;
 
@@ -178,7 +177,7 @@ public class IndexUpdateCommand
             settings.GamePath.Create();
         if (!settings.PatchPath.Exists)
             settings.PatchPath.Create();
-        var la = new Launcher(new CommonUniqueIdCache(null), settings, "https://launcher.finalfantasyxiv.com/v650/index.html?rc_lang={0}&time={1}");
+        var la = new Launcher();
 
         //var bootPatchListFile = new FileInfo(Path.Combine(this.settings.GamePath.FullName, "bootlist.json"));
 

@@ -61,11 +61,13 @@ public class SdoNews
 
 public partial class Headlines
 {
-    public static async Task<Headlines> GetNews(Launcher game, ClientLanguage language, bool forceNa = false)
+    public static async Task<Headlines> GetHeadlines(Launcher game)
     {
-        var headlines = new Headlines();
-        headlines.Banner = await GetBanner(game);
-        headlines.News   = await GetNews(game);
+        var headlines = new Headlines
+        {
+            Banner = await GetBanner(game),
+            News   = await GetNews(game)
+        };
         return headlines;
     }
 
@@ -73,7 +75,7 @@ public partial class Headlines
     {
         var json = Encoding.UTF8.GetString
         (
-            await game.DownloadAsLauncher("https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5203&pageIndex=0&pageSize=8", ClientLanguage.ChineseSimplified, "*/*").ConfigureAwait
+            await game.DownloadAsLauncher("https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5203&pageIndex=0&pageSize=8", "*/*").ConfigureAwait
                 (false)
         );
         var sdoBanner = JsonConvert.DeserializeObject<SdoBanner>(json);
@@ -85,55 +87,10 @@ public partial class Headlines
         var json = Encoding.UTF8.GetString
         (
             await game.DownloadAsLauncher
-                ("https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5310,5311,5312,5313,5316&pageIndex=0&pageSize=12", ClientLanguage.ChineseSimplified, "*/*").ConfigureAwait
+                ("https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5310,5311,5312,5313,5316&pageIndex=0&pageSize=12", "*/*").ConfigureAwait
                 (false)
         );
         var sdoNews = JsonConvert.DeserializeObject<SdoNews>(json);
         return sdoNews.Data;
     }
-
-    //public static async Task<IReadOnlyList<Banner>> GetBanners(Launcher game, ClientLanguage language, bool forceNa = false)
-    //{
-    //    var unixTimestamp = ApiHelpers.GetUnixMillis();
-    //    var langCode = language.GetLangCode(forceNa);
-    //    var url = $"https://frontier.ffxiv.com/v2/topics/{langCode}/banner.json?lang={langCode}&media=pcapp&_={unixTimestamp}";
-
-    //    var json = Encoding.UTF8.GetString(await game.DownloadAsLauncher(url, language, "application/json, text/plain, */*").ConfigureAwait(false));
-
-    //    return JsonConvert.DeserializeObject<BannerRoot>(json, Converter.SETTINGS).Banner;
-    //}
-
-    //public static async Task<IReadOnlyCollection<Banner>> GetMessage(Launcher game, ClientLanguage language, bool forceNa = false)
-    //{
-    //    var unixTimestamp = ApiHelpers.GetUnixMillis();
-    //    var langCode = language.GetLangCode(forceNa);
-    //    var url = $"https://frontier.ffxiv.com/v2/notice/{langCode}/message.json?_={unixTimestamp}";
-
-    //    var json = Encoding.UTF8.GetString(await game.DownloadAsLauncher(url, language, "application/json, text/plain, */*").ConfigureAwait(false));
-
-    //    return JsonConvert.DeserializeObject<BannerRoot>(json, Converter.SETTINGS).Banner;
-    //}
-
-    //public static async Task<IReadOnlyCollection<Banner>> GetWorlds(Launcher game, ClientLanguage language)
-    //{
-    //    var unixTimestamp = ApiHelpers.GetUnixMillis();
-    //    var url = $"https://frontier.ffxiv.com/v2/world/status.json?_={unixTimestamp}";
-
-    //    var json = Encoding.UTF8.GetString(await game.DownloadAsLauncher(url, language, "application/json, text/plain, */*").ConfigureAwait(false));
-
-    //    return JsonConvert.DeserializeObject<BannerRoot>(json, Converter.SETTINGS).Banner;
-    //}
-}
-
-internal static class Converter
-{
-    public static readonly JsonSerializerSettings SETTINGS = new()
-    {
-        MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-        DateParseHandling        = DateParseHandling.None,
-        Converters =
-        {
-            new IsoDateTimeConverter { DateTimeStyles = DateTimeStyles.AssumeUniversal }
-        }
-    };
 }

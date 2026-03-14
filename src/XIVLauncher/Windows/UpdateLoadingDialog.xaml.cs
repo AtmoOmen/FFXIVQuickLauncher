@@ -4,23 +4,15 @@ using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
 
-/// <summary>
-///     Interaction logic for OtpInputDialog.xaml
-/// </summary>
-public partial class UpdateLoadingDialog : Window
+public partial class UpdateLoadingDialog
 {
     public UpdateLoadingDialog()
     {
         InitializeComponent();
 
         AutoLoginDisclaimer.Visibility     = App.Settings.AutologinEnabled ? Visibility.Visible : Visibility.Collapsed;
-        ResetUidCacheDisclaimer.Visibility = App.Settings.UniqueIdCacheEnabled ? Visibility.Visible : Visibility.Collapsed;
-        if (ResetUidCacheDisclaimer.Visibility == Visibility.Visible
-            && AutoLoginDisclaimer.Visibility  == Visibility.Visible)
-            UpdateLoadingCard.Height += 19;
 
         DataContext = new UpdateLoadingDialogViewModel();
-
         MouseMove += UpdateLoadingDialog_OnMouseMove;
     }
 

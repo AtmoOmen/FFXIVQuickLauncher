@@ -1,16 +1,16 @@
 #nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
@@ -19,78 +19,56 @@ using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Patch.PatchList;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
-#if NET6_0_OR_GREATER && !WIN32
-using System.Net.Security;
-#endif
+using JsonException = System.Text.Json.JsonException;
 
 namespace XIVLauncher.Common.Game;
 
-public partial class Launcher
+public class GuiLoginType
 {
-    private readonly IUniqueIdCache  uniqueIdCache;
-    private readonly ISettings       settings;
+    public LoginType LoginType   { get; set; }
+    public string    DisplayName { get; set; }
+
+    public static List<GuiLoginType> Get(bool showWeGameToken = false)
+    {
+        var types = new List<GuiLoginType>
+        {
+            new() { LoginType = LoginType.SdoSlide, DisplayName  = "一键登录" },
+            new() { LoginType = LoginType.SdoQrCode, DisplayName = "扫码登录" },
+            new() { LoginType = LoginType.SdoStatic, DisplayName = "密码登录" },
+            new() { LoginType = LoginType.WeGameSid, DisplayName = "WeGame SID" }
+        };
+        if (showWeGameToken)
+            types.Add(new GuiLoginType { LoginType = LoginType.WeGameToken, DisplayName = "WeGame抓包" });
+        return types;
+    }
+}
+
+public enum LoginType
+{
+    SdoStatic,
+    SdoSlide,
+    SdoQrCode,
+    WeGameToken,
+    WeGameSid,
+    AutoLoginSession
+}
+
+public class Launcher
+{
     private readonly HttpClient      client;
     private readonly HttpClient      loginClient;
     private readonly CookieContainer loginCookies;
-    private readonly string          frontierUrlTemplate;
 
-    // The user agent for frontier pages. {0} has to be replaced by a unique computer id and its checksum
-    private const    string UserAgentTemplate = "SQEXAuthor/2.0.0(Windows 6.2; ja-jp; {0})";
-    private readonly string userAgent         = GenerateUserAgent();
+    private const int QR_CODE_EXPIRATION_TIME = 300 * 1000; // ms
+    private const int SLIDE_EXPIRATION_TIME   = 30  * 1000; // ms
+    private const int AUTO_LOGIN_KEEP_DAYS    = 30;
 
-    private static readonly string[] FilesToHash =
+    private bool useGlobalDomain = true;
+
+    public Launcher()
     {
-        "ffxivboot.exe"
-        // "ffxivboot64.exe",
-        // "ffxivlauncher64.exe",
-        // "ffxivupdater64.exe"
-    };
+        loginCookies = new CookieContainer();
 
-    public Launcher(IUniqueIdCache uniqueIdCache, ISettings settings, string frontierUrl)
-    {
-        this.uniqueIdCache = uniqueIdCache;
-        this.settings      = settings;
-        loginCookies       = new CookieContainer();
-        //this.frontierUrlTemplate = frontierUrl ?? throw new Exception("Frontier URL template is null, this is now required");
-        ServicePointManager.Expect100Continue = false;
-#if NET6_0_OR_GREATER && !WIN32
-        var sslOptions = new SslClientAuthenticationOptions()
-        {
-            CipherSuitesPolicy = new CipherSuitesPolicy
-            (
-                new[]
-                {
-                    TlsCipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-                    TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-                    TlsCipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-                    TlsCipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
-                    TlsCipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
-                    TlsCipherSuite.TLS_RSA_WITH_AES_256_CCM_8,
-                    TlsCipherSuite.TLS_RSA_WITH_AES_256_CCM,
-                    TlsCipherSuite.TLS_RSA_WITH_AES_128_CCM_8,
-                    TlsCipherSuite.TLS_RSA_WITH_AES_128_CCM,
-                    TlsCipherSuite.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
-                }
-            )
-        };
-        var handler = new SocketsHttpHandler
-        {
-            UseCookies      = true,
-            CookieContainer = loginCookies,
-            SslOptions      = sslOptions,
-        };
-        var loginHandler = new SocketsHttpHandler
-        {
-            UseCookies      = true,
-            CookieContainer = loginCookies,
-            SslOptions      = sslOptions,
-        };
-        var loginHandler = new SocketsHttpHandler
-        {
-            UseCookies = false,
-            SslOptions = sslOptions,
-        };
-#else
         var handler = new HttpClientHandler
         {
             UseCookies      = true,
@@ -101,213 +79,14 @@ public partial class Launcher
             UseCookies      = true,
             CookieContainer = loginCookies
         };
-#endif
 
         client      = new HttpClient(handler);
         loginClient = new HttpClient(loginHandler);
     }
 
-    public async Task<LoginResult> Login(string userName, string password, string otp, bool useCache, DirectoryInfo gamePath, bool forceBaseVersion)
-    {
-        string? uid;
-        var     pendingPatches = Array.Empty<PatchListEntry>();
-
-        OauthLoginResult oauthLoginResult;
-
-        LoginState loginState;
-
-        Log.Information("XivGame::Login(cache:{UseCache})", useCache);
-
-        if (!useCache || !uniqueIdCache.TryGet(userName, out var cached))
-        {
-            oauthLoginResult = await OauthLogin(userName, password, otp, false, 3);
-
-            Log.Information
-            (
-                "OAuth login successful - playable:{IsPlayable} terms:{TermsAccepted} region:{Region} ex:{MaxExpansion}",
-                oauthLoginResult.Playable,
-                oauthLoginResult.TermsAccepted,
-                oauthLoginResult.Region,
-                oauthLoginResult.MaxExpansion
-            );
-
-            if (!oauthLoginResult.Playable)
-            {
-                return new LoginResult
-                {
-                    State = LoginState.NoService
-                };
-            }
-
-            if (!oauthLoginResult.TermsAccepted)
-            {
-                return new LoginResult
-                {
-                    State = LoginState.NoTerms
-                };
-            }
-
-            (uid, loginState, pendingPatches) = await RegisterSession(oauthLoginResult, gamePath, forceBaseVersion);
-
-            if (useCache)
-                uniqueIdCache.Add(userName, uid, oauthLoginResult.Region, oauthLoginResult.MaxExpansion);
-        }
-        else
-        {
-            Log.Information("Cached UID found, using instead");
-            uid        = cached.UniqueId;
-            loginState = LoginState.Ok;
-
-            oauthLoginResult = new OauthLoginResult
-            {
-                Playable      = true,
-                Region        = cached.Region,
-                TermsAccepted = true,
-                MaxExpansion  = cached.MaxExpansion
-            };
-        }
-
-        if (loginState == LoginState.Ok && string.IsNullOrEmpty(uid))
-            throw new Exception("LoginState is Ok, but UID is null or empty.");
-
-        return new LoginResult
-        {
-            PendingPatches = pendingPatches,
-            OauthLogin     = oauthLoginResult,
-            State          = loginState,
-            UniqueId       = uid
-        };
-    }
-
-    public Process? LaunchGame
-    (
-        IGameRunner    runner,
-        string         sessionId,
-        int            region,
-        int            expansionLevel,
-        string         additionalArguments,
-        DirectoryInfo  gamePath,
-        ClientLanguage language,
-        bool           encryptArguments,
-        DpiAwareness   dpiAwareness
-    )
-    {
-        Log.Information
-        (
-            "XivGame::LaunchGame(args:{AdditionalArguments})",
-            additionalArguments
-        );
-
-        var exePath     = Path.Combine(gamePath.FullName, "game", "ffxiv_dx11.exe");
-        var environment = new Dictionary<string, string>();
-
-        var argumentBuilder = new ArgumentBuilder()
-                              .Append("DEV.DataPathType",           "1")
-                              .Append("DEV.MaxEntitledExpansionID", expansionLevel.ToString())
-                              .Append("DEV.TestSID",                sessionId)
-                              .Append("DEV.UseSqPack",              "1")
-                              .Append("SYS.Region",                 region.ToString())
-                              .Append("language",                   ((int)language).ToString())
-                              .Append("resetConfig",                "0")
-                              .Append("ver",                        Repository.Ffxiv.GetVer(gamePath));
-
-        // This is a bit of a hack; ideally additionalArguments would be a dictionary or some KeyValue structure
-        if (!string.IsNullOrEmpty(additionalArguments))
-        {
-            var regex = new Regex(@"\s*(?<key>[^\s=]+)\s*=\s*(?<value>([^=]*$|[^=]*\s(?=[^\s=]+)))\s*", RegexOptions.Compiled);
-            foreach (Match match in regex.Matches(additionalArguments))
-                argumentBuilder.Append(match.Groups["key"].Value, match.Groups["value"].Value.Trim());
-        }
-
-        if (!File.Exists(exePath))
-            throw new BinaryNotPresentException(exePath);
-
-        var workingDir = Path.Combine(gamePath.FullName, "game");
-
-        var arguments = encryptArguments
-                            ? argumentBuilder.BuildEncrypted()
-                            : argumentBuilder.Build();
-
-        return runner.Start(exePath, workingDir, arguments, environment, dpiAwareness);
-    }
-
-    public async Task<PatchListEntry[]> CheckBootVersion(DirectoryInfo gamePath, bool forceBaseVersion = false)
-    {
-        //CN
-        return Array.Empty<PatchListEntry>();
-
-        var bootVersion = forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Boot.GetVer(gamePath);
-        var request = new HttpRequestMessage
-        (
-            HttpMethod.Get,
-            $"http://patch-bootver.ffxiv.com/http/win32/ffxivneo_release_boot/{bootVersion}/?time=" + GetLauncherFormattedTimeLongRounded()
-        );
-
-        request.Headers.AddWithoutValidation("User-Agent", Constants.PatcherUserAgent);
-        request.Headers.AddWithoutValidation("Host",       "patch-bootver.ffxiv.com");
-
-        var resp = await client.SendAsync(request);
-        var text = await resp.Content.ReadAsStringAsync();
-
-        if (string.IsNullOrWhiteSpace(text))
-            return Array.Empty<PatchListEntry>();
-
-        Log.Verbose("Boot patching is needed... List:\n{PatchList}", resp);
-
-        try
-        {
-            return PatchListParser.Parse(text);
-        }
-        catch (PatchListParseException ex)
-        {
-            Log.Information("Patch list:\n{PatchList}", ex.List);
-            throw;
-        }
-    }
-
-    public async Task<string> GenPatchToken(string patchUrl, string uniqueId)
-    {
-        // Yes, Square does use HTTP for this and sends tokens in headers. IT'S NOT MY FAULT.
-        var request = new HttpRequestMessage(HttpMethod.Post, "http://patch-gamever.ffxiv.com/gen_token");
-
-        request.Headers.AddWithoutValidation("Connection", "Keep-Alive");
-        //request.Headers.AddWithoutValidation("X-Patch-Unique-Id", uniqueId);
-        request.Headers.AddWithoutValidation("User-Agent", Constants.PatcherUserAgent);
-
-        request.Content = new StringContent(patchUrl);
-
-        var resp = await client.SendAsync(request);
-        resp.EnsureSuccessStatusCode();
-
-        return await resp.Content.ReadAsStringAsync();
-    }
-
-    public async Task<GateStatus> GetGateStatus(ClientLanguage language)
-    {
-        try
-        {
-            var reply = Encoding.UTF8.GetString
-            (
-                await DownloadAsLauncher
-                (
-                    $"https://frontier.ffxiv.com/worldStatus/gate_status.json?lang={language.GetLangCode()}&_={ApiHelpers.GetUnixMillis()}",
-                    language
-                ).ConfigureAwait(true)
-            );
-
-            return JsonConvert.DeserializeObject<GateStatus>(reply);
-        }
-        catch (Exception exc)
-        {
-            throw new Exception("Could not get gate status", exc);
-        }
-    }
-
-    public async Task<byte[]> DownloadAsLauncher(string url, ClientLanguage language, string contentType = "")
+    public async Task<byte[]> DownloadAsLauncher(string url, string contentType = "")
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url);
-        //request.Headers.AddWithoutValidation("Accept", "*/*");
-        //request.Headers.AddWithoutValidation("User-Agent", this.userAgent);
 
         if (!string.IsNullOrEmpty(contentType))
             request.Headers.AddWithoutValidation("Accept", contentType);
@@ -326,33 +105,633 @@ public partial class Launcher
         return await resp.Content.ReadAsByteArrayAsync();
     }
 
-    private static string GetVersionReport(DirectoryInfo gamePath, int exLevel, bool forceBaseVersion)
+    public async Task<LoginResult> LoginBySid(string sndaId, string sid)
     {
-        var verReport = $"{GetBootVersionHash(gamePath)}\n";
+        var oath = new OauthLoginResult
+        {
+            SndaId       = sndaId,
+            SessionId    = sid,
+            MaxExpansion = Constants.MaxExpansion,
+            LoginType    = LoginType.WeGameSid
+        };
 
-        if (exLevel >= 1)
-            verReport += $"ex1\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex1.GetVer(gamePath))}\n";
+        return new LoginResult
+        {
+            OauthLogin = oath,
+            State      = LoginState.Ok
+        };
+    }
 
-        if (exLevel >= 2)
-            verReport += $"ex2\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex2.GetVer(gamePath))}\n";
+    public async Task<LoginResult> LoginBySdoStatic(string account, string password, DcTraveler dcTraveler)
+    {
+        var guid       = await GetGuid();
+        var macAddress = SdoUtils.GetMacAddress();
+        //密码登录
+        var result = await GetJsonAsSdoClient
+                     (
+                         "staticLogin.json",
+                         new List<string>
+                         {
+                             "checkCodeFlag=1", "encryptFlag=0", $"inputUserId={account}", $"password={password}", $"mac={macAddress}", $"guid={guid}",
+                             "inputUserType=0&accountDomain=1&autoLoginFlag=0&autoLoginKeepTime=0&supportPic=2"
+                         }
+                     );
 
-        if (exLevel >= 3)
-            verReport += $"ex3\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex3.GetVer(gamePath))}\n";
+        if (result.ReturnCode != 0 || result.ErrorType != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
 
-        if (exLevel >= 4)
-            verReport += $"ex4\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex4.GetVer(gamePath))}\n";
+        if (string.IsNullOrEmpty(result.Data.Tgt))
+            throw new SdoLoginException((int)SdoLoginCustomExpectionCode.STATIC_NEED_CAPTCHA, "本次登录需要输入验证码,目前暂不支持,请使用其他登录方式登录。");
 
-        if (exLevel >= 5)
-            verReport += $"ex5\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex5.GetVer(gamePath))}\n";
+        Log.Information($"staticLogin.json:{result.Data.SndaId}:{result.Data.Tgt}");
 
-        return verReport;
+        var sndaId = result.Data.SndaId;
+        var tgt    = result.Data.Tgt;
+
+        if (dcTraveler != null)
+        {
+            dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+        }
+
+        var sessionId = await GetSessionId(tgt, guid);
+
+        var oath = new OauthLoginResult
+        {
+            SessionId   = sessionId,
+            InputUserId = account,
+            //Password = password,
+            SndaId              = sndaId,
+            AutoLoginSessionKey = null,
+            MaxExpansion        = Constants.MaxExpansion,
+            LoginType           = LoginType.SdoStatic
+        };
+
+        return new LoginResult
+        {
+            OauthLogin = oath,
+            State      = LoginState.Ok
+        };
+    }
+
+    public async Task<LoginResult> LoginByWeGameToken(string account, string token, bool autoLogin, DcTraveler dcTraveler)
+    {
+        var guid = await GetGuid();
+        var (sndaId, tgt, autoLoginSessionKey) = await ThirdPartyLogin(account, token, autoLogin, AUTO_LOGIN_KEEP_DAYS);
+
+        if (dcTraveler != null)
+        {
+            dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+        }
+
+        var sessionId = await GetSessionId(tgt, guid);
+
+        var oath = new OauthLoginResult
+        {
+            SessionId   = sessionId,
+            InputUserId = account,
+            //Password = password,
+            SndaId              = sndaId,
+            AutoLoginSessionKey = autoLogin ? autoLoginSessionKey : null,
+            MaxExpansion        = Constants.MaxExpansion,
+            LoginType           = LoginType.WeGameToken
+        };
+        return new LoginResult
+        {
+            OauthLogin = oath,
+            State      = LoginState.Ok
+        };
+    }
+
+    public async Task<LoginResult> LoginByScanQrCode(bool autoLogin, CancellationTokenSource cts, Action<byte[]> showQrCode, DcTraveler dcTraveler)
+    {
+        var guid = await GetGuid();
+        // Wait for Scan QrCode
+        string? sndaId  = null;
+        string? tgt     = null;
+        string? account = null;
+
+        while (!cts.IsCancellationRequested)
+        {
+            var (codeKey, qrCode, expiration) = await GetQRCode();
+            showQrCode?.Invoke(qrCode);
+            (sndaId, tgt, account) = await WaitingForScanQRCode(codeKey, guid, cts, expiration, AUTO_LOGIN_KEEP_DAYS);
+            if (sndaId != null)
+                break;
+        }
+
+        var newAccount = await GetAccountGroup(tgt, sndaId);
+        account = string.IsNullOrEmpty(account) ? newAccount : account;
+        string? autoLoginSessionKey = null;
+        if (autoLogin)
+            (tgt, autoLoginSessionKey) = await AccountGroupLogin(tgt, sndaId, AUTO_LOGIN_KEEP_DAYS);
+
+        if (dcTraveler != null)
+        {
+            dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+        }
+
+        var sessionId = await GetSessionId(tgt, guid);
+
+        var oath = new OauthLoginResult
+        {
+            SessionId   = sessionId,
+            InputUserId = account,
+            //Password = password,
+            SndaId              = sndaId,
+            AutoLoginSessionKey = autoLogin ? autoLoginSessionKey : null,
+            MaxExpansion        = Constants.MaxExpansion,
+            LoginType           = LoginType.SdoQrCode
+        };
+        return new LoginResult
+        {
+            OauthLogin = oath,
+            State      = LoginState.Ok
+        };
+    }
+
+    public async Task<LoginResult> LoginBySlide(string account, bool autoLogin, CancellationTokenSource cts, Action<string> showVerificationCode, DcTraveler dcTraveler)
+    {
+        var guid = await GetGuid();
+        // Wait for Slide
+        await CancelPushMessageLogin(string.Empty, guid);
+        var (pushMsgSerialNum, pushMsgSessionKey, expiration) = await SendPushMessage(account);
+        showVerificationCode?.Invoke(pushMsgSerialNum);
+        var (sndaId, tgt, autoLoginSessionKey) = await WaitingForSlideOnDaoyuApp(pushMsgSessionKey, pushMsgSerialNum, guid, expiration, cts, autoLogin, AUTO_LOGIN_KEEP_DAYS);
+
+        if (dcTraveler != null)
+        {
+            dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+        }
+
+        var sessionId = await GetSessionId(tgt, guid);
+
+        var oath = new OauthLoginResult
+        {
+            SessionId   = sessionId,
+            InputUserId = account,
+            //Password = password,
+            SndaId              = sndaId,
+            AutoLoginSessionKey = autoLogin ? autoLoginSessionKey : null,
+            MaxExpansion        = Constants.MaxExpansion,
+            LoginType           = LoginType.SdoSlide
+        };
+        return new LoginResult
+        {
+            OauthLogin = oath,
+            State      = LoginState.Ok
+        };
+    }
+
+    public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DcTraveler dcTraveler)
+    {
+        var guid = await GetGuid();
+        //快速登录,刷新SessionKey
+        var (sndaId, tgt, newAutoLoginSessionKey) = await UpdateAutoLoginSessionKey(guid, autoLoginSessionKey);
+
+        //快速登录
+        var result = await GetJsonAsSdoClient("fastLogin.json", new List<string> { $"tgt={tgt}", $"guid={guid}" });
+
+        if (result.ReturnCode != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason, true);
+
+        sndaId = result.Data.SndaId;
+        tgt    = result.Data.Tgt;
+
+        try
+        {
+            if (dcTraveler != null)
+            {
+                dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+                dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+            }
+
+            var sessionId = await GetSessionId(tgt, guid);
+            var oath = new OauthLoginResult
+            {
+                SessionId   = sessionId,
+                InputUserId = account,
+                //Password = password,
+                SndaId              = sndaId,
+                AutoLoginSessionKey = newAutoLoginSessionKey,
+                MaxExpansion        = Constants.MaxExpansion,
+                LoginType           = LoginType.AutoLoginSession
+            };
+            return new LoginResult
+            {
+                OauthLogin = oath,
+                State      = LoginState.Ok
+            };
+        }
+        catch (Exception ex)
+        {
+            if (ex is SdoLoginException sdoEx)
+            {
+                sdoEx.RemoveAutoLoginSessionKey = true;
+                throw sdoEx;
+            }
+
+            throw;
+        }
+
+    }
+
+    public async Task<string> GetSessionId(string tgt, string guid)
+    {
+        var promotionResult = await GetPromotionInfo(tgt);
+        return await SsoLogin(tgt, guid);
+    }
+
+    public async Task<string> GetDcTravelSessionId(string tgt, string guid)
+    {
+        var promotionResult = await GetPromotionInfo(tgt, "https://ff14bjz.sdo.com/RegionKanTelepo");
+        return await SsoLogin(tgt, guid);
     }
 
     /// <summary>
-    ///     Check ver and bck files for sanity.
+    ///     获取石之家登录的 ticket(appId=6788)
     /// </summary>
-    /// <param name="gamePath"></param>
-    /// <param name="exLevel"></param>
+    public async Task<string> GetRisingstoneTicket(string tgt, string guid)
+    {
+        const string RISINGSTONE_APP_ID = "6788";
+        // serviceUrl 需要 URL 编码
+        var serviceUrl = "https://apiff14risingstones.web.sdo.com/api/home/GHome/login?redirectUrl=https://ff14risingstones.web.sdo.com/pc/index.html";
+        Log.Information($"[Risingstone] GetRisingstoneTicket: tgt={tgt?.Substring(0, Math.Min(10, tgt?.Length ?? 0))}..., guid={guid}, appId={RISINGSTONE_APP_ID}");
+
+        try
+        {
+            // appId=6788 调用 GetPromotionInfo
+            var promotionResult = await GetPromotionInfoWithAppId(tgt, serviceUrl, RISINGSTONE_APP_ID);
+            Log.Information($"[Risingstone] GetPromotionInfo success: returnCode={promotionResult.ReturnCode}");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Risingstone] GetPromotionInfo failed");
+            throw;
+        }
+
+        // appId=6788 调用 SsoLogin
+        var ticket = await SsoLoginWithAppId(tgt, guid, RISINGSTONE_APP_ID);
+        Log.Information($"[Risingstone] SsoLogin success: ticket={ticket?.Substring(0, Math.Min(20, ticket?.Length ?? 0))}...");
+        return ticket;
+    }
+
+    /// <summary>
+    ///     获取石之家登录 Cookie (ff14risingstones=xxx)
+    /// </summary>
+    public async Task<string> GetRisingstoneCookieAsync(string tgt, string guid)
+    {
+        var ticket = await GetRisingstoneTicket(tgt, guid);
+        Log.Information($"[Risingstone] Got ticket: {ticket?.Substring(0, Math.Min(20, ticket?.Length ?? 0))}...");
+
+        var cookieContainer = new CookieContainer();
+        var handler = new HttpClientHandler
+        {
+            CookieContainer        = cookieContainer,
+            AllowAutoRedirect      = true,
+            UseCookies             = true,
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
+        };
+
+        using var httpClient = new HttpClient(handler);
+
+        // API 风格的请求头
+        httpClient.DefaultRequestHeaders.Clear();
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept",             "application/json, text/plain, */*");
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Language",    "zh-CN,zh;q=0.9,en;q=0.8");
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua",          "\"Microsoft Edge\";v=\"122\", \"Chromium\";v=\"122\", \"Not/A)Brand\";v=\"24\"");
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua-Mobile",   "?0");
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Ch-Ua-Platform", "\"Windows\"");
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest",     "empty");
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode",     "cors");
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site",     "same-site");
+        httpClient.DefaultRequestHeaders.TryAddWithoutValidation
+            ("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0");
+
+        try
+        {
+            // 第一步：先访问石之家主页，获取初始 Cookie 和建立 WAF 会话
+            Log.Information("[Risingstone] Step 1: Visiting homepage to establish session...");
+            var homepageUrl = "https://ff14risingstones.web.sdo.com/pc/index.html";
+
+            // 第一次访问主页时临时切换为文档请求风格
+            httpClient.DefaultRequestHeaders.Remove("Accept");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Dest");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Mode");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Site");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept",                    "text/html,*/*");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest",            "document");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode",            "navigate");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site",            "none");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-User",            "?1");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Upgrade-Insecure-Requests", "1");
+
+            using var homeResp = await httpClient.GetAsync(homepageUrl);
+            Log.Information($"[Risingstone] Homepage response status: {homeResp.StatusCode}");
+
+            await Task.Delay(500);
+
+            // 第二步：调用登录 API - 切换回 API 风格
+            var initialUrl = $"https://apiff14risingstones.web.sdo.com/api/home/GHome/login?redirectUrl=https://ff14risingstones.web.sdo.com/pc/index.html&ticket={ticket}";
+            Log.Information("[Risingstone] Step 2: Calling login API...");
+
+            // 恢复 API 风格的请求头
+            httpClient.DefaultRequestHeaders.Remove("Accept");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Dest");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Mode");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Site");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-User");
+            httpClient.DefaultRequestHeaders.Remove("Upgrade-Insecure-Requests");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept",         "application/json, text/plain, */*");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "empty");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode", "cors");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site", "same-site");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Referer",        "https://ff14risingstones.web.sdo.com/");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Origin",         "https://ff14risingstones.web.sdo.com");
+
+            using var loginResp     = await httpClient.GetAsync(initialUrl);
+            var       loginRespText = await loginResp.Content.ReadAsStringAsync();
+            Log.Information($"[Risingstone] Login API response status: {loginResp.StatusCode}");
+
+            // 检查是否被 WAF 拦截
+            if ((int)loginResp.StatusCode == 567 || loginRespText.Contains("EdgeOne") || loginRespText.Contains("AccessDeny"))
+            {
+                Log.Error("[Risingstone] Request blocked by WAF");
+                throw new Exception("Request blocked by WAF. Please try again later.");
+            }
+
+            // 检查登录 API 响应
+            if (loginRespText.Contains("\"code\""))
+            {
+                try
+                {
+                    var loginJson = JsonDocument.Parse(loginRespText);
+
+                    if (loginJson.RootElement.TryGetProperty("code", out var codeElement))
+                    {
+                        var code = codeElement.GetInt32();
+
+                        if (code != 10000 && code != 0)
+                        {
+                            var msg = loginJson.RootElement.TryGetProperty("msg", out var msgElement)
+                                          ? msgElement.GetString()
+                                          : "Unknown error";
+                            Log.Error($"[Risingstone] Login API returned error: code={code}, msg={msg}");
+                            throw new Exception($"Risingstone login failed: ({code}){msg}");
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    // 不是 JSON 响应，可能是重定向页面，继续处理
+                }
+            }
+
+            // 第三步：请求目标页面完成会话
+            await Task.Delay(200);
+            Log.Information("[Risingstone] Step 3: Finalizing session...");
+
+            // 恢复文档请求风格访问主页
+            httpClient.DefaultRequestHeaders.Remove("Accept");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Dest");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Mode");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Site");
+            httpClient.DefaultRequestHeaders.Remove("Referer");
+            httpClient.DefaultRequestHeaders.Remove("Origin");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept",         "text/html,*/*");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest", "document");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode", "navigate");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site", "same-origin");
+
+            using var finalResp = await httpClient.GetAsync(homepageUrl);
+            Log.Information($"[Risingstone] Final page response status: {finalResp.StatusCode}");
+
+            // 第四步：调用 isLogin API 触发 Cookie 设置 - 再切回 API 风格
+            httpClient.DefaultRequestHeaders.Remove("Accept");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Dest");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Mode");
+            httpClient.DefaultRequestHeaders.Remove("Sec-Fetch-Site");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Accept",           "application/json, text/plain, */*");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Dest",   "empty");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Mode",   "cors");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Sec-Fetch-Site",   "same-site");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Referer",          "https://ff14risingstones.web.sdo.com/");
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+
+            var       isLoginUrl  = $"https://apiff14risingstones.web.sdo.com/api/home/GHome/isLogin?tempsuid={Guid.NewGuid()}";
+            using var isLoginResp = await httpClient.GetAsync(isLoginUrl);
+            var       isLoginText = await isLoginResp.Content.ReadAsStringAsync();
+            Log.Information($"[Risingstone] isLogin response: {isLoginText}");
+
+            // 验证 isLogin 响应
+            try
+            {
+                var isLoginJson = JsonDocument.Parse(isLoginText);
+
+                if (isLoginJson.RootElement.TryGetProperty("code", out var codeElement))
+                {
+                    var code = codeElement.GetInt32();
+
+                    if (code != 10000)
+                    {
+                        var msg = isLoginJson.RootElement.TryGetProperty("msg", out var msgElement)
+                                      ? msgElement.GetString()
+                                      : "Not logged in";
+                        Log.Error($"[Risingstone] isLogin check failed: code={code}, msg={msg}");
+                        throw new Exception($"Risingstone login verification failed: ({code}){msg}");
+                    }
+
+                    Log.Information("[Risingstone] isLogin check passed, user is logged in");
+                }
+            }
+            catch (JsonException ex)
+            {
+                Log.Error(ex, "[Risingstone] Failed to parse isLogin response");
+                throw new Exception("Failed to verify Risingstone login status");
+            }
+
+            // 从 CookieContainer 中提取 ff14risingstones Cookie
+            var allCookies = cookieContainer.GetAllCookies();
+            Log.Information($"[Risingstone] Total cookies collected: {allCookies.Count}");
+
+            Cookie risingstoneCookie = null;
+
+            foreach (Cookie c in allCookies)
+            {
+                if (c.Name.Equals("ff14risingstones", StringComparison.OrdinalIgnoreCase))
+                {
+                    risingstoneCookie = c;
+                    break;
+                }
+            }
+
+            if (risingstoneCookie != null && !string.IsNullOrWhiteSpace(risingstoneCookie.Value))
+            {
+                Log.Information("[Risingstone] Successfully obtained cookie");
+                return $"ff14risingstones={risingstoneCookie.Value}";
+            }
+
+            Log.Error("[Risingstone] ff14risingstones cookie not found in response");
+            throw new Exception("Failed to obtain ff14risingstones cookie");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[Risingstone] Failed to get cookie");
+            throw;
+        }
+    }
+
+    public Process? LaunchGameSdo
+    (
+        IGameRunner   runner,
+        string        sessionId,
+        string        sndaId,
+        int           dcTravelPort,
+        string        areaId,
+        string        lobbyHost,
+        string        gmHost,
+        string        dbHost,
+        string        areasInfo,
+        string        additionalArguments,
+        DirectoryInfo gamePath,
+        bool          encryptArguments,
+        DpiAwareness  dpiAwareness
+    )
+    {
+        Log.Information
+        (
+            $"XivGame::LaunchGame(args:{additionalArguments})"
+        );
+        //EnsureLoginEntry(gamePath);
+        var exePath = Path.Combine(gamePath.FullName, "game", "ffxiv_dx11.exe");
+
+        var environment = new Dictionary<string, string>();
+        var argumentBuilder = new ArgumentBuilder()
+                              .Append("-AppID",                     "100001900")
+                              .Append("-AreaID",                    areaId)
+                              .Append("Dev.LobbyHost01",            lobbyHost)
+                              .Append("Dev.LobbyPort01",            "54994")
+                              .Append("Dev.GMServerHost",           gmHost)
+                              .Append("Dev.SaveDataBankHost",       dbHost)
+                              .Append("resetConfig",                "0")
+                              .Append("DEV.MaxEntitledExpansionID", "1")
+                              .Append("DEV.TestSID",                sessionId)
+                              .Append("XL.SndaId",                  sndaId)
+                              .Append("XL.LobbyHosts",              $"{areasInfo}")
+                              .Append("XL.DcTraveler",              $"{dcTravelPort}");
+
+        // This is a bit of a hack; ideally additionalArguments would be a dictionary or some KeyValue structure
+        if (!string.IsNullOrEmpty(additionalArguments))
+        {
+            var regex = new Regex(@"\s*(?<key>[^=]+)\s*=\s*(?<value>[^\s]+)\s*", RegexOptions.Compiled);
+            foreach (Match match in regex.Matches(additionalArguments))
+                argumentBuilder.Append(match.Groups["key"].Value, match.Groups["value"].Value);
+        }
+
+        if (!File.Exists(exePath))
+            throw new BinaryNotPresentException(exePath);
+
+        var workingDir = Path.Combine(gamePath.FullName, "game");
+
+        var arguments = encryptArguments
+                            ? argumentBuilder.BuildEncrypted()
+                            : argumentBuilder.Build();
+
+        return runner.Start(exePath, workingDir, arguments, environment, dpiAwareness);
+    }
+
+    public void EnsureLoginEntry(DirectoryInfo gamePath)
+    {
+        var bootPath   = Path.Combine(gamePath.FullName,   "sdo", "sdologin");
+        var entryDll   = Path.Combine(bootPath,            "sdologinentry64.dll");
+        var xlEntryDll = Path.Combine(Paths.ResourcesPath, "sdologinentry64.dll");
+
+        if (!File.Exists(xlEntryDll))
+            xlEntryDll = Path.Combine(Paths.ResourcesPath, "binaries", "sdologinentry64.dll");
+
+        try
+        {
+            if (!Directory.Exists(bootPath))
+            {
+                // 没有sdo文件夹的纯净客户端
+                Directory.CreateDirectory(bootPath);
+            }
+
+            if (!File.Exists(entryDll))
+            {
+                Log.Information($"未发现sdologinentry64.dll,将复制${xlEntryDll}");
+                File.Copy(xlEntryDll, entryDll, true);
+            }
+            else
+            {
+                if (FileVersionInfo.GetVersionInfo(entryDll).CompanyName == "ottercorp")
+                {
+                    if (GetFileHash(entryDll) != GetFileHash(xlEntryDll))
+                    {
+                        Log.Information($"xlEntryDll:{entryDll}版本不一致,替换sdologinentry64.dll");
+                        File.Copy(xlEntryDll, entryDll, true);
+                    }
+                    else
+                        Log.Information("sdologinentry64.dll校验成功");
+                }
+                else
+                {
+                    // 备份盛趣的sdologinentry64.dll 为 sdologinentry64.sdo.dll
+                    Log.Information("检测到sdologinentry64.dll不是ottercorp版本,备份原文件并替换");
+                    File.Copy(entryDll,   Path.Combine(bootPath, "sdologinentry64.sdo.dll"), true);
+                    File.Copy(xlEntryDll, entryDll,                                          true);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"未能复制{xlEntryDll}至{entryDll}\n请检查程序是否有{entryDll}的写入权限,或者{gamePath.FullName}目录下的游戏正在运行。\n{ex.Message}");
+        }
+    }
+
+    public async Task<LoginResult> CheckGameUpdate(SdoArea area, DirectoryInfo gamePath, bool forceBaseVersion)
+    {
+        var request = new HttpRequestMessage
+        (
+            HttpMethod.Post,
+            $"http://{area.AreaPatch}/http/win32/shanda_release_chs_game/{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ffxiv.GetVer(gamePath))}"
+        );
+
+        request.Headers.AddWithoutValidation("X-Hash-Check", "enabled");
+        request.Headers.AddWithoutValidation("User-Agent",   Constants.PatcherUserAgent);
+
+        EnsureVersionSanity(gamePath, Constants.MaxExpansion);
+        request.Content = new StringContent(GetVersionReport(gamePath, Constants.MaxExpansion, forceBaseVersion));
+
+        var resp = await client.SendAsync(request);
+        var text = await resp.Content.ReadAsStringAsync();
+
+        // Conflict indicates that boot needs to update, we do not get a patch list or a unique ID to download patches with in this case
+        if (resp.StatusCode == HttpStatusCode.Conflict)
+            return new LoginResult { PendingPatches = null, State = LoginState.NeedsPatchBoot, OauthLogin = null };
+
+        if (!resp.Headers.TryGetValues("X-Patch-Unique-Id", out var uidVals))
+        {
+            Log.Error($"RequestUri:{request.RequestUri}");
+            Log.Error($"Content:{request.Content}");
+            Log.Error($"Response:{text}");
+            throw new InvalidResponseException("Could not get X-Patch-Unique-Id.", text);
+        }
+
+        var uid = uidVals.First();
+
+        if (string.IsNullOrEmpty(text))
+            return new LoginResult { PendingPatches = null, State = LoginState.Ok, OauthLogin = null };
+
+        Log.Verbose("Game Patching is needed... List:\n{PatchList}", text);
+
+        var pendingPatches = PatchListParser.Parse(text);
+        return new LoginResult { PendingPatches = pendingPatches, State = LoginState.NeedsPatchGame, OauthLogin = new OauthLoginResult() };
+    }
+
     private static void EnsureVersionSanity(DirectoryInfo gamePath, int exLevel)
     {
         var failed = IsBadVersionSanity(gamePath, Repository.Ffxiv);
@@ -409,42 +788,11 @@ public partial class Launcher
         return false;
     }
 
-    /// <summary>
-    ///     Calculate the hash that is sent to patch-gamever for version verification/tamper protection.
-    ///     This same hash is also sent in lobby, but for ffxiv.exe and ffxiv_dx11.exe.
-    /// </summary>
-    /// <returns>String of hashed EXE files.</returns>
-    private static string GetBootVersionHash(DirectoryInfo gamePath)
-    {
-        // FIXME
-        return "ffxivboot.exe/149504/5f2a70612aa58378eb347869e75adeb8f5581a1b";
-        var result = Repository.Boot.GetVer(gamePath) + "=";
-
-        for (var i = 0; i < FilesToHash.Length; i++)
-        {
-            result +=
-                $"{FilesToHash[i]}/{GetFileHash(Path.Combine(gamePath.FullName, "boot", FilesToHash[i]))}";
-
-            if (i != FilesToHash.Length - 1)
-                result += ",";
-        }
-
-        return result;
-    }
-
-    private static string GetOauthTopUrl(int region, bool isFreeTrial)
-    {
-        var url =
-            $"https://ffxiv-login.square-enix.com/oauth/ffxivarr/login/top?lng=en&rgn={region}&isft={(isFreeTrial ? "1" : "0")}&cssmode=1&isnew=1&launchver=3";
-
-        return url;
-    }
-
     private static string GetFileHash(string file)
     {
         var bytes = File.ReadAllBytes(file);
 
-        var hash       = SHA1.Create().ComputeHash(bytes);
+        var hash       = SHA1.HashData(bytes);
         var hashstring = string.Join("", hash.Select(b => b.ToString("x2")).ToArray());
 
         var length = new FileInfo(file).Length;
@@ -452,204 +800,464 @@ public partial class Launcher
         return length + "/" + hashstring;
     }
 
-    //public async Task<GateStatus> GetLoginStatus()
-    //{
-    //    return true;
-    //    try
-    //    {
-    //        var reply = Encoding.UTF8.GetString(
-    //            await DownloadAsLauncher(
-    //                $"https://frontier.ffxiv.com/worldStatus/login_status.json?_={ApiHelpers.GetUnixMillis()}", ClientLanguage.English).ConfigureAwait(true));
-
-    //        return JsonConvert.DeserializeObject<GateStatus>(reply);
-    //    }
-    //    catch (Exception exc)
-    //    {
-    //        throw new Exception("Could not get login status", exc);
-    //    }
-    //}
-
-    private static string MakeComputerId()
+    private static string GetVersionReport(DirectoryInfo gamePath, int exLevel, bool forceBaseVersion)
     {
-        var hashString = Environment.MachineName + Environment.UserName + Environment.OSVersion + Environment.ProcessorCount;
+        var verReport = "ffxivboot.exe/149504/5f2a70612aa58378eb347869e75adeb8f5581a1b\n";
 
-        using var sha1 = HashAlgorithm.Create("SHA1");
+        if (exLevel >= 1)
+            verReport += $"ex1\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex1.GetVer(gamePath))}\n";
 
-        var bytes = new byte[5];
+        if (exLevel >= 2)
+            verReport += $"ex2\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex2.GetVer(gamePath))}\n";
 
-        Debug.Assert(sha1 != null, nameof(sha1) + " != null");
-        Array.Copy(sha1!.ComputeHash(Encoding.Unicode.GetBytes(hashString)), 0, bytes, 1, 4);
+        if (exLevel >= 3)
+            verReport += $"ex3\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex3.GetVer(gamePath))}\n";
 
-        var checkSum = (byte)-(bytes[1] + bytes[2] + bytes[3] + bytes[4]);
-        bytes[0] = checkSum;
+        if (exLevel >= 4)
+            verReport += $"ex4\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex4.GetVer(gamePath))}\n";
 
-        return BitConverter.ToString(bytes).Replace("-", "").ToLower();
+        if (exLevel >= 5)
+            verReport += $"ex5\t{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ex5.GetVer(gamePath))}\n";
+
+        return verReport;
     }
 
-    // Used to be used for frontier top, they now use the un-rounded long timestamp
-    private static string GetLauncherFormattedTime() => DateTime.UtcNow.ToString("yyyy-MM-dd-HH");
-
-    private static string GetLauncherFormattedTimeLong() => DateTime.UtcNow.ToString("yyyy-MM-dd-HH-mm");
-
-    private static string GetLauncherFormattedTimeLongRounded()
+    private async Task<string> GetGuid()
     {
-        var formatted = DateTime.UtcNow.ToString("yyyy-MM-dd-HH-mm", new CultureInfo("en-US")).ToCharArray();
-        formatted[15] = '0';
+        var result = await GetJsonAsSdoClient("getGuid.json", new List<string> { "generateDynamicKey=1" });
 
-        return new string(formatted);
+        if (result.ErrorType != 0)
+            throw new OauthLoginException(result.ToString());
+
+        var dynamicKey = result.Data.DynamicKey;
+        return result.Data.Guid;
     }
 
-    private static string GenerateUserAgent()
+    private async Task<(string sndaId, string tgt, string autoLoginSessionKey)> UpdateAutoLoginSessionKey(string guid, string autoLoginSessionKey)
     {
-        return
-            "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; InfoPath.2; .NET CLR 2.0.50727; MS-RTC LM 8; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET CLR 1.1.4322; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)";
+        var result = await GetJsonAsSdoClient("autoLogin.json", new List<string> { $"autoLoginSessionKey={autoLoginSessionKey}", $"guid={guid}" });
+        //-10515005 "对不起，自动登录已失效，请重新登录"
+        if (result.ReturnCode != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason, true);
+        Log.Information($"LoginSessionKey Updated, {result.Data.AutoLoginMaxAge / 3600f:F1} hours left");
+        autoLoginSessionKey = result.Data.AutoLoginSessionKey;
+        var tgt    = result.Data.Tgt;
+        var sndaId = result.Data.SndaId;
+        return (sndaId, tgt, autoLoginSessionKey);
     }
 
-    private async Task<(string? Uid, LoginState result, PatchListEntry[] PendingGamePatches)> RegisterSession(OauthLoginResult loginResult, DirectoryInfo gamePath, bool forceBaseVersion)
+    #region 第三方登录
+
+    private async Task<(string sndaId, string tgt, string key)> ThirdPartyLogin(string thridUserId, string token, bool autoLogin, int autoLoginKeepDays)
     {
-        var request = new HttpRequestMessage
-        (
-            HttpMethod.Post,
-            $"{loginResult}/http/win32/shanda_release_chs_game/{(forceBaseVersion ? Constants.BASE_GAME_VERSION : Repository.Ffxiv.GetVer(gamePath))}"
-        );
+        //Log.Error($"TOKEN:{token}");
+        //第三方登录
+        var result = await GetJsonAsSdoClient
+                     (
+                         "thirdPartyLogin",
+                         new List<string>
+                         {
+                             "companyid=310", "islimited=0", $"thridUserId={thridUserId}", $"token={token}",
+                             autoLogin ? $"autoLoginFlag=1&autoLoginKeepTime={autoLoginKeepDays}" : "autoLoginFlag=0&autoLoginKeepTime=0"
+                         }
+                     );
 
-        request.Headers.AddWithoutValidation("Connection",   "Keep-Alive");
-        request.Headers.AddWithoutValidation("User-Agent",   Constants.PatcherUserAgent);
-        request.Headers.AddWithoutValidation("X-Hash-Check", "enabled");
+        if (result.ReturnCode != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
 
-        if (!forceBaseVersion)
-            EnsureVersionSanity(gamePath, loginResult.MaxExpansion);
-        request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(GetVersionReport(gamePath, loginResult.MaxExpansion, forceBaseVersion)));
+        Log.Information($"thirdPartyLogin:{result.Data.SndaId}:{result.Data.Tgt}");
 
-        var resp = await client.SendAsync(request);
-        var text = await resp.Content.ReadAsStringAsync();
+        return (result.Data.SndaId, result.Data.Tgt, result.Data.AutoLoginSessionKey);
 
-        /*
-         * Conflict indicates that boot needs to update, we do not get a patch list or a unique ID to download patches with in this case.
-         * This means that server requested us to patch Boot, even though in order to get to this place, we just checked for boot patches.
-         *
-         * In turn, that means that something or someone modified boot binaries without our involvement.
-         * We have no way to go back to a "known" good state other than to do a full reinstall.
-         *
-         * This has happened multiple times with users that have viruses that infect other EXEs and change their hashes, causing the update
-         * server to reject our boot hashes.
-         *
-         * In the future we may be able to just delete /boot and run boot patches again, but this doesn't happen often enough to warrant the
-         * complexity and if boot is broken, the game probably is too.
-         */
-        if (resp.StatusCode == HttpStatusCode.Conflict)
-            return (null, LoginState.NeedsPatchBoot, Array.Empty<PatchListEntry>());
-
-        if (resp.StatusCode == HttpStatusCode.Gone)
-            throw new InvalidResponseException("The server indicated that the version requested is no longer being serviced or not present.", text);
-
-        if (!resp.Headers.TryGetValues("X-Patch-Unique-Id", out var uidVals))
-            throw new InvalidResponseException($"Could not get X-Patch-Unique-Id. ({resp.StatusCode})", text);
-
-        var uid = uidVals.First();
-
-        if (string.IsNullOrEmpty(text))
-            return (uid, LoginState.Ok, Array.Empty<PatchListEntry>());
-
-        Log.Verbose("Game Patching is needed... List:\n{PatchList}", text);
-
-        var pendingPatches = PatchListParser.Parse(text);
-        return (uid, LoginState.NeedsPatchGame, pendingPatches);
     }
 
-    private async Task<string> GetOauthTop(string url)
+    #endregion
+
+    #region AccountGroup
+
+    private async Task<string> GetAccountGroup(string tgt, string sndaId)
     {
-        // This is needed to be able to access the login site correctly
-        var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.AddWithoutValidation("Accept",          "image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/xaml+xml, application/x-ms-xbap, */*");
-        request.Headers.AddWithoutValidation("Referer",         GenerateFrontierReferer(settings.ClientLanguage.GetValueOrDefault(ClientLanguage.English)));
-        request.Headers.AddWithoutValidation("Accept-Encoding", "gzip, deflate");
-        request.Headers.AddWithoutValidation("Accept-Language", settings.AcceptLanguage);
-        request.Headers.AddWithoutValidation("User-Agent",      userAgent);
-        request.Headers.AddWithoutValidation("Connection",      "Keep-Alive");
-        request.Headers.AddWithoutValidation("Cookie",          "_rsid=\"\"");
+        var result = await GetJsonAsSdoClient("getAccountGroup", new List<string> { "serviceUrl=http%3A%2F%2Fwww.sdo.com", $"tgt={tgt}" });
 
-        var reply = await client.SendAsync(request);
+        if (result.ReturnCode != 0 || result.ErrorType != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
 
-        var text = await reply.Content.ReadAsStringAsync();
+        if (!result.Data.SndaIdArray.Contains(sndaId))
+            throw new SdoLoginException((int)SdoLoginCustomExpectionCode.SCAN_QRCODE_GET_ACCOUNT_FAIL, "获取用户名失败");
 
-        if (text.Contains("window.external.user(\"restartup\");"))
-            throw new InvalidResponseException("restartup", text);
+        Log.Information($"getAccountGroup:{string.Join(",", result.Data.SndaIdArray)}");
 
-        var storedRegex = new Regex(@"\t<\s*input .* name=""_STORED_"" value=""(?<stored>.*)"">");
-        var matches     = storedRegex.Matches(text);
+        return result.Data.SndaIdArray.Contains(sndaId) ? result.Data.AccountArray[result.Data.SndaIdArray.IndexOf(sndaId)] : null;
+    }
 
-        if (matches.Count == 0)
+    #endregion
+
+    #region AccountGroupLogin
+
+    private async Task<(string tgt, string autoLoginSessionKey)> AccountGroupLogin(string tgt, string sndaId, int autoLoginKeepDays)
+    {
+        var result = await GetJsonAsSdoClient
+                     (
+                         "accountGroupLogin",
+                         new List<string> { "serviceUrl=http%3A%2F%2Fwww.sdo.com", $"tgt={tgt}", $"sndaId={sndaId}", "autoLoginFlag=1", $"autoLoginKeepTime={autoLoginKeepDays}" }
+                     );
+        Log.Information($"accountGroupLogin:AutoLoginMaxAge:{result.Data.AutoLoginMaxAge}");
+
+        if (result.ReturnCode != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+        return (result.Data.Tgt, result.Data.AutoLoginSessionKey);
+    }
+
+    #endregion
+
+    private Task<HttpResponseMessage> SendSdoHttpRequestAsync(HttpMethod method, string endPoint, List<string> para, string tgt = null, string appId = "100001900")
+    {
+        var request  = GetSdoHttpRequestMessage(method, endPoint, para, tgt, appId);
+        var response = loginClient.SendAsync(request);
+        return response;
+    }
+
+    private HttpRequestMessage GetSdoHttpRequestMessage(HttpMethod method, string endPoint, List<string> para, string tgt = null, string appId = "100001900")
+    {
+        var mac = SdoUtils.GetMac();
+        var commonParas = new List<string>
         {
-            Log.Error("Could not get STORED. Page:\n{Text}", text);
-            throw new InvalidResponseException("Could not get STORED.", text);
+            "authenSource=1",
+            "appId=100001900",
+            "areaId=1",
+            "appIdSite=100001900",
+            "locale=zh_CN",
+            "productId=4",
+            "frameType=1",
+            "endpointOS=1",
+            "version=21",
+            "customSecurityLevel=2",
+            $"deviceId={SdoUtils.GetDeviceID()}",
+            "thirdLoginExtern=0",
+            $"macId={mac}",
+            // 不知道什么时候盛趣加了点新的参数
+            "epIp=",
+            $"epName={SdoUtils.GetHostName()}",
+            "extendInfo=",
+            "sdoVersion=",
+            "runTimeId=",
+            // 为何都是空的，何意味，包抓来便是如此？
+            "productVersion=1.9.7.10",
+            "tag=0"
+        };
+        para.AddRange(commonParas);
+        var casDomain = useGlobalDomain ? "cas.sdo.com" : "n1.cas.sdo.com";
+        var request   = new HttpRequestMessage(method, $"https://{casDomain}/authen/{endPoint}?{string.Join("&", para)}");
+        //Log.Information($"https://cas.sdo.com/authen/{endPoint}?{string.Join("&", para)}");
+        request.Headers.AddWithoutValidation("Cache-Control", "no-cache");
+        request.Headers.AddWithoutValidation
+        (
+            "User-Agent",
+            "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; InfoPath.2; .NET CLR 2.0.50727; MS-RTC LM 8; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET CLR 1.1.4322; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)"
+        );
+        request.Headers.AddWithoutValidation("Host", "cas.sdo.com");
+
+        if (endPoint is "ssoLogin.json" or "getPromotionInfo.json")
+        {
+            request.Headers.AddWithoutValidation("Cookie", $"CASTGC={tgt}; CAS_LOGIN_STATE=1");
+            //Log.Information($"Added Cookie:CASCID={CASCID}; SECURE_CASCID={SECURE_CASCID}; CASTGC=***; CAS_LOGIN_STATE=1");
         }
 
-        return matches[0].Groups["stored"].Value;
-    }
+        var cookies = loginCookies.GetAllCookies();
+        var hasCid  = cookies.Any(cookie => string.Equals(cookie.Name, "CASCID", StringComparison.OrdinalIgnoreCase));
 
-    private async Task<OauthLoginResult> OauthLogin(string userName, string password, string otp, bool isFreeTrial, int region)
-    {
-        var topUrl = GetOauthTopUrl(region, isFreeTrial);
-        var stored = await GetOauthTop(topUrl);
-
-        var request = new HttpRequestMessage
-        (
-            HttpMethod.Post,
-            "https://ffxiv-login.square-enix.com/oauth/ffxivarr/login/login.send"
-        );
-
-        request.Headers.AddWithoutValidation("Accept",          "image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/xaml+xml, application/x-ms-xbap, */*");
-        request.Headers.AddWithoutValidation("Referer",         topUrl);
-        request.Headers.AddWithoutValidation("Accept-Language", settings.AcceptLanguage);
-        request.Headers.AddWithoutValidation("User-Agent",      userAgent);
-        //request.Headers.AddWithoutValidation("Content-Type", "application/x-www-form-urlencoded");
-        request.Headers.AddWithoutValidation("Accept-Encoding", "gzip, deflate");
-        request.Headers.AddWithoutValidation("Host",            "ffxiv-login.square-enix.com");
-        request.Headers.AddWithoutValidation("Connection",      "Keep-Alive");
-        request.Headers.AddWithoutValidation("Cache-Control",   "no-cache");
-        request.Headers.AddWithoutValidation("Cookie",          "_rsid=\"\"");
-
-        request.Content = new FormUrlEncodedContent
-        (
-            new Dictionary<string, string>
-            {
-                { "_STORED_", stored },
-                { "sqexid", userName },
-                { "password", password },
-                { "otppw", otp }
-                // { "saveid", "1" } // NOTE(goat): This adds a Set-Cookie with a filled-out _rsid value in the login response.
-            }
-        );
-
-        var response = await client.SendAsync(request);
-
-        var reply = await response.Content.ReadAsStringAsync();
-
-        var regex   = new Regex(@"window.external.user\(""login=auth,ok,(?<launchParams>.*)\);");
-        var matches = regex.Matches(reply);
-
-        if (matches.Count == 0)
-            throw new OauthLoginException(reply);
-
-        var launchParams = matches[0].Groups["launchParams"].Value.Split(',');
-
-        return new OauthLoginResult
+        if (!hasCid)
         {
-            SessionId     = launchParams[1],
-            Region        = int.Parse(launchParams[5]),
-            TermsAccepted = launchParams[3] != "0",
-            Playable      = launchParams[9] != "0",
-            MaxExpansion  = int.Parse(launchParams[13])
-        };
+            var randomCid = $"CID{SdoUtils.GetMD5(ASCIIEncoding.ASCII.GetBytes(mac))}";
+            Log.Information("Use MD5 of MAC address as CASCID");
+            request.Headers.AddWithoutValidation("Cookie", $"CASCID={randomCid}; SECURE_CASCID={randomCid};");
+        }
+
+        return request;
     }
 
-    private string GenerateFrontierReferer(ClientLanguage language)
+    private async Task<SdoLoginResult> GetJsonAsSdoClient(string endPoint, List<string> para, string tgt = null, string appId = "100001900")
     {
-        var langCode      = language.GetLangCode().Replace("-", "_");
-        var formattedTime = GetLauncherFormattedTimeLong();
+        try
+        {
+            var response = await SendSdoHttpRequestAsync(HttpMethod.Get, endPoint, para, tgt, appId);
+            var reply    = await response.Content.ReadAsStringAsync();
 
-        return string.Format(frontierUrlTemplate, langCode, formattedTime);
+            try
+            {
+                var result = JsonConvert.DeserializeObject<SdoLoginResult>(reply);
+                Log.Information($"{endPoint}:ErrorType={result.ErrorType}:ReturnCode={result.ReturnCode}:FailReason:{result.Data.FailReason}:NextAction={result.Data.NextAction}");
+                Log.Debug($"GetJsonAsSdoClient({endPoint}):\n{result.ToLog()}");
+                return result;
+            }
+            catch (JsonReaderException ex)
+            {
+                throw new JsonReaderException($"{ex.Message}\n {reply}");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (useGlobalDomain)
+            {
+                Log.Error(ex, "GetJsonAsSdoClient");
+                Log.Error("Switch to n1.cas.sdo.com");
+                useGlobalDomain = false;
+                return await GetJsonAsSdoClient(endPoint, para, tgt, appId);
+            }
+
+            throw;
+        }
+    }
+
+    public enum SdoLoginState
+    {
+        GotQRCode,
+        WaitingScanQRCode,
+        LoginSucess,
+        LoginFail,
+        WaitingConfirm,
+        OutTime
+    }
+
+    #region 手机APP滑动登陆
+
+    private async Task CancelPushMessageLogin(string pushMsgSessionKey, string guid)
+    {
+        // /authen/cancelPushMessageLogin.json
+        await GetJsonAsSdoClient("cancelPushMessageLogin.json", new List<string> { $"pushMsgSessionKey={pushMsgSessionKey}", $"guid={guid}" });
+    }
+
+    private async Task<(string pushMsgSerialNum, string pushMsgSessionKey, CancellationTokenSource slideExpiration)> SendPushMessage(string account)
+    {
+        var slideExpiration = new CancellationTokenSource();
+        slideExpiration.CancelAfter(SLIDE_EXPIRATION_TIME);
+
+        var result = await GetJsonAsSdoClient("sendPushMessage.json", new List<string> { $"inputUserId={account}" });
+
+        ///authen/sendPushMessage.json
+        //-14001710 请确保已安装叨鱼，并保持联网
+        //-1602726  该账号首次在本设备上登录，不支持一键登录，请使用二维码登录
+        //-10516808 用户未确认
+        if (result.ReturnCode != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+        var pushMsgSerialNum  = result.Data.PushMsgSerialNum;
+        var pushMsgSessionKey = result.Data.PushMsgSessionKey;
+        return (pushMsgSerialNum, pushMsgSessionKey, slideExpiration);
+    }
+
+    private async Task<(string sndaId, string tgt, string AutoLoginSessionKey)> WaitingForSlideOnDaoyuApp
+    (
+        string                  pushMsgSessionKey,
+        string                  pushMsgSerialNum,
+        string                  guid,
+        CancellationTokenSource slideExpiration,
+        CancellationTokenSource userCancel,
+        bool                    autoLogin,
+        int                     autoLoginKeepDays
+    )
+    {
+        while (!slideExpiration.IsCancellationRequested && !userCancel.IsCancellationRequested)
+        {
+            var result = await GetJsonAsSdoClient
+                         (
+                             "pushMessageLogin.json",
+                             autoLogin
+                                 ? new List<string> { $"pushMsgSessionKey={pushMsgSessionKey}", $"guid={guid}", "autoLoginFlag=1", $"autoLoginKeepTime={autoLoginKeepDays}" }
+                                 : new List<string> { $"pushMsgSessionKey={pushMsgSessionKey}", $"guid={guid}" }
+                         );
+
+            switch (result.ReturnCode)
+            {
+                case 0:
+                    return (result.Data.SndaId, result.Data.Tgt, result.Data.AutoLoginSessionKey);
+
+                case -10516808:
+                    //-10516808 用户未确认
+                    await Task.Delay(1000).ConfigureAwait(false);
+                    continue;
+
+                default:
+                    throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            }
+        }
+
+        throw new SdoLoginException((int)SdoLoginCustomExpectionCode.SLIDE_TIMEOUT_OR_CANCELED, "登录超时或被取消");
+    }
+
+    #endregion
+
+    #region 扫码登陆
+
+    private async Task<(string codeKey, byte[] qrCode, CancellationTokenSource cts)> GetQRCode()
+    {
+        // /authen/getCodeKey.json
+        var qrCodeExpiration = new CancellationTokenSource();
+        qrCodeExpiration.CancelAfter(QR_CODE_EXPIRATION_TIME);
+
+        var response = await SendSdoHttpRequestAsync(HttpMethod.Get, "getCodeKey.json", new List<string> { "maxsize=89" });
+        var cookies  = response.Headers.SingleOrDefault(header => header.Key == "Set-Cookie").Value;
+        var codeKey  = cookies.FirstOrDefault(x => x.StartsWith("CODEKEY="))?.Split(';')[0];
+        codeKey = codeKey?.Split('=')[1];
+        if (string.IsNullOrEmpty(codeKey))
+            throw new OauthLoginException("QRCode下载失败");
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+
+        Log.Information($"QRCode下载完成,CodeKey={codeKey}");
+        return (codeKey, bytes, qrCodeExpiration);
+    }
+
+    private async Task<(string sndaId, string tgt, string account)> WaitingForScanQRCode
+        (string codeKey, string guid, CancellationTokenSource qrCodeExpiration, CancellationTokenSource userCancel, int autoLoginKeepDays)
+    {
+        while (!qrCodeExpiration.IsCancellationRequested && !userCancel.IsCancellationRequested)
+        {
+            var result = await GetJsonAsSdoClient
+                         (
+                             "codeKeyLogin.json",
+                             new List<string> { $"codeKey={codeKey}", $"guid={guid}", "autoLoginFlag=1", $"autoLoginKeepTime={autoLoginKeepDays}", "maxsize=97" }
+                         );
+
+            if (result.ReturnCode == 0 && result.Data.NextAction == 0)
+                return (result.Data.SndaId, result.Data.Tgt, result.Data.InputUserId);
+
+            if (result.ReturnCode == -10515805)
+            {
+                //logEvent?.Invoke(SdoLoginState.WaitingScanQRCode, "等待用户扫码...");
+                await Task.Delay(1000).ConfigureAwait(false);
+                continue;
+            }
+
+            throw new OauthLoginException(result.Data.FailReason);
+        }
+
+        throw new SdoLoginException((int)SdoLoginCustomExpectionCode.SLIDE_TIMEOUT_OR_CANCELED, "登录超时或被取消");
+    }
+
+    #endregion
+
+    #region 登陆结束
+
+    private async Task<string> SsoLogin(string tgt, string guid)
+    {
+        // /authen/ssoLogin.json 抓包的ticket=SID
+        var result = await GetJsonAsSdoClient("ssoLogin.json", new List<string> { $"tgt={tgt}", $"guid={guid}" }, tgt);
+
+        if (result.ReturnCode != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+        return result.Data.Ticket;
+    }
+
+    private async Task<SdoLoginResult> GetPromotionInfo(string tgt, string serviceUrl = null)
+    {
+        // /authen/getPromotion.json 激活ticket的登录权限
+        var paras = new List<string> { $"tgt={tgt}" };
+        if (serviceUrl != null)
+            paras.Add($"serviceUrl={serviceUrl}");
+        var result = await GetJsonAsSdoClient("getPromotionInfo.json", paras, tgt);
+        if (result.ReturnCode != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+        return result;
+    }
+
+    /// <summary>
+    ///     使用指定 appId 调用 SsoLogin
+    /// </summary>
+    private async Task<string> SsoLoginWithAppId(string tgt, string guid, string appId)
+    {
+        var result = await GetJsonAsSdoClient("ssoLogin.json", new List<string> { $"tgt={tgt}", $"guid={guid}" }, tgt, appId);
+
+        if (result.ReturnCode != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+        return result.Data.Ticket;
+    }
+
+    /// <summary>
+    ///     使用指定 appId 调用 GetPromotionInfo
+    /// </summary>
+    private async Task<SdoLoginResult> GetPromotionInfoWithAppId(string tgt, string serviceUrl, string appId)
+    {
+        var paras = new List<string> { $"tgt={tgt}" };
+        if (serviceUrl != null)
+            paras.Add($"serviceUrl={serviceUrl}");
+        var result = await GetJsonAsSdoClient("getPromotionInfo.json", paras, tgt, appId);
+        if (result.ReturnCode != 0)
+            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+        return result;
+    }
+
+    #endregion
+
+    public class SdoLoginResult
+    {
+        [JsonProperty("error_type")]
+        public int ErrorType;
+
+        [JsonProperty("return_code")]
+        public int ReturnCode;
+
+        [JsonProperty("data")]
+        public SdoLoginData Data;
+
+        public string ToLog()
+        {
+            var settings = new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            };
+            return JsonConvert.SerializeObject(this, Formatting.Indented, settings);
+        }
+
+        public class SdoLoginData
+        {
+            [JsonProperty("failReason")]
+            public string FailReason;
+
+            [JsonProperty("nextAction")]
+            public int NextAction;
+
+            [JsonProperty("guid")]
+            public string Guid;
+
+            [JsonProperty("pushMsgSerialNum")]
+            public string PushMsgSerialNum;
+
+            [JsonProperty("pushMsgSessionKey")]
+            public string PushMsgSessionKey;
+
+            [JsonProperty("dynamicKey")]
+            public string DynamicKey;
+
+            [JsonConverter(typeof(MaskMiddleConverter))]
+            [JsonProperty("ticket")]
+            public string Ticket;
+
+            [JsonConverter(typeof(MaskMiddleConverter))]
+            [JsonProperty("sndaId")]
+            public string SndaId;
+
+            [JsonConverter(typeof(MaskMiddleConverter))]
+            [JsonProperty("tgt")]
+            public string Tgt;
+
+            [JsonConverter(typeof(MaskMiddleConverter))]
+            [JsonProperty("autoLoginSessionKey")]
+            public string AutoLoginSessionKey;
+
+            [JsonProperty("autoLoginMaxAge")]
+            public int AutoLoginMaxAge;
+
+            [JsonConverter(typeof(MaskMiddleConverter))]
+            [JsonProperty("inputUserId")]
+            public string InputUserId;
+
+            [JsonConverter(typeof(MaskMiddleConverter))]
+            [JsonProperty("accountArray")]
+            public List<string> AccountArray;
+
+            [JsonConverter(typeof(MaskMiddleConverter))]
+            [JsonProperty("sndaIdArray")]
+            public List<string> SndaIdArray;
+        }
     }
 
     public enum LoginState

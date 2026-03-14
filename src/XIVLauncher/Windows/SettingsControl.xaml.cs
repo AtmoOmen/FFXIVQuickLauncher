@@ -40,7 +40,6 @@ public partial class SettingsControl
         InitializeComponent();
 
         DiscordButton.Click += SupportLinks.OpenDiscordChannel;
-        FaqButton.Click     += SupportLinks.OpenFaq;
         DataContext         =  new SettingsControlViewModel();
         ReloadSettings();
     }
@@ -79,9 +78,7 @@ public partial class SettingsControl
 
         EnableDcTravelCheckBox.IsChecked = true;
         EnableDcTravelCheckBox.IsEnabled = false;
-
-        OtpServerCheckBox.IsChecked = App.Settings.OtpServerEnabled;
-
+        
         LaunchArgsTextBox.Text = App.Settings.AdditionalLaunchArgs;
 
         DpiAwarenessComboBox.SelectedIndex = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware);
@@ -133,9 +130,7 @@ public partial class SettingsControl
             App.Settings.InGameAddonLoadMethod = DalamudLoadMethod.DllInject;
         else
             App.Settings.InGameAddonLoadMethod = DalamudLoadMethod.EntryPoint;
-
-        App.Settings.OtpServerEnabled = OtpServerCheckBox.IsChecked == true;
-
+        
         App.Settings.AdditionalLaunchArgs = LaunchArgsTextBox.Text;
 
         App.Settings.DpiAwareness = (DpiAwareness)DpiAwarenessComboBox.SelectedIndex;

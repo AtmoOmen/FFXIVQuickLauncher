@@ -53,15 +53,17 @@ public static class GameHelpers
     }
 
     public static FileInfo GetOfficialLauncherPath(DirectoryInfo gamePath) => new
-        (File.Exists(Path.Combine(gamePath.FullName, "boot", "ffxivboot.exe")) ? Path.Combine(gamePath.FullName, "boot", "ffxivboot.exe") : Path.Combine(gamePath.FullName, "ffxivboot.exe"));
+        (File.Exists(Path.Combine(gamePath.FullName, "FFXIVBootV3.exe")) ? Path.Combine(gamePath.FullName, "FFXIVBootV3.exe") : Path.Combine(gamePath.FullName, "FFXIVBoot.exe"));
 
     public static void StartOfficialLauncher(DirectoryInfo gamePath)
     {
-        var startInfo = new ProcessStartInfo(GetOfficialLauncherPath(gamePath).FullName);
-        startInfo.WorkingDirectory = gamePath.FullName;
-        startInfo.UseShellExecute  = true;
+        var startInfo = new ProcessStartInfo(GetOfficialLauncherPath(gamePath).FullName)
+        {
+            WorkingDirectory = gamePath.FullName,
+            UseShellExecute  = true
+        };
 
-        //Start as admin if needed
+        // Start as admin if needed
         if (!EnvironmentSettings.IsNoRunas && Environment.OSVersion.Version.Major >= 6)
             startInfo.Verb = "runas";
 

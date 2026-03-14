@@ -94,7 +94,6 @@ public static class Troubleshooting
         {
             When                  = DateTime.Now,
             IsAutoLogin           = App.Settings.AutologinEnabled,
-            IsUidCache            = App.Settings.UniqueIdCacheEnabled,
             DalamudEnabled        = App.Settings.InGameAddonEnabled,
             DalamudLoadMethod     = App.Settings.InGameAddonLoadMethod.GetValueOrDefault(),
             DalamudInjectionDelay = App.Settings.DalamudInjectionDelayMs,
@@ -150,9 +149,7 @@ public static class Troubleshooting
         public DateTime When { get; set; }
 
         public bool IsAutoLogin { get; set; }
-
-        public bool IsUidCache { get; set; }
-
+        
         public bool DalamudEnabled { get; set; }
 
         public DalamudLoadMethod DalamudLoadMethod { get; set; }

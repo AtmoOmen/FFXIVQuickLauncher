@@ -35,7 +35,7 @@ namespace XIVLauncher;
 /// <summary>
 ///     Interaction logic for App.xaml
 /// </summary>
-public partial class App : Application
+public partial class App
 {
     public class CmdLineOptions
     {
@@ -83,7 +83,6 @@ public partial class App : Application
     public const string REPO_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
 
     public static ILauncherSettingsV3 Settings;
-    public static CommonUniqueIdCache UniqueIdCache;
     public static AccountManager      AccountManager;
 #if !XL_NOAUTOUPDATE
     private UpdateLoadingDialog _updateWindow;
@@ -98,13 +97,12 @@ public partial class App : Application
     public static bool           InjectMode               { get; private set; }
     public static DalamudUpdater DalamudUpdater           { get; private set; }
 
-    public static Brush UaBrush = new LinearGradientBrush
+    public static Brush UABrush = new LinearGradientBrush
     (
-        new GradientStopCollection
-        {
+        [
             new(Color.FromArgb(0xFF, 0xFF, 0x4D, 0x00), 0.0f), // 暗琥珀色
-            new(Color.FromArgb(0xFF, 0xFF, 0xD7, 0x00), 1.0f)  // 亮橙红色
-        },
+            new(Color.FromArgb(0xFF, 0xFF, 0xD7, 0x00), 1.0f)
+        ],
         0.7f
     );
 
@@ -123,7 +121,7 @@ public partial class App : Application
 #endif
     }
 
-    private static void OnSerilogLogLine(object sender, (string Line, LogEventLevel Level, DateTimeOffset TimeStamp, System.Exception Exception) e)
+    private static void OnSerilogLogLine(object sender, (string Line, LogEventLevel Level, DateTimeOffset TimeStamp, Exception Exception) e)
     {
         if (e.Exception == null)
             return;
@@ -150,9 +148,7 @@ public partial class App : Application
 
         if (string.IsNullOrEmpty(Settings.AcceptLanguage))
             Settings.AcceptLanguage = ApiHelpers.GenerateAcceptLanguage();
-
-        UniqueIdCache = new CommonUniqueIdCache(new FileInfo(Path.Combine(Paths.RoamingPath, "uidCache.json")));
-
+        
         try
         {
             if (!string.IsNullOrEmpty(CommandLine.AccountName))
@@ -195,7 +191,6 @@ public partial class App : Application
                         new DirectoryInfo(Path.Combine(Paths.RoamingPath, "addon")),
                         new DirectoryInfo(Path.Combine(Paths.RoamingPath, "runtime")),
                         new DirectoryInfo(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
-                        UniqueIdCache,
                         Settings.GitHubToken
                     );
 
@@ -468,11 +463,11 @@ public partial class App : Application
             {
                 var dict = new ResourceDictionary
                 {
-                    { "PrimaryHueLightBrush", UaBrush },
+                    { "PrimaryHueLightBrush", UABrush },
                     //{"PrimaryHueLightForegroundBrush", uaBrush},
-                    { "PrimaryHueMidBrush", UaBrush },
+                    { "PrimaryHueMidBrush", UABrush },
                     //{"PrimaryHueMidForegroundBrush", uaBrush},
-                    { "PrimaryHueDarkBrush", UaBrush }
+                    { "PrimaryHueDarkBrush", UABrush }
                     //{"PrimaryHueDarkForegroundBrush", uaBrush},
                 };
                 Resources.MergedDictionaries.Add(dict);

@@ -287,8 +287,6 @@ public class PatchManager
         var outFile = GetPatchFile(download.Patch);
 
         var realUrl = download.Patch.Url;
-        if (repo != Repository.Boot && false) // Disabled for now, waiting on SE to patch this
-            realUrl = await launcher.GenPatchToken(download.Patch.Url, sid);
 
         Log.Information("Downloading patch {0} at {1} to {2}", download.Patch.VersionId, realUrl, outFile.FullName);
 

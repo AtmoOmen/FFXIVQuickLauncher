@@ -6,7 +6,6 @@ internal class UpdateLoadingDialogViewModel
 {
     public string UpdateCheckLoc       { get; private set; }
     public string AutoLoginHintLoc     { get; private set; }
-    public string ResetUidCacheHintLoc { get; private set; }
 
     public UpdateLoadingDialogViewModel() =>
         SetupLoc();
@@ -15,6 +14,5 @@ internal class UpdateLoadingDialogViewModel
     {
         UpdateCheckLoc       = Loc.Localize("UpdateCheckMsg",    "Checking for updates...");
         AutoLoginHintLoc     = Loc.Localize("AutoLoginHint",     "Hold the shift key to change settings!");
-        ResetUidCacheHintLoc = Loc.Localize("ResetUidCacheHint", "Hold the control key to reset UID cache!");
     }
 }

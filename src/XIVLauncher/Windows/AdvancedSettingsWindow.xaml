@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
         mc:Ignorable="d"
-        Title="{Binding AdvancedSettingsTitleLoc}" SizeToContent="Height" Width="450"
+        Title="高级设置" SizeToContent="Height" Width="450"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
@@ -13,49 +13,25 @@
         TextElement.FontWeight="Medium"
         d:DataContext="{d:DesignInstance viewModel:AdvancedSettingsViewModel}">
     <Grid>
-        <StackPanel Orientation="Vertical" Margin="10, 0, 0, 50">
-            <StackPanel Orientation="Horizontal">
-                <CheckBox x:Name="UidCacheCheckBox"
-                          Visibility="Hidden"
-                          Content="{Binding EnabledUidCacheLoc}"
-                          HorizontalAlignment="Left" Margin="0,0,0,0" Foreground="DarkGray" />
-                <Button Style="{DynamicResource MaterialDesignFlatButton}"
-                        Visibility="Collapsed"
-                        HorizontalAlignment="Left"
-                        Click="ResetCacheButton_OnClick" Margin="0 0 0 0">
-                    <Button.ToolTip>
-                        <TextBlock Text="{Binding ResetUidCacheTipLoc}" />
-                    </Button.ToolTip>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="0 0 0 0" VerticalAlignment="Center"
-                                   Foreground="DarkGray" FontSize="11">
-                            Reset
-                        </TextBlock>
-                    </StackPanel>
-                </Button>
-            </StackPanel>
+        <StackPanel Orientation="Vertical" Margin="10, 20, 0, 50">
             <CheckBox x:Name="ExitLauncherAfterGameExitCheckbox"
-                      Content="{Binding ExitLauncherAfterGameExitLoc}"
+                      Content="等待游戏退出后再关闭 XIVLauncher"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
             <CheckBox x:Name="TreatNonZeroExitCodeAsFailureCheckbox"
-                      Content="{Binding TreatNonZeroExitCodeAsFailureLoc}"
-                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
-            <CheckBox x:Name="ForceNorthAmericaCheckbox"
-                      Visibility="Collapsed"
-                      Content="{Binding ForceNorthAmericaLoc}"
-                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
-            <CheckBox x:Name="EnableBeta"
-                      Content="接收Beta版更新"
-                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
+                      Content="视非零游戏退出码为游戏崩溃"
+                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray"
+                      ToolTip="勾选后, 发生此类情况时将自动重新打开 XIVLauncher 界面"
+                      IsEnabled="{Binding ElementName=ExitLauncherAfterGameExitCheckbox, Path=IsChecked}"/>
             <CheckBox x:Name="EnableVerboseLog"
-                      Content="将Log等级调整为Verbose"
-                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
+                      Content="调整日志等级为 Verbose"
+                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray"
+                      ToolTip="勾选后, XIVLauncher 会输出更为详尽甚至琐碎的日志信息, 这可能会导致相关日志文件体积显著增大"/>
             <CheckBox x:Name="EnableSkipUpdate"
-                      Content="允许跳过启动器更新"
+                      Content="跳过 XIVLauncher 更新"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
         </StackPanel>
 
-        <Button Content="{Binding CloseLoc}" Width="79" VerticalAlignment="Bottom"
+        <Button Content="确认" Width="79" VerticalAlignment="Bottom"
                 HorizontalAlignment="Right" Margin="0,0,10,10" Click="CloseButton_OnClick" />
     </Grid>
 </Window>

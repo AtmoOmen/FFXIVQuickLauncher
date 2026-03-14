@@ -68,7 +68,7 @@
                                 </Viewbox>
                             </materialDesign:Card>
 
-                            <Border CornerRadius="8" Background="#aa333333" VerticalAlignment="Bottom"
+                            <Border Grid.Row="0" Grid.Column="0" CornerRadius="8" Background="#aa333333" VerticalAlignment="Bottom"
                                     HorizontalAlignment="Right" Margin="0,0,8,8">
                                 <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}" Opacity="1">
                                     <ItemsControl.LayoutTransform>
@@ -81,7 +81,7 @@
                                     </ItemsControl.LayoutTransform>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <RadioButton GroupName="banner" IsChecked="{Binding Active}"
+                                            <RadioButton GroupName="banner"
                                                          RenderTransformOrigin="0.5,0.5"
                                                          MouseEnter="RadioButton_MouseEnter"
                                                          MouseLeave="RadioButton_MouseLeave">
@@ -433,6 +433,7 @@
                                                             <Separator />
                                                             <MenuItem Header="{Binding LoginNoStartLoc}"
                                                                       Command="{Binding Path=LoginNoStartCommand}" />
+                                                            <MenuItem Header="假启动 [调试用]" Click="FakeStart_OnClick"/>
                                                         </ContextMenu>
                                                     </Button.ContextMenu>
 
@@ -613,14 +614,6 @@
                                             Style="{StaticResource MaterialDesignCircularProgressBar}"
                                             Value="0"
                                             IsIndeterminate="True" Height="30" Width="30" Margin="0 8 0 0" />
-                                        <Button
-                                            x:Name="LoadingMessageCancelButton"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            IsCancel="True"
-                                            Margin="0 8 0 0"
-                                            Click="QuitMaintenanceQueueButton_OnClick"
-                                            Content="{Binding CancelWithShortcutLoc}"
-                                            Visibility="{Binding LoadingDialogCancelButtonVisibility}" />
                                     </StackPanel>
                                 </StackPanel>
                             </materialDesign:DialogHost.DialogContent>
