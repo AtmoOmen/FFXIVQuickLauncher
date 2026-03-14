@@ -153,7 +153,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             _window.Dispatcher.Invoke(() => TryLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
             return;
         }
-        
+
         IsEnabled = false;
         //LoginCardTransitionerIndex = 0;
         var currentCard = (LoginCard)LoginCardTransitionerIndex;
@@ -224,13 +224,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     if (loginCts.IsCancellationRequested)
                         return;
                     var currentSelectedProcessId = SelectedProcess?.ProcessId;
-                    var newProcesses             = AppUtil.GetGameProcess();
-                    App.Current.Dispatcher.Invoke
+                    var newProcesses             = AppUtil.GetGameProcess().ToArray();
+                    Application.Current.Dispatcher.Invoke
                     (() =>
                         {
                             for (var i = FfxivProcessCollection.Count - 1; i >= 0; i--)
                             {
-                                if (!newProcesses.Any(p => p.Id == FfxivProcessCollection[i].ProcessId))
+                                if (newProcesses.All(p => p.Id != FfxivProcessCollection[i].ProcessId))
                                 {
                                     FfxivProcessCollection.RemoveAt(i);
                                     Log.Verbose("Refreshing Processes...(Remove)");
@@ -239,7 +239,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                             foreach (var newProcess in newProcesses)
                             {
-                                if (!FfxivProcessCollection.Any(p => p.ProcessId == newProcess.Id))
+                                if (FfxivProcessCollection.All(p => p.ProcessId != newProcess.Id))
                                 {
                                     FfxivProcessCollection.Add(new FfxivProcess(newProcess));
                                     Log.Verbose("Refreshing Processes...(Add)");
@@ -699,6 +699,30 @@ public class MainWindowViewModel : INotifyPropertyChanged
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CloseHandle(IntPtr hObject);
 
+    private static async Task<Process> FindNewGameProcess(string processName, DateTime afterTime)
+    {
+        for (var i = 0; i < 60; i++)
+        {
+            await Task.Delay(1000);
+            var processes = Process.GetProcessesByName(processName);
+
+            foreach (var p in processes)
+            {
+                try
+                {
+                    if (p.StartTime > afterTime)
+                        return p;
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+        }
+
+        return null;
+    }
+
     private Action<object> GetLoginFunc(AfterLoginAction action)
     {
         return p =>
@@ -1063,13 +1087,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 {
                     Log.Information("[DcTravel] 正在开启......");
                     await dcTraveler.GetValidCookie();
-                    dcTraveler.KeepCookieAlive();
+                    _ = dcTraveler.KeepCookieAlive();
                     //var nSessionId = dcTraveler.GetNSessionIdFromCookie();
 
                     loginResult.DcTravelPort = ApiHelpers.GetAvailablePort();
                     dcTravelListener         = new DcTravelListener(dcTraveler, loginResult.DcTravelPort, false);
                     Log.Information($"[DCTravel] 打开端口:{loginResult.DcTravelPort}");
-                    dcTravelListener.StartAsync();
+                    _ = dcTravelListener.StartAsync();
                 }
 
                 var accountToSave = new XivAccount
@@ -1135,7 +1159,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 Environment.Exit(0);
         }
     }
-    
+
     private async Task<Launcher.LoginResult> TryLoginToGame
     (
         LoginType        type,
@@ -2100,22 +2124,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
         return TryHandlePatchAsync(Repository.Ffxiv, loginResult.PendingPatches, loginResult.UniqueId);
     }
 
-    private void PatcherOnFail(PatchListEntry patch, string context)
-    {
-        var dlFailureLoc = Loc.Localize
-        (
-            "PatchManDlFailure",
-            "XIVLauncher could not verify the downloaded game files. Please restart and try again.\n\nThis usually indicates a problem with your internet connection.\n\nContext: {0}\n{1}"
-        );
-
-        var sdoPatchMissingFailureLoc = Loc.Localize
-        (
-            "SdoPatchMissing",
-            "游戏补丁列表的早期补丁被删除，导致无法通过补丁安装游戏，请手动安装游戏客户端并设置包含 game 文件夹的游戏路径。\nContext: {0}\n{1}"
-        );
-
+    private void PatcherOnFail(PatchListEntry patch, string context) =>
         Environment.Exit(0);
-    }
 
     private void InstallerOnFail()
     {
@@ -2138,29 +2148,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 App.Settings.PatchPath = null;
 
             App.Settings.PatchPath ??= new DirectoryInfo(Path.Combine(Paths.RoamingPath, "patches"));
-            //PatchListEntry[] bootPatches = null;
-            //try
-            //{
-            //    bootPatches = await this.Launcher.CheckBootVersion(App.Settings.GamePath).ConfigureAwait(false);
-            //}
-            //catch (Exception ex)
-            //{
-            //    Log.Error(ex, "Unable to check boot version.");
-            //    CustomMessageBox.Show(Loc.Localize("CheckBootVersionError", "XIVLauncher was not able to check the boot version for the select game installation. This can happen if a maintenance is currently in progress or if your connection to the version check server is not available. Please report this error if you are able to login with the official launcher, but not XIVLauncher."), "XIVLauncher", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
-
-            //    return false;
-            //}
-
-            //if (bootPatches == null)
-            //    return true;
-
-            //return await TryHandlePatchAsync(Repository.Boot, bootPatches, null).ConfigureAwait(false);
             return true;
-            // Debug.Assert(bootPatches != null);
-            // if (bootPatches.Length == 0)
-            //     return true;
-
-            // return await TryHandlePatchAsync(Repository.Boot, bootPatches, null).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -2383,7 +2371,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
         return false;
     }
 
-    private async Task MonitorGameProcess(Process process, Launcher.LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
+    private async Task MonitorGameProcess
+    (
+        Process              process,
+        Launcher.LoginResult loginResult,
+        bool                 forceNoDalamud,
+        bool                 noThird,
+        bool                 noPlugins
+    )
     {
         var processName = process.ProcessName;
 
@@ -2429,7 +2424,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
             finally
             {
-                // 无论如何，清理我们复制的句柄
+                // 无论如何，清理复制的句柄
                 if (processHandle != IntPtr.Zero && processHandle != process.Handle)
                     CloseHandle(processHandle);
             }
@@ -2476,30 +2471,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<Process> FindNewGameProcess(string processName, DateTime afterTime)
-    {
-        for (var i = 0; i < 60; i++)
-        {
-            await Task.Delay(1000);
-            var processes = Process.GetProcessesByName(processName);
-
-            foreach (var p in processes)
-            {
-                try
-                {
-                    if (p.StartTime > afterTime)
-                        return p;
-                }
-                catch
-                {
-                    // ignored
-                }
-            }
-        }
-
-        return null;
-    }
-
     private void OnPropertyChanged(string propertyName)
     {
         var handler = PropertyChanged;
@@ -2524,12 +2495,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         MainPage   = 1,
         ScanQrCode = 2,
         InjectMode = 3
-    }
-
-    public class ProcessInfo
-    {
-        public string ProcessName { get; set; }
-        public int    ProcessId   { get; set; }
     }
 
     #region Commands
@@ -2557,74 +2522,62 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     #region Bindings
 
-    private bool _isAutoLogin;
-
     public bool IsAutoLogin
     {
-        get => _isAutoLogin;
+        get;
         set
         {
-            _isAutoLogin = value;
+            field = value;
             OnPropertyChanged(nameof(IsAutoLogin));
         }
     }
 
-    private bool _isFastLogin;
-
     public bool IsFastLogin
     {
-        get => _isFastLogin;
+        get;
         set
         {
-            _isFastLogin = value;
+            field = value;
             OnPropertyChanged(nameof(IsFastLogin));
         }
     }
 
-    private bool _isReadWegameInfo;
-
     public bool IsReadWegameInfo
     {
-        get => _isReadWegameInfo;
+        get;
         set
         {
-            _isReadWegameInfo = value;
+            field = value;
             OnPropertyChanged(nameof(IsReadWegameInfo));
         }
     }
 
-    private bool _isOtp;
-
     public bool IsOtp
     {
-        get => _isOtp;
+        get;
         set
         {
-            _isOtp = value;
+            field = value;
             OnPropertyChanged(nameof(IsOtp));
         }
     }
 
-    private string _username;
-
     public string Username
     {
-        get => _username;
+        get;
         set
         {
-            _username = value;
+            field = value;
             OnPropertyChanged(nameof(Username));
         }
     }
 
-    private GuiLoginType _guiLoginType;
-
     public GuiLoginType GuiLoginType
     {
-        get => _guiLoginType;
+        get;
         set
         {
-            _guiLoginType = value;
+            field = value;
             OnPropertyChanged(nameof(GuiLoginType));
         }
     }
@@ -2634,153 +2587,126 @@ public class MainWindowViewModel : INotifyPropertyChanged
         set => App.Settings.SelectedServer = value;
     }
 
-    private SdoArea _area;
-
     public SdoArea Area
     {
-        get => _area;
+        get;
         set
         {
-            _area = value;
-            Log.Debug($"Area Change:{_area} -> {value}");
+            field = value;
+            Log.Debug($"Area Change:{field} -> {value}");
             OnPropertyChanged(nameof(Area));
         }
     }
 
-    private bool _isEnabled;
-
     public bool IsEnabled
     {
-        get => _isEnabled;
+        get;
         set
         {
-            _isEnabled = value;
+            field = value;
             OnPropertyChanged(nameof(IsEnabled));
         }
     }
 
-    private int _loginCardTransitionerIndex;
-
     public int LoginCardTransitionerIndex
     {
-        get => _loginCardTransitionerIndex;
+        get;
         set
         {
-            _loginCardTransitionerIndex = value;
+            field = value;
             OnPropertyChanged(nameof(LoginCardTransitionerIndex));
         }
     }
 
-    private bool _isLoadingDialogOpen;
-
     public bool IsLoadingDialogOpen
     {
-        get => _isLoadingDialogOpen;
+        get;
         set
         {
-            _isLoadingDialogOpen = value;
+            field = value;
             OnPropertyChanged(nameof(IsLoadingDialogOpen));
         }
     }
 
-    private string _loadingDialogMessage;
-
     public string LoadingDialogMessage
     {
-        get => _loadingDialogMessage;
+        get;
         set
         {
-            _loadingDialogMessage = value;
+            field = value;
             OnPropertyChanged(nameof(LoadingDialogMessage));
         }
     }
 
-    private string _loginMessage;
-
     public string LoginMessage
     {
-        get => _loginMessage;
+        get;
         set
         {
-            _loginMessage = value;
+            field = value;
             OnPropertyChanged(nameof(LoginMessage));
         }
     }
 
-    private SolidColorBrush _worldStatusIconColor;
-
     public SolidColorBrush WorldStatusIconColor
     {
-        get => _worldStatusIconColor;
+        get;
         set
         {
-            _worldStatusIconColor = value;
+            field = value;
             OnPropertyChanged(nameof(WorldStatusIconColor));
         }
     }
 
-    private BitmapImage _qrCodeBitmapImage;
-
     public BitmapImage QrCodeBitmapImage
     {
-        get => _qrCodeBitmapImage;
+        get;
         set
         {
-            _qrCodeBitmapImage = value;
+            field = value;
             OnPropertyChanged(nameof(QrCodeBitmapImage));
         }
     }
 
-    private PackIconKind _modeSwitchIcon;
-
     public PackIconKind ModeSwitchIcon
     {
-        get => _modeSwitchIcon;
+        get;
         set
         {
-            _modeSwitchIcon = value;
+            field = value;
             OnPropertyChanged(nameof(ModeSwitchIcon));
         }
     }
 
     public class FfxivProcess
+    (
+        Process p
+    )
     {
-        public int    ProcessId;
-        public string DisplayName { get; set; }
-        public bool   HasInjected { get; set; }
-
-        public FfxivProcess(Process p)
-        {
-            DisplayName = $"{p.Id} ({p.StartTime})";
-            ProcessId   = p.Id;
-            HasInjected = DetectDalamud(p);
-            //this.HasInjected = true;
-        }
+        public int    ProcessId = p.Id;
+        public string DisplayName { get; set; } = $"{p.Id} ({p.StartTime})";
+        public bool   HasInjected { get; set; } = DetectDalamud(p);
 
         public static bool DetectDalamud(Process p) =>
             p.Modules.Cast<ProcessModule>().Any(m => m.ModuleName.Contains("Dalamud.dll"));
     }
 
-    private ObservableCollection<FfxivProcess> _ffxivProcessCollection;
-
     public ObservableCollection<FfxivProcess> FfxivProcessCollection
     {
-        get => _ffxivProcessCollection;
+        get;
         set
         {
-            _ffxivProcessCollection = value;
+            field = value;
             OnPropertyChanged(nameof(FfxivProcessCollection));
         }
     }
 
-    private FfxivProcess _selectedProcess;
-
     public FfxivProcess SelectedProcess
     {
-        get => _selectedProcess;
+        get;
         set
         {
-            _selectedProcess = value;
+            field = value;
             OnPropertyChanged(nameof(SelectedProcess));
         }
     }
