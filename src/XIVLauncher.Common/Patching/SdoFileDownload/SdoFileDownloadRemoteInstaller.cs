@@ -5,13 +5,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using SharedMemory;
+using XIVLauncher.Common.Game;
 
-namespace XIVLauncher.Common.Patching.IndexedZiPatch;
+namespace XIVLauncher.Common.Patching.SdoFileDownload;
 
-public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
+public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 {
     private readonly Process?  workerProcess;
     private readonly RpcBuffer subprocessBuffer;
@@ -19,9 +21,9 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
     private          long      lastProgressUpdateCounter;
     private          bool      isDisposed;
 
-    public IndexedZiPatchIndexRemoteInstaller(string? workerExecutablePath, bool asAdmin)
+    public SdoFileDownloadRemoteInstaller(string? workerExecutablePath, bool asAdmin)
     {
-        var rpcChannelName = "RemoteZiPatchIndexInstaller" + Guid.NewGuid();
+        var rpcChannelName = "RemoteSdoFileDownloadInstaller" + Guid.NewGuid();
         subprocessBuffer = new(rpcChannelName, RpcResponseHandler);
 
         if (workerExecutablePath != null)
@@ -30,7 +32,7 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
             workerProcess.StartInfo.FileName        = workerExecutablePath;
             workerProcess.StartInfo.UseShellExecute = true;
             workerProcess.StartInfo.Verb            = asAdmin ? "runas" : "open";
-            workerProcess.StartInfo.Arguments       = $"index-rpc {Process.GetCurrentProcess().Id} {rpcChannelName}";
+            workerProcess.StartInfo.Arguments       = $"sdo-rpc {Environment.ProcessId} {rpcChannelName}";
 #if !DEBUG
             this.workerProcess.StartInfo.CreateNoWindow = true;
             this.workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
@@ -81,141 +83,42 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
 
     #endregion
 
-    public async Task ConstructFromPatchFile(IndexedZiPatchIndex patchIndex, TimeSpan progressReportInterval = default)
+    public async Task ConstructFromRemoteIntegrity(IntegrityCheck.IntegrityCheckResult remoteIntegrity, TimeSpan progressReportInterval = default)
     {
         var writer = GetRequestCreator(WorkerInboundOpcode.Construct);
-        patchIndex.WriteTo(writer);
+        WriteIntegrityCheckResult(writer, remoteIntegrity);
         writer.Write(progressReportInterval.TotalMilliseconds > 0 ? (int)progressReportInterval.TotalMilliseconds : 250);
         await WaitForResult(writer);
     }
 
-    public async Task VerifyFiles(bool refine = false, int concurrentCount = 8, CancellationToken cancellationToken = default)
+    public async Task VerifyFiles(string gameRootPath, bool refine = false, int concurrentCount = 8, CancellationToken cancellationToken = default)
     {
         var writer = GetRequestCreator(WorkerInboundOpcode.VerifyFiles, cancellationToken);
+        writer.Write(gameRootPath);
         writer.Write(refine);
         writer.Write(concurrentCount);
         await WaitForResult(writer, cancellationToken, 864000000);
     }
 
-    public async Task MarkFileAsMissing(int targetIndex, CancellationToken cancellationToken = default)
+    public async Task QueueInstall(int targetIndex, string filePath, CancellationToken cancellationToken = default)
     {
-        var writer = GetRequestCreator(WorkerInboundOpcode.MarkFileAsMissing, cancellationToken);
+        var writer = GetRequestCreator(WorkerInboundOpcode.QueueInstall, cancellationToken);
         writer.Write(targetIndex);
+        writer.Write(filePath);
         await WaitForResult(writer, cancellationToken);
     }
 
-    public async Task SetTargetStreamFromPathReadOnly(int targetIndex, string path, CancellationToken cancellationToken = default)
-    {
-        var writer = GetRequestCreator(WorkerInboundOpcode.SetTargetStreamFromPathReadOnly, cancellationToken);
-        writer.Write(targetIndex);
-        writer.Write(path);
-        await WaitForResult(writer, cancellationToken);
-    }
-
-    public async Task SetTargetStreamFromPathReadWrite(int targetIndex, string path, CancellationToken cancellationToken = default)
-    {
-        var writer = GetRequestCreator(WorkerInboundOpcode.SetTargetStreamFromPathReadWrite, cancellationToken);
-        writer.Write(targetIndex);
-        writer.Write(path);
-        await WaitForResult(writer, cancellationToken);
-    }
-
-    public async Task SetTargetStreamsFromPathReadOnly(string rootPath, CancellationToken cancellationToken = default)
-    {
-        var writer = GetRequestCreator(WorkerInboundOpcode.SetTargetStreamsFromPathReadOnly, cancellationToken);
-        writer.Write(rootPath);
-        await WaitForResult(writer, cancellationToken);
-    }
-
-    public async Task SetTargetStreamsFromPathReadWriteForMissingFiles(string rootPath, CancellationToken cancellationToken = default)
-    {
-        var writer = GetRequestCreator(WorkerInboundOpcode.SetTargetStreamsFromPathReadWriteForMissingFiles, cancellationToken);
-        writer.Write(rootPath);
-        await WaitForResult(writer, cancellationToken);
-    }
-
-    public async Task RepairNonPatchData(CancellationToken cancellationToken = default) =>
-        await WaitForResult(GetRequestCreator(WorkerInboundOpcode.RepairNonPatchData, cancellationToken), cancellationToken);
-
-    public async Task WriteVersionFiles(string rootPath, CancellationToken cancellationToken = default)
-    {
-        var writer = GetRequestCreator(WorkerInboundOpcode.WriteVersionFiles, cancellationToken);
-        writer.Write(rootPath);
-        await WaitForResult(writer, cancellationToken);
-    }
-
-    public async Task QueueInstall(int sourceIndex, Uri sourceUrl, string? sid, int splitBy = 8, CancellationToken cancellationToken = default)
-    {
-        var writer = GetRequestCreator(WorkerInboundOpcode.QueueInstallFromUrl, cancellationToken);
-        writer.Write(sourceIndex);
-        writer.Write(sourceUrl.OriginalString);
-        writer.Write(sid ?? "");
-        writer.Write(splitBy);
-        await WaitForResult(writer, cancellationToken);
-    }
-
-    public async Task QueueInstall(int sourceIndex, FileInfo sourceFile, int splitBy = 8, CancellationToken cancellationToken = default)
-    {
-        var writer = GetRequestCreator(WorkerInboundOpcode.QueueInstallFromLocalFile, cancellationToken);
-        writer.Write(sourceIndex);
-        writer.Write(sourceFile.FullName);
-        writer.Write(splitBy);
-        await WaitForResult(writer, cancellationToken);
-    }
-
-    public async Task Install(int concurrentCount, CancellationToken cancellationToken = default)
+    public async Task Install(int concurrentCount = 8, CancellationToken cancellationToken = default)
     {
         var writer = GetRequestCreator(WorkerInboundOpcode.Install, cancellationToken);
         writer.Write(concurrentCount);
         await WaitForResult(writer, cancellationToken, 864000000);
     }
 
-    public async Task<List<SortedSet<Tuple<int, int>>>> GetMissingPartIndicesPerPatch(CancellationToken cancellationToken = default)
+    public async Task<List<string>> GetBrokenFiles(CancellationToken cancellationToken = default)
     {
-        using var                        reader = await WaitForResult(GetRequestCreator(WorkerInboundOpcode.GetMissingPartIndicesPerPatch, cancellationToken), cancellationToken, 30000, false);
-        List<SortedSet<Tuple<int, int>>> result = new();
-
-        for (int i = 0, iReadLength = reader.ReadInt32(); i < iReadLength; i++)
-        {
-            SortedSet<Tuple<int, int>> e1 = new();
-            for (int j = 0, jReadLength = reader.ReadInt32(); j < jReadLength; j++)
-                e1.Add(Tuple.Create(reader.ReadInt32(), reader.ReadInt32()));
-            result.Add(e1);
-        }
-
-        return result;
-    }
-
-    public async Task<List<SortedSet<int>>> GetMissingPartIndicesPerTargetFile(CancellationToken cancellationToken = default)
-    {
-        using var            reader = await WaitForResult(GetRequestCreator(WorkerInboundOpcode.GetMissingPartIndicesPerTargetFile, cancellationToken), cancellationToken, 30000, false);
-        List<SortedSet<int>> result = new();
-
-        for (int i = 0, iReadLength = reader.ReadInt32(); i < iReadLength; i++)
-        {
-            SortedSet<int> e1 = new();
-            for (int j = 0, jReadLength = reader.ReadInt32(); j < jReadLength; j++)
-                e1.Add(reader.ReadInt32());
-            result.Add(e1);
-        }
-
-        return result;
-    }
-
-    public async Task<SortedSet<int>> GetSizeMismatchTargetFileIndices(CancellationToken cancellationToken = default)
-    {
-        using var      reader = await WaitForResult(GetRequestCreator(WorkerInboundOpcode.GetSizeMismatchTargetFileIndices, cancellationToken), cancellationToken, 30000, false);
-        SortedSet<int> result = new();
-        for (int i = 0, readIndex = reader.ReadInt32(); i < readIndex; i++)
-            result.Add(reader.ReadInt32());
-        return result;
-    }
-
-    public async Task SetWorkerProcessPriority(ProcessPriorityClass subprocessPriority, CancellationToken cancellationToken = default)
-    {
-        var writer = GetRequestCreator(WorkerInboundOpcode.SetWorkerProcessPriority, cancellationToken);
-        writer.Write((int)subprocessPriority);
-        await WaitForResult(writer, cancellationToken);
+        using var reader = await WaitForResult(GetRequestCreator(WorkerInboundOpcode.GetBrokenFiles, cancellationToken), cancellationToken, 30000, false);
+        return ReadStringList(reader);
     }
 
     public async Task MoveFile(string sourceFile, string targetFile, CancellationToken cancellationToken = default)
@@ -239,6 +142,33 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
         writer.Write(dir);
         writer.Write(recursive);
         await WaitForResult(writer, cancellationToken);
+    }
+
+    private static void WriteIntegrityCheckResult(BinaryWriter writer, IntegrityCheck.IntegrityCheckResult remoteIntegrity) =>
+        writer.Write(JsonSerializer.Serialize(remoteIntegrity));
+
+    private static IntegrityCheck.IntegrityCheckResult ReadIntegrityCheckResult(BinaryReader reader)
+    {
+        return JsonSerializer.Deserialize<IntegrityCheck.IntegrityCheckResult>(reader.ReadString())
+               ?? throw new InvalidDataException("Failed to deserialize integrity check result.");
+    }
+
+    private static List<string> ReadStringList(BinaryReader reader)
+    {
+        List<string> result = new();
+
+        for (int i = 0, count = reader.ReadInt32(); i < count; i++)
+            result.Add(reader.ReadString());
+
+        return result;
+    }
+
+    private static void WriteStringList(BinaryWriter writer, List<string> values)
+    {
+        writer.Write(values.Count);
+
+        foreach (var value in values)
+            writer.Write(value);
     }
 
     private void RpcResponseHandler(ulong _, byte[] data)
@@ -271,7 +201,7 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
         var index    = reader.ReadInt32();
         var progress = reader.ReadInt64();
         var max      = reader.ReadInt64();
-        var state    = (IndexedZiPatchInstaller.InstallTaskState)reader.ReadInt32();
+        var state    = (SdoFileDownloadInstaller.InstallTaskState)reader.ReadInt32();
 
         OnInstallProgress?.Invoke(index, progress, max, state);
     }
@@ -284,10 +214,11 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
 
         lastProgressUpdateCounter = progressUpdateCounter;
         var index    = reader.ReadInt32();
+        var count    = reader.ReadInt32();
         var progress = reader.ReadInt64();
         var max      = reader.ReadInt64();
 
-        OnVerifyProgress?.Invoke(index, progress, max);
+        OnVerifyProgress?.Invoke(index, count, progress, max);
     }
 
     private BinaryWriter GetRequestCreator(WorkerInboundOpcode opcode, CancellationToken cancellationToken = default)
@@ -353,16 +284,16 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
         }
     }
 
-    public event IndexedZiPatchInstaller.OnInstallProgressDelegate? OnInstallProgress;
-    public event IndexedZiPatchInstaller.OnVerifyProgressDelegate?  OnVerifyProgress;
+    public event SdoFileDownloadInstaller.OnInstallProgressDelegate? OnInstallProgress;
+    public event SdoFileDownloadInstaller.OnVerifyProgressDelegate?  OnVerifyProgress;
 
     public class WorkerSubprocessBody : IDisposable
     {
-        private readonly object                                   progressUpdateSync = new();
+        private readonly Lock                                     progressUpdateSync = new();
         private readonly Process                                  parentProcess;
         private readonly RpcBuffer                                subprocessBuffer;
         private readonly Dictionary<int, CancellationTokenSource> cancellationTokenSources = new();
-        private          IndexedZiPatchInstaller?                 instance;
+        private          SdoFileDownloadLocalInstaller?           instance;
         private          long                                     progressUpdateCounter;
 
         public WorkerSubprocessBody(int monitorProcessId, string channelName)
@@ -375,12 +306,15 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
                 {
                     using var reader         = new BinaryReader(new MemoryStream(data));
                     var       cancelSourceId = reader.ReadInt32();
-                    var       cancelToken    = default(CancellationToken);
+                    var       cancelToken    = CancellationToken.None;
 
                     if (cancelSourceId != -1)
                     {
-                        cancellationTokenSources[cancelSourceId] = new();
-                        cancelToken                              = cancellationTokenSources[cancelSourceId].Token;
+                        lock (cancellationTokenSources)
+                        {
+                            cancellationTokenSources[cancelSourceId] = new();
+                            cancelToken                              = cancellationTokenSources[cancelSourceId].Token;
+                        }
                     }
 
                     var method = (WorkerInboundOpcode)reader.ReadInt32();
@@ -404,12 +338,10 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
 
                             case WorkerInboundOpcode.Construct:
                                 instance?.Dispose();
-                                instance = new(new(reader, false))
-                                {
-                                    ProgressReportInterval = reader.ReadInt32()
-                                };
+                                instance                   =  new();
                                 instance.OnInstallProgress += OnInstallProgressUpdate;
                                 instance.OnVerifyProgress  += OnVerifyProgressUpdate;
+                                await instance.ConstructFromRemoteIntegrity(ReadIntegrityCheckResult(reader), TimeSpan.FromMilliseconds(reader.ReadInt32()));
                                 break;
 
                             case WorkerInboundOpcode.DisposeAndExit:
@@ -422,70 +354,14 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
                                 if (instance is null)
                                     throw new InvalidOperationException("Installer is not initialized.");
 
-                                await instance.VerifyFiles(reader.ReadBoolean(), reader.ReadInt32(), cancelToken);
+                                await instance.VerifyFiles(reader.ReadString(), reader.ReadBoolean(), reader.ReadInt32(), cancelToken);
                                 break;
 
-                            case WorkerInboundOpcode.MarkFileAsMissing:
+                            case WorkerInboundOpcode.QueueInstall:
                                 if (instance is null)
                                     throw new InvalidOperationException("Installer is not initialized.");
 
-                                instance.MarkFileAsMissing(reader.ReadInt32());
-                                break;
-
-                            case WorkerInboundOpcode.SetTargetStreamFromPathReadOnly:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                instance.SetTargetStreamForRead(reader.ReadInt32(), new FileStream(reader.ReadString(), FileMode.Open, FileAccess.Read));
-                                break;
-
-                            case WorkerInboundOpcode.SetTargetStreamFromPathReadWrite:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                instance.SetTargetStreamForWriteFromFile(reader.ReadInt32(), new(reader.ReadString()));
-                                break;
-
-                            case WorkerInboundOpcode.SetTargetStreamsFromPathReadOnly:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                instance.SetTargetStreamsFromPathReadOnly(reader.ReadString());
-                                break;
-
-                            case WorkerInboundOpcode.SetTargetStreamsFromPathReadWriteForMissingFiles:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                instance.SetTargetStreamsFromPathReadWriteForMissingFiles(reader.ReadString());
-                                break;
-
-                            case WorkerInboundOpcode.RepairNonPatchData:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                await instance.RepairNonPatchData(cancelToken);
-                                break;
-
-                            case WorkerInboundOpcode.WriteVersionFiles:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                instance.WriteVersionFiles(reader.ReadString());
-                                break;
-
-                            case WorkerInboundOpcode.QueueInstallFromUrl:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                instance.QueueInstall(reader.ReadInt32(), reader.ReadString(), reader.ReadString(), reader.ReadInt32());
-                                break;
-
-                            case WorkerInboundOpcode.QueueInstallFromLocalFile:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                instance.QueueInstall(reader.ReadInt32(), new(reader.ReadString()), reader.ReadInt32());
+                                await instance.QueueInstall(reader.ReadInt32(), reader.ReadString(), cancelToken);
                                 break;
 
                             case WorkerInboundOpcode.Install:
@@ -495,51 +371,11 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
                                 await instance.Install(reader.ReadInt32(), cancelToken);
                                 break;
 
-                            case WorkerInboundOpcode.GetMissingPartIndicesPerPatch:
+                            case WorkerInboundOpcode.GetBrokenFiles:
                                 if (instance is null)
                                     throw new InvalidOperationException("Installer is not initialized.");
 
-                                writer.Write(instance.MissingPartIndicesPerPatch.Count);
-
-                                foreach (var e1 in instance.MissingPartIndicesPerPatch)
-                                {
-                                    writer.Write(e1.Count);
-
-                                    foreach (var e2 in e1)
-                                    {
-                                        writer.Write(e2.Item1);
-                                        writer.Write(e2.Item2);
-                                    }
-                                }
-
-                                break;
-
-                            case WorkerInboundOpcode.GetMissingPartIndicesPerTargetFile:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                writer.Write(instance.MissingPartIndicesPerTargetFile.Count);
-
-                                foreach (var e1 in instance.MissingPartIndicesPerTargetFile)
-                                {
-                                    writer.Write(e1.Count);
-                                    foreach (var e2 in e1)
-                                        writer.Write(e2);
-                                }
-
-                                break;
-
-                            case WorkerInboundOpcode.GetSizeMismatchTargetFileIndices:
-                                if (instance is null)
-                                    throw new InvalidOperationException("Installer is not initialized.");
-
-                                writer.Write(instance.SizeMismatchTargetFileIndices.Count);
-                                foreach (var e1 in instance.SizeMismatchTargetFileIndices)
-                                    writer.Write(e1);
-                                break;
-
-                            case WorkerInboundOpcode.SetWorkerProcessPriority:
-                                Process.GetCurrentProcess().PriorityClass = (ProcessPriorityClass)reader.ReadInt32();
+                                WriteStringList(writer, await instance.GetBrokenFiles(cancelToken));
                                 break;
 
                             case WorkerInboundOpcode.MoveFile:
@@ -600,7 +436,10 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
                     finally
                     {
                         if (cancelSourceId != -1)
-                            cancellationTokenSources.Remove(cancelSourceId);
+                        {
+                            lock (cancellationTokenSources)
+                                cancellationTokenSources.Remove(cancelSourceId);
+                        }
                     }
 
                     return ms.ToArray();
@@ -637,7 +476,7 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
             }
         }
 
-        private void OnInstallProgressUpdate(int index, long progress, long max, IndexedZiPatchInstaller.InstallTaskState state)
+        private void OnInstallProgressUpdate(int index, long progress, long max, SdoFileDownloadInstaller.InstallTaskState state)
         {
             lock (progressUpdateSync)
             {
@@ -654,7 +493,7 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
             }
         }
 
-        private void OnVerifyProgressUpdate(int index, long progress, long max)
+        private void OnVerifyProgressUpdate(int index, int count, long progress, long max)
         {
             lock (progressUpdateSync)
             {
@@ -663,6 +502,7 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
                 writer.Write((int)WorkerOutboundOpcode.UpdateVerifyProgress);
                 writer.Write(progressUpdateCounter);
                 writer.Write(index);
+                writer.Write(count);
                 writer.Write(progress);
                 writer.Write(max);
                 progressUpdateCounter += 1;
@@ -690,20 +530,9 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
         Construct,
         DisposeAndExit,
         VerifyFiles,
-        MarkFileAsMissing,
-        SetTargetStreamFromPathReadOnly,
-        SetTargetStreamFromPathReadWrite,
-        SetTargetStreamsFromPathReadOnly,
-        SetTargetStreamsFromPathReadWriteForMissingFiles,
-        RepairNonPatchData,
-        WriteVersionFiles,
-        QueueInstallFromUrl,
-        QueueInstallFromLocalFile,
+        QueueInstall,
         Install,
-        GetMissingPartIndicesPerPatch,
-        GetMissingPartIndicesPerTargetFile,
-        GetSizeMismatchTargetFileIndices,
-        SetWorkerProcessPriority,
+        GetBrokenFiles,
         MoveFile,
         CreateDirectory,
         RemoveDirectory

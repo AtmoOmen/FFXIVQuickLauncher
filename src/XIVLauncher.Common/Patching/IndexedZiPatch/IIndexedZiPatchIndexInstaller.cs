@@ -1,26 +1,23 @@
-﻿using System;
+#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace XIVLauncher.Common.Patching.IndexedZiPatch;
 
 /// <summary>Common functions for ZiPatch index installers.</summary>
-public interface IIndexedZiPatchIndexInstaller : IDisposable
+public interface IIndexedZiPatchIndexInstaller : IDisposable, IInstaller
 {
-    /// <summary>Invoked whenever install progress changes, with rate throttling specified from <see cref="ConstructFromPatchFile"/>.</summary>
-    event IndexedZiPatchInstaller.OnInstallProgressDelegate? OnInstallProgress;
-
-    /// <summary>Invoked whenever verify progress changes, with rate throttling specified from <see cref="ConstructFromPatchFile"/>.</summary>
-    event IndexedZiPatchInstaller.OnVerifyProgressDelegate? OnVerifyProgress;
-
     /// <summary>Initializes the installer from the given patch file.</summary>
     /// <param name="patchIndex">Patch index file to load.</param>
-    /// <param name="progressReportInterval">Rate of <see cref="OnInstallProgress"/> and <see cref="OnVerifyProgress"/> being called. If default, then 250ms will be used.</param>
+    /// <param name="progressReportInterval">
+    ///     Rate of <see cref="OnInstallProgress" /> and <see cref="OnVerifyProgress" /> being
+    ///     called. If default, then 250ms will be used.
+    /// </param>
     /// <returns>A task representing the operation state.</returns>
     Task ConstructFromPatchFile(IndexedZiPatchIndex patchIndex, TimeSpan progressReportInterval = default);
 
@@ -44,7 +41,10 @@ public interface IIndexedZiPatchIndexInstaller : IDisposable
     /// <returns>A task representing the operation state.</returns>
     Task SetTargetStreamFromPathReadOnly(int targetIndex, string path, CancellationToken cancellationToken = default);
 
-    /// <summary>Opens a file specified for reading and writing and use that stream as the file corresponding to the target index.</summary>
+    /// <summary>
+    ///     Opens a file specified for reading and writing and use that stream as the file corresponding to the target
+    ///     index.
+    /// </summary>
     /// <param name="targetIndex">Index of the target file in the patch index file.</param>
     /// <param name="path">Path of the file on the local file system.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -137,4 +137,16 @@ public interface IIndexedZiPatchIndexInstaller : IDisposable
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task representing the operation state.</returns>
     Task RemoveDirectory(string dir, bool recursive = false, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    ///     Invoked whenever install progress changes, with rate throttling specified from
+    ///     <see cref="ConstructFromPatchFile" />.
+    /// </summary>
+    event IndexedZiPatchInstaller.OnInstallProgressDelegate? OnInstallProgress;
+
+    /// <summary>
+    ///     Invoked whenever verify progress changes, with rate throttling specified from
+    ///     <see cref="ConstructFromPatchFile" />.
+    /// </summary>
+    event IndexedZiPatchInstaller.OnVerifyProgressDelegate? OnVerifyProgress;
 }
