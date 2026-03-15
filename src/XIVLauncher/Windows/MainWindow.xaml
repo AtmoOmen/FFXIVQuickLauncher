@@ -9,6 +9,7 @@
     xmlns:windows="clr-namespace:XIVLauncher.Windows"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     xmlns:game="clr-namespace:XIVLauncher.Common.Game;assembly=XIVLauncher.Common"
+    xmlns:site="clr-namespace:XIVLauncher.Common.Http.Site;assembly=XIVLauncher.Common"
     mc:Ignorable="d"
     Title="XIVLauncherCN (Soil)"
     Width="700"
@@ -118,7 +119,7 @@
                                     </ListView.ItemContainerStyle>
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:Name="SingleLineDataTemplate"
-                                                      DataType="game:News">
+                                                      DataType="site:News">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />

@@ -28,6 +28,7 @@ using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Exceptions;
+using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Game.Patch.PatchList;
@@ -40,6 +41,7 @@ using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Support;
 using XIVLauncher.Xaml;
 using Constants = XIVLauncher.Common.Constants;
+using DCTravelClient = XIVLauncher.Common.Game.DCTravel.DCTravelClient;
 
 namespace XIVLauncher.Windows.ViewModel;
 
@@ -59,23 +61,18 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public string Password { get; set; }
 
-    public SdoArea[] SdoAreas
+    public LoginArea[] SdoAreas
     {
-        get => _sdoAreas;
+        get;
         set
         {
-            _sdoAreas = value;
+            field = value;
             OnPropertyChanged(nameof(SdoAreas));
         }
     }
 
     public           DcTravelListener dcTravelListener { get; private set; }
     private readonly Window           _window;
-
-    private readonly Task<GateStatus> loginStatusTask;
-    private          bool             refetchLoginStatus = false;
-
-    private SdoArea[] _sdoAreas;
 
     private CancellationTokenSource loginCts;
 
@@ -575,9 +572,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
             loginResult.OauthLogin.SessionId,
             loginResult.OauthLogin.SndaId,
             loginResult.DcTravelPort,
-            Area.Areaid,
+            Area.AreaID,
             Area.AreaLobby,
-            Area.AreaGm,
+            Area.AreaGM,
             Area.AreaConfigUpload,
             Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
             App.Settings.AdditionalLaunchArgs,
@@ -887,7 +884,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        if (Area == null || Area.Areaid == "-1")
+        if (Area == null || Area.AreaID == "-1")
         {
             CustomMessageBox.Show
             (
@@ -980,7 +977,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     if (readWeGameInfo)
                     {
-                        var loginData = await ReadWegameInfo(username, Area.Areaid);
+                        var loginData = await ReadWegameInfo(username, Area.AreaID);
                         if (loginData == null)
                             return;
 
@@ -989,7 +986,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         username = loginData.SndaID;
                         serect   = loginData.SessionId;
                         var areaId = loginData.Args.Where(x => x.Contains("AreaID=")).Select(x => x.Split('=')[1]).First();
-                        Area = SdoAreas.FirstOrDefault(x => x.Areaid == areaId);
+                        Area = SdoAreas.FirstOrDefault(x => x.AreaID == areaId);
                     }
 
                     finalLoginType = LoginType.WeGameSid;
@@ -1052,7 +1049,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         //await dc.GetValidCookie();
         //var groupList = await dc.QueryGroupListTravelSource();
         //var orders = await dc.QueryMigrationOrders();
-        var dcTraveler = new DcTraveler(string.Empty)
+        var dcTraveler = new DCTravelClient(string.Empty)
         {
             SetSdoAreaFunc = name =>
             {
@@ -1118,9 +1115,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     if (dcTravelListener != null)
                     {
-                        dcTravelListener.DcTraveler.RefreshGameSessionIdByAutoLoginFunc = async () =>
+                        dcTravelListener.DCTravelClient.RefreshGameSessionIdByAutoLoginFunc = async () =>
                         {
-                            var newLoginResult = await Launcher.LoginBySessionKey(username, loginResult.OauthLogin.AutoLoginSessionKey, dcTravelListener.DcTraveler).ConfigureAwait(false);
+                            var newLoginResult = await Launcher.LoginBySessionKey(username, loginResult.OauthLogin.AutoLoginSessionKey, dcTravelListener.DCTravelClient).ConfigureAwait(false);
                             return newLoginResult.OauthLogin.SessionId;
                         };
                     }
@@ -1167,7 +1164,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         string           username,
         string           serect,
         bool             autoLogin,
-        DcTraveler       dcTraveler,
+        DCTravelClient       dcTravelClient,
         AfterLoginAction action
     )
     {
@@ -1185,7 +1182,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 try
                 {
-                    return await Launcher.LoginBySessionKey(username, serect, dcTraveler).ConfigureAwait(false);
+                    return await Launcher.LoginBySessionKey(username, serect, dcTravelClient).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -1197,7 +1194,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             switch (type)
             {
                 case LoginType.SdoStatic:
-                    return await Launcher.LoginBySdoStatic(username, serect, dcTraveler).ConfigureAwait(false);
+                    return await Launcher.LoginBySdoStatic(username, serect, dcTravelClient).ConfigureAwait(false);
 
                 case LoginType.SdoSlide:
                     return await Launcher.LoginBySlide
@@ -1210,7 +1207,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                    Log.Information($"叨鱼确认码:{code}");
                                    LoginMessage = $"确认码: {code}";
                                },
-                               dcTraveler
+                               dcTravelClient
                            ).ConfigureAwait(false);
 
                 case LoginType.SdoQrCode:
@@ -1219,11 +1216,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                autoLogin,
                                loginCts,
                                qrBytes => { QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes); },
-                               dcTraveler
+                               dcTravelClient
                            ).ConfigureAwait(false);
 
                 case LoginType.WeGameToken:
-                    return await Launcher.LoginByWeGameToken(username, serect, autoLogin, dcTraveler).ConfigureAwait(false);
+                    return await Launcher.LoginByWeGameToken(username, serect, autoLogin, dcTravelClient).ConfigureAwait(false);
 
                 case LoginType.WeGameSid:
                     return await Launcher.LoginBySid(username, serect).ConfigureAwait(false);
@@ -1243,7 +1240,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                          .WithShowDiscordLink()
                          .WithParentWindow(_window);
 
-            if (ex is SdoLoginException sdoLoginEx)
+            if (ex is LoginException sdoLoginEx)
             {
                 if (loginCts.IsCancellationRequested)
                 {
@@ -1305,7 +1302,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     ex.Message
                 );
             }
-            else if (ex is OauthLoginException oauthLoginException)
+            else if (ex is OAuthLoginException oauthLoginException)
             {
                 disableAutoLogin = true;
                 LoginMessage     = "";
@@ -2587,7 +2584,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         set => App.Settings.SelectedServer = value;
     }
 
-    public SdoArea Area
+    public LoginArea Area
     {
         get;
         set

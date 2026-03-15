@@ -2,10 +2,4 @@ using System;
 
 namespace XIVLauncher.Common.Game.Exceptions;
 
-public class InvalidVersionFilesException : Exception
-{
-    public InvalidVersionFilesException()
-        : base("Version files are invalid.")
-    {
-    }
-}
+public class InvalidVersionFilesException() : Exception("游戏版本信息文件无效");

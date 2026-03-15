@@ -2,11 +2,10 @@
 
 namespace XIVLauncher.Common.Game.Exceptions;
 
-public class BinaryNotPresentException : Exception
+public class BinaryNotPresentException
+(
+    string path
+) : Exception("未找到游戏二进制文件")
 {
-    public string Path { get; private set; }
-
-    public BinaryNotPresentException(string path)
-        : base("Game binary was not found") =>
-        Path = path;
+    public string Path { get; private set; } = path;
 }

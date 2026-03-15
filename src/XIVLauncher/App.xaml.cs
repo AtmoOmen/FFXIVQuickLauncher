@@ -139,7 +139,7 @@ public partial class App
                    .UseTypeParser(new CommonJsonParser<PreserveWindowPosition.WindowPlacement>())
                    .Build();
 
-        SdoUtils.IsDynamicDeviceId = Settings.DynamicDeviceId;
+        MachineCode.IsDynamicDeviceId = Settings.DynamicDeviceId;
 
         if (Settings.EnableVerboseLog.GetValueOrDefault(false))
             LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;

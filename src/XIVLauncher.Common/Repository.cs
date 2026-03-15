@@ -17,123 +17,63 @@ public enum Repository
 
 public static class RepoExtensions
 {
-    public static FileInfo GetVerFile(this Repository repo, DirectoryInfo gamePath, bool isBck = false)
+    extension(Repository repo)
     {
-        var repoPath = repo.GetRepoPath(gamePath).FullName;
-
-        switch (repo)
+        public FileInfo GetVerFile(DirectoryInfo gamePath, bool isBck = false)
         {
-            case Repository.Boot:
-                return new FileInfo(Path.Combine(repoPath, "ffxivboot" + (isBck ? ".bck" : ".ver")));
+            var repoPath = repo.GetRepoPath(gamePath).FullName;
 
-            case Repository.Ffxiv:
-                return new FileInfo(Path.Combine(repoPath, "ffxivgame" + (isBck ? ".bck" : ".ver")));
-
-            case Repository.Ex1:
-                return new FileInfo(Path.Combine(repoPath, "ex1" + (isBck ? ".bck" : ".ver")));
-
-            case Repository.Ex2:
-                return new FileInfo(Path.Combine(repoPath, "ex2" + (isBck ? ".bck" : ".ver")));
-
-            case Repository.Ex3:
-                return new FileInfo(Path.Combine(repoPath, "ex3" + (isBck ? ".bck" : ".ver")));
-
-            case Repository.Ex4:
-                return new FileInfo(Path.Combine(repoPath, "ex4" + (isBck ? ".bck" : ".ver")));
-
-            case Repository.Ex5:
-                return new FileInfo(Path.Combine(repoPath, "ex5" + (isBck ? ".bck" : ".ver")));
-
-            default:
-                throw new ArgumentOutOfRangeException(nameof(repo), repo, null);
+            return repo switch
+            {
+                Repository.Boot  => new FileInfo(Path.Combine(repoPath, "ffxivboot" + (isBck ? ".bck" : ".ver"))),
+                Repository.Ffxiv => new FileInfo(Path.Combine(repoPath, "ffxivgame" + (isBck ? ".bck" : ".ver"))),
+                Repository.Ex1   => new FileInfo(Path.Combine(repoPath, "ex1"       + (isBck ? ".bck" : ".ver"))),
+                Repository.Ex2   => new FileInfo(Path.Combine(repoPath, "ex2"       + (isBck ? ".bck" : ".ver"))),
+                Repository.Ex3   => new FileInfo(Path.Combine(repoPath, "ex3"       + (isBck ? ".bck" : ".ver"))),
+                Repository.Ex4   => new FileInfo(Path.Combine(repoPath, "ex4"       + (isBck ? ".bck" : ".ver"))),
+                Repository.Ex5   => new FileInfo(Path.Combine(repoPath, "ex5"       + (isBck ? ".bck" : ".ver"))),
+                _                => throw new ArgumentOutOfRangeException(nameof(repo), repo, null)
+            };
         }
-    }
 
-    public static string GetVer(this Repository repo, DirectoryInfo gamePath, bool isBck = false)
-    {
-        var verFile = repo.GetVerFile(gamePath, isBck);
-
-        if (!verFile.Exists)
-            return Constants.BASE_GAME_VERSION;
-
-        var ver = File.ReadAllText(verFile.FullName);
-        return string.IsNullOrWhiteSpace(ver) ? Constants.BASE_GAME_VERSION : ver;
-    }
-
-    public static void SetVer(this Repository repo, DirectoryInfo gamePath, string newVer, bool isBck = false)
-    {
-        var verFile = repo.GetVerFile(gamePath, isBck);
-
-        if (!verFile.Directory.Exists)
-            verFile.Directory.Create();
-
-        using var fileStream = verFile.Open(FileMode.Create, FileAccess.Write, FileShare.None);
-        var       buffer     = Encoding.ASCII.GetBytes(newVer);
-        fileStream.Write(buffer, 0, buffer.Length);
-        fileStream.Flush();
-    }
-
-    public static bool IsBaseVer(this Repository repo, DirectoryInfo gamePath) =>
-        repo.GetVer(gamePath) == Constants.BASE_GAME_VERSION;
-
-    // TODO
-    public static string GetRepoHash(this Repository repo)
-    {
-        switch (repo)
+        public string GetVer(DirectoryInfo gamePath, bool isBck = false)
         {
-            case Repository.Boot:
-                return null;
+            var verFile = repo.GetVerFile(gamePath, isBck);
 
-            case Repository.Ffxiv:
-                return null;
+            if (!verFile.Exists)
+                return Constants.BASE_GAME_VERSION;
 
-            case Repository.Ex1:
-                return null;
-
-            case Repository.Ex2:
-                return null;
-
-            case Repository.Ex3:
-                return null;
-
-            case Repository.Ex4:
-                return null;
-
-            case Repository.Ex5:
-                return null;
-
-            default:
-                throw new ArgumentOutOfRangeException(nameof(repo), repo, null);
+            var ver = File.ReadAllText(verFile.FullName);
+            return string.IsNullOrWhiteSpace(ver) ? Constants.BASE_GAME_VERSION : ver;
         }
-    }
 
-    private static DirectoryInfo GetRepoPath(this Repository repo, DirectoryInfo gamePath)
-    {
-        switch (repo)
+        public void SetVer(DirectoryInfo gamePath, string newVer, bool isBck = false)
         {
-            case Repository.Boot:
-                return new DirectoryInfo(Path.Combine(gamePath.FullName, "boot"));
+            var verFile = repo.GetVerFile(gamePath, isBck);
 
-            case Repository.Ffxiv:
-                return new DirectoryInfo(Path.Combine(gamePath.FullName, "game"));
+            if (verFile.Directory != null && !verFile.Directory.Exists)
+                verFile.Directory.Create();
 
-            case Repository.Ex1:
-                return new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex1"));
-
-            case Repository.Ex2:
-                return new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex2"));
-
-            case Repository.Ex3:
-                return new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex3"));
-
-            case Repository.Ex4:
-                return new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex4"));
-
-            case Repository.Ex5:
-                return new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex5"));
-
-            default:
-                throw new ArgumentOutOfRangeException(nameof(repo), repo, null);
+            using var fileStream = verFile.Open(FileMode.Create, FileAccess.Write, FileShare.None);
+            var       buffer     = Encoding.ASCII.GetBytes(newVer);
+            fileStream.Write(buffer, 0, buffer.Length);
+            fileStream.Flush();
         }
+
+        public bool IsBaseVer(DirectoryInfo gamePath) =>
+            repo.GetVer(gamePath) == Constants.BASE_GAME_VERSION;
+
+        private DirectoryInfo GetRepoPath(DirectoryInfo gamePath) =>
+            repo switch
+            {
+                Repository.Boot  => new DirectoryInfo(Path.Combine(gamePath.FullName, "boot")),
+                Repository.Ffxiv => new DirectoryInfo(Path.Combine(gamePath.FullName, "game")),
+                Repository.Ex1   => new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex1")),
+                Repository.Ex2   => new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex2")),
+                Repository.Ex3   => new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex3")),
+                Repository.Ex4   => new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex4")),
+                Repository.Ex5   => new DirectoryInfo(Path.Combine(gamePath.FullName, "game", "sqpack", "ex5")),
+                _                => throw new ArgumentOutOfRangeException(nameof(repo), repo, null)
+            };
     }
 }

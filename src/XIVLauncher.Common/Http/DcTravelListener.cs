@@ -13,6 +13,7 @@ using EmbedIO.Routing;
 using EmbedIO.WebApi;
 using Serilog;
 using XIVLauncher.Common.Game;
+using DCTravelClient = XIVLauncher.Common.Game.DCTravel.DCTravelClient;
 
 namespace XIVLauncher.Common.Http;
 
@@ -23,7 +24,7 @@ public class HttpRpcAttribute : Attribute
 
 public class DcTravelListener
 {
-    public           DcTraveler                     DcTraveler;
+    public           DCTravelClient                     DCTravelClient;
     private readonly CancellationTokenSource        _listenerCts   = new();
     private readonly Dictionary<string, MethodInfo> rpcMethodCache = new();
 
@@ -32,7 +33,7 @@ public class DcTravelListener
     private readonly bool      useEncrypt;
     private          WebServer webServer;
 
-    public DcTravelListener(DcTraveler dcTraveler, int port, bool useEncrypt = true)
+    public DcTravelListener(DCTravelClient dcTravelClient, int port, bool useEncrypt = true)
     {
         if (useEncrypt)
         {
@@ -44,7 +45,7 @@ public class DcTravelListener
         }
 
         this.useEncrypt = useEncrypt;
-        DcTraveler      = dcTraveler ?? throw new ArgumentNullException(nameof(dcTraveler));
+        DCTravelClient      = dcTravelClient ?? throw new ArgumentNullException(nameof(dcTravelClient));
         CacheRpcMethods();
 
         webServer = new WebServer
@@ -58,8 +59,8 @@ public class DcTravelListener
     public void Stop()
     {
         _listenerCts.Cancel();
-        DcTraveler.KeepAliveCts.Cancel();
-        DcTraveler?.Logout().Wait();
+        DCTravelClient.KeepAliveCts.Cancel();
+        DCTravelClient?.Logout().Wait();
 
         if (webServer != null)
         {
@@ -130,7 +131,7 @@ public class DcTravelListener
 
     private void CacheRpcMethods()
     {
-        var methods = typeof(DcTraveler)
+        var methods = typeof(DCTravelClient)
                       .GetMethods(BindingFlags.Public | BindingFlags.Instance)
                       .Where(m => m.GetCustomAttribute<HttpRpcAttribute>() != null);
 
@@ -204,18 +205,18 @@ public class DcTravelListener
 
                 if (method.ReturnType == typeof(Task))
                 {
-                    var task = (Task)method.Invoke(_listener.DcTraveler, callParams);
+                    var task = (Task)method.Invoke(_listener.DCTravelClient, callParams);
                     await task;
                     result = null;
                 }
                 else if (method.ReturnType.IsGenericType && method.ReturnType.GetGenericTypeDefinition() == typeof(Task<>))
                 {
-                    dynamic task = method.Invoke(_listener.DcTraveler, callParams);
+                    dynamic task = method.Invoke(_listener.DCTravelClient, callParams);
                     await task;
                     result = task.Result;
                 }
                 else
-                    result = method.Invoke(_listener.DcTraveler, callParams);
+                    result = method.Invoke(_listener.DCTravelClient, callParams);
 
                 // 准备响应
                 var response     = new RpcResponse { Result = result, Error = null };

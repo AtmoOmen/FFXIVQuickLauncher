@@ -2,11 +2,11 @@ using System;
 
 namespace XIVLauncher.Common.Game.Exceptions;
 
-public class InvalidResponseException : Exception
+public class InvalidResponseException
+(
+    string message,
+    string document
+) : Exception(message)
 {
-    public string Document { get; set; }
-
-    public InvalidResponseException(string message, string document)
-        : base(message) =>
-        Document = document;
+    public string Document { get; set; } = document;
 }

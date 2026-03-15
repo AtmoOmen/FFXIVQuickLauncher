@@ -16,6 +16,7 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Encryption;
 using XIVLauncher.Common.Game.Exceptions;
+using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.PatchList;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
@@ -122,10 +123,10 @@ public class Launcher
         };
     }
 
-    public async Task<LoginResult> LoginBySdoStatic(string account, string password, DcTraveler dcTraveler)
+    public async Task<LoginResult> LoginBySdoStatic(string account, string password, DCTravel.DCTravelClient dcTravelClient)
     {
         var guid       = await GetGuid();
-        var macAddress = SdoUtils.GetMacAddress();
+        var macAddress = MachineCode.GetMacAddress();
         //密码登录
         var result = await GetJsonAsSdoClient
                      (
@@ -138,20 +139,20 @@ public class Launcher
                      );
 
         if (result.ReturnCode != 0 || result.ErrorType != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
         if (string.IsNullOrEmpty(result.Data.Tgt))
-            throw new SdoLoginException((int)SdoLoginCustomExpectionCode.STATIC_NEED_CAPTCHA, "本次登录需要输入验证码,目前暂不支持,请使用其他登录方式登录。");
+            throw new LoginException((int)LoginExceptionCode.StaticNeedCaptcha, "静态登录需要输入验证码, 目前暂未支持, 请选用其他方式登录");
 
         Log.Information($"staticLogin.json:{result.Data.SndaId}:{result.Data.Tgt}");
 
         var sndaId = result.Data.SndaId;
         var tgt    = result.Data.Tgt;
 
-        if (dcTraveler != null)
+        if (dcTravelClient != null)
         {
-            dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
-            dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+            dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
         }
 
         var sessionId = await GetSessionId(tgt, guid);
@@ -174,15 +175,15 @@ public class Launcher
         };
     }
 
-    public async Task<LoginResult> LoginByWeGameToken(string account, string token, bool autoLogin, DcTraveler dcTraveler)
+    public async Task<LoginResult> LoginByWeGameToken(string account, string token, bool autoLogin, DCTravel.DCTravelClient dcTravelClient)
     {
         var guid = await GetGuid();
         var (sndaId, tgt, autoLoginSessionKey) = await ThirdPartyLogin(account, token, autoLogin, AUTO_LOGIN_KEEP_DAYS);
 
-        if (dcTraveler != null)
+        if (dcTravelClient != null)
         {
-            dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
-            dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+            dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
         }
 
         var sessionId = await GetSessionId(tgt, guid);
@@ -204,7 +205,7 @@ public class Launcher
         };
     }
 
-    public async Task<LoginResult> LoginByScanQrCode(bool autoLogin, CancellationTokenSource cts, Action<byte[]> showQrCode, DcTraveler dcTraveler)
+    public async Task<LoginResult> LoginByScanQrCode(bool autoLogin, CancellationTokenSource cts, Action<byte[]> showQrCode, DCTravel.DCTravelClient dcTravelClient)
     {
         var guid = await GetGuid();
         // Wait for Scan QrCode
@@ -227,10 +228,10 @@ public class Launcher
         if (autoLogin)
             (tgt, autoLoginSessionKey) = await AccountGroupLogin(tgt, sndaId, AUTO_LOGIN_KEEP_DAYS);
 
-        if (dcTraveler != null)
+        if (dcTravelClient != null)
         {
-            dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
-            dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+            dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
         }
 
         var sessionId = await GetSessionId(tgt, guid);
@@ -252,7 +253,7 @@ public class Launcher
         };
     }
 
-    public async Task<LoginResult> LoginBySlide(string account, bool autoLogin, CancellationTokenSource cts, Action<string> showVerificationCode, DcTraveler dcTraveler)
+    public async Task<LoginResult> LoginBySlide(string account, bool autoLogin, CancellationTokenSource cts, Action<string> showVerificationCode, DCTravel.DCTravelClient dcTravelClient)
     {
         var guid = await GetGuid();
         // Wait for Slide
@@ -261,10 +262,10 @@ public class Launcher
         showVerificationCode?.Invoke(pushMsgSerialNum);
         var (sndaId, tgt, autoLoginSessionKey) = await WaitingForSlideOnDaoyuApp(pushMsgSessionKey, pushMsgSerialNum, guid, expiration, cts, autoLogin, AUTO_LOGIN_KEEP_DAYS);
 
-        if (dcTraveler != null)
+        if (dcTravelClient != null)
         {
-            dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
-            dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+            dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
         }
 
         var sessionId = await GetSessionId(tgt, guid);
@@ -286,7 +287,7 @@ public class Launcher
         };
     }
 
-    public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DcTraveler dcTraveler)
+    public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DCTravel.DCTravelClient dcTravelClient)
     {
         var guid = await GetGuid();
         //快速登录,刷新SessionKey
@@ -296,17 +297,17 @@ public class Launcher
         var result = await GetJsonAsSdoClient("fastLogin.json", new List<string> { $"tgt={tgt}", $"guid={guid}" });
 
         if (result.ReturnCode != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason, true);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason, true);
 
         sndaId = result.Data.SndaId;
         tgt    = result.Data.Tgt;
 
         try
         {
-            if (dcTraveler != null)
+            if (dcTravelClient != null)
             {
-                dcTraveler.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
-                dcTraveler.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
+                dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+                dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
             }
 
             var sessionId = await GetSessionId(tgt, guid);
@@ -328,7 +329,7 @@ public class Launcher
         }
         catch (Exception ex)
         {
-            if (ex is SdoLoginException sdoEx)
+            if (ex is LoginException sdoEx)
             {
                 sdoEx.RemoveAutoLoginSessionKey = true;
                 throw sdoEx;
@@ -692,7 +693,7 @@ public class Launcher
         }
     }
 
-    public async Task<LoginResult> CheckGameUpdate(SdoArea area, DirectoryInfo gamePath, bool forceBaseVersion)
+    public async Task<LoginResult> CheckGameUpdate(LoginArea area, DirectoryInfo gamePath, bool forceBaseVersion)
     {
         var request = new HttpRequestMessage
         (
@@ -827,7 +828,7 @@ public class Launcher
         var result = await GetJsonAsSdoClient("getGuid.json", new List<string> { "generateDynamicKey=1" });
 
         if (result.ErrorType != 0)
-            throw new OauthLoginException(result.ToString());
+            throw new OAuthLoginException(result.ToString());
 
         var dynamicKey = result.Data.DynamicKey;
         return result.Data.Guid;
@@ -838,7 +839,7 @@ public class Launcher
         var result = await GetJsonAsSdoClient("autoLogin.json", new List<string> { $"autoLoginSessionKey={autoLoginSessionKey}", $"guid={guid}" });
         //-10515005 "对不起，自动登录已失效，请重新登录"
         if (result.ReturnCode != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason, true);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason, true);
         Log.Information($"LoginSessionKey Updated, {result.Data.AutoLoginMaxAge / 3600f:F1} hours left");
         autoLoginSessionKey = result.Data.AutoLoginSessionKey;
         var tgt    = result.Data.Tgt;
@@ -863,7 +864,7 @@ public class Launcher
                      );
 
         if (result.ReturnCode != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
         Log.Information($"thirdPartyLogin:{result.Data.SndaId}:{result.Data.Tgt}");
 
@@ -877,13 +878,13 @@ public class Launcher
 
     private async Task<string> GetAccountGroup(string tgt, string sndaId)
     {
-        var result = await GetJsonAsSdoClient("getAccountGroup", new List<string> { "serviceUrl=http%3A%2F%2Fwww.sdo.com", $"tgt={tgt}" });
+        var result = await GetJsonAsSdoClient("getAccountGroup", ["serviceUrl=http%3A%2F%2Fwww.sdo.com", $"tgt={tgt}"]);
 
         if (result.ReturnCode != 0 || result.ErrorType != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
         if (!result.Data.SndaIdArray.Contains(sndaId))
-            throw new SdoLoginException((int)SdoLoginCustomExpectionCode.SCAN_QRCODE_GET_ACCOUNT_FAIL, "获取用户名失败");
+            throw new LoginException((int)LoginExceptionCode.ScanQrCodeGetAccountFail, "扫描二维码后获取用户名失败");
 
         Log.Information($"getAccountGroup:{string.Join(",", result.Data.SndaIdArray)}");
 
@@ -904,7 +905,7 @@ public class Launcher
         Log.Information($"accountGroupLogin:AutoLoginMaxAge:{result.Data.AutoLoginMaxAge}");
 
         if (result.ReturnCode != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason);
         return (result.Data.Tgt, result.Data.AutoLoginSessionKey);
     }
 
@@ -919,7 +920,7 @@ public class Launcher
 
     private HttpRequestMessage GetSdoHttpRequestMessage(HttpMethod method, string endPoint, List<string> para, string tgt = null, string appId = "100001900")
     {
-        var mac = SdoUtils.GetMac();
+        var mac = MachineCode.GetMAC();
         var commonParas = new List<string>
         {
             "authenSource=1",
@@ -932,12 +933,12 @@ public class Launcher
             "endpointOS=1",
             "version=21",
             "customSecurityLevel=2",
-            $"deviceId={SdoUtils.GetDeviceID()}",
+            $"deviceId={MachineCode.GetDeviceID()}",
             "thirdLoginExtern=0",
             $"macId={mac}",
             // 不知道什么时候盛趣加了点新的参数
             "epIp=",
-            $"epName={SdoUtils.GetHostName()}",
+            $"epName={MachineCode.GetHostName()}",
             "extendInfo=",
             "sdoVersion=",
             "runTimeId=",
@@ -968,7 +969,7 @@ public class Launcher
 
         if (!hasCid)
         {
-            var randomCid = $"CID{SdoUtils.GetMD5(ASCIIEncoding.ASCII.GetBytes(mac))}";
+            var randomCid = $"CID{MachineCode.GetMD5(ASCIIEncoding.ASCII.GetBytes(mac))}";
             Log.Information("Use MD5 of MAC address as CASCID");
             request.Headers.AddWithoutValidation("Cookie", $"CASCID={randomCid}; SECURE_CASCID={randomCid};");
         }
@@ -1039,7 +1040,7 @@ public class Launcher
         //-1602726  该账号首次在本设备上登录，不支持一键登录，请使用二维码登录
         //-10516808 用户未确认
         if (result.ReturnCode != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason);
         var pushMsgSerialNum  = result.Data.PushMsgSerialNum;
         var pushMsgSessionKey = result.Data.PushMsgSessionKey;
         return (pushMsgSerialNum, pushMsgSessionKey, slideExpiration);
@@ -1077,11 +1078,11 @@ public class Launcher
                     continue;
 
                 default:
-                    throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+                    throw new LoginException(result.ReturnCode, result.Data.FailReason);
             }
         }
 
-        throw new SdoLoginException((int)SdoLoginCustomExpectionCode.SLIDE_TIMEOUT_OR_CANCELED, "登录超时或被取消");
+        throw new LoginException((int)LoginExceptionCode.SlideTimeoutOrCanceled, "登录超时或被取消");
     }
 
     #endregion
@@ -1099,7 +1100,7 @@ public class Launcher
         var codeKey  = cookies.FirstOrDefault(x => x.StartsWith("CODEKEY="))?.Split(';')[0];
         codeKey = codeKey?.Split('=')[1];
         if (string.IsNullOrEmpty(codeKey))
-            throw new OauthLoginException("QRCode下载失败");
+            throw new OAuthLoginException("QRCode下载失败");
         var bytes = await response.Content.ReadAsByteArrayAsync();
 
         Log.Information($"QRCode下载完成,CodeKey={codeKey}");
@@ -1127,10 +1128,10 @@ public class Launcher
                 continue;
             }
 
-            throw new OauthLoginException(result.Data.FailReason);
+            throw new OAuthLoginException(result.Data.FailReason);
         }
 
-        throw new SdoLoginException((int)SdoLoginCustomExpectionCode.SLIDE_TIMEOUT_OR_CANCELED, "登录超时或被取消");
+        throw new LoginException((int)LoginExceptionCode.SlideTimeoutOrCanceled, "登录超时或被取消");
     }
 
     #endregion
@@ -1143,7 +1144,7 @@ public class Launcher
         var result = await GetJsonAsSdoClient("ssoLogin.json", new List<string> { $"tgt={tgt}", $"guid={guid}" }, tgt);
 
         if (result.ReturnCode != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason);
         return result.Data.Ticket;
     }
 
@@ -1155,7 +1156,7 @@ public class Launcher
             paras.Add($"serviceUrl={serviceUrl}");
         var result = await GetJsonAsSdoClient("getPromotionInfo.json", paras, tgt);
         if (result.ReturnCode != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason);
         return result;
     }
 
@@ -1167,7 +1168,7 @@ public class Launcher
         var result = await GetJsonAsSdoClient("ssoLogin.json", new List<string> { $"tgt={tgt}", $"guid={guid}" }, tgt, appId);
 
         if (result.ReturnCode != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason);
         return result.Data.Ticket;
     }
 
@@ -1181,7 +1182,7 @@ public class Launcher
             paras.Add($"serviceUrl={serviceUrl}");
         var result = await GetJsonAsSdoClient("getPromotionInfo.json", paras, tgt, appId);
         if (result.ReturnCode != 0)
-            throw new SdoLoginException(result.ReturnCode, result.Data.FailReason);
+            throw new LoginException(result.ReturnCode, result.Data.FailReason);
         return result;
     }
 
@@ -1277,8 +1278,8 @@ public class Launcher
         public PatchListEntry[]  PendingPatches { get; set; } = [];
         public OauthLoginResult? OauthLogin     { get; set; }
         public string?           UniqueId       { get; set; }
-        public SdoArea?          Area           { get; set; }
-        public SdoArea[]?        Areas          { get; set; }
+        public LoginArea?          Area           { get; set; }
+        public LoginArea[]?        Areas          { get; set; }
         public int               DcTravelPort   { get; set; } = 0;
     }
 

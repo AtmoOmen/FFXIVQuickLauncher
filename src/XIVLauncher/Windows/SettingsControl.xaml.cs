@@ -142,7 +142,7 @@ public partial class SettingsControl
 
         App.Settings.DynamicDeviceId = DynamicDeviceIdCheckBox.IsChecked == true;
         // Apply setting immediately
-        SdoUtils.IsDynamicDeviceId = App.Settings.DynamicDeviceId;
+        MachineCode.IsDynamicDeviceId = App.Settings.DynamicDeviceId;
 
         App.Settings.CredType = (CredType)AccountStorageEncryptCombox.SelectedIndex;
         App.AccountManager.ChangeCredType(App.Settings.CredType);

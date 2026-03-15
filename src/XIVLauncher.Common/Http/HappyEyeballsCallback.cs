@@ -10,9 +10,9 @@ using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Http;
 
-public class HappyEyeballsCallback
+public static class HappyEyeballsCallback
 {
-    private const int ConnectionBackoff = 100;
+    private const int CONNECTION_BACKOFF = 100;
 
     public static async ValueTask<Stream> ConnectCallback(SocketsHttpConnectionContext context, CancellationToken token)
     {
@@ -27,7 +27,7 @@ public class HappyEyeballsCallback
         {
             var record = sortedRecords[i];
 
-            delayCts.CancelAfter(ConnectionBackoff * i);
+            delayCts.CancelAfter(CONNECTION_BACKOFF * i);
 
             var task = AttemptConnection(record, context.DnsEndPoint.Port, linkedToken.Token, delayCts.Token);
             tasks.Add(task);
@@ -42,7 +42,7 @@ public class HappyEyeballsCallback
         // If we're here, it means we have a successful connection. A failure to connect would have caused the above
         // line to explode, so we're safe to clean everything up.
         linkedToken.Cancel();
-        tasks.ForEach(task => { task.ContinueWith(CleanupConnectionTask); });
+        tasks.ForEach(task => { task.ContinueWith(CleanupConnectionTask, delayCts.Token); });
         return stream;
     }
 
@@ -81,6 +81,6 @@ public class HappyEyeballsCallback
         var exception = task.Exception;
 
         if (task.IsFaulted)
-            Log.Verbose(exception!, "A HappyEyeballs connection task failed. Are there network issues?");
+            Log.Verbose(exception!, "HappyEyeballs 连接任务失败, 可能为网络异常");
     }
 }

@@ -19,7 +19,9 @@ using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.Acquisition;
+using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 using XIVLauncher.Xaml;
@@ -210,8 +212,8 @@ public partial class MainWindow : Window
 
     private async Task SetupServers()
     {
-        var areas = new SdoArea[1] { new() { AreaName = "获取大区失败", Areaid = "-1" } };
-        areas = await SdoArea.Get();
+        var areas = new LoginArea[1] { new() { AreaName = "获取大区失败", AreaID = "-1" } };
+        areas = await LoginArea.Get();
 
         Dispatcher.Invoke
         (() =>
@@ -228,7 +230,7 @@ public partial class MainWindow : Window
         {
             _bannerChangeTimer?.Stop();
 
-            _headlines = await Headlines.GetHeadlines(_launcher)
+            _headlines = await Headlines.GetHeadlinesAsync(_launcher)
                                         .ConfigureAwait(false);
             _banners = _headlines.Banner;
 

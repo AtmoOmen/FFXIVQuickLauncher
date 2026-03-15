@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
@@ -14,7 +13,12 @@ namespace XIVLauncher.Common.Patching.IndexedZiPatch;
 
 public class IndexedZiPatchOperations
 {
-    public static async Task<IndexedZiPatchIndex> CreateZiPatchIndices(int expacVersion, IList<string> patchFilePaths, CancellationToken cancellationToken = default)
+    public static async Task<IndexedZiPatchIndex> CreateZiPatchIndices
+    (
+        int               expacVersion,
+        IList<string>     patchFilePaths,
+        CancellationToken cancellationToken = default
+    )
     {
         var sources    = new List<Stream>();
         var patchFiles = new List<ZiPatchFile>();
@@ -51,7 +55,7 @@ public class IndexedZiPatchOperations
                 }
 
                 Log.Information("Indexing patch file {0}...", patchFilePath);
-                await patchIndex.ApplyZiPatch(Path.GetFileName(patchFilePath), patchFiles[patchFiles.Count - 1], cancellationToken);
+                await patchIndex.ApplyZiPatch(Path.GetFileName(patchFilePath), patchFiles[^1], cancellationToken);
 
                 Log.Information("Calculating CRC32 for files resulted from patch file {0}...", patchFilePath);
                 await patchIndex.CalculateCrc32(sources, cancellationToken);
@@ -71,7 +75,13 @@ public class IndexedZiPatchOperations
         }
     }
 
-    public static async Task<IndexedZiPatchInstaller> VerifyFromZiPatchIndex(string patchIndexFilePath, string gameRootPath, int concurrentCount, CancellationToken cancellationToken = default)
+    public static async Task<IndexedZiPatchInstaller> VerifyFromZiPatchIndex
+    (
+        string            patchIndexFilePath,
+        string            gameRootPath,
+        int               concurrentCount,
+        CancellationToken cancellationToken = default
+    )
     {
         return await VerifyFromZiPatchIndex
                (
@@ -82,7 +92,13 @@ public class IndexedZiPatchOperations
                );
     }
 
-    public static async Task<IndexedZiPatchInstaller> VerifyFromZiPatchIndex(IndexedZiPatchIndex patchIndex, string gameRootPath, int concurrentCount, CancellationToken cancellationToken = default)
+    public static async Task<IndexedZiPatchInstaller> VerifyFromZiPatchIndex
+    (
+        IndexedZiPatchIndex patchIndex,
+        string              gameRootPath,
+        int                 concurrentCount,
+        CancellationToken   cancellationToken = default
+    )
     {
         var verifier = new IndexedZiPatchInstaller(patchIndex)
         {
@@ -90,17 +106,6 @@ public class IndexedZiPatchOperations
         };
 
         var remainingErrorMessagesToShow = 8;
-
-        void OnVerifyProgressCallback(int index, long progress, long max) => Log.Information
-        (
-            "[{0}/{1}] Checking file {2}... {3:0.00}/{4:0.00}MB ({5:00.00}%)",
-            index + 1,
-            patchIndex.Length,
-            patchIndex[Math.Min(index, patchIndex.Length - 1)].RelativePath,
-            progress         / 1048576.0,
-            max              / 1048576.0,
-            100.0 * progress / max
-        );
 
         void OnCorruptionFoundCallback(IndexedZiPatchPartLocator part, IndexedZiPatchPartLocator.VerifyDataResult result)
         {
@@ -146,6 +151,17 @@ public class IndexedZiPatchOperations
         }
 
         return verifier;
+
+        void OnVerifyProgressCallback(int index, long progress, long max) => Log.Information
+        (
+            "[{0}/{1}] Checking file {2}... {3:0.00}/{4:0.00}MB ({5:00.00}%)",
+            index + 1,
+            patchIndex.Length,
+            patchIndex[Math.Min(index, patchIndex.Length - 1)].RelativePath,
+            progress         / 1048576.0,
+            max              / 1048576.0,
+            100.0 * progress / max
+        );
     }
 
     public static async Task RepairFromPatchFileIndexFromFile
@@ -180,68 +196,4 @@ public class IndexedZiPatchOperations
             concurrentCount,
             cancellationToken
         );
-
-    public static async Task RepairFromPatchFileIndexFromUri(IndexedZiPatchIndex patchIndex, string gameRootPath, string baseUri, int concurrentCount, CancellationToken cancellationToken = default)
-    {
-        using var verifier = await VerifyFromZiPatchIndex(patchIndex, gameRootPath, concurrentCount, cancellationToken);
-        verifier.SetTargetStreamsFromPathReadWriteForMissingFiles(gameRootPath);
-        for (var i = 0; i < patchIndex.Sources.Count; i++)
-            verifier.QueueInstall(i, baseUri + patchIndex.Sources[i], null, concurrentCount);
-
-        void OnInstallProgressCallback(int index, long progress, long max, IndexedZiPatchInstaller.InstallTaskState state) => Log.Information
-        (
-            "[{0}/{1}] {2} {3}... {4:0.00}/{5:0.00}MB ({6:00.00}%)",
-            index,
-            patchIndex.Sources.Count,
-            state,
-            patchIndex.Sources[Math.Min(index, patchIndex.Sources.Count - 1)],
-            progress         / 1048576.0,
-            max              / 1048576.0,
-            100.0 * progress / max
-        );
-
-        verifier.OnInstallProgress += OnInstallProgressCallback;
-
-        try
-        {
-            await verifier.Install(concurrentCount, cancellationToken);
-            verifier.WriteVersionFiles(gameRootPath);
-        }
-        finally
-        {
-            verifier.OnInstallProgress -= OnInstallProgressCallback;
-        }
-    }
-
-    public static async Task RepairFromPatchFileIndexFromUri(string patchIndexFilePath, string gameRootPath, string baseUri, int concurrentCount, CancellationToken cancellationToken = default) =>
-        await RepairFromPatchFileIndexFromUri
-        (
-            new IndexedZiPatchIndex(new BinaryReader(new DeflateStream(new FileStream(patchIndexFilePath, FileMode.Open, FileAccess.Read), CompressionMode.Decompress))),
-            gameRootPath,
-            baseUri,
-            concurrentCount,
-            cancellationToken
-        );
-
-    public static void Test()
-    {
-        CancellationTokenSource source = new();
-        string[] patchFileBaseUrls =
-        [
-            "http://patch-dl.ffxiv.com/boot/2b5cbc63/"
-        ];
-        // source.Cancel();
-        Task.WaitAll
-        (
-            Test_Single(IndexedZiPatchIndex.ExpacVersionBoot, @"Z:\patch-dl.ffxiv.com\boot", @"Z:\tgame\boot", patchFileBaseUrls[0], source.Token)
-        );
-    }
-
-    private static async Task Test_Single(int expacVersion, string patchFilesPath, string rootPath, string baseUri, CancellationToken cancellationToken = default)
-    {
-        var patchFiles = Directory.GetFiles(Directory.GetDirectories(patchFilesPath).First(x => Path.GetFileName(x).Length == 8), "*.patch").ToList();
-        patchFiles.Sort((x, y) => string.Compare(Path.GetFileName(x).Substring(1), Path.GetFileName(y).Substring(1), StringComparison.OrdinalIgnoreCase));
-        var patchIndex = await CreateZiPatchIndices(expacVersion, patchFiles, cancellationToken);
-        await RepairFromPatchFileIndexFromUri(patchIndex, rootPath, baseUri, 8, cancellationToken);
-    }
 }

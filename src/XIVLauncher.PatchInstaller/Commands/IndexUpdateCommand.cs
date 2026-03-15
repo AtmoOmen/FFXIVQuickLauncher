@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Game.Patch.PatchList;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
@@ -194,7 +195,7 @@ public class IndexUpdateCommand
         PatchListEntry[] gamePatchList;
 
         // 随机挑选一个服务器，别被抠抠搜搜的盛趣发现了 :(
-        var areas = await SdoArea.Get();
+        var areas = await LoginArea.Get();
         var area  = areas[new Random().Next(areas.Length)];
 
         var lr = await la.CheckGameUpdate(area, settings.GamePath, false);
