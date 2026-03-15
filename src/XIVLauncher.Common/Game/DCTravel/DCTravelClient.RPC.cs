@@ -27,8 +27,8 @@ public partial class DCTravelClient
         {
             if (ex.ErrorCode == (int)LoginExceptionCode.OutdatedLoginInfo)
             {
-                if (RefreshGameSessionIdByAutoLoginFunc != null)
-                    return await RefreshGameSessionIdByAutoLoginFunc();
+                if (RefreshGameSessionIDByAutoLoginFunc != null)
+                    return await RefreshGameSessionIDByAutoLoginFunc();
 
                 throw new Exception("登录过期且未开启自动登录, 请重新使用 XIVLauncher 登录游戏");
             }
@@ -81,7 +81,7 @@ public partial class DCTravelClient
     }
 
     [HttpRpc]
-    public async Task<List<Character>> QueryRoleList(int areaId, int groupId)
+    public async Task<List<DCTravelCharacter>> QueryRoleList(int areaId, int groupId)
     {
         // API: /api/gmallgateway/queryRoleList4Migration?appId=100001900&areaId={areaId}&groupId={groupId}
         var data = await GetRequestData
@@ -96,12 +96,12 @@ public partial class DCTravelClient
                        }
                    );
         EnsureResultCode(data, "QueryRoleList");
-        var characterList = DeserializeList<Character>(data, "roleList", "QueryRoleList");
+        var characterList = DeserializeList<DCTravelCharacter>(data, "roleList", "QueryRoleList");
 
         foreach (var character in characterList)
         {
-            character.AreaId  = areaId;
-            character.GroupId = groupId;
+            character.AreaID  = areaId;
+            character.GroupID = groupId;
         }
 
         return characterList;
@@ -113,7 +113,7 @@ public partial class DCTravelClient
         Task.FromResult(0);
 
     [HttpRpc]
-    public async Task<string> TravelOrder(DCTravelGroup targetGroup, DCTravelGroup sourceGroup, Character character)
+    public async Task<string> TravelOrder(DCTravelGroup targetGroup, DCTravelGroup sourceGroup, DCTravelCharacter character)
     {
         // API: /api/orderserivce/travelOrder
         ArgumentNullException.ThrowIfNull(targetGroup);
@@ -148,7 +148,7 @@ public partial class DCTravelClient
     }
 
     [HttpRpc]
-    public async Task<OrderSatus> QueryOrderStatus(string orderId)
+    public async Task<DCTravelOrderInfo> QueryOrderStatus(string orderId)
     {
         // API: /api/gmallgateway/queryOrderStatus?orderId={orderId}
         ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
@@ -169,9 +169,9 @@ public partial class DCTravelClient
             migrationMessage = messageItem["migrationMsg"]?.GetValue<string>();
         }
 
-        return new OrderSatus
+        return new DCTravelOrderInfo
         {
-            Status           = migrationStatus,
+            Status           = (DCTravelStatusType)migrationStatus,
             CheckMessage     = checkMessage     ?? string.Empty,
             MigrationMessage = migrationMessage ?? string.Empty
         };
@@ -194,7 +194,7 @@ public partial class DCTravelClient
     }
 
     [HttpRpc]
-    public async Task<MigrationOrders> QueryMigrationOrders(int pageIndex = 1)
+    public async Task<DCTravelMigrationOrders> QueryMigrationOrders(int pageIndex = 1)
     {
         // API: /api/orderserivce/queryMigrationOrders?appId=100001900&pageIndex={pageIndex}&pageNum=10
         var data = await GetRequestData
@@ -209,7 +209,7 @@ public partial class DCTravelClient
                        }
                    );
         EnsureResultCode(data, "QueryMigrationOrders");
-        var orderList      = new List<MigrationOrder>();
+        var orderList      = new List<DCTravelMigrationOrder>();
         var orderListRaw   = GetRequiredString(data, "orderlist", "QueryMigrationOrders");
         var orderListArray = JsonNode.Parse(orderListRaw) as JsonArray ?? [];
 
@@ -250,11 +250,11 @@ public partial class DCTravelClient
 
             orderList.Add
             (
-                new MigrationOrder
+                new DCTravelMigrationOrder
                 {
-                    OrderId    = orderId,
-                    ContentId  = roleId,
-                    GroupId    = groupId,
+                    OrderID    = orderId,
+                    ContentID  = roleId,
+                    GroupID    = groupId,
                     GroupCode  = groupCode,
                     GroupName  = groupName,
                     CreateTime = createTime
@@ -262,7 +262,7 @@ public partial class DCTravelClient
             );
         }
 
-        return new MigrationOrders
+        return new DCTravelMigrationOrders
         {
             Orders       = orderList.ToArray(),
             TotalCount   = GetRequiredInt(data, "totalCount",   "QueryMigrationOrders"),

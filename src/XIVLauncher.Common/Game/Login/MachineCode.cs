@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using System.Linq;
 using System.Management;
@@ -7,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Serilog;
 
-namespace XIVLauncher.Common.Game;
+namespace XIVLauncher.Common.Game.Login;
 
 /// <summary>
 ///     封送盛趣登录需要的设备唯一 ID 信息

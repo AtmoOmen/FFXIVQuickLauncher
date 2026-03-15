@@ -27,6 +27,7 @@ using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch;
@@ -71,7 +72,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public           DcTravelListener dcTravelListener { get; private set; }
+    public           DCTravelListener dcTravelListener { get; private set; }
     private readonly Window           _window;
 
     private CancellationTokenSource loginCts;
@@ -1088,7 +1089,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     //var nSessionId = dcTraveler.GetNSessionIdFromCookie();
 
                     loginResult.DcTravelPort = ApiHelpers.GetAvailablePort();
-                    dcTravelListener         = new DcTravelListener(dcTraveler, loginResult.DcTravelPort, false);
+                    dcTravelListener         = new DCTravelListener(dcTraveler, loginResult.DcTravelPort, false);
                     Log.Information($"[DCTravel] 打开端口:{loginResult.DcTravelPort}");
                     _ = dcTravelListener.StartAsync();
                 }
@@ -1115,7 +1116,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     if (dcTravelListener != null)
                     {
-                        dcTravelListener.DCTravelClient.RefreshGameSessionIdByAutoLoginFunc = async () =>
+                        dcTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
                         {
                             var newLoginResult = await Launcher.LoginBySessionKey(username, loginResult.OauthLogin.AutoLoginSessionKey, dcTravelListener.DCTravelClient).ConfigureAwait(false);
                             return newLoginResult.OauthLogin.SessionId;
@@ -1259,10 +1260,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 }
 
                 msgbox = new CustomMessageBox.Builder()
-                         .WithCaption($"{Loc.Localize("LoginNoOauthTitle", "Login issue")}: {sdoLoginEx.ErrorCode}")
+                         .WithCaption("登录异常")
                          .WithImage(MessageBoxImage.Question)
                          .WithParentWindow(_window)
-                         .WithText(sdoLoginEx.Message);
+                         .WithText($"{sdoLoginEx.Message}\n(错误码: {sdoLoginEx.ErrorCode})");
                 msgbox.Show();
                 return null;
             }

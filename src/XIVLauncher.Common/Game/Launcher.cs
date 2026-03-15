@@ -151,7 +151,7 @@ public class Launcher
 
         if (dcTravelClient != null)
         {
-            dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTravelClient.RefreshDcTravelSessionIDFunc = () => GetDcTravelSessionId(tgt, guid);
             dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
         }
 
@@ -182,7 +182,7 @@ public class Launcher
 
         if (dcTravelClient != null)
         {
-            dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTravelClient.RefreshDcTravelSessionIDFunc = () => GetDcTravelSessionId(tgt, guid);
             dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
         }
 
@@ -230,7 +230,7 @@ public class Launcher
 
         if (dcTravelClient != null)
         {
-            dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTravelClient.RefreshDcTravelSessionIDFunc = () => GetDcTravelSessionId(tgt, guid);
             dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
         }
 
@@ -264,7 +264,7 @@ public class Launcher
 
         if (dcTravelClient != null)
         {
-            dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+            dcTravelClient.RefreshDcTravelSessionIDFunc = () => GetDcTravelSessionId(tgt, guid);
             dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
         }
 
@@ -306,7 +306,7 @@ public class Launcher
         {
             if (dcTravelClient != null)
             {
-                dcTravelClient.RefreshDcTravelSessionIdFunc = () => GetDcTravelSessionId(tgt, guid);
+                dcTravelClient.RefreshDcTravelSessionIDFunc = () => GetDcTravelSessionId(tgt, guid);
                 dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionId(tgt, guid);
             }
 

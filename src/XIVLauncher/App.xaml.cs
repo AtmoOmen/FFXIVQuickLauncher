@@ -19,6 +19,7 @@ using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Support;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Common.Windows;
