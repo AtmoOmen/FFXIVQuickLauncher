@@ -126,7 +126,7 @@ public partial class DalamudLoadingOverlay : Window, IDalamudLoadingOverlay
                 {
                     ProgressBar.IsIndeterminate = false;
                     ProgressBar.Value           = progress.Value;
-                    PercentageTextBlock.Text    = $"{progress.Value:0}% ({ApiHelpers.BytesToString(downloaded)}/{ApiHelpers.BytesToString(size.Value)})";
+                    PercentageTextBlock.Text    = $"{progress.Value:0}% ({APIHelper.BytesToString(downloaded)}/{APIHelper.BytesToString(size.Value)})";
                 }
             }
         );

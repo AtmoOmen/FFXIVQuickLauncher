@@ -16,7 +16,6 @@ public class CommonSettings : ISettings
         }
     }
 
-    public         string             AcceptLanguage          => App.Settings.AcceptLanguage;
     public         ClientLanguage?    ClientLanguage          => Common.ClientLanguage.ChineseSimplified;
     public         bool?              KeepPatches             => App.Settings.KeepPatches;
     public         DirectoryInfo      PatchPath               => App.Settings.PatchPath;

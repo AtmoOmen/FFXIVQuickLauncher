@@ -48,8 +48,8 @@ public partial class PatchDownloadDialog : Window
     public void SetLeft(long left, double rate)
     {
         var eta = rate == 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(left / rate);
-        BytesLeftText.Text = string.Format(ViewModel.PatchEtaLoc, ApiHelpers.BytesToString(left), ApiHelpers.BytesToString(rate));
-        TimeLeftText.Text  = ApiHelpers.GetTimeLeft(eta, ViewModel.PatchEtaTimeLoc);
+        BytesLeftText.Text = string.Format(ViewModel.PatchEtaLoc, APIHelper.BytesToString(left), APIHelper.BytesToString(rate));
+        TimeLeftText.Text  = APIHelper.GetTimeLeft(eta, ViewModel.PatchEtaTimeLoc);
     }
 
     public void SetPatchProgress(int index, string patchName, double pct, bool indeterminate)
@@ -144,7 +144,7 @@ public partial class PatchDownloadDialog : Window
                         SetPatchProgress
                         (
                             i,
-                            $"{activePatch.Patch} ({pct:#0.0}%, {ApiHelpers.BytesToString(_manager.Speeds[i])}/s)",
+                            $"{activePatch.Patch} ({pct:#0.0}%, {APIHelper.BytesToString(_manager.Speeds[i])}/s)",
                             pct,
                             false
                         );

@@ -47,42 +47,26 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public class MainWindowViewModel : INotifyPropertyChanged
 {
+    public Launcher         Launcher         { get; private set; }
+    public AccountManager   AccountManager   { get; private set; } = App.AccountManager;
+    public DCTravelListener DCTravelListener { get; private set; }
+    public Window           Window           { get; private set; }
+    
+    public Action Activate        { get; set; } = null!;
+    public Action Hide            { get; set; } = null!;
+    public Action ReloadHeadlines { get; set; } = null!;
+    
+    public bool IsLoggingIn { get; set; }
+    public string Password { get; set; } = null!;
+    
     public const string PRESUDO_PASSWORD = "********假的密码********";
-
-    public bool IsLoggingIn;
-
-    public Action Activate;
-    public Action Hide;
-    public Action ReloadHeadlines;
-
-    public Launcher Launcher { get; private set; }
-
-    public AccountManager AccountManager { get; private set; } = App.AccountManager;
-
-    public string Password { get; set; }
-
-    public LoginArea[] SdoAreas
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(SdoAreas));
-        }
-    }
-
-    public           DCTravelListener dcTravelListener { get; private set; }
-    private readonly Window           _window;
-
-    private CancellationTokenSource loginCts;
-
-    private bool IsInjecting;
+    
+    private CancellationTokenSource loginCancelSource;
+    private bool                    isInjecting;
 
     public MainWindowViewModel(Window window)
     {
-        _window = window;
-
-        SetupLoc();
+        Window = window;
 
         StartLoginCommand       = new SyncCommand(GetLoginFunc(LoginAfterAction.Start),               () => !IsLoggingIn);
         LoginNoStartCommand     = new SyncCommand(GetLoginFunc(LoginAfterAction.UpdateOnly),          () => !IsLoggingIn);
@@ -90,44 +74,25 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoginNoPluginsCommand   = new SyncCommand(GetLoginFunc(LoginAfterAction.StartWithoutPlugins), () => !IsLoggingIn);
         LoginNoThirdCommand     = new SyncCommand(GetLoginFunc(LoginAfterAction.StartWithoutThird),   () => !IsLoggingIn);
         LoginRepairCommand      = new SyncCommand(GetLoginFunc(LoginAfterAction.Repair),              () => !IsLoggingIn);
+        LoginForceQRCommand     = new SyncCommand(GetLoginFunc(LoginAfterAction.ForceQR),             () => !IsLoggingIn);
+        InjectModeSwitchCommand = new SyncCommand(_ => { SwitchMode(); },                             () => !IsLoggingIn);
+        InjectGameCommand       = new SyncCommand(_ => { TryInjectGame(); },                          () => !IsLoggingIn);
+        FakeStartCommand        = new SyncCommand(_ => { FakeStartGame(); });
         LoginCancelCommand      = new SyncCommand(GetLoginFunc(LoginAfterAction.CancelLogin));
-        LoginForceQRCommand     = new SyncCommand(GetLoginFunc(LoginAfterAction.ForceQR));
-        InjectModeSwitchCommand = new SyncCommand(obj => { SwitchMode(); });
-        InjectGameCommand       = new SyncCommand(obj => { TryInjectGame(); });
-        var frontierUrl = Updates.UpdateLease?.FrontierUrl;
-#if DEBUG || RELEASENOUPDATE
-        // FALLBACK
-        frontierUrl ??= "https://launcher.finalfantasyxiv.com/v650/index.html?rc_lang={0}&time={1}";
-#endif
 
         Launcher = new();
 
-        // Tried and failed to get this from the theme
         var worldStatusBrushOk = new SolidColorBrush(Color.FromRgb(0x21, 0x96, 0xf3));
         WorldStatusIconColor = worldStatusBrushOk;
 
-        // Grey out world status icon while deferred check is running
         WorldStatusIconColor   = new SolidColorBrush(Color.FromRgb(38, 38, 38));
         ModeSwitchIcon         = PackIconKind.Injection;
         FFXIVProcessCollection = [];
-        //this.loginStatusTask = Launcher.GetLoginStatus();
-        //this.loginStatusTask.ContinueWith((resultTask) =>
-        //{
-        //    try
-        //    {
-        //        var brushToSet = resultTask.Result.Status ? worldStatusBrushOk : null;
-        //        WorldStatusIconColor = brushToSet ?? new SolidColorBrush(Color.FromRgb(242, 24, 24));
-        //    }
-        //    catch
-        //    {
-        //        // ignored
-        //    }
-        //});
     }
 
     public void SwitchCard(LoginCardType i)
     {
-        _window.Dispatcher.Invoke
+        Window.Dispatcher.Invoke
         (() =>
             {
                 CancelLogin();
@@ -145,9 +110,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return;
 
         //if (username == null) username = string.Empty;
-        if (_window.Dispatcher != Dispatcher.CurrentDispatcher)
+        if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
         {
-            _window.Dispatcher.Invoke(() => TryLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
+            Window.Dispatcher.Invoke(() => TryLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
             return;
         }
 
@@ -155,7 +120,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         //LoginCardTransitionerIndex = 0;
         var currentCard = (LoginCardType)LoginCardTransitionerIndex;
         SwitchCard(loginType == LoginType.QRCode ? LoginCardType.ScanQrCode : LoginCardType.Logining);
-        loginCts    = new CancellationTokenSource();
+        loginCancelSource    = new CancellationTokenSource();
         IsLoggingIn = true;
 
         Task.Run
@@ -168,7 +133,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 catch (Exception ex)
                 {
                     CustomMessageBox.Builder.NewFromUnexpectedException(ex, "GetLoginFunc/Task")
-                                    .WithParentWindow(_window)
+                                    .WithParentWindow(Window)
                                     .Show();
                 }
 
@@ -184,10 +149,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public void CancelLogin()
     {
-        if (loginCts != null)
+        if (loginCancelSource != null)
         {
             Log.Information("取消登陆");
-            loginCts.Cancel();
+            loginCancelSource.Cancel();
         }
     }
 
@@ -212,13 +177,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
             Environment.Exit(0);
         }
 
-        loginCts = new CancellationTokenSource();
+        loginCancelSource = new CancellationTokenSource();
         Task.Run
         (() =>
             {
                 while (true)
                 {
-                    if (loginCts.IsCancellationRequested)
+                    if (loginCancelSource.IsCancellationRequested)
                         return;
                     var currentSelectedProcessId = SelectedProcess?.ProcessID;
                     var newProcesses             = AppUtil.GetGameProcess().ToArray();
@@ -255,22 +220,21 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     Thread.Sleep(1000);
                 }
 
-                ;
             }
         );
     }
 
     public void TryInjectGame()
     {
-        if (IsInjecting)
+        if (isInjecting)
             return;
         if (SelectedProcess == null)
             return;
 
         //if (username == null) username = string.Empty;
-        if (_window.Dispatcher != Dispatcher.CurrentDispatcher)
+        if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
         {
-            _window.Dispatcher.Invoke(() => TryInjectGame());
+            Window.Dispatcher.Invoke(TryInjectGame);
             return;
         }
 
@@ -307,7 +271,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                      .NewFrom("当前选择的进程已经注入了")
                                                      .WithButtons(MessageBoxButton.OK)
                                                      .WithCaption("XIVLauncherCN (Soil)")
-                                                     .WithParentWindow(_window)
+                                                     .WithParentWindow(Window)
                                                      .Show();
                     }
                     else
@@ -319,7 +283,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                          .NewFrom("注入完成,是否退出XIVLauncherCN?")
                                                          .WithButtons(MessageBoxButton.YesNo)
                                                          .WithCaption("XIVLauncherCN (Soil)")
-                                                         .WithParentWindow(_window)
+                                                         .WithParentWindow(Window)
                                                          .Show();
 
                             if (dialog == MessageBoxResult.Yes)
@@ -333,12 +297,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 catch (Exception ex)
                 {
                     CustomMessageBox.Builder.NewFromUnexpectedException(ex, "InjectGame")
-                                    .WithParentWindow(_window)
+                                    .WithParentWindow(Window)
                                     .Show();
                 }
 
                 IsLoadingDialogOpen = false;
-                IsInjecting         = false;
+                isInjecting         = false;
                 Activate();
             }
         );
@@ -405,7 +369,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
-                parentWindow: _window
+                parentWindow: Window
             );
         }
         catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
@@ -422,7 +386,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
-                parentWindow: _window
+                parentWindow: Window
             );
         }
 
@@ -451,7 +415,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             .WithImage(MessageBoxImage.Warning)
                             .WithButtons(MessageBoxButton.OK)
                             .WithShowHelpLinks()
-                            .WithParentWindow(_window)
+                            .WithParentWindow(Window)
                             .Show();
         }
 
@@ -509,7 +473,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
-                parentWindow: _window
+                parentWindow: Window
             );
         }
         catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
@@ -526,7 +490,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
-                parentWindow: _window
+                parentWindow: Window
             );
         }
 
@@ -554,7 +518,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                 .WithImage(MessageBoxImage.Warning)
                                 .WithButtons(MessageBoxButton.OK)
                                 .WithShowHelpLinks()
-                                .WithParentWindow(_window)
+                                .WithParentWindow(Window)
                                 .Show();
             }
         }
@@ -564,7 +528,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
         {
-            CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+            CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: Window);
             return null;
         }
 
@@ -618,7 +582,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                     "This could be caused by your antivirus, please check its logs and add any needed exclusions."
                                 )
                             )
-                            .WithParentWindow(_window)
+                            .WithParentWindow(Window)
                             .Show();
 
             IsLoggingIn = false;
@@ -635,7 +599,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                           (
                               launched,
                               () => StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins),
-                              loginCts?.Token ?? default
+                              loginCancelSource?.Token ?? default
                           )
                           .ConfigureAwait(false);
         }
@@ -649,7 +613,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            dcTravelListener?.Stop();
+            DCTravelListener?.Stop();
         }
         catch (Exception ex)
         {
@@ -713,7 +677,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                         "You are enabling Auto-Login.\nThis means that XIVLauncher will always log you in with the current account and you will not see this window.\n\nTo change settings and accounts, you have to hold the shift button on your keyboard while clicking the XIVLauncher icon."
                                     )
                                 )
-                                .WithParentWindow(_window)
+                                .WithParentWindow(Window)
                                 .Show();
 
                 App.Settings.HasShownAutoLaunchDisclaimer = true;
@@ -731,7 +695,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                     )
                                 )
                                 .WithImage(MessageBoxImage.Exclamation)
-                                .WithParentWindow(_window)
+                                .WithParentWindow(Window)
                                 .Show();
 
                 return;
@@ -750,7 +714,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                           )
                                           .WithButtons(MessageBoxButton.YesNo)
                                           .WithImage(MessageBoxImage.Question)
-                                          .WithParentWindow(_window)
+                                          .WithParentWindow(Window)
                                           .Show();
 
                 if (res == MessageBoxResult.No)
@@ -761,7 +725,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         };
     }
 
-    private async Task<LoginData> ReadWegameInfo(string username, string targetAreaId)
+    private async Task<LoginData> ReadWeGameInfo(string username, string targetAreaId)
     {
         try
         {
@@ -794,7 +758,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         while (true)
         {
-            if (loginCts.IsCancellationRequested)
+            if (loginCancelSource.IsCancellationRequested)
             {
                 argReader.Stop(false);
                 return null;
@@ -821,7 +785,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, LoginAfterAction action)
     {
-        ProblemCheck.RunCheck(_window);
+        ProblemCheck.RunCheck(Window);
 
         var bootRes = await HandleBootCheck().ConfigureAwait(false);
 
@@ -859,7 +823,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
-                parentWindow: _window
+                parentWindow: Window
             );
             return;
         }
@@ -925,7 +889,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                                  .WithYesButtonText("确认使用")
                                                                  .WithCaption("WeGame SID登录功能说明")
                                                                  .WithYesCountdown(15)
-                                                                 .WithParentWindow(_window)
+                                                                 .WithParentWindow(Window)
                                                                  .Show();
 
                         if (readWeGameUsageAsk == MessageBoxResult.No)
@@ -945,7 +909,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     if (readWeGameInfo)
                     {
-                        var loginData = await ReadWegameInfo(username, Area.AreaID);
+                        var loginData = await ReadWeGameInfo(username, Area.AreaID);
                         if (loginData == null)
                             return;
 
@@ -954,7 +918,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         username = loginData.SndaID;
                         serect   = loginData.SessionId;
                         var areaId = loginData.Args.Where(x => x.Contains("AreaID=")).Select(x => x.Split('=')[1]).First();
-                        Area = SdoAreas.FirstOrDefault(x => x.AreaID == areaId);
+                        Area = LoginAreas.FirstOrDefault(x => x.AreaID == areaId);
                     }
 
                     finalLoginType = LoginType.WeGameSID;
@@ -1030,7 +994,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         if (loginResult == null)
             return;
         loginResult.Area  = Area;
-        loginResult.Areas = SdoAreas;
+        loginResult.Areas = LoginAreas;
 
         if (loginResult.State == LoginState.NeedsPatchGame && action != LoginAfterAction.Repair)
         {
@@ -1054,10 +1018,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     _ = dcTraveler.KeepCookieAlive();
                     //var nSessionId = dcTraveler.GetNSessionIdFromCookie();
 
-                    loginResult.DCTravelPort = ApiHelpers.GetAvailablePort();
-                    dcTravelListener         = new DCTravelListener(dcTraveler, loginResult.DCTravelPort, false);
+                    loginResult.DCTravelPort = APIHelper.GetAvailablePort();
+                    DCTravelListener         = new DCTravelListener(dcTraveler, loginResult.DCTravelPort, false);
                     Log.Information($"[DCTravel] 打开端口:{loginResult.DCTravelPort}");
-                    _ = dcTravelListener.StartAsync();
+                    _ = DCTravelListener.StartAsync();
                 }
 
                 var accountToSave = new XivAccount
@@ -1081,11 +1045,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     accountToSave.AutoLoginSessionKey = await AccountManager.Encrypt(loginResult.OAuthLogin.AutoLoginSessionKey);
 
-                    if (dcTravelListener != null)
+                    if (DCTravelListener != null)
                     {
-                        dcTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
+                        DCTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
                         {
-                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey(username, loginResult.OAuthLogin.AutoLoginSessionKey, dcTravelListener.DCTravelClient).ConfigureAwait
+                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey(username, loginResult.OAuthLogin.AutoLoginSessionKey, DCTravelListener.DCTravelClient).ConfigureAwait
                                                      (false);
                             return newLoginResult.OAuthLogin.SessionID;
                         };
@@ -1152,7 +1116,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                            serect,
                            autoLogin,
                            dcTravelClient,
-                           loginCts,
+                           loginCancelSource,
                            qrBytes =>
                            {
                                if (requestLoginType != LoginType.QRCode)
@@ -1169,7 +1133,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                LoginMessage = $"确认码: {code}";
                            }
                        ),
-                       loginCts?.Token ?? default
+                       loginCancelSource?.Token ?? default
                    ).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -1181,15 +1145,15 @@ public class MainWindowViewModel : INotifyPropertyChanged
                          .WithImage(MessageBoxImage.Error)
                          .WithShowHelpLinks()
                          .WithShowDiscordLink()
-                         .WithParentWindow(_window);
+                         .WithParentWindow(Window);
 
             if (ex is LoginException sdoLoginEx)
             {
-                if (loginCts.IsCancellationRequested)
+                if (loginCancelSource.IsCancellationRequested)
                 {
                     Log.Information("手动取消登录");
-                    loginCts.Dispose();
-                    loginCts = null;
+                    loginCancelSource.Dispose();
+                    loginCancelSource = null;
                     return null;
                 }
 
@@ -1204,7 +1168,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 msgbox = new CustomMessageBox.Builder()
                          .WithCaption("登录异常")
                          .WithImage(MessageBoxImage.Question)
-                         .WithParentWindow(_window)
+                         .WithParentWindow(Window)
                          .WithText($"{sdoLoginEx.Message}\n(错误码: {sdoLoginEx.ErrorCode})");
                 msgbox.Show();
                 return null;
@@ -1249,7 +1213,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 disableAutoLogin = true;
                 LoginMessage     = "";
-                QRDialog.CloseQRWindow(_window);
+                QRDialog.CloseQRWindow(Window);
 
                 if (string.IsNullOrWhiteSpace(oauthLoginException.OauthErrorMessage))
                 {
@@ -1334,6 +1298,38 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private void FakeStartGame()
+    {
+        if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
+        {
+            Window.Dispatcher.Invoke(FakeStartGame);
+            return;
+        }
+        
+        Task.Run
+        (() => StartGameAndAddon
+         (
+             new LoginResult
+             {
+                 OAuthLogin = new OAuthLoginResult
+                 {
+                     MaxExpansion  = 5,
+                     Playable      = true,
+                     Region        = 0,
+                     SessionID     = "0",
+                     TermsAccepted = true,
+                     SndaID        = "114514"
+                 },
+                 State    = LoginState.Ok,
+                 UniqueID = "0"
+             },
+             false,
+             false,
+             false
+         )
+        ).ConfigureAwait(false);
+    }
+
     private async Task<bool> TryProcessLoginResult(LoginResult loginResult, LoginAfterAction action)
     {
         if (loginResult.State == LoginState.NoService)
@@ -1350,7 +1346,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 MessageBoxImage.Error,
                 false,
                 false,
-                parentWindow: _window
+                parentWindow: Window
             );
 
             return false;
@@ -1369,7 +1365,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
                 showOfficialLauncher: true,
-                parentWindow: _window
+                parentWindow: Window
             );
 
             return false;
@@ -1387,7 +1383,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 "Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
-                parentWindow: _window
+                parentWindow: Window
             );
 
             return false;
@@ -1416,7 +1412,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         "Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
-                        parentWindow: _window
+                        parentWindow: Window
                     );
 
                     return false;
@@ -1429,7 +1425,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                  * If server responds badly, then it should not even have reached this point, as error cases should have been handled before.
                  * If RepairGame was unsuccessful, then it should have handled all of its possible errors, instead of propagating it upwards.
                  */
-                CustomMessageBox.Builder.NewFrom(ex, "TryProcessLoginResult/Repair").WithParentWindow(_window).Show();
+                CustomMessageBox.Builder.NewFrom(ex, "TryProcessLoginResult/Repair").WithParentWindow(Window).Show();
 
                 return false;
             }
@@ -1448,7 +1444,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     ),
                     "Out of date",
                     MessageBoxButton.YesNo,
-                    parentWindow: _window
+                    parentWindow: Window
                 );
 
                 if (selfPatchAsk == MessageBoxResult.No)
@@ -1478,7 +1474,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 MessageBoxImage.Information,
                 false,
                 false,
-                parentWindow: _window
+                parentWindow: Window
             );
 
             return false;
@@ -1499,12 +1495,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 MessageBoxImage.Information,
                 false,
                 false,
-                parentWindow: _window
+                parentWindow: Window
             );
             return false;
         }
 
-        if (CustomMessageBox.AssertOrShowError(loginResult.State == LoginState.Ok, "TryProcessLoginResult: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: _window))
+        if (CustomMessageBox.AssertOrShowError(loginResult.State == LoginState.Ok, "TryProcessLoginResult: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: Window))
             return false;
 
 #if !DEBUG
@@ -1523,7 +1519,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 if (loginResult.OAuthLogin.SessionID.IsNullOrEmpty() || loginResult.OAuthLogin.SndaID.IsNullOrEmpty())
                 {
                     Log.Error("SID或SNDAID为空，取消登录");
-                    CustomMessageBox.Show("SID或SNDAID为空", "Error", MessageBoxButton.OK, MessageBoxImage.Error, showOfficialLauncher: true, parentWindow: _window);
+                    CustomMessageBox.Show("SID或SNDAID为空", "Error", MessageBoxButton.OK, MessageBoxImage.Error, showOfficialLauncher: true, parentWindow: Window);
                     return false;
                 }
 
@@ -1561,7 +1557,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             .WithYesButtonText(Loc.Localize("LaunchGameRelaunch",         "_Relaunch"))
                             .WithNoButtonText(Loc.Localize("LaunchGameClose",             "_Close"))
                             .WithCancelButtonText(Loc.Localize("LaunchGameDoNotAskAgain", "_Don't ask again"))
-                            .WithParentWindow(_window)
+                            .WithParentWindow(Window)
                             .Show())
                     {
                         case MessageBoxResult.Yes:
@@ -1601,7 +1597,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                           .WithCancelResult(MessageBoxResult.No)
                           .WithYesButtonText(Loc.Localize("LaunchGameRetry", "_Try again"))
                           .WithNoButtonText(Loc.Localize("LaunchGameClose",  "_Close"))
-                          .WithParentWindow(_window);
+                          .WithParentWindow(Window);
 
             //NOTE(goat): This HAS to handle all possible exceptions from StartGameAndAddon!!!!!
             List<string> summaries    = new();
@@ -1852,7 +1848,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             if (!AppUtil.TryYellOnGameFilesBeingOpen
                 (
-                    _window,
+                    Window,
                     n => n switch
                     {
                         1 => Loc.Localize
@@ -1877,12 +1873,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
             Hide();
             IsEnabled = false;
 
-            var progressDialog = _window.Dispatcher.Invoke
+            var progressDialog = Window.Dispatcher.Invoke
             (() =>
                 {
                     var d = new GameRepairProgressWindow(verify);
-                    if (_window.IsVisible)
-                        d.Owner = _window;
+                    if (Window.IsVisible)
+                        d.Owner = Window;
                     d.Show();
                     d.Activate();
                     return d;
@@ -1945,7 +1941,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                 .WithYesButtonText(Loc.Localize("GameRepairSuccess_LaunchGame", "_Launch game"))
                                                 .WithNoButtonText(Loc.Localize("GameRepairSuccess_VerifyAgain", "_Verify again"))
                                                 .WithCancelButtonText(Loc.Localize("GameRepairSuccess_Close",   "_Close"))
-                                                .WithParentWindow(_window)
+                                                .WithParentWindow(Window)
                                                 .Show())
                         {
                             case MessageBoxResult.Yes:
@@ -1982,7 +1978,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                        .WithImage(MessageBoxImage.Exclamation)
                                                        .WithButtons(MessageBoxButton.OKCancel)
                                                        .WithOkButtonText(Loc.Localize("GameRepairSuccess_TryAgain", "_Try again"))
-                                                       .WithParentWindow(_window)
+                                                       .WithParentWindow(Window)
                                                        .Show()
                                        == MessageBoxResult.OK;
                         }
@@ -2005,7 +2001,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                        .WithShowNewGitHubIssue(false)
                                        .WithButtons(MessageBoxButton.OKCancel)
                                        .WithOkButtonText(Loc.Localize("GameRepairSuccess_TryAgain", "_Try again"))
-                                       .WithParentWindow(_window)
+                                       .WithParentWindow(Window)
                                        .Show()
                                        == MessageBoxResult.OK;
                         }
@@ -2018,7 +2014,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                        .WithImage(MessageBoxImage.Exclamation)
                                                        .WithButtons(MessageBoxButton.OKCancel)
                                                        .WithOkButtonText(Loc.Localize("GameRepairSuccess_TryAgain", "_Try again"))
-                                                       .WithParentWindow(_window)
+                                                       .WithParentWindow(Window)
                                                        .Show()
                                        == MessageBoxResult.OK;
                         }
@@ -2043,7 +2039,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
-                parentWindow: _window
+                parentWindow: Window
             );
         }
 
@@ -2085,7 +2081,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             .NewFrom(ex, nameof(HandleBootCheck))
                             .WithAppendText("\n\n")
                             .WithAppendText(Loc.Localize("BootPatchFailure", "Could not patch boot."))
-                            .WithParentWindow(_window)
+                            .WithParentWindow(Window)
                             .Show();
             Environment.Exit(0);
 
@@ -2113,12 +2109,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         Hide();
 
-        var progressDialog = _window.Dispatcher.Invoke
+        var progressDialog = Window.Dispatcher.Invoke
         (() =>
             {
                 var d = new PatchDownloadDialog(patcher);
-                if (_window.IsVisible)
-                    d.Owner = _window;
+                if (Window.IsVisible)
+                    d.Owner = Window;
                 d.Show();
                 d.Activate();
                 return d;
@@ -2152,7 +2148,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                               != MessageBoxResult.Cancel,
                                  EnsureGameFilesClosed = () => AppUtil.TryYellOnGameFilesBeingOpen
                                  (
-                                     _window,
+                                     Window,
                                      n => n switch
                                      {
                                          1 => Loc.Localize
@@ -2185,7 +2181,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         "XIVLauncherCN (Soil)",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
-                        parentWindow: _window
+                        parentWindow: Window
                     );
                     Environment.Exit(0);
                     return false;
@@ -2205,7 +2201,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         "XIVLauncher Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
-                        parentWindow: _window
+                        parentWindow: Window
                     );
                     return false;
 
@@ -2214,8 +2210,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     if (sex != null)
                     {
-                        var bytesRequired = ApiHelpers.BytesToString(sex.BytesRequired);
-                        var bytesFree     = ApiHelpers.BytesToString(sex.BytesFree);
+                        var bytesRequired = APIHelper.BytesToString(sex.BytesRequired);
+                        var bytesFree     = APIHelper.BytesToString(sex.BytesFree);
 
                         switch (sex.Kind)
                         {
@@ -2235,7 +2231,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                     "XIVLauncher Error",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error,
-                                    parentWindow: _window
+                                    parentWindow: Window
                                 );
                                 break;
 
@@ -2255,7 +2251,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                     "XIVLauncher Error",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error,
-                                    parentWindow: _window
+                                    parentWindow: Window
                                 );
                                 break;
 
@@ -2275,7 +2271,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                     "XIVLauncher Error",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error,
-                                    parentWindow: _window
+                                    parentWindow: Window
                                 );
                                 break;
 
@@ -2289,7 +2285,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 default:
                     CustomMessageBox.Builder.NewFromUnexpectedException(result.Exception, "HandlePatchAsync")
-                                    .WithParentWindow(_window)
+                                    .WithParentWindow(Window)
                                     .Show();
                     return false;
             }
@@ -2322,24 +2318,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     #region Commands
 
-    public ICommand StartLoginCommand { get; set; }
-
-    public ICommand LoginNoStartCommand { get; set; }
-
-    public ICommand LoginNoDalamudCommand { get; set; }
-
-    public ICommand LoginNoPluginsCommand { get; set; }
-
-    public ICommand LoginNoThirdCommand { get; set; }
-
-    public ICommand LoginRepairCommand { get; set; }
-
-    public ICommand LoginCancelCommand { get; set; }
-
-    public ICommand LoginForceQRCommand { get; set; }
-
+    public ICommand StartLoginCommand       { get; set; }
+    public ICommand LoginNoStartCommand     { get; set; }
+    public ICommand LoginNoDalamudCommand   { get; set; }
+    public ICommand LoginNoPluginsCommand   { get; set; }
+    public ICommand LoginNoThirdCommand     { get; set; }
+    public ICommand LoginRepairCommand      { get; set; }
+    public ICommand LoginCancelCommand      { get; set; }
+    public ICommand LoginForceQRCommand     { get; set; }
     public ICommand InjectModeSwitchCommand { get; set; }
     public ICommand InjectGameCommand       { get; set; }
+    public ICommand FakeStartCommand        { get; set; }
 
     #endregion
 
@@ -2374,17 +2363,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(IsReadWegameInfo));
         }
     }
-
-    public bool IsOtp
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(IsOtp));
-        }
-    }
-
+    
     public string Username
     {
         get;
@@ -2520,68 +2499,18 @@ public class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(SelectedProcess));
         }
     }
-
-    #endregion
-
-    #region Localization
-
-    private void SetupLoc()
+    
+    public LoginArea[] LoginAreas
     {
-        LoginUsernameLoc         = Loc.Localize("LoginBoxUsername",         "Username");
-        LoginPasswordLoc         = Loc.Localize("LoginBoxPassword",         "Password");
-        AutoLoginLoc             = Loc.Localize("LoginBoxAutoLogin",        "Log in automatically");
-        OtpLoc                   = Loc.Localize("LoginBoxOtp",              "Use One-Time-Passwords");
-        LoginLoc                 = Loc.Localize("LoginBoxLogin",            "Log in");
-        LoginNoStartLoc          = Loc.Localize("LoginBoxNoStartLogin",     "Update without starting");
-        LoginRepairLoc           = Loc.Localize("LoginBoxRepairLogin",      "Repair game files");
-        LoginTooltipLoc          = Loc.Localize("LoginBoxLoginTooltip",     "Log in with the provided credentials");
-        LoginNoDalamudLoc        = Loc.Localize("LoginBoxNoDalamudLogin",   "Start w/o Dalamud");
-        LoginNoPluginsLoc        = Loc.Localize("LoginBoxNoPluginLogin",    "Start w/o any Plugins");
-        LoginNoThirdLoc          = Loc.Localize("LoginBoxNoThirdLogin",     "Start w/o Custom Repo Plugins");
-        LoginTooltipLoc          = Loc.Localize("LoginBoxLoginTooltip",     "Log in with the provided credentials");
-        LaunchOptionsLoc         = Loc.Localize("LoginBoxLaunchOptions",    "Additional launch options");
-        WaitingForMaintenanceLoc = Loc.Localize("LoginBoxWaitingForMaint",  "Waiting for maintenance to be over...");
-        CancelWithShortcutLoc    = Loc.Localize("CancelWithShortcut",       "_Cancel");
-        OpenAccountSwitcherLoc   = Loc.Localize("OpenAccountSwitcher",      "Open Account Switcher");
-        SettingsLoc              = Loc.Localize("Settings",                 "Settings");
-        WorldStatusLoc           = Loc.Localize("WorldStatus",              "World Status");
-        MaintenanceQueue         = Loc.Localize("MaintenanceQueue",         "Wait for maintenance to be over");
-        IsLoggingInLoc           = Loc.Localize("LoadingDialogIsLoggingIn", "Logging in...");
+        get;
+        set
+        {
+            field = value;
+            OnPropertyChanged(nameof(LoginAreas));
+        }
     }
-
-    public string LoginUsernameLoc         { get; private set; }
-    public string LoginPasswordLoc         { get; private set; }
-    public string AutoLoginLoc             { get; private set; }
-    public string OtpLoc                   { get; private set; }
-    public string LoginLoc                 { get; private set; }
-    public string LoginNoStartLoc          { get; private set; }
-    public string LoginNoDalamudLoc        { get; private set; }
-    public string LoginNoPluginsLoc        { get; private set; }
-    public string LoginNoThirdLoc          { get; private set; }
-    public string LoginRepairLoc           { get; private set; }
-    public string WaitingForMaintenanceLoc { get; private set; }
-    public string CancelWithShortcutLoc    { get; private set; }
-    public string LoginTooltipLoc          { get; private set; }
-    public string LaunchOptionsLoc         { get; private set; }
-    public string OpenAccountSwitcherLoc   { get; private set; }
-    public string SettingsLoc              { get; private set; }
-    public string WorldStatusLoc           { get; private set; }
-    public string MaintenanceQueue         { get; private set; }
-    public string IsLoggingInLoc           { get; private set; }
 
     #endregion
 
     public event PropertyChangedEventHandler? PropertyChanged;
-}
-
-public enum LoginAfterAction
-{
-    Start,
-    StartWithoutDalamud,
-    StartWithoutPlugins,
-    StartWithoutThird,
-    UpdateOnly,
-    Repair,
-    CancelLogin,
-    ForceQR
 }

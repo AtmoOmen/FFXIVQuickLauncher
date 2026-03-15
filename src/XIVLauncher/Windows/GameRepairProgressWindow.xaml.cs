@@ -92,8 +92,8 @@ public partial class GameRepairProgressWindow : Window
                 CurrentStepText.Text = ViewModel.DownloadingMetaLoc;
                 InfoTextBlock.Text   = $"{_verify.CurrentFile}";
                 StatusTextBlock.Text =
-                    $"{Math.Min(_verify.PatchSetIndex + 1, _verify.PatchSetCount)}/{_verify.PatchSetCount} - {ApiHelpers.BytesToString(_verify.Progress)}/{ApiHelpers.BytesToString(_verify.Total)}";
-                SpeedTextBlock.Text         = string.Format(ViewModel.SpeedUnitPerSecLoc, ApiHelpers.BytesToString(_verify.Speed));
+                    $"{Math.Min(_verify.PatchSetIndex + 1, _verify.PatchSetCount)}/{_verify.PatchSetCount} - {APIHelper.BytesToString(_verify.Progress)}/{APIHelper.BytesToString(_verify.Total)}";
+                SpeedTextBlock.Text         = string.Format(ViewModel.SpeedUnitPerSecLoc, APIHelper.BytesToString(_verify.Speed));
                 EstimatedTimeTextBlock.Text = ViewModel.FormatEstimatedTime(_verify.Total - _verify.Progress, _verify.Speed);
                 Progress.Value              = _verify.Total != 0 ? 100.0 * _verify.Progress / _verify.Total : 0;
                 SetInstallItemsVisible(1);
@@ -109,14 +109,14 @@ public partial class GameRepairProgressWindow : Window
                 InfoTextBlock.Text = $"{_verify.CurrentFile}";
 
                 StatusTextBlock.Text =
-                    $"{Math.Min(_verify.PatchSetIndex + 1, _verify.PatchSetCount)}/{_verify.PatchSetCount} - {Math.Min(_verify.TaskIndex + 1, _verify.TaskCount)}/{_verify.TaskCount} - {ApiHelpers.BytesToString(_verify.Progress)}/{ApiHelpers.BytesToString(_verify.Total)}";
+                    $"{Math.Min(_verify.PatchSetIndex + 1, _verify.PatchSetCount)}/{_verify.PatchSetCount} - {Math.Min(_verify.TaskIndex + 1, _verify.TaskCount)}/{_verify.TaskCount} - {APIHelper.BytesToString(_verify.Progress)}/{APIHelper.BytesToString(_verify.Total)}";
 
                 SpeedTextBlock.Text = _verify.CurrentMetaInstallState switch
                 {
                     IndexedZiPatchInstaller.InstallTaskState.WaitingForReattempt => ViewModel.ReattemptWaitingLoc,
                     IndexedZiPatchInstaller.InstallTaskState.Connecting          => ViewModel.ConnectingLoc,
                     IndexedZiPatchInstaller.InstallTaskState.Finishing           => ViewModel.FinishingLoc,
-                    _                                                            => string.Format(ViewModel.SpeedUnitPerSecLoc, ApiHelpers.BytesToString(_verify.Speed))
+                    _                                                            => string.Format(ViewModel.SpeedUnitPerSecLoc, APIHelper.BytesToString(_verify.Speed))
                 };
 
                 EstimatedTimeTextBlock.Text = _verify.CurrentMetaInstallState switch

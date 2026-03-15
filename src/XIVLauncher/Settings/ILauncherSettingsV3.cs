@@ -34,7 +34,6 @@ public interface ILauncherSettingsV3
     AcquisitionMethod? PatchAcquisitionMethod        { get; set; }
     string             GitHubToken                   { get; set; }
     bool?              HasShownAutoLaunchDisclaimer  { get; set; }
-    string             AcceptLanguage                { get; set; }
     DpiAwareness?      DpiAwareness                  { get; set; }
     int?               VersionUpgradeLevel           { get; set; }
     bool?              TreatNonZeroExitCodeAsFailure { get; set; }

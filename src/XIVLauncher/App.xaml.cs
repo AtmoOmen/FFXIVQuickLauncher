@@ -144,9 +144,6 @@ public partial class App
         Settings.EnableVerboseLog = false;
         Log.Information($"Current log level is {LogInit.LevelSwitch.MinimumLevel}");
 
-        if (string.IsNullOrEmpty(Settings.AcceptLanguage))
-            Settings.AcceptLanguage = ApiHelpers.GenerateAcceptLanguage();
-
         try
         {
             if (!string.IsNullOrEmpty(CommandLine.AccountName))

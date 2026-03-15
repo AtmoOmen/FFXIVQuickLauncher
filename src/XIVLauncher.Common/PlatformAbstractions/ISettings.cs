@@ -5,7 +5,6 @@ namespace XIVLauncher.Common.PlatformAbstractions;
 
 public interface ISettings
 {
-    string             AcceptLanguage          { get; }
     ClientLanguage?    ClientLanguage          { get; }
     bool?              KeepPatches             { get; }
     DirectoryInfo      PatchPath               { get; }

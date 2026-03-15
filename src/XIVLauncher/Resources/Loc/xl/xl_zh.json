@@ -95,10 +95,6 @@
         "description": "CustomMessageBoxViewModel.SetupLoc",
         "message": "取消 (_C)"
     },
-    "CancelWithShortcut": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "取消 (_C)"
-    },
     "ChangelogLoading": {
         "description": "ChangeLogWindowViewModel.SetupLoc",
         "message": "正在加载更新日志…"
@@ -627,69 +623,13 @@
         "description": "SettingsControlViewModel.SetupLoc",
         "message": "本软件基于 GPLv3 协议发布。点此以了解更多。"
     },
-    "LoadingDialogIsLoggingIn": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "正在登录…"
-    },
     "LoginAcceptTermsMessage": {
         "description": "<TryProcessLoginResult>d__24.MoveNext",
         "message": "请在官方启动器中接受使用条款。"
     },
-    "LoginBoxAutoLogin": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "自动登录"
-    },
-    "LoginBoxLaunchOptions": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "更多选项"
-    },
-    "LoginBoxLogin": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "登录"
-    },
-    "LoginBoxLoginTooltip": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "如需扫码登录等其他功能\n请点击右侧按钮进行选择"
-    },
-    "LoginBoxNoDalamudLogin": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "启动但不加载Dalamud"
-    },
-    "LoginBoxNoPluginLogin": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "启动时禁用所有插件"
-    },
-    "LoginBoxNoStartLogin": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "更新"
-    },
-    "LoginBoxNoThirdLogin": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "启动但不加载第三方插件"
-    },
-    "LoginBoxOtp": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "使用动态密码（OTP）"
-    },
-    "LoginBoxPassword": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "密码"
-    },
-    "LoginBoxRepairLogin": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "修复游戏文件"
-    },
     "LoginBoxSteam": {
         "description": "MainWindowViewModel.SetupLoc",
         "message": "使用 Steam 账户"
-    },
-    "LoginBoxUsername": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "用户名"
-    },
-    "LoginBoxWaitingForMaint": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "正在等待维护结束…"
     },
     "LoginGenericError": {
         "description": "<TryLoginToGame>d__23.MoveNext",
@@ -759,10 +699,6 @@
         "description": "ProblemCheck.RunCheck",
         "message": "检测到您在电脑上安装了 MacType 。\n这可能会导致游戏出现问题，不管您使用的是官方启动器还是 XIVLauncher。\n\n请将 XIVLauncher、ffxivboot、ffxivlauncher、ffxivupdater 和 ffxiv_dx11 添加进 MacType 的白名单中。"
     },
-    "MaintenanceQueue": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "等待维护结束"
-    },
     "MaintenanceQueueBootPatch": {
         "description": "<OnMaintenanceQueueTimerEvent>d__22.MoveNext",
         "message": "检测到官方启动器更新。\n这通常意味着游戏也有更新。\n\n即将为您登录。"
@@ -830,10 +766,6 @@
     "OK": {
         "description": "AdvancedSettingsViewModel..ctor",
         "message": "确定"
-    },
-    "OpenAccountSwitcher": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "打开账户管理器"
     },
     "OpenAdvancedSettings": {
         "description": "SettingsControlViewModel.SetupLoc",
@@ -1015,10 +947,6 @@
         "description": "ChangeLogWindowViewModel.SetupLoc",
         "message": "发送邮件"
     },
-    "Settings": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "设置"
-    },
     "SettingsAbout": {
         "description": "SettingsControlViewModel.SetupLoc",
         "message": "关于"
@@ -1110,10 +1038,6 @@
     "WorldName": {
         "description": "ProfilePictureInputWindowViewModel.SetupLoc",
         "message": "服务器名称"
-    },
-    "WorldStatus": {
-        "description": "MainWindowViewModel.SetupLoc",
-        "message": "服务器状态"
     },
     "Yes": {
         "description": "CustomMessageBoxViewModel.SetupLoc",

@@ -217,8 +217,8 @@ public partial class MainWindow : Window
         Dispatcher.Invoke
         (() =>
             {
-                Model.SdoAreas = [.. areas];
-                Model.Area     = Model.SdoAreas[0];
+                Model.LoginAreas = [.. areas];
+                Model.Area     = Model.LoginAreas[0];
             }
         );
     }
@@ -477,7 +477,7 @@ public partial class MainWindow : Window
         Model.Username = account.UserName;
         //Model.IsOtp = account.UseOtp;
         Model.IsFastLogin      = account.AutoLogin;
-        Model.Area             = Model.SdoAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
+        Model.Area             = Model.LoginAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
         LoginPassword.Password = string.Empty;
 
         switch (account.AccountType)
@@ -508,31 +508,7 @@ public partial class MainWindow : Window
 
     private void SettingsControl_OnSettingsDismissed(object sender, EventArgs e) =>
         Task.Run(SetupHeadlines);
-
-    private void FakeStart_OnClick(object sender, RoutedEventArgs e)
-    {
-        _ = Model.StartGameAndAddon
-        (
-            new LoginResult
-            {
-                OAuthLogin = new OAuthLoginResult
-                {
-                    MaxExpansion  = 5,
-                    Playable      = true,
-                    Region        = 0,
-                    SessionID     = "0",
-                    TermsAccepted = true,
-                    SndaID        = "114514"
-                },
-                State    = LoginState.Ok,
-                UniqueID = "0"
-            },
-            false,
-            false,
-            false
-        ).ConfigureAwait(false);
-    }
-
+    
     private void LoginPassword_OnPasswordChanged(object sender, RoutedEventArgs e)
     {
         if (DataContext != null)

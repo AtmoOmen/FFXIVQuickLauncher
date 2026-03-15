@@ -191,7 +191,7 @@
                                     Style="{DynamicResource MaterialDesignFlatButton}"
                                     HorizontalAlignment="Left"
                                     Focusable="False"
-                                    ToolTip="{Binding WorldStatusLoc}"
+                                    ToolTip="服务器状态"
                                     Margin="0" Height="77" Width="77"
                                     Click="WorldStatusButton_Click">
                                     <StackPanel Orientation="Vertical"
@@ -205,7 +205,7 @@
                                     x:Name="SettingsButton"
                                     Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
                                     Focusable="False"
-                                    ToolTip="{Binding SettingsLoc}"
+                                    ToolTip="设置"
                                     Margin="0" Height="77" Width="77"
                                     Command="{x:Static materialDesign:Transitioner.MovePreviousCommand}">
                                     <StackPanel Orientation="Vertical"
@@ -232,7 +232,7 @@
 
                                         <DockPanel
                                             Margin="30,18,30,18">
-                                            <TextBlock Text="{Binding IsLoggingInLoc}"
+                                            <TextBlock Text="正在登录…"
                                                        DockPanel.Dock="Top"
                                                        HorizontalAlignment="Stretch"
                                                        VerticalAlignment="Top"
@@ -288,7 +288,7 @@
                                                 VerticalAlignment="Top"
                                                 materialDesign:HintAssist.Hint="选择服务器"
                                                 DockPanel.Dock="Top"
-                                                ItemsSource="{Binding Path=SdoAreas}"
+                                                ItemsSource="{Binding Path=LoginAreas}"
                                                 SelectedIndex="{Binding Path=AreaIndex, Mode=OneWayToSource}"
                                                 SelectedItem="{Binding Path=Area}"
                                                 SelectedValuePath="Areaid">
@@ -383,7 +383,7 @@
                                                 Margin="0,8,0,0"
                                                 VerticalAlignment="Top"
                                                 PasswordChanged="LoginPassword_OnPasswordChanged"
-                                                materialDesign:HintAssist.Hint="{Binding LoginPasswordLoc}"
+                                                materialDesign:HintAssist.Hint="密码"
                                                 Cursor="IBeam" />
 
                                             <CheckBox
@@ -415,26 +415,22 @@
                                                         Margin="0,0,0,10" DockPanel.Dock="Bottom">
                                                 <Button
                                                     x:Name="LoginButton"
-                                                    Content="{Binding LoginLoc}"
+                                                    Content="登录"
                                                     Command="{Binding Path=StartLoginCommand}"
-                                                    Margin="0,0,0,0" Width="84"
-                                                    ToolTip="{Binding LoginTooltipLoc}">
+                                                    Margin="0,0,0,0" Width="84">
 
                                                     <Button.ContextMenu>
-                                                        <ContextMenu x:Name="LoginContextMenu">
-                                                            <MenuItem Header="{Binding LoginRepairLoc}"
-                                                                      Command="{Binding Path=LoginRepairCommand}" />
+                                                        <ContextMenu Language="zh-CN">
+                                                            <MenuItem Header="其他启动方式">
+                                                                <MenuItem Header="无 Dalamud" Command="{Binding Path=LoginNoDalamudCommand}" />
+                                                                <MenuItem Header="禁用插件" Command="{Binding Path=LoginNoPluginsCommand}" />
+                                                                <MenuItem Header="禁用第三方插件" Command="{Binding Path=LoginNoThirdCommand}" />
+                                                                <Separator />
+                                                                <MenuItem Header="调试用假启动" Command="{Binding Path=FakeStartCommand}" />
+                                                            </MenuItem>
                                                             <Separator />
-                                                            <MenuItem Header="{Binding LoginNoDalamudLoc}"
-                                                                      Command="{Binding Path=LoginNoDalamudCommand}" />
-                                                            <MenuItem Header="{Binding LoginNoPluginsLoc}"
-                                                                      Command="{Binding Path=LoginNoPluginsCommand}" />
-                                                            <MenuItem Header="{Binding LoginNoThirdLoc}"
-                                                                      Command="{Binding Path=LoginNoThirdCommand}" />
-                                                            <Separator />
-                                                            <MenuItem Header="{Binding LoginNoStartLoc}"
-                                                                      Command="{Binding Path=LoginNoStartCommand}" />
-                                                            <MenuItem Header="假启动 [调试用]" Click="FakeStart_OnClick" />
+                                                            <MenuItem Header="修复" Command="{Binding Path=LoginRepairCommand}" />
+                                                            <MenuItem Header="更新" Command="{Binding Path=LoginNoStartCommand}" />
                                                         </ContextMenu>
                                                     </Button.ContextMenu>
 
@@ -446,7 +442,7 @@
                                                                          HorizontalAlignment="Left"
                                                                          VerticalAlignment="Center"
                                                                          Margin="0,0,7,0"
-                                                                         ToolTip="{Binding Path=LaunchOptionsLoc}">
+                                                                         ToolTip="更多选项">
 
                                                     <materialDesign:PopupBox.ToggleContent>
                                                         <Border Margin="0,0,0,0"
@@ -470,25 +466,24 @@
                                                     </materialDesign:PopupBox.ToggleContent>
 
                                                     <materialDesign:PopupBox.PopupContent>
-                                                        <Menu>
-
+                                                        <Menu Language="zh-CN">
+                                                            
                                                             <Menu.ItemsPanel>
                                                                 <ItemsPanelTemplate>
                                                                     <StackPanel />
                                                                 </ItemsPanelTemplate>
                                                             </Menu.ItemsPanel>
-                                                            <MenuItem Header="{Binding LoginRepairLoc}"
-                                                                      Command="{Binding Path=LoginRepairCommand}" />
+                                                            
+                                                            <MenuItem Header="其他启动方式">
+                                                                <MenuItem Header="无 Dalamud" Command="{Binding Path=LoginNoDalamudCommand}" />
+                                                                <MenuItem Header="禁用插件" Command="{Binding Path=LoginNoPluginsCommand}" />
+                                                                <MenuItem Header="禁用第三方插件" Command="{Binding Path=LoginNoThirdCommand}" />
+                                                                <Separator />
+                                                                <MenuItem Header="调试用假启动" Command="{Binding Path=FakeStartCommand}" />
+                                                            </MenuItem>
                                                             <Separator />
-                                                            <MenuItem Header="{Binding LoginNoDalamudLoc}"
-                                                                      Command="{Binding Path=LoginNoDalamudCommand}" />
-                                                            <MenuItem Header="{Binding LoginNoPluginsLoc}"
-                                                                      Command="{Binding Path=LoginNoPluginsCommand}" />
-                                                            <MenuItem Header="{Binding LoginNoThirdLoc}"
-                                                                      Command="{Binding Path=LoginNoThirdCommand}" />
-                                                            <Separator />
-                                                            <MenuItem Header="{Binding LoginNoStartLoc}"
-                                                                      Command="{Binding Path=LoginNoStartCommand}" />
+                                                            <MenuItem Header="修复" Command="{Binding Path=LoginRepairCommand}" />
+                                                            <MenuItem Header="更新" Command="{Binding Path=LoginNoStartCommand}" />
 
                                                         </Menu>
                                                     </materialDesign:PopupBox.PopupContent>
@@ -497,7 +492,7 @@
                                                 <Button HorizontalAlignment="Left"
                                                         Visibility="Visible"
                                                         x:Name="AccountSwitcherButton" Margin="0 0 0 0"
-                                                        ToolTip="{Binding OpenAccountSwitcherLoc}"
+                                                        ToolTip="账户管理器"
                                                         Click="AccountSwitcherButton_OnClick">
                                                     <StackPanel Orientation="Horizontal" Margin="0">
                                                         <materialDesign:PackIcon
@@ -581,16 +576,14 @@
                                                         Margin="0,0,0,10" DockPanel.Dock="Bottom">
                                                 <Button
                                                     x:Name="InjectButton"
-                                                    Content="带到前台"
+                                                    Content="带回前台"
                                                     Click="InjectButton_Click"
-                                                    Margin="0,0,10,0" Width="90"
-                                                    ToolTip="{Binding LoginTooltipLoc}" />
+                                                    Margin="0,0,10,0" Width="90" />
                                                 <Button
                                                     x:Name="BringUp"
                                                     Content="注入"
                                                     Command="{Binding Path=InjectGameCommand}"
-                                                    Margin="0,0,0,0" Width="90"
-                                                    ToolTip="{Binding LoginTooltipLoc}" />
+                                                    Margin="0,0,0,0" Width="90" />
                                             </StackPanel>
                                         </DockPanel>
 
