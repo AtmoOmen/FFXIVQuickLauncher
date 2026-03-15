@@ -8,15 +8,15 @@ namespace XIVLauncher.Common.Game.Login;
 
 public class LoginArea
 {
-    [JsonProperty("Areaid")]           public string AreaID           { get; set; }
+    [JsonProperty("Areaid")]           public string AreaID           { get; set; } = null!;
     [JsonProperty("AreaStat")]         public int    AreaStatus       { get; set; }
     [JsonProperty("AreaOrder")]        public int    AreaOrder        { get; set; }
-    [JsonProperty("AreaName")]         public string AreaName         { get; set; }
+    [JsonProperty("AreaName")]         public string AreaName         { get; set; } = null!;
     [JsonProperty("Areatype")]         public int    AreaType         { get; set; }
-    [JsonProperty("AreaLobby")]        public string AreaLobby        { get; set; }
-    [JsonProperty("AreaGm")]           public string AreaGM           { get; set; }
-    [JsonProperty("AreaPatch")]        public string AreaPatch        { get; set; }
-    [JsonProperty("AreaConfigUpload")] public string AreaConfigUpload { get; set; }
+    [JsonProperty("AreaLobby")]        public string AreaLobby        { get; set; } = null!;
+    [JsonProperty("AreaGm")]           public string AreaGM           { get; set; } = null!;
+    [JsonProperty("AreaPatch")]        public string AreaPatch        { get; set; } = null!;
+    [JsonProperty("AreaConfigUpload")] public string AreaConfigUpload { get; set; } = null!;
 
     public static async Task<LoginArea[]> Get()
     {
@@ -36,12 +36,12 @@ public class LoginArea
 
         using var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
-        
+
         var text = await response.Content.ReadAsStringAsync();
         var json = text.Trim();
         json = json["var servers=".Length..];
         json = json[..^1];
 
-        return JsonConvert.DeserializeObject<LoginArea[]>(json);
+        return JsonConvert.DeserializeObject<LoginArea[]>(json) ?? [];
     }
 }

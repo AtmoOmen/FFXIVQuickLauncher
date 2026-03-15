@@ -75,8 +75,8 @@ public partial class MainWindow : Window
 
         Model.ReloadHeadlines += () => Task.Run(SetupHeadlines);
 
-        LoginTypeSelection.ItemsSource   = GuiLoginType.Get(App.Settings.ShowWeGameTokenLogin.GetValueOrDefault(false));
-        LoginTypeSelection.SelectedValue = App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.SdoSlide);
+        LoginTypeSelection.ItemsSource   = LoginTypeOption.Get(App.Settings.ShowWeGameTokenLogin.GetValueOrDefault(false));
+        LoginTypeSelection.SelectedValue = App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.Slide);
         NewsListView.ItemsSource = new List<News>
         {
             new()
@@ -121,7 +121,7 @@ public partial class MainWindow : Window
             {
                 Model.TryLogin
                 (
-                    LoginType.WeGameSid,
+                    LoginType.WeGameSID,
                     savedAccount.LoginAccount,
                     savedAccount.TestSID,
                     Model.IsFastLogin,
@@ -486,23 +486,23 @@ public partial class MainWindow : Window
             case XivAccountType.Sdo:
                 if (account.Password is not null)
                 {
-                    LoginTypeSelection.SelectedValue = LoginType.SdoStatic;
+                    LoginTypeSelection.SelectedValue = LoginType.Static;
 
                     // Make users happy by not showing their password
-                    LoginPassword.Password = MainWindowViewModel.PresudoPassword;
+                    LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
                 }
                 else
-                    LoginTypeSelection.SelectedValue = LoginType.SdoSlide;
+                    LoginTypeSelection.SelectedValue = LoginType.Slide;
 
                 break;
 
             case XivAccountType.WeGame:
                 LoginTypeSelection.SelectedValue = LoginType.WeGameToken;
-                LoginPassword.Password           = MainWindowViewModel.PresudoPassword;
+                LoginPassword.Password           = MainWindowViewModel.PRESUDO_PASSWORD;
                 break;
 
             case XivAccountType.WeGameSid:
-                LoginTypeSelection.SelectedValue = LoginType.WeGameSid;
+                LoginTypeSelection.SelectedValue = LoginType.WeGameSID;
                 break;
         }
     }
@@ -514,19 +514,19 @@ public partial class MainWindow : Window
     {
         _ = Model.StartGameAndAddon
         (
-            new Launcher.LoginResult
+            new LoginResult
             {
-                OauthLogin = new Launcher.OauthLoginResult
+                OAuthLogin = new OAuthLoginResult
                 {
                     MaxExpansion  = 5,
                     Playable      = true,
                     Region        = 0,
-                    SessionId     = "0",
+                    SessionID     = "0",
                     TermsAccepted = true,
-                    SndaId        = "114514"
+                    SndaID        = "114514"
                 },
-                State    = Launcher.LoginState.Ok,
-                UniqueId = "0"
+                State    = LoginState.Ok,
+                UniqueID = "0"
             },
             false,
             false,
@@ -572,9 +572,9 @@ public partial class MainWindow : Window
 
     private void LoginTypeSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var selectedItem = (GuiLoginType)((ComboBox)sender).SelectedItem;
+        var selectedItem = (LoginTypeOption)((ComboBox)sender).SelectedItem;
         if (DataContext != null)
-            ((MainWindowViewModel)DataContext).GuiLoginType = selectedItem;
+            ((MainWindowViewModel)DataContext).LoginTypeOption = selectedItem;
         App.Settings.SelectedLoginType = selectedItem.LoginType;
         // Default
         LoginUsername.Visibility = Visibility.Visible;
@@ -590,14 +590,14 @@ public partial class MainWindow : Window
         switch (selectedItem.LoginType)
         {
             //Todo: 各种地方的Hint
-            case LoginType.SdoSlide:
+            case LoginType.Slide:
                 break;
 
-            case LoginType.SdoQrCode:
+            case LoginType.QRCode:
                 LoginUsername.Visibility = Visibility.Hidden;
                 break;
 
-            case LoginType.SdoStatic:
+            case LoginType.Static:
                 LoginUsername.Visibility  = Visibility.Visible;
                 LoginPassword.Visibility  = Visibility.Visible;
                 FastLoginCheckBox.Content = "保存密码";
@@ -610,7 +610,7 @@ public partial class MainWindow : Window
                 HintAssist.SetHint(LoginPassword, "抓包Token");
                 break;
 
-            case LoginType.WeGameSid:
+            case LoginType.WeGameSID:
                 FastLoginCheckBox.Visibility      = Visibility.Collapsed;
                 ReadWeGameInfoCheckBox.Visibility = Visibility.Visible;
                 HintAssist.SetHint(LoginUsername, "从Wegame自动获取的账号");

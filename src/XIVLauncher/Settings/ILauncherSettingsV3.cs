@@ -5,6 +5,7 @@ using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Xaml;
 

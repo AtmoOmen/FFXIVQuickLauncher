@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Game.Exceptions;
+using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
 using XIVLauncher.Common.Patching.SdoFileDownload;
@@ -93,7 +94,7 @@ public class PatchVerifier : IDisposable
 
     private Task _verificationTask;
 
-    public PatchVerifier(ISettings settings, Launcher.LoginResult loginResult, TimeSpan progressUpdateInterval, int maxExpansion, bool external = true)
+    public PatchVerifier(ISettings settings, LoginResult loginResult, TimeSpan progressUpdateInterval, int maxExpansion, bool external = true)
     {
         _settings              = settings;
         _client                = new HttpClient();
@@ -281,7 +282,7 @@ public class PatchVerifier : IDisposable
         return normalized;
     }
 
-    private void SetLoginState(Launcher.LoginResult result)
+    private void SetLoginState(LoginResult result)
     {
         _patchSources.Clear();
 

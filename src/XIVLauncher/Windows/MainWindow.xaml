@@ -276,7 +276,7 @@
                                                 Margin="0,10,0,0"
                                                 Height="24"
                                                 VerticalAlignment="Top"
-                                                SelectedItem="{Binding Path=GuiLoginType}"
+                                                SelectedItem="{Binding Path=LoginTypeOption}"
                                                 SelectedValuePath="LoginType"
                                                 DisplayMemberPath="DisplayName"
                                                 SelectionChanged="LoginTypeSelection_OnSelectionChanged"

@@ -48,7 +48,7 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public class MainWindowViewModel : INotifyPropertyChanged
 {
-    public const string PresudoPassword = "********假的密码********";
+    public const string PRESUDO_PASSWORD = "********假的密码********";
 
     public bool IsLoggingIn;
 
@@ -155,7 +155,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         IsEnabled = false;
         //LoginCardTransitionerIndex = 0;
         var currentCard = (LoginCard)LoginCardTransitionerIndex;
-        SwitchCard(loginType == LoginType.SdoQrCode ? LoginCard.ScanQrCode : LoginCard.Logining);
+        SwitchCard(loginType == LoginType.QRCode ? LoginCard.ScanQrCode : LoginCard.Logining);
         loginCts    = new CancellationTokenSource();
         IsLoggingIn = true;
 
@@ -465,7 +465,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         return true;
     }
 
-    public async Task<Process> StartGameAndAddon(Launcher.LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
+    public async Task<Process> StartGameAndAddon(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
     {
         var stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -567,12 +567,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
 
         // We won't do any sanity checks here anymore, since that should be handled in StartLogin
-        var launched = Launcher.LaunchGameSdo
+        var launched = Launcher.LaunchGame
         (
             gameRunner,
-            loginResult.OauthLogin.SessionId,
-            loginResult.OauthLogin.SndaId,
-            loginResult.DcTravelPort,
+            loginResult.OAuthLogin.SessionID,
+            loginResult.OAuthLogin.SndaID,
+            loginResult.DCTravelPort,
             Area.AreaID,
             Area.AreaLobby,
             Area.AreaGM,
@@ -791,7 +791,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     return;
             }
 
-            TryLogin(GuiLoginType.LoginType, Username, Password, IsFastLogin, IsReadWegameInfo, action);
+            TryLogin(LoginTypeOption.LoginType, Username, Password, IsFastLogin, IsReadWegameInfo, action);
         };
     }
 
@@ -904,13 +904,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
         var finalLoginType = loginType;
         var serect         = string.Empty;
         //var nSessionId = string.Empty;
-        inputPassword = inputPassword == PresudoPassword ? string.Empty : inputPassword?.Trim();
+        inputPassword = inputPassword == PRESUDO_PASSWORD ? string.Empty : inputPassword?.Trim();
 
         var accountType = loginType switch
         {
-            LoginType.WeGameSid                                              => XivAccountType.WeGameSid,
+            LoginType.WeGameSID                                              => XivAccountType.WeGameSid,
             LoginType.WeGameToken                                            => XivAccountType.WeGame,
-            LoginType.SdoStatic or LoginType.SdoSlide or LoginType.SdoQrCode => XivAccountType.Sdo
+            LoginType.Static or LoginType.Slide or LoginType.QRCode => XivAccountType.Sdo,
+            _                                                                => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
         };
 
         try
@@ -919,7 +920,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             switch (loginType)
             {
-                case LoginType.SdoStatic:
+                case LoginType.Static:
                     if (!inputPassword.IsNullOrEmpty())
                         serect = inputPassword;
                     else if (savedAccount != null)
@@ -930,10 +931,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     ArgumentException.ThrowIfNullOrEmpty(username, "静态登录用户名");
                     ArgumentException.ThrowIfNullOrEmpty(serect,   "静态登录密码");
-                    finalLoginType = LoginType.SdoStatic;
+                    finalLoginType = LoginType.Static;
                     break;
 
-                case LoginType.WeGameSid:
+                case LoginType.WeGameSID:
                     if (!App.Settings.HasAgreeWeGameUsage.GetValueOrDefault(false))
                     {
                         var readWeGameUsageAsk = CustomMessageBox.Builder
@@ -990,7 +991,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         Area = SdoAreas.FirstOrDefault(x => x.AreaID == areaId);
                     }
 
-                    finalLoginType = LoginType.WeGameSid;
+                    finalLoginType = LoginType.WeGameSID;
                     break;
 
                 case LoginType.WeGameToken:
@@ -1010,7 +1011,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     ArgumentException.ThrowIfNullOrEmpty(serect, "自动登录密钥或者Token");
                     break;
 
-                case LoginType.SdoSlide:
+                case LoginType.Slide:
                     if (savedAccount != null && doingAutoLogin)
                     {
                         serect = await AccountManager.Decrypt(savedAccount.AutoLoginSessionKey);
@@ -1019,11 +1020,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     }
 
                     if (serect.IsNullOrEmpty())
-                        finalLoginType = LoginType.SdoSlide;
+                        finalLoginType = LoginType.Slide;
                     ArgumentException.ThrowIfNullOrEmpty(username, "一键滑动登录用户名");
                     break;
 
-                case LoginType.SdoQrCode:
+                case LoginType.QRCode:
                     break;
             }
         }
@@ -1066,7 +1067,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         loginResult.Area  = Area;
         loginResult.Areas = SdoAreas;
 
-        if (loginResult.State == Launcher.LoginState.NeedsPatchGame && action != AfterLoginAction.Repair)
+        if (loginResult.State == LoginState.NeedsPatchGame && action != AfterLoginAction.Repair)
         {
             // 如果需要打补丁且登陆异常，登陆异常状态会覆盖掉NeedsPatchGame，除非和国际服一样，登陆成功才能获取到补丁信息
             // 所以直接改成打完补丁再登陆一遍算了
@@ -1079,31 +1080,32 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (action != AfterLoginAction.UpdateOnly)
         {
-            if (loginResult.State == Launcher.LoginState.Ok)
+            if (loginResult.State == LoginState.Ok)
             {
-                if (App.Settings.InGameAddonEnabled && loginType != LoginType.WeGameSid)
+                if (App.Settings.InGameAddonEnabled && loginType != LoginType.WeGameSID)
                 {
                     Log.Information("[DcTravel] 正在开启......");
                     await dcTraveler.GetValidCookie();
                     _ = dcTraveler.KeepCookieAlive();
                     //var nSessionId = dcTraveler.GetNSessionIdFromCookie();
 
-                    loginResult.DcTravelPort = ApiHelpers.GetAvailablePort();
-                    dcTravelListener         = new DCTravelListener(dcTraveler, loginResult.DcTravelPort, false);
-                    Log.Information($"[DCTravel] 打开端口:{loginResult.DcTravelPort}");
+                    loginResult.DCTravelPort = ApiHelpers.GetAvailablePort();
+                    dcTravelListener         = new DCTravelListener(dcTraveler, loginResult.DCTravelPort, false);
+                    Log.Information($"[DCTravel] 打开端口:{loginResult.DCTravelPort}");
                     _ = dcTravelListener.StartAsync();
                 }
 
                 var accountToSave = new XivAccount
                 {
-                    AutoLogin    = loginType == LoginType.WeGameSid || doingAutoLogin,
-                    LoginAccount = loginResult.OauthLogin.InputUserId,
-                    SndaId       = loginResult.OauthLogin.SndaId,
+                    AutoLogin    = loginType == LoginType.WeGameSID || doingAutoLogin,
+                    LoginAccount = loginResult.OAuthLogin.InputUserID,
+                    SndaId       = loginResult.OAuthLogin.SndaID,
                     AccountType = loginType switch
                     {
-                        LoginType.WeGameSid                                              => XivAccountType.WeGameSid,
+                        LoginType.WeGameSID                                              => XivAccountType.WeGameSid,
                         LoginType.WeGameToken                                            => XivAccountType.WeGame,
-                        LoginType.SdoStatic or LoginType.SdoSlide or LoginType.SdoQrCode => XivAccountType.Sdo
+                        LoginType.Static or LoginType.Slide or LoginType.QRCode => XivAccountType.Sdo,
+                        _                                                                => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
                     },
                     AreaName = Area.AreaName
                 };
@@ -1112,18 +1114,18 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 {
                     //accountToSave.NSessionId = nSessionId;
 
-                    accountToSave.AutoLoginSessionKey = await AccountManager.Encrypt(loginResult.OauthLogin.AutoLoginSessionKey);
+                    accountToSave.AutoLoginSessionKey = await AccountManager.Encrypt(loginResult.OAuthLogin.AutoLoginSessionKey);
 
                     if (dcTravelListener != null)
                     {
                         dcTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
                         {
-                            var newLoginResult = await Launcher.LoginBySessionKey(username, loginResult.OauthLogin.AutoLoginSessionKey, dcTravelListener.DCTravelClient).ConfigureAwait(false);
-                            return newLoginResult.OauthLogin.SessionId;
+                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey(username, loginResult.OAuthLogin.AutoLoginSessionKey, dcTravelListener.DCTravelClient).ConfigureAwait(false);
+                            return newLoginResult.OAuthLogin.SessionID;
                         };
                     }
 
-                    if (finalLoginType == LoginType.SdoStatic)
+                    if (finalLoginType == LoginType.Static)
                         accountToSave.Password = await AccountManager.Encrypt(serect);
                 }
 
@@ -1145,7 +1147,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             "[LR] {State} {NumPatches} {Playable}",
             loginResult.State,
             loginResult.PendingPatches?.Length,
-            loginResult.OauthLogin?.Playable
+            loginResult.OAuthLogin?.Playable
         );
         await AccountManager.CredProvider.ClearCache();
         serect = null;
@@ -1158,7 +1160,34 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<Launcher.LoginResult> TryLoginToGame
+    private LoginRequest BuildLoginRequest(LoginType loginType, string username, string secret, bool autoLogin, DCTravelClient dcTravelClient)
+    {
+        return new LoginRequest
+        {
+            Account = username,
+            Secret = secret,
+            AutoLogin = autoLogin,
+            DcTravelClient = dcTravelClient,
+            LoginCancellationTokenSource = loginCts,
+            ShowVerificationCode = code =>
+            {
+                if (loginType != LoginType.Slide)
+                    return;
+
+                Log.Information($"叨鱼确认码:{code}");
+                LoginMessage = $"确认码: {code}";
+            },
+            ShowQrCode = qrBytes =>
+            {
+                if (loginType != LoginType.QRCode)
+                    return;
+
+                QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes);
+            }
+        };
+    }
+
+    private async Task<LoginResult> TryLoginToGame
     (
         LoginType        type,
         LoginType        fallbackLoginType,
@@ -1176,14 +1205,15 @@ public class MainWindowViewModel : INotifyPropertyChanged
             var gamePath = App.Settings.GamePath;
 
             var checkResult = await Launcher.CheckGameUpdate(Area, gamePath, action == AfterLoginAction.Repair);
-            if (checkResult.State == Launcher.LoginState.NeedsPatchGame || action == AfterLoginAction.UpdateOnly)
+            if (checkResult.State == LoginState.NeedsPatchGame || action == AfterLoginAction.UpdateOnly)
                 return checkResult;
 
             if (type == LoginType.AutoLoginSession)
             {
                 try
                 {
-                    return await Launcher.LoginBySessionKey(username, serect, dcTravelClient).ConfigureAwait(false);
+                    var autoLoginRequest = BuildLoginRequest(type, username, serect, autoLogin, dcTravelClient);
+                    return await Launcher.LoginClient.LoginAsync(type, autoLoginRequest).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -1191,44 +1221,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     type = fallbackLoginType;
                 }
             }
-
-            switch (type)
-            {
-                case LoginType.SdoStatic:
-                    return await Launcher.LoginBySdoStatic(username, serect, dcTravelClient).ConfigureAwait(false);
-
-                case LoginType.SdoSlide:
-                    return await Launcher.LoginBySlide
-                           (
-                               username,
-                               autoLogin,
-                               loginCts,
-                               code =>
-                               {
-                                   Log.Information($"叨鱼确认码:{code}");
-                                   LoginMessage = $"确认码: {code}";
-                               },
-                               dcTravelClient
-                           ).ConfigureAwait(false);
-
-                case LoginType.SdoQrCode:
-                    return await Launcher.LoginByScanQrCode
-                           (
-                               autoLogin,
-                               loginCts,
-                               qrBytes => { QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes); },
-                               dcTravelClient
-                           ).ConfigureAwait(false);
-
-                case LoginType.WeGameToken:
-                    return await Launcher.LoginByWeGameToken(username, serect, autoLogin, dcTravelClient).ConfigureAwait(false);
-
-                case LoginType.WeGameSid:
-                    return await Launcher.LoginBySid(username, serect).ConfigureAwait(false);
-
-                default:
-                    throw new Exception($"Known LoginType:{type}");
-            }
+            var loginRequest = BuildLoginRequest(type, username, serect, autoLogin, dcTravelClient);
+            return await Launcher.LoginClient.LoginAsync(type, loginRequest).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -1392,9 +1386,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<bool> TryProcessLoginResult(Launcher.LoginResult loginResult, AfterLoginAction action)
+    private async Task<bool> TryProcessLoginResult(LoginResult loginResult, AfterLoginAction action)
     {
-        if (loginResult.State == Launcher.LoginState.NoService)
+        if (loginResult.State == LoginState.NoService)
         {
             CustomMessageBox.Show
             (
@@ -1414,7 +1408,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        if (loginResult.State == Launcher.LoginState.NoTerms)
+        if (loginResult.State == LoginState.NoTerms)
         {
             CustomMessageBox.Show
             (
@@ -1433,7 +1427,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        if (loginResult.State == Launcher.LoginState.NeedsPatchBoot)
+        if (loginResult.State == LoginState.NeedsPatchBoot)
         {
             CustomMessageBox.Show
             (
@@ -1455,12 +1449,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             try
             {
-                if (loginResult.State == Launcher.LoginState.NeedsPatchGame)
+                if (loginResult.State == LoginState.NeedsPatchGame)
                 {
                     if (!await RepairGame(loginResult).ConfigureAwait(false))
                         return false;
 
-                    loginResult.State = Launcher.LoginState.Ok;
+                    loginResult.State = LoginState.Ok;
                 }
                 else
                 {
@@ -1493,7 +1487,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        if (loginResult.State == Launcher.LoginState.NeedsPatchGame)
+        if (loginResult.State == LoginState.NeedsPatchGame)
         {
             if (App.Settings.AskBeforePatchInstall ?? true)
             {
@@ -1519,7 +1513,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 return false;
             }
 
-            loginResult.State = Launcher.LoginState.Ok;
+            loginResult.State = LoginState.Ok;
         }
 
         if (action == AfterLoginAction.UpdateOnly)
@@ -1542,7 +1536,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        if (loginResult.State == Launcher.LoginState.NeedRetry)
+        if (loginResult.State == LoginState.NeedRetry)
         {
             Log.Error("loginResult.State == NeedRetry");
             CustomMessageBox.Show
@@ -1562,7 +1556,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        if (CustomMessageBox.AssertOrShowError(loginResult.State == Launcher.LoginState.Ok, "TryProcessLoginResult: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: _window))
+        if (CustomMessageBox.AssertOrShowError(loginResult.State == LoginState.Ok, "TryProcessLoginResult: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: _window))
             return false;
 
 #if !DEBUG
@@ -1578,7 +1572,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             try
             {
-                if (loginResult.OauthLogin.SessionId.IsNullOrEmpty() || loginResult.OauthLogin.SndaId.IsNullOrEmpty())
+                if (loginResult.OAuthLogin.SessionID.IsNullOrEmpty() || loginResult.OAuthLogin.SndaID.IsNullOrEmpty())
                 {
                     Log.Error("SID或SNDAID为空，取消登录");
                     CustomMessageBox.Show("SID或SNDAID为空", "Error", MessageBoxButton.OK, MessageBoxImage.Error, showOfficialLauncher: true, parentWindow: _window);
@@ -1896,7 +1890,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<bool> RepairGame(Launcher.LoginResult loginResult)
+    private async Task<bool> RepairGame(LoginResult loginResult)
     {
         var doLogin = false;
         var mutex   = new Mutex(false, "XivLauncherIsPatching");
@@ -2108,9 +2102,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
         return doLogin;
     }
 
-    private Task<bool> InstallGamePatch(Launcher.LoginResult loginResult)
+    private Task<bool> InstallGamePatch(LoginResult loginResult)
     {
-        if (loginResult.State != Launcher.LoginState.NeedsPatchGame)
+        if (loginResult.State != LoginState.NeedsPatchGame)
             throw new ArgumentException(@"loginResult.State != Launcher.LoginState.NeedsPatchGame", nameof(loginResult));
 
         if (loginResult.PendingPatches == null)
@@ -2119,7 +2113,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         if (loginResult.PendingPatches.Length == 0)
             throw new ArgumentException(@"loginResult.PendingPatches.Length == 0", nameof(loginResult));
 
-        return TryHandlePatchAsync(Repository.Ffxiv, loginResult.PendingPatches, loginResult.UniqueId);
+        return TryHandlePatchAsync(Repository.Ffxiv, loginResult.PendingPatches, loginResult.UniqueID);
     }
 
     private void PatcherOnFail(PatchListEntry patch, string context) =>
@@ -2372,7 +2366,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private async Task MonitorGameProcess
     (
         Process              process,
-        Launcher.LoginResult loginResult,
+        LoginResult loginResult,
         bool                 forceNoDalamud,
         bool                 noThird,
         bool                 noPlugins
@@ -2570,13 +2564,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public GuiLoginType GuiLoginType
+    public LoginTypeOption LoginTypeOption
     {
         get;
         set
         {
             field = value;
-            OnPropertyChanged(nameof(GuiLoginType));
+            OnPropertyChanged(nameof(LoginTypeOption));
         }
     }
 

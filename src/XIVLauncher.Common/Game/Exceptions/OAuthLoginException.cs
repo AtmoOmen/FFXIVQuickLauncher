@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Text.RegularExpressions;
 using Serilog;
@@ -9,7 +7,7 @@ namespace XIVLauncher.Common.Game.Exceptions;
 [Serializable]
 public partial class OAuthLoginException
 (
-    string document
+    string? document
 ) : Exception(document ?? "未知错误")
 {
     public string? OauthErrorMessage { get; private set; } = document;
