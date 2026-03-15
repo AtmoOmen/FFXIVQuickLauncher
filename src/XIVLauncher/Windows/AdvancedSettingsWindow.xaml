@@ -21,11 +21,11 @@
                       Content="视非零游戏退出码为游戏崩溃"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray"
                       ToolTip="勾选后, 发生此类情况时将自动重新打开 XIVLauncher 界面"
-                      IsEnabled="{Binding ElementName=ExitLauncherAfterGameExitCheckbox, Path=IsChecked}"/>
+                      IsEnabled="{Binding ElementName=ExitLauncherAfterGameExitCheckbox, Path=IsChecked}" />
             <CheckBox x:Name="EnableVerboseLog"
                       Content="调整日志等级为 Verbose"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray"
-                      ToolTip="勾选后, XIVLauncher 会输出更为详尽甚至琐碎的日志信息, 这可能会导致相关日志文件体积显著增大"/>
+                      ToolTip="勾选后, XIVLauncher 会输出更为详尽甚至琐碎的日志信息, 这可能会导致相关日志文件体积显著增大" />
             <CheckBox x:Name="EnableSkipUpdate"
                       Content="跳过 XIVLauncher 更新"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />

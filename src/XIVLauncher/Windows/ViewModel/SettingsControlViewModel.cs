@@ -352,9 +352,9 @@ internal class SettingsControlViewModel : INotifyPropertyChanged
             "Credits",
             "Made by goat. Special thanks to Mino, sky, LeonBlade, Wintermute, Zyian,\r\nRoy, Meli, Aida Enna, Aireil, kizer and the angry paissa artist!\r\n\r\nAny issues or requests? Join the Discord or create an issue on GitHub!"
         );
-        LicenseLoc               = Loc.Localize("License",               "Licensed under GPLv3 or later. Click here for more.");
-        JoinDiscordLoc           = Loc.Localize("JoinDiscord",           "Join Discord");
-        StartBackupToolLoc       = Loc.Localize("StartBackupTool",       "Start Backup Tool");
+        LicenseLoc                 = Loc.Localize("License",                 "Licensed under GPLv3 or later. Click here for more.");
+        JoinDiscordLoc             = Loc.Localize("JoinDiscord",             "Join Discord");
+        StartBackupToolLoc         = Loc.Localize("StartBackupTool",         "Start Backup Tool");
         OpenAdvancedSettingsLoc    = Loc.Localize("OpenAdvancedSettings",    "Open Advanced Settings");
         OpenAdvancedSettingsTipLoc = Loc.Localize("OpenAdvancedSettingsTip", "Opens some settings for advanced users. Please only use these if you know what you're doing.");
 

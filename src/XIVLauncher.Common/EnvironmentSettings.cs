@@ -10,5 +10,6 @@ public static class EnvironmentSettings
     public static bool IsNoKillswitch            => CheckEnvBool("XL_NO_KILLSWITCH");
     public static bool IsNoRunas                 => CheckEnvBool("XL_NO_RUNAS");
     public static bool IsIgnoreSpaceRequirements => CheckEnvBool("XL_NO_SPACE_REQUIREMENTS");
+
     private static bool CheckEnvBool(string var) => bool.Parse(Environment.GetEnvironmentVariable(var) ?? "false");
 }

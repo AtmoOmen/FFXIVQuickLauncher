@@ -17,5 +17,4 @@ public interface ICredProvider
     Task<string> Encrypt(string? text);
 
     Task<string> Decrypt(string? text);
-#nullable disable
 }

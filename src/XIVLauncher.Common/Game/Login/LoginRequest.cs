@@ -13,4 +13,27 @@ public sealed class LoginRequest
     public Action<byte[]>?          ShowQRCode                   { get; init; }
     public Action<string>?          ShowVerificationCode         { get; init; }
     public DCTravelClient?          DCTravelClient               { get; init; }
+
+    public static LoginRequest Create
+    (
+        string                   account,
+        string                   secret,
+        bool                     autoLogin,
+        DCTravelClient?          dcTravelClient,
+        CancellationTokenSource? loginCancellationTokenSource,
+        Action<byte[]>?          showQrCode,
+        Action<string>?          showVerificationCode
+    )
+    {
+        return new LoginRequest
+        {
+            Account                      = account,
+            Secret                       = secret,
+            AutoLogin                    = autoLogin,
+            DCTravelClient               = dcTravelClient,
+            LoginCancellationTokenSource = loginCancellationTokenSource,
+            ShowQRCode                   = showQrCode,
+            ShowVerificationCode         = showVerificationCode
+        };
+    }
 }

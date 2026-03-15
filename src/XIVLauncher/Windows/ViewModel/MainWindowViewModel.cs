@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -33,7 +33,6 @@ using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Game.Patch.PatchList;
-using XIVLauncher.Common.Http;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Common.Windows;
@@ -85,14 +84,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         SetupLoc();
 
-        StartLoginCommand       = new SyncCommand(GetLoginFunc(AfterLoginAction.Start),               () => !IsLoggingIn);
-        LoginNoStartCommand     = new SyncCommand(GetLoginFunc(AfterLoginAction.UpdateOnly),          () => !IsLoggingIn);
-        LoginNoDalamudCommand   = new SyncCommand(GetLoginFunc(AfterLoginAction.StartWithoutDalamud), () => !IsLoggingIn);
-        LoginNoPluginsCommand   = new SyncCommand(GetLoginFunc(AfterLoginAction.StartWithoutPlugins), () => !IsLoggingIn);
-        LoginNoThirdCommand     = new SyncCommand(GetLoginFunc(AfterLoginAction.StartWithoutThird),   () => !IsLoggingIn);
-        LoginRepairCommand      = new SyncCommand(GetLoginFunc(AfterLoginAction.Repair),              () => !IsLoggingIn);
-        LoginCancelCommand      = new SyncCommand(GetLoginFunc(AfterLoginAction.CancelLogin));
-        LoginForceQRCommand     = new SyncCommand(GetLoginFunc(AfterLoginAction.ForceQR));
+        StartLoginCommand       = new SyncCommand(GetLoginFunc(LoginAfterAction.Start),               () => !IsLoggingIn);
+        LoginNoStartCommand     = new SyncCommand(GetLoginFunc(LoginAfterAction.UpdateOnly),          () => !IsLoggingIn);
+        LoginNoDalamudCommand   = new SyncCommand(GetLoginFunc(LoginAfterAction.StartWithoutDalamud), () => !IsLoggingIn);
+        LoginNoPluginsCommand   = new SyncCommand(GetLoginFunc(LoginAfterAction.StartWithoutPlugins), () => !IsLoggingIn);
+        LoginNoThirdCommand     = new SyncCommand(GetLoginFunc(LoginAfterAction.StartWithoutThird),   () => !IsLoggingIn);
+        LoginRepairCommand      = new SyncCommand(GetLoginFunc(LoginAfterAction.Repair),              () => !IsLoggingIn);
+        LoginCancelCommand      = new SyncCommand(GetLoginFunc(LoginAfterAction.CancelLogin));
+        LoginForceQRCommand     = new SyncCommand(GetLoginFunc(LoginAfterAction.ForceQR));
         InjectModeSwitchCommand = new SyncCommand(obj => { SwitchMode(); });
         InjectGameCommand       = new SyncCommand(obj => { TryInjectGame(); });
         var frontierUrl = Updates.UpdateLease?.FrontierUrl;
@@ -110,7 +109,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         // Grey out world status icon while deferred check is running
         WorldStatusIconColor   = new SolidColorBrush(Color.FromRgb(38, 38, 38));
         ModeSwitchIcon         = PackIconKind.Injection;
-        FfxivProcessCollection = new ObservableCollection<FfxivProcess>();
+        FFXIVProcessCollection = [];
         //this.loginStatusTask = Launcher.GetLoginStatus();
         //this.loginStatusTask.ContinueWith((resultTask) =>
         //{
@@ -126,21 +125,21 @@ public class MainWindowViewModel : INotifyPropertyChanged
         //});
     }
 
-    public void SwitchCard(LoginCard i)
+    public void SwitchCard(LoginCardType i)
     {
         _window.Dispatcher.Invoke
         (() =>
             {
                 CancelLogin();
                 LoginCardTransitionerIndex = (int)i;
-                ModeSwitchIcon             = i == LoginCard.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
-                if (LoginCardTransitionerIndex == (int)LoginCard.InjectMode)
+                ModeSwitchIcon             = i == LoginCardType.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
+                if (LoginCardTransitionerIndex == (int)LoginCardType.InjectMode)
                     RefreshFfxivProcess();
             }
         );
     }
 
-    public void TryLogin(LoginType loginType, string username, string password, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
+    public void TryLogin(LoginType loginType, string username, string password, bool doingAutoLogin, bool readWeGameInfo, LoginAfterAction action)
     {
         if (IsLoggingIn)
             return;
@@ -154,8 +153,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         IsEnabled = false;
         //LoginCardTransitionerIndex = 0;
-        var currentCard = (LoginCard)LoginCardTransitionerIndex;
-        SwitchCard(loginType == LoginType.QRCode ? LoginCard.ScanQrCode : LoginCard.Logining);
+        var currentCard = (LoginCardType)LoginCardTransitionerIndex;
+        SwitchCard(loginType == LoginType.QRCode ? LoginCardType.ScanQrCode : LoginCardType.Logining);
         loginCts    = new CancellationTokenSource();
         IsLoggingIn = true;
 
@@ -193,7 +192,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public void SwitchMode() =>
-        SwitchCard(LoginCardTransitionerIndex == (int)LoginCard.InjectMode ? LoginCard.MainPage : LoginCard.InjectMode);
+        SwitchCard(LoginCardTransitionerIndex == (int)LoginCardType.InjectMode ? LoginCardType.MainPage : LoginCardType.InjectMode);
 
     public void RefreshFfxivProcess()
     {
@@ -221,31 +220,34 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 {
                     if (loginCts.IsCancellationRequested)
                         return;
-                    var currentSelectedProcessId = SelectedProcess?.ProcessId;
+                    var currentSelectedProcessId = SelectedProcess?.ProcessID;
                     var newProcesses             = AppUtil.GetGameProcess().ToArray();
                     Application.Current.Dispatcher.Invoke
                     (() =>
                         {
-                            for (var i = FfxivProcessCollection.Count - 1; i >= 0; i--)
+                            for (var i = FFXIVProcessCollection.Count - 1; i >= 0; i--)
                             {
-                                if (newProcesses.All(p => p.Id != FfxivProcessCollection[i].ProcessId))
+                                if (newProcesses.All(p => p.Id != FFXIVProcessCollection[i].ProcessID))
                                 {
-                                    FfxivProcessCollection.RemoveAt(i);
+                                    FFXIVProcessCollection[i].Dispose();
+                                    FFXIVProcessCollection.RemoveAt(i);
                                     Log.Verbose("Refreshing Processes...(Remove)");
                                 }
                             }
 
                             foreach (var newProcess in newProcesses)
                             {
-                                if (FfxivProcessCollection.All(p => p.ProcessId != newProcess.Id))
+                                if (FFXIVProcessCollection.All(p => p.ProcessID != newProcess.Id))
                                 {
-                                    FfxivProcessCollection.Add(new FfxivProcess(newProcess));
+                                    FFXIVProcessCollection.Add(new FFXIVProcess(newProcess));
                                     Log.Verbose("Refreshing Processes...(Add)");
                                 }
+                                else
+                                    newProcess.Dispose();
                             }
 
                             if (currentSelectedProcessId.HasValue)
-                                SelectedProcess = FfxivProcessCollection.FirstOrDefault(p => p.ProcessId == currentSelectedProcessId.Value);
+                                SelectedProcess = FFXIVProcessCollection.FirstOrDefault(p => p.ProcessID == currentSelectedProcessId.Value);
                         }
                     );
 
@@ -295,7 +297,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         Environment.Exit(0);
                     }
 
-                    var gamePid = SelectedProcess?.ProcessId;
+                    var gamePid = SelectedProcess?.ProcessID;
                     if (gamePid == null)
                         return;
 
@@ -465,7 +467,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         return true;
     }
 
-    public async Task<Process> StartGameAndAddon(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
+    public async Task<FFXIVProcess?> StartGameAndAddon(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
     {
         var stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -586,7 +588,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         Troubleshooting.LogTroubleshooting();
 
-        if (launched is not Process)
+        if (launched == null)
         {
             Log.Information("GameProcess was null...");
             IsLoggingIn = false;
@@ -601,7 +603,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             var addons = App.Settings.AddonList.Where(x => x.IsEnabled).Select(x => x.Addon).Cast<IAddon>().ToList();
 
-            addonMgr.RunAddons(launched.Id, addons);
+            addonMgr.RunAddons(launched.ProcessID, addons);
         }
         catch (Exception ex)
         {
@@ -627,9 +629,18 @@ public class MainWindowViewModel : INotifyPropertyChanged
         Log.Debug("等待游戏进程退出");
 
         if (dalamudOk)
-            await MonitorGameProcess(launched, loginResult, forceNoDalamud, noThird, noPlugins);
+        {
+            await Launcher.RestartMonitor
+                          .MonitorAsync
+                          (
+                              launched,
+                              () => StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins),
+                              loginCts?.Token ?? default
+                          )
+                          .ConfigureAwait(false);
+        }
         else
-            await Task.Run(() => launched.WaitForExit()).ConfigureAwait(false);
+            await Task.Run(() => launched.UnderlyingProcess.WaitForExit()).ConfigureAwait(false);
 
         Log.Verbose("游戏进程已退出");
 
@@ -676,56 +687,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
         return bitmapImage;
     }
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetExitCodeProcess(IntPtr hProcess, out uint lpExitCode);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DuplicateHandle
-    (
-        IntPtr                               hSourceProcessHandle,
-        IntPtr                               hSourceHandle,
-        IntPtr                               hTargetProcessHandle,
-        out IntPtr                           lpTargetHandle,
-        uint                                 dwDesiredAccess,
-        [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle,
-        uint                                 dwOptions
-    );
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CloseHandle(IntPtr hObject);
-
-    private static async Task<Process> FindNewGameProcess(string processName, DateTime afterTime)
-    {
-        for (var i = 0; i < 60; i++)
-        {
-            await Task.Delay(1000);
-            var processes = Process.GetProcessesByName(processName);
-
-            foreach (var p in processes)
-            {
-                try
-                {
-                    if (p.StartTime > afterTime)
-                        return p;
-                }
-                catch
-                {
-                    // ignored
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private Action<object> GetLoginFunc(AfterLoginAction action)
+    private Action<object> GetLoginFunc(LoginAfterAction action)
     {
         return p =>
         {
-            if (action == AfterLoginAction.CancelLogin)
+            if (action == LoginAfterAction.CancelLogin)
             {
                 CancelLogin();
                 return;
@@ -734,7 +700,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             if (IsLoggingIn)
                 return;
 
-            if (action == AfterLoginAction.Start) LoginMessage = string.Empty;
+            if (action == LoginAfterAction.Start) LoginMessage = string.Empty;
 
             if (IsAutoLogin && !App.Settings.HasShownAutoLaunchDisclaimer.GetValueOrDefault(false))
             {
@@ -753,7 +719,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 App.Settings.HasShownAutoLaunchDisclaimer = true;
             }
 
-            if (GameHelpers.CheckIsGameOpen() && action == AfterLoginAction.Repair)
+            if (GameHelpers.CheckIsGameOpen() && action == LoginAfterAction.Repair)
             {
                 CustomMessageBox.Builder
                                 .NewFrom
@@ -771,7 +737,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 return;
             }
 
-            if (action == AfterLoginAction.Repair)
+            if (action == LoginAfterAction.Repair)
             {
                 var res = CustomMessageBox.Builder
                                           .NewFrom
@@ -853,7 +819,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
+    private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, LoginAfterAction action)
     {
         ProblemCheck.RunCheck(_window);
 
@@ -908,10 +874,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         var accountType = loginType switch
         {
-            LoginType.WeGameSID                                              => XivAccountType.WeGameSid,
-            LoginType.WeGameToken                                            => XivAccountType.WeGame,
+            LoginType.WeGameSID                                     => XivAccountType.WeGameSid,
+            LoginType.WeGameToken                                   => XivAccountType.WeGame,
             LoginType.Static or LoginType.Slide or LoginType.QRCode => XivAccountType.Sdo,
-            _                                                                => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
+            _                                                       => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
         };
 
         try
@@ -1028,7 +994,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     break;
             }
         }
-
         catch (Exception ex)
         {
             if (ex is ArgumentException argEx)
@@ -1067,7 +1032,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         loginResult.Area  = Area;
         loginResult.Areas = SdoAreas;
 
-        if (loginResult.State == LoginState.NeedsPatchGame && action != AfterLoginAction.Repair)
+        if (loginResult.State == LoginState.NeedsPatchGame && action != LoginAfterAction.Repair)
         {
             // 如果需要打补丁且登陆异常，登陆异常状态会覆盖掉NeedsPatchGame，除非和国际服一样，登陆成功才能获取到补丁信息
             // 所以直接改成打完补丁再登陆一遍算了
@@ -1075,10 +1040,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
             // 但是考虑到tgt的有效期也就十分钟(大概)
             // 网烂硬盘卡的人打完补丁，tgt也失效了，还得重新登陆
             // 所以还是打好补丁再登陆吧
-            action = AfterLoginAction.UpdateOnly;
+            action = LoginAfterAction.UpdateOnly;
         }
 
-        if (action != AfterLoginAction.UpdateOnly)
+        if (action != LoginAfterAction.UpdateOnly)
         {
             if (loginResult.State == LoginState.Ok)
             {
@@ -1102,10 +1067,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     SndaId       = loginResult.OAuthLogin.SndaID,
                     AccountType = loginType switch
                     {
-                        LoginType.WeGameSID                                              => XivAccountType.WeGameSid,
-                        LoginType.WeGameToken                                            => XivAccountType.WeGame,
+                        LoginType.WeGameSID                                     => XivAccountType.WeGameSid,
+                        LoginType.WeGameToken                                   => XivAccountType.WeGame,
                         LoginType.Static or LoginType.Slide or LoginType.QRCode => XivAccountType.Sdo,
-                        _                                                                => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
+                        _                                                       => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
                     },
                     AreaName = Area.AreaName
                 };
@@ -1120,7 +1085,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     {
                         dcTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
                         {
-                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey(username, loginResult.OAuthLogin.AutoLoginSessionKey, dcTravelListener.DCTravelClient).ConfigureAwait(false);
+                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey(username, loginResult.OAuthLogin.AutoLoginSessionKey, dcTravelListener.DCTravelClient).ConfigureAwait
+                                                     (false);
                             return newLoginResult.OAuthLogin.SessionID;
                         };
                     }
@@ -1160,33 +1126,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private LoginRequest BuildLoginRequest(LoginType loginType, string username, string secret, bool autoLogin, DCTravelClient dcTravelClient)
-    {
-        return new LoginRequest
-        {
-            Account = username,
-            Secret = secret,
-            AutoLogin = autoLogin,
-            DCTravelClient = dcTravelClient,
-            LoginCancellationTokenSource = loginCts,
-            ShowVerificationCode = code =>
-            {
-                if (loginType != LoginType.Slide)
-                    return;
-
-                Log.Information($"叨鱼确认码:{code}");
-                LoginMessage = $"确认码: {code}";
-            },
-            ShowQRCode = qrBytes =>
-            {
-                if (loginType != LoginType.QRCode)
-                    return;
-
-                QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes);
-            }
-        };
-    }
-
     private async Task<LoginResult> TryLoginToGame
     (
         LoginType        type,
@@ -1194,39 +1133,48 @@ public class MainWindowViewModel : INotifyPropertyChanged
         string           username,
         string           serect,
         bool             autoLogin,
-        DCTravelClient       dcTravelClient,
-        AfterLoginAction action
+        DCTravelClient   dcTravelClient,
+        LoginAfterAction action
     )
     {
-        bool? loginStatus = null;
-
         try
         {
             var gamePath = App.Settings.GamePath;
+            return await Launcher.LoginClient.LoginWithPatchCheck
+                   (
+                       _ => Launcher.UpdateClient.Check(Area, gamePath, action == LoginAfterAction.Repair),
+                       action == LoginAfterAction.UpdateOnly,
+                       type,
+                       fallbackLoginType,
+                       requestLoginType => LoginRequest.Create
+                       (
+                           username,
+                           serect,
+                           autoLogin,
+                           dcTravelClient,
+                           loginCts,
+                           qrBytes =>
+                           {
+                               if (requestLoginType != LoginType.QRCode)
+                                   return;
 
-            var checkResult = await Launcher.CheckGameUpdate(Area, gamePath, action == AfterLoginAction.Repair);
-            if (checkResult.State == LoginState.NeedsPatchGame || action == AfterLoginAction.UpdateOnly)
-                return checkResult;
+                               QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes);
+                           },
+                           code =>
+                           {
+                               if (requestLoginType != LoginType.Slide)
+                                   return;
 
-            if (type == LoginType.AutoLoginSession)
-            {
-                try
-                {
-                    var autoLoginRequest = BuildLoginRequest(type, username, serect, autoLogin, dcTravelClient);
-                    return await Launcher.LoginClient.LoginAsync(type, autoLoginRequest).ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    Log.Error("LoginBySessionKey failed, fallback to {fallbackLoginType}:{ex}", fallbackLoginType, e);
-                    type = fallbackLoginType;
-                }
-            }
-            var loginRequest = BuildLoginRequest(type, username, serect, autoLogin, dcTravelClient);
-            return await Launcher.LoginClient.LoginAsync(type, loginRequest).ConfigureAwait(false);
+                               Log.Information($"叨鱼确认码:{code}");
+                               LoginMessage = $"确认码: {code}";
+                           }
+                       ),
+                       loginCts?.Token ?? default
+                   ).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "StartGame failed... (LoginStatus={0})", loginStatus);
+            Log.Error(ex, "StartGame failed");
 
             var msgbox = new CustomMessageBox.Builder()
                          .WithCaption(Loc.Localize("LoginNoOauthTitle", "Login issue"))
@@ -1386,7 +1334,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<bool> TryProcessLoginResult(LoginResult loginResult, AfterLoginAction action)
+    private async Task<bool> TryProcessLoginResult(LoginResult loginResult, LoginAfterAction action)
     {
         if (loginResult.State == LoginState.NoService)
         {
@@ -1445,7 +1393,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        if (action == AfterLoginAction.Repair)
+        if (action == LoginAfterAction.Repair)
         {
             try
             {
@@ -1516,7 +1464,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             loginResult.State = LoginState.Ok;
         }
 
-        if (action == AfterLoginAction.UpdateOnly)
+        if (action == LoginAfterAction.UpdateOnly)
         {
             CustomMessageBox.Show
             (
@@ -1582,9 +1530,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 using var process = await StartGameAndAddon
                                     (
                                         loginResult,
-                                        action == AfterLoginAction.StartWithoutDalamud || Updates.HaveFeatureFlag(Updates.LeaseFeatureFlags.GlobalDisableDalamud),
-                                        action == AfterLoginAction.StartWithoutThird,
-                                        action == AfterLoginAction.StartWithoutPlugins
+                                        action == LoginAfterAction.StartWithoutDalamud || Updates.HaveFeatureFlag(Updates.LeaseFeatureFlags.GlobalDisableDalamud),
+                                        action == LoginAfterAction.StartWithoutThird,
+                                        action == LoginAfterAction.StartWithoutPlugins
                                     ).ConfigureAwait(false);
 
                 if (process == null)
@@ -2104,16 +2052,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private Task<bool> InstallGamePatch(LoginResult loginResult)
     {
-        if (loginResult.State != LoginState.NeedsPatchGame)
-            throw new ArgumentException(@"loginResult.State != Launcher.LoginState.NeedsPatchGame", nameof(loginResult));
-
-        if (loginResult.PendingPatches == null)
-            throw new ArgumentException(@"loginResult.PendingPatches == null", nameof(loginResult));
-
-        if (loginResult.PendingPatches.Length == 0)
-            throw new ArgumentException(@"loginResult.PendingPatches.Length == 0", nameof(loginResult));
-
-        return TryHandlePatchAsync(Repository.Ffxiv, loginResult.PendingPatches, loginResult.UniqueID);
+        var pendingPatches = PatchExecutionCoordinator.GetPendingPatchesForInstall(loginResult);
+        return TryHandlePatchAsync(Repository.Ffxiv, pendingPatches, loginResult.UniqueID);
     }
 
     private void PatcherOnFail(PatchListEntry patch, string context) =>
@@ -2136,10 +2076,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     {
         try
         {
-            if (App.Settings.PatchPath is { Exists: false })
-                App.Settings.PatchPath = null;
-
-            App.Settings.PatchPath ??= new DirectoryInfo(Path.Combine(Paths.RoamingPath, "patches"));
+            App.Settings.PatchPath = Paths.ResolvePatchPath(App.Settings.PatchPath, Paths.RoamingPath);
             return true;
         }
         catch (Exception ex)
@@ -2158,67 +2095,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private async Task<bool> TryHandlePatchAsync(Repository repository, PatchListEntry[] pendingPatches, string sid)
     {
-        using var mutex = new Mutex(false, "XivLauncherIsPatching");
-
-        if (!mutex.WaitOne(0, false))
-        {
-            CustomMessageBox.Show
-            (
-                Loc.Localize("PatcherAlreadyInProgress", "XIVLauncher is already patching your game in another instance. Please check if XIVLauncher is still open."),
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error,
-                parentWindow: _window
-            );
-            Environment.Exit(0);
-            return false; // This line will not be run.
-        }
-
-        if (GameHelpers.CheckIsGameOpen())
-        {
-            while (GameHelpers.CheckIsGameOpen())
-            {
-                if (CustomMessageBox.Builder
-                                    .NewFrom
-                                    (
-                                        Loc.Localize
-                                        (
-                                            "GameIsOpenError",
-                                            "The game and/or the official launcher are open. XIVLauncher cannot patch the game if this is the case.\nPlease close the official launcher and try again."
-                                        )
-                                    )
-                                    .WithImage(MessageBoxImage.Exclamation)
-                                    .WithButtons(MessageBoxButton.OKCancel)
-                                    .WithOkButtonText(Loc.Localize("Refresh", "_Refresh"))
-                                    .WithDefaultResult(MessageBoxResult.OK)
-                                    .Show()
-                    == MessageBoxResult.Cancel)
-                    return false;
-            }
-        }
-
-        if (!AppUtil.TryYellOnGameFilesBeingOpen
-            (
-                _window,
-                n => n switch
-                {
-                    1 => Loc.Localize
-                    (
-                        "GameUpdateExitRequired1",
-                        "Close the following application to patch the game."
-                    ),
-                    _ => string.Format
-                    (
-                        Loc.Localize
-                        (
-                            "GameUpdateExitRequiredPlural",
-                            "Close the following applications to patch the game."
-                        )
-                    )
-                }
-            ))
-            return false;
-
         using var installer = new Common.Game.Patch.PatchInstaller(App.Settings.KeepPatches ?? false);
         var patcher = new PatchManager
         (
@@ -2251,103 +2127,172 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            await patcher.PatchAsync(new FileInfo(Path.Combine(Paths.RoamingPath, "aria2.log"))).ConfigureAwait(false);
-            return true;
-        }
-        catch (PatchInstallerException ex)
-        {
-            var message = Loc.Localize
-            (
-                "PatchManNoInstaller",
-                "The patch installer could not start correctly.\n{0}\n\nIf you have denied access to it, please try again. If this issue persists, please contact us via Discord."
-            );
+            var result = await PatchExecutionCoordinator.ExecuteAsync
+                         (
+                             new PatchExecutionRequest
+                             {
+                                 MutexName   = "XivLauncherIsPatching",
+                                 Patcher     = patcher,
+                                 AriaLogFile = new FileInfo(Path.Combine(Paths.RoamingPath, "aria2.log")),
+                                 IsGameOpen  = GameHelpers.CheckIsGameOpen,
+                                 ContinueWhenGameOpen = () => CustomMessageBox.Builder
+                                                                              .NewFrom
+                                                                              (
+                                                                                  Loc.Localize
+                                                                                  (
+                                                                                      "GameIsOpenError",
+                                                                                      "The game and/or the official launcher are open. XIVLauncher cannot patch the game if this is the case.\nPlease close the official launcher and try again."
+                                                                                  )
+                                                                              )
+                                                                              .WithImage(MessageBoxImage.Exclamation)
+                                                                              .WithButtons(MessageBoxButton.OKCancel)
+                                                                              .WithOkButtonText(Loc.Localize("Refresh", "_Refresh"))
+                                                                              .WithDefaultResult(MessageBoxResult.OK)
+                                                                              .Show()
+                                                              != MessageBoxResult.Cancel,
+                                 EnsureGameFilesClosed = () => AppUtil.TryYellOnGameFilesBeingOpen
+                                 (
+                                     _window,
+                                     n => n switch
+                                     {
+                                         1 => Loc.Localize
+                                         (
+                                             "GameUpdateExitRequired1",
+                                             "Close the following application to patch the game."
+                                         ),
+                                         _ => string.Format
+                                         (
+                                             Loc.Localize
+                                             (
+                                                 "GameUpdateExitRequiredPlural",
+                                                 "Close the following applications to patch the game."
+                                             )
+                                         )
+                                     }
+                                 )
+                             }
+                         ).ConfigureAwait(false);
 
-            CustomMessageBox.Show
-            (
-                string.Format(message, ex.Message),
-                "XIVLauncher Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error,
-                parentWindow: _window
-            );
-        }
-        catch (NotEnoughSpaceException sex)
-        {
-            var bytesRequired = ApiHelpers.BytesToString(sex.BytesRequired);
-            var bytesFree     = ApiHelpers.BytesToString(sex.BytesFree);
-
-            switch (sex.Kind)
+            switch (result.Status)
             {
-                case NotEnoughSpaceException.SpaceKind.Patches:
-                    CustomMessageBox.Show
-                    (
-                        string.Format
-                        (
-                            Loc.Localize
-                            (
-                                "FreeSpaceError",
-                                "There is not enough space on your drive to download patches.\n\nYou can change the location patches are downloaded to in the settings.\n\nRequired:{0}\nFree:{1}"
-                            ),
-                            bytesRequired,
-                            bytesFree
-                        ),
-                        "XIVLauncher Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error,
-                        parentWindow: _window
-                    );
-                    break;
+                case PatchExecutionStatus.Success:
+                    return true;
 
-                case NotEnoughSpaceException.SpaceKind.AllPatches:
+                case PatchExecutionStatus.AlreadyRunning:
                     CustomMessageBox.Show
                     (
-                        string.Format
-                        (
-                            Loc.Localize
-                            (
-                                "FreeSpaceErrorAll",
-                                "There is not enough space on your drive to download all patches.\n\nYou can change the location patches are downloaded to in the XIVLauncher settings.\n\nRequired:{0}\nFree:{1}"
-                            ),
-                            bytesRequired,
-                            bytesFree
-                        ),
-                        "XIVLauncher Error",
+                        Loc.Localize("PatcherAlreadyInProgress", "XIVLauncher is already patching your game in another instance. Please check if XIVLauncher is still open."),
+                        "XIVLauncherCN (Soil)",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
                         parentWindow: _window
                     );
-                    break;
+                    Environment.Exit(0);
+                    return false;
 
-                case NotEnoughSpaceException.SpaceKind.Game:
+                case PatchExecutionStatus.CancelledByUser:
+                    return false;
+
+                case PatchExecutionStatus.PatchInstallerError:
+                    var message = Loc.Localize
+                    (
+                        "PatchManNoInstaller",
+                        "The patch installer could not start correctly.\n{0}\n\nIf you have denied access to it, please try again. If this issue persists, please contact us via Discord."
+                    );
                     CustomMessageBox.Show
                     (
-                        string.Format
-                        (
-                            Loc.Localize
-                            (
-                                "FreeSpaceGameError",
-                                "There is not enough space on your drive to install patches.\n\nYou can change the location the game is installed to in the settings.\n\nRequired:{0}\nFree:{1}"
-                            ),
-                            bytesRequired,
-                            bytesFree
-                        ),
+                        string.Format(message, result.Exception?.Message),
                         "XIVLauncher Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
                         parentWindow: _window
                     );
-                    break;
+                    return false;
+
+                case PatchExecutionStatus.NotEnoughSpace:
+                    var sex = result.Exception as NotEnoughSpaceException;
+
+                    if (sex != null)
+                    {
+                        var bytesRequired = ApiHelpers.BytesToString(sex.BytesRequired);
+                        var bytesFree     = ApiHelpers.BytesToString(sex.BytesFree);
+
+                        switch (sex.Kind)
+                        {
+                            case NotEnoughSpaceException.SpaceKind.Patches:
+                                CustomMessageBox.Show
+                                (
+                                    string.Format
+                                    (
+                                        Loc.Localize
+                                        (
+                                            "FreeSpaceError",
+                                            "There is not enough space on your drive to download patches.\n\nYou can change the location patches are downloaded to in the settings.\n\nRequired:{0}\nFree:{1}"
+                                        ),
+                                        bytesRequired,
+                                        bytesFree
+                                    ),
+                                    "XIVLauncher Error",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Error,
+                                    parentWindow: _window
+                                );
+                                break;
+
+                            case NotEnoughSpaceException.SpaceKind.AllPatches:
+                                CustomMessageBox.Show
+                                (
+                                    string.Format
+                                    (
+                                        Loc.Localize
+                                        (
+                                            "FreeSpaceErrorAll",
+                                            "There is not enough space on your drive to download all patches.\n\nYou can change the location patches are downloaded to in the XIVLauncher settings.\n\nRequired:{0}\nFree:{1}"
+                                        ),
+                                        bytesRequired,
+                                        bytesFree
+                                    ),
+                                    "XIVLauncher Error",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Error,
+                                    parentWindow: _window
+                                );
+                                break;
+
+                            case NotEnoughSpaceException.SpaceKind.Game:
+                                CustomMessageBox.Show
+                                (
+                                    string.Format
+                                    (
+                                        Loc.Localize
+                                        (
+                                            "FreeSpaceGameError",
+                                            "There is not enough space on your drive to install patches.\n\nYou can change the location the game is installed to in the settings.\n\nRequired:{0}\nFree:{1}"
+                                        ),
+                                        bytesRequired,
+                                        bytesFree
+                                    ),
+                                    "XIVLauncher Error",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Error,
+                                    parentWindow: _window
+                                );
+                                break;
+
+                            default:
+                                Debug.Assert(false, "HandlePatchAsync:Invalid NotEnoughSpaceException.SpaceKind value.");
+                                break;
+                        }
+                    }
+
+                    return false;
 
                 default:
-                    Debug.Assert(false, "HandlePatchAsync:Invalid NotEnoughSpaceException.SpaceKind value.");
-                    break;
+                    CustomMessageBox.Builder.NewFromUnexpectedException(result.Exception, "HandlePatchAsync")
+                                    .WithParentWindow(_window)
+                                    .Show();
+                    return false;
             }
-        }
-        catch (Exception ex)
-        {
-            CustomMessageBox.Builder.NewFromUnexpectedException(ex, "HandlePatchAsync")
-                            .WithParentWindow(_window)
-                            .Show();
         }
         finally
         {
@@ -2359,108 +2304,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 }
             );
         }
-
-        return false;
-    }
-
-    private async Task MonitorGameProcess
-    (
-        Process              process,
-        LoginResult loginResult,
-        bool                 forceNoDalamud,
-        bool                 noThird,
-        bool                 noPlugins
-    )
-    {
-        var processName = process.ProcessName;
-
-        while (true)
-        {
-            var processHandle = IntPtr.Zero;
-
-            try
-            {
-                // PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-                var currentProcess = Process.GetCurrentProcess();
-
-                if (!DuplicateHandle(currentProcess.Handle, process.Handle, currentProcess.Handle, out processHandle, 0, false, 2)) // DUPLICATE_SAME_ACCESS = 2
-                {
-                    Log.Error($"DuplicateHandle failed: {Marshal.GetLastWin32Error()}");
-                    processHandle = process.Handle;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to duplicate process handle");
-            }
-
-            await Task.Run(process.WaitForExit);
-
-            int exitCode;
-
-            try
-            {
-                exitCode = process.ExitCode;
-            }
-            catch (InvalidOperationException)
-            {
-                if (processHandle != IntPtr.Zero && GetExitCodeProcess(processHandle, out var nativeExitCode))
-                    exitCode = (int)nativeExitCode;
-                else
-                {
-                    Log.Error($"无法获取进程退出码: {Marshal.GetLastWin32Error()}");
-                    if (processHandle != IntPtr.Zero && processHandle != process.Handle)
-                        CloseHandle(processHandle);
-                    break;
-                }
-            }
-            finally
-            {
-                // 无论如何，清理复制的句柄
-                if (processHandle != IntPtr.Zero && processHandle != process.Handle)
-                    CloseHandle(processHandle);
-            }
-
-            if (exitCode != 0x12345678)
-            {
-                Log.Information($"游戏进程正常退出, 退出码: 0x{exitCode:X}");
-                break;
-            }
-
-            Log.Information($"游戏进程请求重启并退出, 退出码: 0x{exitCode:X}, 等待重启后进程");
-
-            var searchStartTime = DateTime.Now.AddSeconds(-30);
-
-            // 搜索新进程
-            var newProcess = await FindNewGameProcess(processName, searchStartTime);
-
-            if (newProcess == null)
-            {
-                Log.Error("无法找到重启后游戏进程");
-                break;
-            }
-
-            Log.Information($"找到重启后游戏进程 {newProcess.Id}，正在终止并重新启动以进行注入...");
-
-            try
-            {
-                newProcess.Kill();
-                await Task.Run(() => newProcess.WaitForExit());
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "无法终止重启后的游戏进程");
-                break;
-            }
-
-            Log.Information("正在重新启动游戏...");
-
-            var restartedProcess = await StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins);
-            if (restartedProcess == null)
-                Log.Error("重启游戏失败");
-
-            break;
-        }
     }
 
     private void OnPropertyChanged(string propertyName)
@@ -2469,19 +2312,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         handler?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public enum AfterLoginAction
-    {
-        Start,
-        StartWithoutDalamud,
-        StartWithoutPlugins,
-        StartWithoutThird,
-        UpdateOnly,
-        Repair,
-        CancelLogin,
-        ForceQR
-    }
-
-    public enum LoginCard
+    public enum LoginCardType
     {
         Logining   = 0,
         MainPage   = 1,
@@ -2670,30 +2501,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public class FfxivProcess
-    (
-        Process p
-    )
-    {
-        public int    ProcessId = p.Id;
-        public string DisplayName { get; set; } = $"{p.Id} ({p.StartTime})";
-        public bool   HasInjected { get; set; } = DetectDalamud(p);
-
-        public static bool DetectDalamud(Process p) =>
-            p.Modules.Cast<ProcessModule>().Any(m => m.ModuleName.Contains("Dalamud.dll"));
-    }
-
-    public ObservableCollection<FfxivProcess> FfxivProcessCollection
+    public ObservableCollection<FFXIVProcess> FFXIVProcessCollection
     {
         get;
         set
         {
             field = value;
-            OnPropertyChanged(nameof(FfxivProcessCollection));
+            OnPropertyChanged(nameof(FFXIVProcessCollection));
         }
     }
 
-    public FfxivProcess SelectedProcess
+    public FFXIVProcess SelectedProcess
     {
         get;
         set
@@ -2753,5 +2571,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     #endregion
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+public enum LoginAfterAction
+{
+    Start,
+    StartWithoutDalamud,
+    StartWithoutPlugins,
+    StartWithoutThird,
+    UpdateOnly,
+    Repair,
+    CancelLogin,
+    ForceQR
 }

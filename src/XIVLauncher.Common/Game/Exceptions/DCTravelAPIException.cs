@@ -5,7 +5,7 @@ namespace XIVLauncher.Common.Game.Exceptions;
 public class DCTravelAPIException : Exception
 {
     public bool IsNetworkTimeout { get; set; }
-    public bool RetryAfterOneMin   { get; set; }
+    public bool RetryAfterOneMin { get; set; }
 
     public DCTravelAPIException(string message, int errorCode = 0)
         : base(message)

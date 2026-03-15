@@ -19,7 +19,6 @@ using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 using XIVLauncher.Xaml;
-using Constants = XIVLauncher.Common.Constants;
 
 namespace XIVLauncher.Windows;
 

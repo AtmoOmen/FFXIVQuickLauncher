@@ -3,6 +3,7 @@ using System.Collections.Frozen;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Login.Channels;
 
@@ -37,6 +38,40 @@ public sealed class LoginClient
             DCTravelClient = dcTravelClient
         };
         return await LoginAsync(LoginType.AutoLoginSession, request).ConfigureAwait(false);
+    }
+
+    public async Task<LoginResult> LoginWithPatchCheck
+    (
+        Func<CancellationToken, Task<LoginResult>> checkGameUpdateAsync,
+        bool                                       patchOnly,
+        LoginType                                  loginType,
+        LoginType                                  fallbackLoginType,
+        Func<LoginType, LoginRequest>              requestFactory,
+        CancellationToken                          cancellationToken = default
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var checkResult = await checkGameUpdateAsync(cancellationToken).ConfigureAwait(false);
+        if (checkResult.State == LoginState.NeedsPatchGame || patchOnly)
+            return checkResult;
+
+        if (loginType == LoginType.AutoLoginSession)
+        {
+            try
+            {
+                var autoLoginRequest = requestFactory(loginType);
+                return await LoginAsync(loginType, autoLoginRequest, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "LoginBySessionKey failed, fallback to {FallbackLoginType}", fallbackLoginType);
+                loginType = fallbackLoginType;
+            }
+        }
+
+        var loginRequest = requestFactory(loginType);
+        return await LoginAsync(loginType, loginRequest, cancellationToken).ConfigureAwait(false);
     }
 
     private static FrozenDictionary<LoginType, ILoginChannel> DiscoverChannels(LoginChannelContext context)

@@ -15,6 +15,8 @@ namespace XIVLauncher.Common.Util;
 
 public static class PlatformHelpers
 {
+    private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, 0);
+
     public static Platform GetPlatform()
         => Platform.Win32;
 
@@ -115,8 +117,6 @@ public static class PlatformHelpers
             archive.WriteToDirectory(output, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
         Log.Information("[DUPDATE] 托管解压完成。");
     }
-
-    private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, 0);
 
     public static int GetAvailablePort()
     {

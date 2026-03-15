@@ -299,7 +299,7 @@
                                                Text="{Binding StartBackupToolLoc}" />
                                 </StackPanel>
                             </Button>
-                            
+
                             <Button Style="{DynamicResource MaterialDesignFlatButton}"
                                     HorizontalAlignment="Left"
                                     x:Name="OriginalLauncherButton" Click="OriginalLauncherButton_OnClick">

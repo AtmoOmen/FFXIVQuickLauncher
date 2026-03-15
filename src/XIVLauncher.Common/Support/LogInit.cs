@@ -25,13 +25,9 @@ public static class LogInit
         var parsed = result?.Value ?? new LogOptions();
 
         if (!string.IsNullOrEmpty(parsed.LogPath))
-        {
             config.WriteTo.Async(a => { a.File(parsed.LogPath); });
-        }
         else
-        {
             config.WriteTo.Async(a => { a.File(defaultLogPath); });
-        }
 
 #if DEBUG
         config.WriteTo.Debug();

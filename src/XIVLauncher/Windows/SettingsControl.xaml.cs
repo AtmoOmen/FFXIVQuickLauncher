@@ -79,7 +79,7 @@ public partial class SettingsControl
 
         EnableDcTravelCheckBox.IsChecked = true;
         EnableDcTravelCheckBox.IsEnabled = false;
-        
+
         LaunchArgsTextBox.Text = App.Settings.AdditionalLaunchArgs;
 
         DpiAwarenessComboBox.SelectedIndex = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware);
@@ -89,7 +89,6 @@ public partial class SettingsControl
         var val = (decimal)App.Settings.SpeedLimitBytes / BYTES_TO_MB;
 
         SpeedLimiterUpDown.Value = val;
-
 
         DynamicDeviceIdCheckBox.IsChecked = App.Settings.DynamicDeviceId;
 
@@ -131,7 +130,7 @@ public partial class SettingsControl
             App.Settings.InGameAddonLoadMethod = DalamudLoadMethod.DllInject;
         else
             App.Settings.InGameAddonLoadMethod = DalamudLoadMethod.EntryPoint;
-        
+
         App.Settings.AdditionalLaunchArgs = LaunchArgsTextBox.Text;
 
         App.Settings.DpiAwareness = (DpiAwareness)DpiAwarenessComboBox.SelectedIndex;
@@ -157,10 +156,8 @@ public partial class SettingsControl
     private void BackupToolButton_OnClick(object sender, RoutedEventArgs e) =>
         Process.Start(Path.Combine(ViewModel.GamePath, "boot", "ffxivconfig64.exe"));
 
-    private void OriginalLauncherButton_OnClick(object sender, RoutedEventArgs e)
-    {
+    private void OriginalLauncherButton_OnClick(object sender, RoutedEventArgs e) =>
         GameHelpers.StartOfficialLauncher(App.Settings.GamePath);
-    }
 
     // All of the list handling is very dirty - but i guess it works
 

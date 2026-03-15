@@ -63,10 +63,10 @@ public partial class FirstTimeSetup : Window
 
         if (directory != null)
         {
-            var shortcutPath = Path.Combine(directory, $"{shortcutName}.lnk");
-            var shellType    = Type.GetTypeFromProgID("WScript.Shell");
-            dynamic shell    = Activator.CreateInstance(shellType);
-            var shortcut     = shell.CreateShortcut(shortcutPath);                                           //创建快捷方式对象
+            var     shortcutPath = Path.Combine(directory, $"{shortcutName}.lnk");
+            var     shellType    = Type.GetTypeFromProgID("WScript.Shell");
+            dynamic shell        = Activator.CreateInstance(shellType);
+            var     shortcut     = shell.CreateShortcut(shortcutPath);                                       //创建快捷方式对象
             shortcut.TargetPath       = targetPath;                                                          //指定目标路径
             shortcut.WorkingDirectory = Path.GetDirectoryName(targetPath);                                   //设置起始位置
             shortcut.WindowStyle      = 1;                                                                   //设置运行方式，默认为常规窗口
@@ -78,9 +78,9 @@ public partial class FirstTimeSetup : Window
 
     public static string GetShortcutTargetFile(string path)
     {
-        var shellType = Type.GetTypeFromProgID("WScript.Shell");
-        dynamic shell = Activator.CreateInstance(shellType);
-        var shortcut  = shell.CreateShortcut(path);
+        var     shellType = Type.GetTypeFromProgID("WScript.Shell");
+        dynamic shell     = Activator.CreateInstance(shellType);
+        var     shortcut  = shell.CreateShortcut(path);
 
         return shortcut.TargetPath;
     }

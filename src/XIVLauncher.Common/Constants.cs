@@ -7,5 +7,4 @@ public static class Constants
     public static string PatcherUserAgent => "FFXIV_Patch";
 
     public const int MaxExpansion = 5;
-
 }

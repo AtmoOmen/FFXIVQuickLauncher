@@ -198,7 +198,7 @@ public class IndexUpdateCommand
         var areas = await LoginArea.Get();
         var area  = areas[new Random().Next(areas.Length)];
 
-        var lr = await la.CheckGameUpdate(area, settings.GamePath, false);
+        var lr = await la.UpdateClient.Check(area, settings.GamePath, false);
         gamePatchList = lr.PendingPatches;
         File.WriteAllText(gamePatchListFile.FullName, JsonConvert.SerializeObject(gamePatchList, Formatting.Indented));
 

@@ -20,7 +20,6 @@ namespace XIVLauncher;
 
 public static class AppUtil
 {
-
     /// <summary>
     ///     Gets the git hash value from the assembly
     ///     or null if it cannot be found.

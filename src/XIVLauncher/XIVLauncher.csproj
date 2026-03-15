@@ -18,9 +18,6 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     </PropertyGroup>
 
-    <!-- To create a desktop shortcut -->
-    <!-- Replaced with dynamic WScript.Shell -->
-
     <!-- Assets -->
     <ItemGroup>
         <Resource Include="Resources\*.*"/>

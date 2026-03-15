@@ -1,5 +1,3 @@
-#nullable enable
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -39,9 +37,9 @@ public class DalamudUpdater
         private set;
     }
 
-    private readonly DirectoryInfo   addonDirectory;
-    private readonly DirectoryInfo   assetDirectory;
-    private readonly string?         githubToken;
+    private readonly DirectoryInfo addonDirectory;
+    private readonly DirectoryInfo assetDirectory;
+    private readonly string?       githubToken;
 
     private readonly TimeSpan   defaultTimeout = TimeSpan.FromMinutes(1);
     private readonly HttpClient httpClient;
@@ -50,10 +48,10 @@ public class DalamudUpdater
 
     public DalamudUpdater
     (
-        DirectoryInfo   addonDirectory,
-        DirectoryInfo   runtimeDirectory,
-        DirectoryInfo   assetDirectory,
-        string?         githubToken
+        DirectoryInfo addonDirectory,
+        DirectoryInfo runtimeDirectory,
+        DirectoryInfo assetDirectory,
+        string?       githubToken
     )
     {
         this.addonDirectory = addonDirectory;
@@ -128,7 +126,7 @@ public class DalamudUpdater
         try
         {
             Log.Information("[DUPDATE] 开始 Dalamud 更新进程");
-            
+
             await InitVersionInfoAsync();
             var paths = PreparePaths();
             await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath);

@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -22,8 +21,6 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Support;
 using XIVLauncher.Common.Util;
-using XIVLauncher.Common.Windows;
-using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Settings;
 using XIVLauncher.Settings.Parsers;
 using XIVLauncher.Support;
@@ -122,7 +119,7 @@ public partial class App
 #endif
     }
 
-    private static void OnSerilogLogLine(object sender, (string Line, LogEventLevel Level, DateTimeOffset TimeStamp, Exception Exception) e)
+    private static void OnSerilogLogLine(object sender, (string Line, LogEventLevel Level, DateTimeOffset TimeStamp, System.Exception Exception) e)
     {
         if (e.Exception == null)
             return;
@@ -149,7 +146,7 @@ public partial class App
 
         if (string.IsNullOrEmpty(Settings.AcceptLanguage))
             Settings.AcceptLanguage = ApiHelpers.GenerateAcceptLanguage();
-        
+
         try
         {
             if (!string.IsNullOrEmpty(CommandLine.AccountName))

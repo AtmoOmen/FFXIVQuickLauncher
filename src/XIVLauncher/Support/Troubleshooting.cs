@@ -149,7 +149,7 @@ public static class Troubleshooting
         public DateTime When { get; set; }
 
         public bool IsAutoLogin { get; set; }
-        
+
         public bool DalamudEnabled { get; set; }
 
         public DalamudLoadMethod DalamudLoadMethod { get; set; }

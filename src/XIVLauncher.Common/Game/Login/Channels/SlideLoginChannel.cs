@@ -10,7 +10,7 @@ public sealed class SlideLoginChannel
 ) : ILoginChannel
 {
     public LoginType Type => LoginType.Slide;
-    
+
     private const int SLIDE_EXPIRATION_TIME = 30 * 1000;
     private const int AUTO_LOGIN_KEEP_DAYS  = 30;
 

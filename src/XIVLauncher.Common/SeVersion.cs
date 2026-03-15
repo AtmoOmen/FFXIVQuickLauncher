@@ -24,6 +24,23 @@ public class SeVersion : IComparable, IComparable<SeVersion>, IEquatable<SeVersi
         };
     }
 
+    public static bool operator ==(SeVersion x, SeVersion y)
+    {
+        if (ReferenceEquals(x, y)) return true;
+        if (ReferenceEquals(x, null)) return false;
+        return x.Equals(y);
+    }
+
+    public static bool operator !=(SeVersion x, SeVersion y) => !(x == y);
+
+    public static bool operator <(SeVersion x, SeVersion y) => ReferenceEquals(x, null) ? !ReferenceEquals(y, null) : x.CompareTo(y) < 0;
+
+    public static bool operator >(SeVersion x, SeVersion y) => !ReferenceEquals(x, null) && x.CompareTo(y) > 0;
+
+    public static bool operator <=(SeVersion x, SeVersion y) => ReferenceEquals(x, null) || x.CompareTo(y) <= 0;
+
+    public static bool operator >=(SeVersion x, SeVersion y) => ReferenceEquals(x, null) ? ReferenceEquals(y, null) : x.CompareTo(y) >= 0;
+
     public override bool Equals(object obj) => Equals(obj as SeVersion);
 
     public bool Equals(SeVersion other)
@@ -59,23 +76,6 @@ public class SeVersion : IComparable, IComparable<SeVersion>, IEquatable<SeVersi
         throw new ArgumentException($"Object must be of type {nameof(SeVersion)}");
     }
 
-    public static bool operator ==(SeVersion x, SeVersion y)
-    {
-        if (ReferenceEquals(x, y)) return true;
-        if (ReferenceEquals(x, null)) return false;
-        return x.Equals(y);
-    }
-
-    public static bool operator !=(SeVersion x, SeVersion y) => !(x == y);
-
-    public static bool operator <(SeVersion x, SeVersion y) => ReferenceEquals(x, null) ? !ReferenceEquals(y, null) : x.CompareTo(y) < 0;
-
-    public static bool operator >(SeVersion x, SeVersion y) => !ReferenceEquals(x, null) && x.CompareTo(y) > 0;
-
-    public static bool operator <=(SeVersion x, SeVersion y) => ReferenceEquals(x, null) || x.CompareTo(y) <= 0;
-
-    public static bool operator >=(SeVersion x, SeVersion y) => ReferenceEquals(x, null) ? ReferenceEquals(y, null) : x.CompareTo(y) >= 0;
-
-    public override string ToString() => 
+    public override string ToString() =>
         string.Format(CultureInfo.InvariantCulture, "{0:0000}.{1:00}.{2:00}.{3:0000}.{4:0000}", Year, Month, Day, Revision, Part);
 }

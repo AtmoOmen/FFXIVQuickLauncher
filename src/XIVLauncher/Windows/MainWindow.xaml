@@ -8,7 +8,6 @@
     xmlns:system="clr-namespace:System;assembly=mscorlib"
     xmlns:windows="clr-namespace:XIVLauncher.Windows"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
-    xmlns:game="clr-namespace:XIVLauncher.Common.Game;assembly=XIVLauncher.Common"
     xmlns:site="clr-namespace:XIVLauncher.Common.Http.Site;assembly=XIVLauncher.Common"
     mc:Ignorable="d"
     Title="XIVLauncherCN (Soil)"
@@ -69,7 +68,8 @@
                                 </Viewbox>
                             </materialDesign:Card>
 
-                            <Border Grid.Row="0" Grid.Column="0" CornerRadius="8" Background="#aa333333" VerticalAlignment="Bottom"
+                            <Border Grid.Row="0" Grid.Column="0" CornerRadius="8" Background="#aa333333"
+                                    VerticalAlignment="Bottom"
                                     HorizontalAlignment="Right" Margin="0,0,8,8">
                                 <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}" Opacity="1">
                                     <ItemsControl.LayoutTransform>
@@ -434,7 +434,7 @@
                                                             <Separator />
                                                             <MenuItem Header="{Binding LoginNoStartLoc}"
                                                                       Command="{Binding Path=LoginNoStartCommand}" />
-                                                            <MenuItem Header="假启动 [调试用]" Click="FakeStart_OnClick"/>
+                                                            <MenuItem Header="假启动 [调试用]" Click="FakeStart_OnClick" />
                                                         </ContextMenu>
                                                     </Button.ContextMenu>
 
@@ -559,7 +559,7 @@
                                                 Margin="0,10,0,0"
                                                 Height="24"
                                                 VerticalAlignment="Top"
-                                                ItemsSource="{Binding FfxivProcessCollection}"
+                                                ItemsSource="{Binding FFXIVProcessCollection}"
                                                 SelectedItem="{Binding SelectedProcess}"
                                                 materialDesign:HintAssist.Hint="选择要注入的进程">
                                                 <ComboBox.ItemTemplate>

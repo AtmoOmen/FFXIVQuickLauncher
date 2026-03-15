@@ -5,9 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -48,7 +46,7 @@ public partial class MainWindow : Window
     private       bool                  _everShown;
 
     private ObservableCollection<BannerDotInfo> _bannerDotList;
-    
+
     public MainWindow()
     {
         InitializeComponent();
@@ -107,6 +105,7 @@ public partial class MainWindow : Window
         Model.IsFastLogin = App.Settings.FastLogin;
 
         var savedAccount = _accountManager.CurrentAccount;
+
         if (App.GlobalIsDisableAutologin)
         {
             Log.Information("Autologin was disabled globally, saving into settings...");
@@ -126,7 +125,7 @@ public partial class MainWindow : Window
                     savedAccount.TestSID,
                     Model.IsFastLogin,
                     Model.IsReadWegameInfo,
-                    MainWindowViewModel.AfterLoginAction.Start
+                    LoginAfterAction.Start
                 );
             }
             else
@@ -138,7 +137,7 @@ public partial class MainWindow : Window
                     savedAccount.AutoLoginSessionKey,
                     Model.IsFastLogin,
                     Model.IsReadWegameInfo,
-                    MainWindowViewModel.AfterLoginAction.Start
+                    LoginAfterAction.Start
                 );
             }
 
@@ -323,7 +322,7 @@ public partial class MainWindow : Window
 
         App.Settings.TreatNonZeroExitCodeAsFailure ??= false;
         App.Settings.ExitLauncherAfterGameExit     ??= true;
-        
+
         var versionLevel = App.Settings.VersionUpgradeLevel.GetValueOrDefault(0);
 
         while (versionLevel < CURRENT_VERSION_LEVEL)
@@ -431,7 +430,7 @@ public partial class MainWindow : Window
 
     private void WorldStatusButton_Click(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo("https://ff.web.sdo.com/web8/index.html#/servers") { UseShellExecute = true });
-    
+
     private void QuitMaintenanceQueueButton_OnClick(object sender, RoutedEventArgs e) =>
         Model.IsLoadingDialogOpen = false;
 
@@ -646,11 +645,8 @@ public partial class MainWindow : Window
 
     //}
 
-    private void BackToLoginPageButton_OnClick(object sender, RoutedEventArgs e)
-    {
-        Dispatcher.Invoke(() => { Model.SwitchCard(MainWindowViewModel.LoginCard.MainPage); });
-
-    }
+    private void BackToLoginPageButton_OnClick(object sender, RoutedEventArgs e) =>
+        Dispatcher.Invoke(() => { Model.SwitchCard(MainWindowViewModel.LoginCardType.MainPage); });
 
     private void InjectButton_Click(object sender, RoutedEventArgs e)
     {
@@ -658,7 +654,7 @@ public partial class MainWindow : Window
         (() =>
             {
                 if (Model.SelectedProcess != null)
-                    AppUtil.BringProcessMainWindowToFront(Model.SelectedProcess.ProcessId);
+                    AppUtil.BringProcessMainWindowToFront(Model.SelectedProcess.ProcessID);
             }
         );
     }

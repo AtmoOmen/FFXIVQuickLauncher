@@ -147,8 +147,10 @@ public class GenericAddon : IRunnableAddon, INotifyAddonAfterClose
         if (RunAsAdmin)
             // Vista or higher check
             // https://stackoverflow.com/a/2532775
+        {
             if (Environment.OSVersion.Version.Major >= 6)
                 _addonProcess.StartInfo.Verb = "runas";
+        }
 
         _addonProcess.StartInfo.WindowStyle = ProcessWindowStyle.Minimized;
 
@@ -189,8 +191,10 @@ public class GenericAddon : IRunnableAddon, INotifyAddonAfterClose
         if (RunAsAdmin)
             // Vista or higher check
             // https://stackoverflow.com/a/2532775
+        {
             if (Environment.OSVersion.Version.Major >= 6)
                 ps.Verb = "runas";
+        }
 
         try
         {

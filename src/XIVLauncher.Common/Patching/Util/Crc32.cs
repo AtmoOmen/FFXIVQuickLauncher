@@ -17,9 +17,7 @@ public class Crc32
                 var k = (uint)i;
 
                 for (var j = 0; j < 8; j++)
-                {
                     k = (k & 1) != 0 ? k >> 1 ^ POLY : k >> 1;
-                }
 
                 return k;
             }
@@ -32,9 +30,7 @@ public class Crc32
         var v = 0xFFFFFFFF;
 
         for (int i = offset, readIndex = offset + length; i < readIndex; i++)
-        {
             v = CrcArray[(v ^ data[i]) & 0xFF] ^ v >> 8 & 0x00FFFFFF;
-        }
 
         return ~v;
     }
@@ -61,8 +57,6 @@ public class Crc32
             Update(data[i]);
     }
 
-    public void Update(byte b)
-    {
+    public void Update(byte b) =>
         _crc32 = CrcArray[(_crc32 ^ b) & 0xFF] ^ _crc32 >> 8 & 0x00FFFFFF;
-    }
 }

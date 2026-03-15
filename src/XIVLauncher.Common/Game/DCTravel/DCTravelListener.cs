@@ -31,7 +31,7 @@ public sealed class DCTravelListener : IDisposable, IAsyncDisposable
     private readonly byte[]?                              key;
     private readonly byte[]?                              iv;
     private readonly bool                                 useEncrypt;
-    
+
     private WebServer? webServer;
     private int        stopState;
     private int        disposeState;
@@ -57,6 +57,8 @@ public sealed class DCTravelListener : IDisposable, IAsyncDisposable
             .WithWebApi("/dctravel", m => m.WithController(() => new RpcController(this)));
     }
 
+    #region Disposal
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref disposeState, 1) != 0)
@@ -65,6 +67,8 @@ public sealed class DCTravelListener : IDisposable, IAsyncDisposable
         Stop();
         listenerCts.Dispose();
     }
+
+    #endregion
 
     public void Stop()
     {

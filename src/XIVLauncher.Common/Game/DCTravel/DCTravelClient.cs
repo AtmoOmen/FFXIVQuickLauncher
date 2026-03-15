@@ -56,8 +56,8 @@ public partial class DCTravelClient
     public DCTravelClient(string nSessionID)
     {
         KeepAliveCancelSource = new();
-        
-        cookieContainer       = new();
+
+        cookieContainer = new();
         if (!string.IsNullOrEmpty(nSessionID))
             cookieContainer.Add(new Cookie("nsessionid", nSessionID, "/", DOMAIN));
         cookieContainer.Add(new Cookie("CAS_LOGIN_STATE",        "1", "/", DOMAIN));
@@ -149,6 +149,7 @@ public partial class DCTravelClient
         const int MAX_ATTEMPTS = 3;
 
         var requestUri = BuildRequestUri(api, parameters);
+
         for (var attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)
         {
             try
