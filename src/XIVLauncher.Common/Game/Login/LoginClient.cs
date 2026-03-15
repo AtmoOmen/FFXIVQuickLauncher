@@ -34,7 +34,7 @@ public sealed class LoginClient
         {
             Account        = account,
             Secret         = autoLoginSessionKey,
-            DcTravelClient = dcTravelClient
+            DCTravelClient = dcTravelClient
         };
         return await LoginAsync(LoginType.AutoLoginSession, request).ConfigureAwait(false);
     }

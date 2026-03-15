@@ -26,7 +26,7 @@ public sealed class QRCodeLoginChannel
         while (!request.LoginCancellationTokenSource.IsCancellationRequested)
         {
             var (codeKey, qrCode, expiration) = await context.GetQRCodeAsync(QR_CODE_EXPIRATION_TIME).ConfigureAwait(false);
-            request.ShowQrCode?.Invoke(qrCode);
+            request.ShowQRCode?.Invoke(qrCode);
             (sndaId, tgt, account) = await WaitForScanAsync(codeKey, guid, expiration, request.LoginCancellationTokenSource).ConfigureAwait(false);
             if (sndaId != null)
                 break;
@@ -38,7 +38,7 @@ public sealed class QRCodeLoginChannel
         if (request.AutoLogin)
             (tgt, autoLoginSessionKey) = await context.AccountGroupLoginAsync(tgt!, sndaId!, AUTO_LOGIN_KEEP_DAYS).ConfigureAwait(false);
 
-        context.BindDCTravelSessionRefresh(request.DcTravelClient, tgt!, guid);
+        context.BindDCTravelSessionRefresh(request.DCTravelClient, tgt!, guid);
         var sessionId = await context.GetSessionIdAsync(tgt!, guid).ConfigureAwait(false);
         return LoginChannelContext.BuildOkLoginResult(account!, sndaId!, sessionId, request.AutoLogin ? autoLoginSessionKey : null, LoginType.QRCode);
     }

@@ -26,7 +26,7 @@ public sealed class SessionKeyLoginChannel
 
         try
         {
-            context.BindDCTravelSessionRefresh(request.DcTravelClient, tgt, guid);
+            context.BindDCTravelSessionRefresh(request.DCTravelClient, tgt, guid);
             var sessionId = await context.GetSessionIdAsync(tgt, guid).ConfigureAwait(false);
             return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, newAutoLoginSessionKey, LoginType.AutoLoginSession);
         }

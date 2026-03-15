@@ -1167,7 +1167,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             Account = username,
             Secret = secret,
             AutoLogin = autoLogin,
-            DcTravelClient = dcTravelClient,
+            DCTravelClient = dcTravelClient,
             LoginCancellationTokenSource = loginCts,
             ShowVerificationCode = code =>
             {
@@ -1177,7 +1177,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 Log.Information($"叨鱼确认码:{code}");
                 LoginMessage = $"确认码: {code}";
             },
-            ShowQrCode = qrBytes =>
+            ShowQRCode = qrBytes =>
             {
                 if (loginType != LoginType.QRCode)
                     return;

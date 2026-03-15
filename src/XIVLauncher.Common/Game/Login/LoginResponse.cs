@@ -14,15 +14,6 @@ public class LoginResponse
     [JsonProperty("data")]
     public LoginResponseData Data = null!;
 
-    public string ToLog()
-    {
-        var settings = new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore
-        };
-        return JsonConvert.SerializeObject(this, Formatting.Indented, settings);
-    }
-
     public class LoginResponseData
     {
         [JsonProperty("failReason")]
