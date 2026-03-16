@@ -839,9 +839,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         var accountType = loginType switch
         {
-            LoginType.WeGameSID                                     => XivAccountType.WeGameSid,
-            LoginType.WeGameToken                                   => XivAccountType.WeGame,
-            LoginType.Static or LoginType.Slide or LoginType.QRCode => XivAccountType.Sdo,
+            LoginType.WeGameSID                                     => XIVAccountType.WeGameSID,
+            LoginType.WeGameToken                                   => XIVAccountType.WeGame,
+            LoginType.Static or LoginType.Slide or LoginType.QRCode => XIVAccountType.Sdo,
             _                                                       => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
         };
 
@@ -1025,22 +1025,22 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     _ = DCTravelListener.StartAsync();
                 }
 
-                var accountToSave = new XivAccount
+                var accountToSave = new XIVAccount
                 {
                     AutoLogin    = loginType == LoginType.WeGameSID || doingAutoLogin,
                     LoginAccount = loginResult.OAuthLogin.InputUserID,
                     SndaId       = loginResult.OAuthLogin.SndaID,
                     AccountType = loginType switch
                     {
-                        LoginType.WeGameSID                                     => XivAccountType.WeGameSid,
-                        LoginType.WeGameToken                                   => XivAccountType.WeGame,
-                        LoginType.Static or LoginType.Slide or LoginType.QRCode => XivAccountType.Sdo,
+                        LoginType.WeGameSID                                     => XIVAccountType.WeGameSID,
+                        LoginType.WeGameToken                                   => XIVAccountType.WeGame,
+                        LoginType.Static or LoginType.Slide or LoginType.QRCode => XIVAccountType.Sdo,
                         _                                                       => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
                     },
                     AreaName = Area.AreaName
                 };
 
-                if (doingAutoLogin && accountToSave.AccountType != XivAccountType.WeGameSid)
+                if (doingAutoLogin && accountToSave.AccountType != XIVAccountType.WeGameSID)
                 {
                     //accountToSave.NSessionId = nSessionId;
 
@@ -1060,13 +1060,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         accountToSave.Password = await AccountManager.Encrypt(serect);
                 }
 
-                if (accountToSave.AccountType == XivAccountType.WeGameSid)
+                if (accountToSave.AccountType == XIVAccountType.WeGameSID)
                 {
                     accountToSave.TestSID = await AccountManager.Encrypt(serect);
                     //accountToSave.TestSID = await AccountManager.CredProvider.Encrypt("password");
                 }
 
-                accountToSave.GenerateId();
+                accountToSave.GenerateID();
                 AccountManager.AddAccount(accountToSave);
                 AccountManager.CurrentAccount = accountToSave;
                 AccountManager.Save();

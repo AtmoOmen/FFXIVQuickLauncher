@@ -19,9 +19,9 @@ namespace XIVLauncher.Accounts;
 
 public class AccountManager
 {
-    public ObservableCollection<XivAccount> Accounts;
+    public ObservableCollection<XIVAccount> Accounts;
 
-    public XivAccount CurrentAccount
+    public XIVAccount CurrentAccount
     {
         get => Accounts.Count > 1 ? Accounts.FirstOrDefault(a => a.Id == _setting.CurrentAccountId) : Accounts.FirstOrDefault();
         set => _setting.CurrentAccountId = value.Id;
@@ -178,7 +178,7 @@ public class AccountManager
         Save();
     }
 
-    public void AddAccount(XivAccount account)
+    public void AddAccount(XIVAccount account)
     {
         if (account.UserName.IsNullOrEmpty() || account.Id.IsNullOrEmpty())
             throw new Exception($"UserName:{account.UserName} Id:{account.Id} 不能为空");
@@ -202,7 +202,7 @@ public class AccountManager
             Accounts.Add(account);
     }
 
-    public void RemoveAccount(XivAccount account)
+    public void RemoveAccount(XIVAccount account)
     {
         account.Password = string.Empty;
         Accounts.Remove(account);
@@ -213,7 +213,7 @@ public class AccountManager
             db.RunInTransaction
             (() =>
                 {
-                    var record = db.Table<XivAccount>().FirstOrDefault(a => a.Id == account.Id);
+                    var record = db.Table<XIVAccount>().FirstOrDefault(a => a.Id == account.Id);
                     if (record != null)
                         db.Delete(account);
                 }
@@ -245,7 +245,7 @@ public class AccountManager
 
     private static readonly string DatabasePath = Path.Combine(Paths.RoamingPath, "accounts.db");
 
-    public void Save(XivAccount account)
+    public void Save(XIVAccount account)
     {
         lock (syncRoot)
         {
@@ -253,7 +253,7 @@ public class AccountManager
             db.RunInTransaction
             (() =>
                 {
-                    var record = db.Table<XivAccount>().FirstOrDefault(a => a.Id == account.Id);
+                    var record = db.Table<XIVAccount>().FirstOrDefault(a => a.Id == account.Id);
 
                     if (record == null)
                         db.Insert(account);
@@ -280,7 +280,7 @@ public class AccountManager
             DatabasePath,
             SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.FullMutex
         );
-        db.CreateTable<XivAccount>();
+        db.CreateTable<XIVAccount>();
     }
 
     public void Load()
@@ -301,7 +301,7 @@ public class AccountManager
         }
 
         // If the file is corrupted, this will be null anyway
-        Accounts ??= new ObservableCollection<XivAccount>(db.Table<XivAccount>());
+        Accounts ??= new ObservableCollection<XIVAccount>(db.Table<XIVAccount>());
 
         foreach (var account in Accounts)
         {

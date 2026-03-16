@@ -11,7 +11,7 @@ public partial class ProfilePictureInputWindow : Window
 {
     public string ResultName, ResultWorld;
 
-    public ProfilePictureInputWindow(XivAccount account)
+    public ProfilePictureInputWindow(XIVAccount account)
     {
         InitializeComponent();
 

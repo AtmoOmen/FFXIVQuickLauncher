@@ -116,7 +116,7 @@ public partial class MainWindow : Window
         {
             Log.Information("Engaging Autologin...");
 
-            if (savedAccount.AccountType == XivAccountType.WeGameSid)
+            if (savedAccount.AccountType == XIVAccountType.WeGameSID)
             {
                 Model.TryLogin
                 (
@@ -466,10 +466,10 @@ public partial class MainWindow : Window
         switcher.Show();
     }
 
-    private void OnAccountSwitchedEventHandler(object sender, XivAccount e) =>
+    private void OnAccountSwitchedEventHandler(object sender, XIVAccount e) =>
         SwitchAccount(e, true);
 
-    private void SwitchAccount(XivAccount account, bool saveAsCurrent)
+    private void SwitchAccount(XIVAccount account, bool saveAsCurrent)
     {
         if (saveAsCurrent)
             _accountManager.CurrentAccount = account;
@@ -482,7 +482,7 @@ public partial class MainWindow : Window
 
         switch (account.AccountType)
         {
-            case XivAccountType.Sdo:
+            case XIVAccountType.Sdo:
                 if (account.Password is not null)
                 {
                     LoginTypeSelection.SelectedValue = LoginType.Static;
@@ -495,12 +495,12 @@ public partial class MainWindow : Window
 
                 break;
 
-            case XivAccountType.WeGame:
+            case XIVAccountType.WeGame:
                 LoginTypeSelection.SelectedValue = LoginType.WeGameToken;
                 LoginPassword.Password           = MainWindowViewModel.PRESUDO_PASSWORD;
                 break;
 
-            case XivAccountType.WeGameSid:
+            case XIVAccountType.WeGameSID:
                 LoginTypeSelection.SelectedValue = LoginType.WeGameSID;
                 break;
         }

@@ -25,7 +25,7 @@ namespace XIVLauncher.Windows;
 /// </summary>
 public partial class AccountSwitcher : Window
 {
-    public           EventHandler<XivAccount> OnAccountSwitchedEventHandler;
+    public           EventHandler<XIVAccount> OnAccountSwitchedEventHandler;
     private readonly AccountManager           _accountManager;
 
     private Point        startPoint;
@@ -68,16 +68,6 @@ public partial class AccountSwitcher : Window
             {
                 Account = accountManagerAccount
             };
-
-            Task.Run
-            (() =>
-                {
-                    if (string.IsNullOrEmpty(accountManagerAccount.ThumbnailUrl))
-                        accountManagerAccount.ThumbnailUrl = accountManagerAccount.FindCharacterThumb();
-
-                    entry.UpdateProfileImage();
-                }
-            );
 
             accountEntries.Add(entry);
         }
