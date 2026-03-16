@@ -421,6 +421,9 @@
 
                                                     <Button.ContextMenu>
                                                         <ContextMenu Language="zh-CN">
+                                                            <MenuItem Header="修复" Command="{Binding Path=LoginRepairCommand}" />
+                                                            <MenuItem Header="更新" Command="{Binding Path=LoginNoStartCommand}" />
+                                                            <Separator />
                                                             <MenuItem Header="其他启动方式">
                                                                 <MenuItem Header="无 Dalamud" Command="{Binding Path=LoginNoDalamudCommand}" />
                                                                 <MenuItem Header="禁用插件" Command="{Binding Path=LoginNoPluginsCommand}" />
@@ -428,9 +431,6 @@
                                                                 <Separator />
                                                                 <MenuItem Header="调试用假启动" Command="{Binding Path=FakeStartCommand}" />
                                                             </MenuItem>
-                                                            <Separator />
-                                                            <MenuItem Header="修复" Command="{Binding Path=LoginRepairCommand}" />
-                                                            <MenuItem Header="更新" Command="{Binding Path=LoginNoStartCommand}" />
                                                         </ContextMenu>
                                                     </Button.ContextMenu>
 
@@ -474,6 +474,9 @@
                                                                 </ItemsPanelTemplate>
                                                             </Menu.ItemsPanel>
                                                             
+                                                            <MenuItem Header="修复" Command="{Binding Path=LoginRepairCommand}" />
+                                                            <MenuItem Header="更新" Command="{Binding Path=LoginNoStartCommand}" />
+                                                            <Separator />
                                                             <MenuItem Header="其他启动方式">
                                                                 <MenuItem Header="无 Dalamud" Command="{Binding Path=LoginNoDalamudCommand}" />
                                                                 <MenuItem Header="禁用插件" Command="{Binding Path=LoginNoPluginsCommand}" />
@@ -481,9 +484,6 @@
                                                                 <Separator />
                                                                 <MenuItem Header="调试用假启动" Command="{Binding Path=FakeStartCommand}" />
                                                             </MenuItem>
-                                                            <Separator />
-                                                            <MenuItem Header="修复" Command="{Binding Path=LoginRepairCommand}" />
-                                                            <MenuItem Header="更新" Command="{Binding Path=LoginNoStartCommand}" />
 
                                                         </Menu>
                                                     </materialDesign:PopupBox.PopupContent>
