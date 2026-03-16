@@ -16,17 +16,13 @@ using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Startup.Steps;
 
-public class SettingsStep : IStartupStep
+public class SettingsStep
+(
+    CommandLineStep commandLineStep
+) : IStartupStep
 {
-    private readonly CommandLineStep commandLineStep;
-
-    public SettingsStep(CommandLineStep commandLineStep)
-    {
-        this.commandLineStep = commandLineStep;
-    }
-
-    public string Name => "设置初始化";
-    public int Order => 40;
+    public string Name  => "设置初始化";
+    public int    Order => 40;
 
     public Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
     {
@@ -41,26 +37,36 @@ public class SettingsStep : IStartupStep
             SetupSettings(context);
         }
 
+        EnsureSettingsInitialized(context);
         context.AccountManager = new AccountManager(context.Settings);
         return Task.CompletedTask;
+    }
+
+    private static void EnsureSettingsInitialized(StartupContext context)
+    {
+        if (context.Settings == null)
+            throw new InvalidOperationException("设置初始化完成后未生成有效设置对象");
     }
 
     private void SetupSettings(StartupContext context)
     {
         context.Settings = new ConfigurationBuilder<ILauncherSettingsV3>()
-                   .UseCommandLineArgs()
-                   .UseJsonFile(Paths.GetConfigPath())
-                   .UseTypeParser(new DirectoryInfoParser())
-                   .UseTypeParser(new AddonListParser())
-                   .UseTypeParser(new CommonJsonParser<PreserveWindowPosition.WindowPlacement>())
-                   .Build();
+                           .UseCommandLineArgs()
+                           .UseJsonFile(Paths.GetConfigPath())
+                           .UseTypeParser(new DirectoryInfoParser())
+                           .UseTypeParser(new AddonListParser())
+                           .UseTypeParser(new CommonJsonParser<PreserveWindowPosition.WindowPlacement>())
+                           .Build();
 
         MachineCode.IsDynamicDeviceId = context.Settings.DynamicDeviceId;
 
-        if (context.Settings.EnableVerboseLog.GetValueOrDefault(false))
+        if (LogInit.LevelSwitch != null && context.Settings.EnableVerboseLog.GetValueOrDefault(false))
             LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
         context.Settings.EnableVerboseLog = false;
-        Log.Information("当前日志级别: {LevelSwitchMinimumLevel}", LogInit.LevelSwitch.MinimumLevel);
+        if (LogInit.LevelSwitch != null)
+            Log.Information("当前日志级别: {LevelSwitchMinimumLevel}", LogInit.LevelSwitch.MinimumLevel);
+        else
+            Log.Information("当前日志级别: 未初始化");
 
         try
         {

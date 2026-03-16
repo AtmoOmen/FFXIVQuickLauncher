@@ -6,20 +6,19 @@ using System.Threading.Tasks;
 using System.Windows;
 using CheapLoc;
 using CommandLine;
-using Serilog;
-using XIVLauncher.Common;
+using Newtonsoft.Json;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Game;
 
 namespace XIVLauncher.Startup.Steps;
 
 public class CommandLineStep : IStartupStep
 {
-    private App.CommandLineOptions options = new();
+    public string Name  => "命令行解析";
+    public int    Order => 15;
 
-    public string Name => "命令行解析";
-    public int Order => 30;
-
-    public FileInfo? DalamudRunnerOverride { get; private set; }
+    public  FileInfo?              DalamudRunnerOverride { get; private set; }
+    private CommandLineOptions options = new();
 
     public Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
     {
@@ -33,12 +32,12 @@ public class CommandLineStep : IStartupStep
                     config.IgnoreUnknownArguments = true;
                 }
             );
-            var result = parser.ParseArguments<App.CommandLineOptions>(Environment.GetCommandLineArgs());
+            var result = parser.ParseArguments<CommandLineOptions>(Environment.GetCommandLineArgs());
 
             if (result.Errors.Any())
                 MessageBox.Show(helpWriter.ToString(), "帮助");
 
-            var cmdLine = result.Value ?? new App.CommandLineOptions();
+            var cmdLine = result.Value ?? new CommandLineOptions();
 
             if (!string.IsNullOrEmpty(cmdLine.RoamingPath))
                 Paths.OverrideRoamingPath(cmdLine.RoamingPath);
@@ -63,19 +62,20 @@ public class CommandLineStep : IStartupStep
         catch (Exception ex)
         {
             MessageBox.Show("无法解析命令行参数, 请反馈此问题\n\n" + ex.Message, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error);
+            throw;
         }
 
         return Task.CompletedTask;
     }
 
-    public App.CommandLineOptions GetOptions() => options;
+    public CommandLineOptions GetOptions() => options;
 
     private static void GenerateIntegrity(string path)
     {
-        var result            = Common.Game.IntegrityCheck.RunIntegrityCheckAsync(new DirectoryInfo(path), null).GetAwaiter().GetResult();
+        var result            = IntegrityCheck.RunIntegrityCheckAsync(new DirectoryInfo(path), null).GetAwaiter().GetResult();
         var saveIntegrityPath = Path.Combine(Paths.RoamingPath, $"{result.GameVersion}.json");
 
-        File.WriteAllText(saveIntegrityPath, Newtonsoft.Json.JsonConvert.SerializeObject(result));
+        File.WriteAllText(saveIntegrityPath, JsonConvert.SerializeObject(result));
 
         MessageBox.Show($"已成功对 {result.Hashes.Count} 个文件进行哈希计算并保存到 {path}", "完成", MessageBoxButton.OK, MessageBoxImage.Asterisk);
         Environment.Exit(0);

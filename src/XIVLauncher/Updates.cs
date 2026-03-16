@@ -8,6 +8,7 @@ using System.Windows;
 using CheapLoc;
 using Serilog;
 using Velopack;
+using XIVLauncher.Settings;
 using XIVLauncher.Support;
 using XIVLauncher.Windows;
 
@@ -17,6 +18,12 @@ internal class Updates
 {
     public static Lease? UpdateLease { get; private set; }
     private const string UpdateUrl = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
+    private readonly ILauncherSettingsV3 settings;
+
+    public Updates(ILauncherSettingsV3 settings)
+    {
+        this.settings = settings;
+    }
 
     public static bool HaveFeatureFlag(LeaseFeatureFlags flag) =>
         UpdateLease != null && UpdateLease.Flags.HasFlag(flag);
@@ -27,9 +34,7 @@ internal class Updates
         OnUpdateCheckFinished?.Invoke(true);
         return;
 #endif
-        // GitHub requires TLS 1.2, we need to hardcode this for Windows 7
-        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
+        
         try
         {
             // 游戏进程
@@ -41,7 +46,7 @@ internal class Updates
             }
 
             var updateOptions = new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
-            var updateSource  = new GitHubSource(UpdateUrl, App.Settings.GitHubToken, true, "https://gh.atmoomen.top/", new XLHttpClientFileDownloader());
+            var updateSource  = new GitHubSource(UpdateUrl, settings.GitHubToken, true, "https://gh.atmoomen.top/", new XLHttpClientFileDownloader());
             var mgr           = new UpdateManager(updateSource, updateOptions);
 
             var newRelease = await mgr.CheckForUpdatesAsync();
@@ -113,7 +118,7 @@ internal class Updates
                 );
             }
 
-            if (App.Settings.EnableSkipUpdate.GetValueOrDefault(false))
+            if (settings.EnableSkipUpdate.GetValueOrDefault(false))
             {
                 var result = CustomMessageBox.Show
                 (

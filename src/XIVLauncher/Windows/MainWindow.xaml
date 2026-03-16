@@ -291,7 +291,7 @@
                                                 ItemsSource="{Binding Path=LoginAreas}"
                                                 SelectedIndex="{Binding Path=AreaIndex, Mode=OneWayToSource}"
                                                 SelectedItem="{Binding Path=Area}"
-                                                SelectedValuePath="Areaid">
+                                                SelectedValuePath="AreaID">
                                                 <!--  完全移除ScrollViewer  -->
                                                 <ListBox.Template>
                                                     <ControlTemplate TargetType="ListBox">

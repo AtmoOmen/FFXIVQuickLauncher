@@ -1,6 +1,4 @@
-﻿using System.Windows;
-using System.Windows.Input;
-using XIVLauncher.Windows.ViewModel;
+﻿using System.Windows.Input;
 
 namespace XIVLauncher.Windows;
 
@@ -9,10 +7,8 @@ public partial class UpdateLoadingDialog
     public UpdateLoadingDialog()
     {
         InitializeComponent();
-
-        AutoLoginDisclaimer.Visibility = App.Settings.AutologinEnabled ? Visibility.Visible : Visibility.Collapsed;
-
-        DataContext =  new UpdateLoadingDialogViewModel();
+        
+        DataContext =  new();
         MouseMove   += UpdateLoadingDialog_OnMouseMove;
     }
 

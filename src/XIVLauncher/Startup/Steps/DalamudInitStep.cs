@@ -4,24 +4,19 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using Serilog;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Windows;
 
 namespace XIVLauncher.Startup.Steps;
 
-public class DalamudInitStep : IStartupStep
+public class DalamudInitStep
+(
+    UpdateCheckStep updateCheckStep
+) : IStartupStep
 {
-    private readonly UpdateCheckStep updateCheckStep;
-
-    public DalamudInitStep(UpdateCheckStep updateCheckStep)
-    {
-        this.updateCheckStep = updateCheckStep;
-    }
-
-    public string Name => "Dalamud 初始化";
-    public int Order => 90;
+    public string Name  => "Dalamud 初始化";
+    public int    Order => 90;
 
     public Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
     {
@@ -29,9 +24,9 @@ public class DalamudInitStep : IStartupStep
         {
             context.DalamudUpdater = new DalamudUpdater
             (
-                new DirectoryInfo(Path.Combine(Paths.RoamingPath, "addon")),
-                new DirectoryInfo(Path.Combine(Paths.RoamingPath, "runtime")),
-                new DirectoryInfo(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
+                new(Path.Combine(Paths.RoamingPath, "addon")),
+                new(Path.Combine(Paths.RoamingPath, "runtime")),
+                new(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
                 context.Settings.GitHubToken
             );
 
@@ -51,6 +46,7 @@ public class DalamudInitStep : IStartupStep
         catch (Exception ex)
         {
             Log.Error(ex, "无法启动 Dalamud 更新器");
+            throw;
         }
 
         return Task.CompletedTask;

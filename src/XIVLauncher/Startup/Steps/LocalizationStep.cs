@@ -4,14 +4,13 @@ using System.Threading.Tasks;
 using CheapLoc;
 using Serilog;
 using XIVLauncher.Common;
-using XIVLauncher.Settings;
 
 namespace XIVLauncher.Startup.Steps;
 
 public class LocalizationStep : IStartupStep
 {
-    public string Name => "本地化初始化";
-    public int Order => 50;
+    public string Name  => "本地化初始化";
+    public int    Order => 50;
 
     public Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
     {

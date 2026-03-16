@@ -24,7 +24,6 @@
 
                 <Separator Opacity="0" Height="30" />
 
-                <TextBlock Foreground="DarkGray" Margin="0,5,0,0" TextAlignment="Center" x:Name="AutoLoginDisclaimer" />
             </StackPanel>
         </materialDesign:Card>
     </Grid>

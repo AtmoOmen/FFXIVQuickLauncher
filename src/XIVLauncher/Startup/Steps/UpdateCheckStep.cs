@@ -4,48 +4,43 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Threading;
 using Serilog;
 using XIVLauncher.Common;
-using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Windows;
 
 namespace XIVLauncher.Startup.Steps;
 
-public class UpdateCheckStep : IStartupStep
+public class UpdateCheckStep
+(
+    CommandLineStep commandLineStep
+) : IStartupStep
 {
-    private readonly CommandLineStep commandLineStep;
+    public string Name  => "更新检查";
+    public int    Order => 70;
+
+    public  FileInfo?            DalamudRunnerOverride => commandLineStep.DalamudRunnerOverride;
     private UpdateLoadingDialog? updateWindow;
 
-    public event EventHandler<bool>? UpdateCheckFinished;
-
-    public UpdateCheckStep(CommandLineStep commandLineStep)
-    {
-        this.commandLineStep = commandLineStep;
-    }
-
-    public string Name => "更新检查";
-    public int Order => 70;
-
-    public FileInfo? DalamudRunnerOverride => commandLineStep.DalamudRunnerOverride;
-
-    public Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
+    public async Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
     {
 #if !XL_NOAUTOUPDATE
         if (EnvironmentSettings.IsDisableUpdates)
         {
             context.IsUpdateFinished = true;
-            return Task.CompletedTask;
+            return;
         }
 
         try
         {
             Log.Information("开始检查更新...");
 
-            updateWindow = new UpdateLoadingDialog();
+            updateWindow = new();
             updateWindow.Show();
 
-            var updateMgr = new Updates();
+            if (context.Settings == null)
+                throw new InvalidOperationException("更新检查阶段无法获取设置对象");
+
+            var updateMgr = new Updates(context.Settings);
             updateMgr.OnUpdateCheckFinished += finishUp => OnUpdateCheckFinished(context, finishUp);
 
             ChangelogWindow? changelogWindow = null;
@@ -59,7 +54,7 @@ public class UpdateCheckStep : IStartupStep
                 Log.Error(ex, "无法加载更新日志窗口");
             }
 
-            Task.Run(() => updateMgr.Run(EnvironmentSettings.IsPreRelease, changelogWindow), cancellationToken);
+            await updateMgr.Run(EnvironmentSettings.IsPreRelease, changelogWindow).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -68,24 +63,6 @@ public class UpdateCheckStep : IStartupStep
 #else
         context.IsUpdateFinished = true;
 #endif
-
-        return Task.CompletedTask;
-    }
-
-    private void OnUpdateCheckFinished(StartupContext context, bool finishUp)
-    {
-        context.Dispatcher.Invoke
-        (() =>
-            {
-                updateWindow?.Hide();
-
-                if (!finishUp)
-                    return;
-
-                context.IsUpdateFinished = true;
-                UpdateCheckFinished?.Invoke(this, true);
-            }
-        );
     }
 
 #if !XL_NOAUTOUPDATE
@@ -117,4 +94,25 @@ public class UpdateCheckStep : IStartupStep
         Environment.Exit(0);
     }
 #endif
+
+    private void OnUpdateCheckFinished(StartupContext context, bool finishUp)
+    {
+        context.Dispatcher.Invoke
+        (() =>
+            {
+                updateWindow?.Hide();
+
+                if (!finishUp)
+                {
+                    UpdateCheckFinished?.Invoke(this, false);
+                    return;
+                }
+
+                context.IsUpdateFinished = true;
+                UpdateCheckFinished?.Invoke(this, true);
+            }
+        );
+    }
+
+    public event EventHandler<bool>? UpdateCheckFinished;
 }

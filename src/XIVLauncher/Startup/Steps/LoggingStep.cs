@@ -4,18 +4,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
-using XIVLauncher.Common;
+using Serilog.Events;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Support;
 using XIVLauncher.Support;
-using XIVLauncher.Xaml;
+using DateTimeOffset = System.DateTimeOffset;
 
 namespace XIVLauncher.Startup.Steps;
 
 public class LoggingStep : IStartupStep
 {
-    public string Name => "日志初始化";
-    public int Order => 20;
+    public string Name  => "日志初始化";
+    public int    Order => 20;
 
     public Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
     {
@@ -35,6 +35,7 @@ public class LoggingStep : IStartupStep
         catch (Exception ex)
         {
             MessageBox.Show("无法设置日志记录, 请反馈此问题\n\n" + ex.Message, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error);
+            throw;
         }
 
         return Task.CompletedTask;
@@ -42,8 +43,8 @@ public class LoggingStep : IStartupStep
 
     private static void OnSerilogLogLine
     (
-        object? sender,
-        (string Line, Serilog.Events.LogEventLevel Level, DateTimeOffset TimeStamp, Exception? Exception) e
+        object?                                                                                   sender,
+        (string Line, LogEventLevel Level, DateTimeOffset TimeStamp, System.Exception? Exception) e
     )
     {
         if (e.Exception == null)

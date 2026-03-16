@@ -1,10 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Threading;
 using Serilog;
 using XIVLauncher.Accounts;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Startup;
@@ -18,10 +16,33 @@ public partial class App
 
     public static StartupContext StartupContext { get; private set; } = null!;
 
-    public static ILauncherSettingsV3 Settings       => StartupContext.Settings;
-    public static AccountManager      AccountManager => StartupContext.AccountManager;
-    public static DalamudUpdater      DalamudUpdater => StartupContext.DalamudUpdater;
-    public static bool                InjectMode     => StartupContext.InjectMode;
+    public static ILauncherSettingsV3 Settings
+    {
+        get
+        {
+            var context = GetStartupContext();
+            return context.Settings ?? throw new InvalidOperationException("设置尚未初始化");
+        }
+    }
+
+    public static AccountManager AccountManager
+    {
+        get
+        {
+            var context = GetStartupContext();
+            return context.AccountManager ?? throw new InvalidOperationException("账号管理器尚未初始化");
+        }
+    }
+
+    public static DalamudUpdater DalamudUpdater
+    {
+        get
+        {
+            var context = GetStartupContext();
+            return context.DalamudUpdater ?? throw new InvalidOperationException("Dalamud 更新器尚未初始化");
+        }
+    }
+
     public static bool GlobalIsDisableAutologin
     {
         get => StartupContext.IsDisableAutologin;
@@ -33,8 +54,8 @@ public partial class App
     #region 字段
 
     private StartupOrchestrator? orchestrator;
-    private MainWindow? mainWindow;
-    private bool isUseFullExceptionHandler;
+    private MainWindow?          mainWindow;
+    private bool                 isUseFullExceptionHandler;
 
     #endregion
 
@@ -57,20 +78,27 @@ public partial class App
 
     private async void App_OnStartup(object sender, StartupEventArgs e)
     {
-        orchestrator = new StartupOrchestrator(this, Dispatcher);
-
         try
         {
-            await orchestrator.RunAsync();
-
+            orchestrator   = new(Dispatcher);
             StartupContext = orchestrator.GetContext();
 
-            OnStartupCompleted();
+            try
+            {
+                await orchestrator.RunAsync();
+
+                OnStartupCompleted();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "启动流程失败");
+                MessageBox.Show($"启动失败: {ex.Message}", "XIVLauncher 错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                Environment.Exit(-1);
+            }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "启动流程失败");
-            MessageBox.Show($"启动失败: {ex.Message}", "XIVLauncher 错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            Log.Error(ex, "早期启动流程失败");
             Environment.Exit(-1);
         }
     }
@@ -129,49 +157,6 @@ public partial class App
 
     #endregion
 
-    #region 嵌套类型
-
-    public class CommandLineOptions
-    {
-        [CommandLine.Option("dalamud-runner-override", Required = false, HelpText = "用于覆盖 Dalamud 运行器的文件夹路径")]
-        public string RunnerOverride { get; set; } = null!;
-
-        [CommandLine.Option("roamingPath", Required = false, HelpText = "用于覆盖 XIVLauncher 漫游路径的文件夹路径")]
-        public string RoamingPath { get; set; } = null!;
-
-        [CommandLine.Option("noautologin", Required = false, HelpText = "禁用自动登录")]
-        public bool NoAutoLogin { get; set; }
-
-        [CommandLine.Option("gen-localizable", Required = false, HelpText = "生成本地化文件")]
-        public bool DoGenerateLocalizables { get; set; }
-
-        [CommandLine.Option("gen-integrity", Required = false, HelpText = "生成完整性校验文件, 请提供游戏路径")]
-        public string DoGenerateIntegrity { get; set; } = null!;
-
-        [CommandLine.Option("account", Required = false, HelpText = "要使用的账号名称")]
-        public string AccountName { get; set; } = null!;
-
-        [CommandLine.Option("clientlang", Required = false, HelpText = "要使用的客户端语言")]
-        public ClientLanguage? ClientLanguage { get; set; }
-
-        [CommandLine.Option("squirrel-updated", Hidden = true)]
-        public string SquirrelUpdated { get; set; } = null!;
-
-        [CommandLine.Option("squirrel-install", Hidden = true)]
-        public string SquirrelInstall { get; set; } = null!;
-
-        [CommandLine.Option("squirrel-obsolete", Hidden = true)]
-        public string SquirrelObsolete { get; set; } = null!;
-
-        [CommandLine.Option("squirrel-uninstall", Hidden = true)]
-        public string SquirrelUninstall { get; set; } = null!;
-
-        [CommandLine.Option("squirrel-firstrun", Hidden = true)]
-        public bool SquirrelFirstRun { get; set; }
-
-        [CommandLine.Option("inject", Hidden = true)]
-        public bool InjectMode { get; set; }
-    }
-
-    #endregion
+    private static StartupContext GetStartupContext() =>
+        StartupContext ?? throw new InvalidOperationException("启动上下文尚未初始化");
 }
