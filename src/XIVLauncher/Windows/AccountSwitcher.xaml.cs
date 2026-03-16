@@ -11,7 +11,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using CheapLoc;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
@@ -230,8 +229,8 @@ public partial class AccountSwitcher : Window
             return;
 
         var account = _accountManager.Accounts.First(a => a.Id == selectedEntry.Account.Id);
-        var builder = CustomMessageBox.Builder.NewFrom(Loc.Localize("AccountSwitcherSetNoteHint", "Please enter a note for this account (leave empty to show account name):"))
-                                      .WithCaption(Loc.Localize("AccountSwitcherSetNoteCaption",  "Set Note"))
+        var builder = CustomMessageBox.Builder.NewFrom("请输入账户备注(留空则显示账户名)")
+                                      .WithCaption("设置备注")
                                       .WithButtons(MessageBoxButton.OKCancel)
                                       .WithInputTextBox(account.UserDefinedName ?? string.Empty);
 

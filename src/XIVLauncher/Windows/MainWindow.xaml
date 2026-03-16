@@ -394,7 +394,6 @@
                                                 Margin="0,8,0,0"
                                                 VerticalAlignment="Top"
                                                 x:Name="FastLoginCheckBox"
-                                                Click="FastLoginCheckBox_OnClick"
                                                 ToolTip="缓存登录信息,类PC叨鱼快速登录"
                                                 IsChecked="{Binding IsFastLogin}" />
 
@@ -516,7 +515,7 @@
                                                 DockPanel.Dock="Top"
                                                 x:Name="QrImage"
                                                 Stretch="Uniform"
-                                                Source="{Binding QrCodeBitmapImage}" />
+                                                Source="{Binding QRCodeBitmapImage}" />
 
                                             <Button HorizontalAlignment="Center"
                                                     Visibility="Visible"
@@ -554,9 +553,9 @@
                                                 Margin="0,10,0,0"
                                                 Height="24"
                                                 VerticalAlignment="Top"
-                                                ItemsSource="{Binding FFXIVProcessCollection}"
+                                                ItemsSource="{Binding FFXIVProcesses}"
                                                 SelectedItem="{Binding SelectedProcess}"
-                                                materialDesign:HintAssist.Hint="选择要注入的进程">
+                                                materialDesign:HintAssist.Hint="{Binding ProcessSelectionHint}">
                                                 <ComboBox.ItemTemplate>
                                                     <DataTemplate>
                                                         <StackPanel Orientation="Horizontal">
@@ -578,11 +577,13 @@
                                                     x:Name="InjectButton"
                                                     Content="带回前台"
                                                     Click="InjectButton_Click"
+                                                    IsEnabled="{Binding CanOperateOnSelectedProcess}"
                                                     Margin="0,0,10,0" Width="90" />
                                                 <Button
                                                     x:Name="BringUp"
                                                     Content="注入"
                                                     Command="{Binding Path=InjectGameCommand}"
+                                                    IsEnabled="{Binding CanOperateOnSelectedProcess}"
                                                     Margin="0,0,0,0" Width="90" />
                                             </StackPanel>
                                         </DockPanel>

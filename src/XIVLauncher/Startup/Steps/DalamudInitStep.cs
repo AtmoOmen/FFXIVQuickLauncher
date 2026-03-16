@@ -41,7 +41,7 @@ public class DalamudInitStep
             while (context.DalamudUpdater.Overlay == null)
                 Thread.Yield();
 
-            context.DalamudUpdater.Run(Updates.HaveFeatureFlag(Updates.LeaseFeatureFlags.ForceProxyDalamudAndAssets));
+            context.DalamudUpdater.Run(false);
         }
         catch (Exception ex)
         {

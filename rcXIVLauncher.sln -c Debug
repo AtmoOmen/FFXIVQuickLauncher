@@ -1,0 +1,140 @@
+warning: in the working copy of 'src/XIVLauncher.Common/Game/FFXIVProcess.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/XIVLauncher/Windows/MainWindow.xaml', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/XIVLauncher.Common/Game/FFXIVProcess.cs b/src/XIVLauncher.Common/Game/FFXIVProcess.cs[m
+[1mindex 6567c77d..865e24f4 100644[m
+[1m--- a/src/XIVLauncher.Common/Game/FFXIVProcess.cs[m
+[1m+++ b/src/XIVLauncher.Common/Game/FFXIVProcess.cs[m
+[36m@@ -1,13 +1,16 @@[m
+ using System;[m
+[32m+[m[32musing System.Collections.Generic;[m
+[32m+[m[32musing System.ComponentModel;[m
+ using System.Diagnostics;[m
+ using System.Linq;[m
+[32m+[m[32musing XIVLauncher.Common.Util;[m
+ [m
+ namespace XIVLauncher.Common.Game;[m
+ [m
+ public sealed class FFXIVProcess[m
+ ([m
+     Process p[m
+[31m-) : IDisposable[m
+[32m+[m[32m) : IDisposable, INotifyPropertyChanged[m
+ {[m
+     public Process UnderlyingProcess { get; } = p;[m
+ [m
+[36m@@ -15,7 +18,18 @@[m [mpublic sealed class FFXIVProcess[m
+     public string ProcessName => UnderlyingProcess.ProcessName;[m
+     public int    ExitCode    => UnderlyingProcess.ExitCode;[m
+     public string DisplayName { get; init; } = $"{p.Id} ({p.StartTime})";[m
+[31m-    public bool   HasInjected { get; set; }  = DetectDalamud(p);[m
+[32m+[m[32m    public bool HasInjected[m
+[32m+[m[32m    {[m
+[32m+[m[32m        get;[m
+[32m+[m[32m        set[m
+[32m+[m[32m        {[m
+[32m+[m[32m            if (field == value)[m
+[32m+[m[32m                return;[m
+[32m+[m
+[32m+[m[32m            field = value;[m
+[32m+[m[32m            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasInjected)));[m
+[32m+[m[32m        }[m
+[32m+[m[32m    } = IsDalamudInjected(p);[m
+ [m
+     #region Disposal[m
+ [m
+[36m@@ -24,6 +38,25 @@[m [mpublic sealed class FFXIVProcess[m
+ [m
+     #endregion[m
+ [m
+[31m-    public static bool DetectDalamud(Process p) =>[m
+[32m+[m[32m    public static bool IsDalamudInjected(Process p) =>[m
+         p.Modules.Cast<ProcessModule>().Any(m => m.ModuleName.Contains("Dalamud.dll"));[m
+[32m+[m
+[32m+[m[32m    public static List<int> GetGameProcessIds() =>[m
+[32m+[m[32m        GetGameProcesses().Select(p => p.Id).ToList();[m
+[32m+[m
+[32m+[m[32m    public static List<FFXIVProcess> GetGameProcess() =>[m
+[32m+[m[32m        GetGameProcesses().Select(p => new FFXIVProcess(p)).ToList();[m
+[32m+[m
+[32m+[m[32m    private static IEnumerable<Process> GetGameProcesses()[m
+[32m+[m[32m    {[m
+[32m+[m[32m        var processes = Process.GetProcesses()[m
+[32m+[m[32m                               .Where(p => p.ProcessName == "ffxiv_dx11")[m
+[32m+[m[32m                               .Where(p => !p.MainWindowTitle.Contains("FINAL FANTASY XIV"));[m
+[32m+[m[32m        if (PlatformHelpers.IsElevated())[m
+[32m+[m[32m            processes = processes.Where(p => !p.HasExited);[m
+[32m+[m
+[32m+[m[32m        return processes;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    public event PropertyChangedEventHandler? PropertyChanged;[m
+ }[m
+[1mdiff --git a/src/XIVLauncher/Windows/MainWindow.xaml b/src/XIVLauncher/Windows/MainWindow.xaml[m
+[1mindex 9630be0a..04688fe3 100644[m
+[1m--- a/src/XIVLauncher/Windows/MainWindow.xaml[m
+[1m+++ b/src/XIVLauncher/Windows/MainWindow.xaml[m
+[36m@@ -394,7 +394,6 @@[m
+                                                 Margin="0,8,0,0"[m
+                                                 VerticalAlignment="Top"[m
+                                                 x:Name="FastLoginCheckBox"[m
+[31m-                                                Click="FastLoginCheckBox_OnClick"[m
+                                                 ToolTip="缓存登录信息,类PC叨鱼快速登录"[m
+                                                 IsChecked="{Binding IsFastLogin}" />[m
+ [m
+[36m@@ -556,7 +555,7 @@[m
+                                                 VerticalAlignment="Top"[m
+                                                 ItemsSource="{Binding FFXIVProcessCollection}"[m
+                                                 SelectedItem="{Binding SelectedProcess}"[m
+[31m-                                                materialDesign:HintAssist.Hint="选择要注入的进程">[m
+[32m+[m[32m                                                materialDesign:HintAssist.Hint="{Binding ProcessSelectionHint}">[m
+                                                 <ComboBox.ItemTemplate>[m
+                                                     <DataTemplate>[m
+                                                         <StackPanel Orientation="Horizontal">[m
+[36m@@ -578,11 +577,13 @@[m
+                                                     x:Name="InjectButton"[m
+                                                     Content="带回前台"[m
+                                                     Click="InjectButton_Click"[m
+[32m+[m[32m                                                    IsEnabled="{Binding CanBringUpSelectedProcess}"[m
+                                                     Margin="0,0,10,0" Width="90" />[m
+                                                 <Button[m
+                                                     x:Name="BringUp"[m
+                                                     Content="注入"[m
+                                                     Command="{Binding Path=InjectGameCommand}"[m
+[32m+[m[32m                                                    IsEnabled="{Binding CanInjectSelectedProcess}"[m
+                                                     Margin="0,0,0,0" Width="90" />[m
+                                             </StackPanel>[m
+                                         </DockPanel>[m
+[1mdiff --git a/src/XIVLauncher/Windows/ViewModel/MainWindowViewModel.cs b/src/XIVLauncher/Windows/ViewModel/MainWindowViewModel.cs[m
+[1mindex 33a624af..f466afca 100644[m
+[1m--- a/src/XIVLauncher/Windows/ViewModel/MainWindowViewModel.cs[m
+[1m+++ b/src/XIVLauncher/Windows/ViewModel/MainWindowViewModel.cs[m
+[36m@@ -1,5 +1,6 @@[m
+ using System;[m
+ using System.Collections.Generic;[m
+[32m+[m[32musing System.Collections.Specialized;[m
+ using System.Collections.ObjectModel;[m
+ using System.ComponentModel;[m
+ using System.Diagnostics;[m
+[36m@@ -58,11 +59,11 @@[m [mpublic class MainWindowViewModel : INotifyPropertyChanged[m
+     public Action Hide            { get; set; } = null!;[m
+     public Action ReloadHeadlines { get; set; } = null!;[m
+ [m
+[31m-    public bool   IsLoggingIn { get; set; }[m
+[31m-    public string Password    { get; set; } = null!;[m
+[31m-[m
+[31m-    private CancellationTokenSource? loginCancelSource;[m
+[31m-    private bool                     isInjecting;[m
+[32m+[m[32m    public  bool                     IsLoggingIn       { get; set; }[m
+[32m+[m[32m    public  string                   Password          { get; set; } = null!;[m
+[32m+[m[32m    private CancellationTokenSource? LoginCancelSource { get; set; }[m
+[32m+[m[32m    private CancellationTokenSource? processRefreshCancelSource;[m
+[32m+[m[32m    private bool                     IsInjecting       { get; set; }[m
+ [m
+     public MainWindowViewModel(Window window)[m
+     {[m
+[36m@@ -76,7 +77,7 @@[m [mpublic class MainWindowViewModel : INotifyPropertyChanged[m
+         LoginRepairCommand      = new SyncCommand(CreateLoginHandler(LoginAfterAction.Repair),              () => !IsLoggingIn);[m
+         LoginForceQRCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.ForceQR),             () => !IsLoggingIn);[m
+         InjectModeSwitchCommand = new SyncCommand(_ => { SwitchMode(); },                                   () => !IsLoggingIn);[m
+[31m-        InjectGameCommand       = new SyncCommand(_ => { TryInjectGame(); },                                () => !IsLoggingIn);[m
+[32m+[m[32m        InjectGameCommand       = new SyncCommand(_ => { StartInject(); },                                () => !IsLoggingIn);

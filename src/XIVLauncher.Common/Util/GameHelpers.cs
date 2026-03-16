@@ -8,12 +8,6 @@ namespace XIVLauncher.Common.Util;
 
 public static class GameHelpers
 {
-    /// <summary>
-    ///     Returns <see langword="true" /> if the current system region is set to North America.
-    /// </summary>
-    public static bool IsRegionNorthAmerica() =>
-        RegionInfo.CurrentRegion.TwoLetterISORegionName is "US" or "MX" or "CA";
-
     public static bool IsValidGamePath(string path)
     {
         if (string.IsNullOrEmpty(path))

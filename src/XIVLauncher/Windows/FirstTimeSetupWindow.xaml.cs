@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using System.Windows;
-using CheapLoc;
 using Serilog;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows.ViewModel;
 
@@ -12,7 +12,7 @@ namespace XIVLauncher.Windows;
 /// <summary>
 ///     Interaction logic for FirstTimeSetup.xaml
 /// </summary>
-public partial class FirstTimeSetup : Window
+public partial class FirstTimeSetup
 {
     public bool WasCompleted { get; private set; }
 
@@ -20,11 +20,11 @@ public partial class FirstTimeSetup : Window
     {
         InitializeComponent();
 
-        DataContext = new FirstTimeSetupViewModel();
+        DataContext = new();
 
-        var detectedPath = AppUtil.TryGamePaths();
-
-        if (detectedPath != null) GamePathEntry.Text = detectedPath;
+        var detectedPath = Paths.GetGamePath();
+        if (detectedPath != null) 
+            GamePathEntry.Text = detectedPath;
 
         try
         {
@@ -94,7 +94,7 @@ public partial class FirstTimeSetup : Window
             case 0 when string.IsNullOrEmpty(GamePathEntry.Text):
                 CustomMessageBox.Show
                 (
-                    Loc.Localize("GamePathEmptyError", "Please select a game path."),
+                    "请选择游戏所在文件夹",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error,
@@ -107,7 +107,7 @@ public partial class FirstTimeSetup : Window
             case 0 when !GameHelpers.LetChoosePath(GamePathEntry.Text):
                 CustomMessageBox.Show
                 (
-                    Loc.Localize("GamePathSafeguardError", "Please do not select the \"game\" or \"boot\" folder of your game installation, and choose the folder that contains these instead."),
+                    "请不要选择「game」文件夹, 请选择它的上层文件夹",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error,
@@ -121,7 +121,7 @@ public partial class FirstTimeSetup : Window
                 {
                     if (CustomMessageBox.Show
                         (
-                            Loc.Localize("GamePathInvalidConfirm", "The folder you selected has no installation of the game.\nXIVLauncher will install the game the first time you log in.\nContinue?"),
+                            "选择的文件夹中没有游戏安装\nXIVLauncher 将在首次登录时安装游戏\n是否继续?",
                             "XIVLauncherCN (Soil)",
                             MessageBoxButton.YesNo,
                             parentWindow: this

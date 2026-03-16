@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
-using CheapLoc;
 using Microsoft.Win32;
 using Serilog;
 using XIVLauncher.Common;
@@ -40,11 +39,7 @@ internal static class ProblemCheck
             {
                 var result = CustomMessageBox.Show
                 (
-                    Loc.Localize
-                    (
-                        "AdminCheck",
-                        "XIVLauncher and/or the game are set to run as administrator.\nThis can cause various issues, including addons failing to launch and hotkey applications failing to respond.\n\nDo you want to fix this issue automatically?"
-                    ),
+                    "XIVLauncher 和/或游戏被设置为以管理员身份运行\n这可能导致各种问题, 包括插件无法启动和热键应用程序无响应\n\n是否自动修复此问题?",
                     "XIVLauncherCN (Soil)",
                     MessageBoxButton.OKCancel,
                     MessageBoxImage.Exclamation,
@@ -67,11 +62,7 @@ internal static class ProblemCheck
         {
             CustomMessageBox.Show
             (
-                Loc.Localize
-                (
-                    "AdminCheckNag",
-                    "XIVLauncher is running as administrator.\nThis can cause various issues, including addons failing to launch and hotkey applications failing to respond.\n\nPlease take care to avoid running XIVLauncher as admin."
-                ),
+                "XIVLauncher 正在以管理员身份运行\n这可能导致各种问题, 包括插件无法启动和热键应用程序无响应\n\n请避免以管理员身份运行 XIVLauncher",
                 "XIVLauncher Problem",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
@@ -86,11 +77,7 @@ internal static class ProblemCheck
         {
             CustomMessageBox.Show
             (
-                Loc.Localize
-                (
-                    "MacTypeNag",
-                    "MacType was detected on this PC.\nIt will cause problems with the game; both on the official launcher and XIVLauncher.\n\nPlease exclude XIVLauncher, ffxivboot, ffxivlauncher, ffxivupdater and ffxiv_dx11 from MacType."
-                ),
+                "检测到 MacType\n它会导致游戏出现问题, 无论是在官方启动器还是 XIVLauncher 中\n\n请将 XIVLauncher, ffxivboot, ffxivlauncher, ffxivupdater 和 ffxiv_dx11 从 MacType 中排除",
                 "XIVLauncher Problem",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -103,11 +90,7 @@ internal static class ProblemCheck
         {
             CustomMessageBox.Show
             (
-                Loc.Localize
-                (
-                    "MyGamesWriteAccessNag",
-                    "You do not have permission to write to the game's My Games folder.\nThis will prevent screenshots and some character data from being saved.\n\nThis may be caused by either your antivirus or a permissions error. Please check your My Games folder permissions."
-                ),
+                "没有权限写入游戏的 My Games 文件夹\n这将导致无法保存截图和部分角色数据\n\n这可能是由杀毒软件或权限错误引起的, 请检查 My Games 文件夹权限",
                 "XIVLauncher Problem",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
@@ -127,14 +110,7 @@ internal static class ProblemCheck
         if (!CheckSymlinkValid(d3d11) || !CheckSymlinkValid(dxgi) || !CheckSymlinkValid(dinput8))
         {
             if (CustomMessageBox.Builder
-                                .NewFrom
-                                (
-                                    Loc.Localize
-                                    (
-                                        "GShadeSymlinks",
-                                        "GShade symbolic links are corrupted.\n\nThe game cannot start. Do you want XIVLauncher to fix this? You will need to reinstall GShade."
-                                    )
-                                )
+                                .NewFrom("GShade 符号链接已损坏\n\n游戏无法启动, 是否让 XIVLauncher 修复? 需要重新安装 GShade")
                                 .WithButtons(MessageBoxButton.YesNo)
                                 .WithImage(MessageBoxImage.Error)
                                 .WithParentWindow(parentWindow)
@@ -171,14 +147,7 @@ internal static class ProblemCheck
             if (dxgiInfo.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) == true && d3d11Info.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) == true)
             {
                 if (CustomMessageBox.Builder
-                                    .NewFrom
-                                    (
-                                        Loc.Localize
-                                        (
-                                            "GShadeError",
-                                            "A broken GShade installation was detected.\n\nThe game cannot start. Do you want XIVLauncher to fix this? You will need to reinstall GShade."
-                                        )
-                                    )
+                                    .NewFrom("检测到 GShade 安装损坏\n\n游戏无法启动, 是否让 XIVLauncher 修复? 需要重新安装 GShade")
                                     .WithButtons(MessageBoxButton.YesNo)
                                     .WithImage(MessageBoxImage.Error)
                                     .WithParentWindow(parentWindow)
@@ -203,8 +172,8 @@ internal static class ProblemCheck
 
         if ((d3d11.Exists || dinput8.Exists) && !App.Settings.HasComplainedAboutGShadeDxgi.GetValueOrDefault(false))
         {
-            FileVersionInfo d3d11Info   = null;
-            FileVersionInfo dinput8Info = null;
+            FileVersionInfo? d3d11Info   = null;
+            FileVersionInfo? dinput8Info = null;
 
             if (d3d11.Exists)
                 d3d11Info = FileVersionInfo.GetVersionInfo(d3d11.FullName);
@@ -215,14 +184,7 @@ internal static class ProblemCheck
             if ((d3d11Info?.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) ?? false) || (dinput8Info?.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) ?? false))
             {
                 if (CustomMessageBox.Builder
-                                    .NewFrom
-                                    (
-                                        Loc.Localize
-                                        (
-                                            "GShadeWrongMode",
-                                            "You installed GShade in a mode that isn't optimal for use together with XIVLauncher. Do you want XIVLauncher to fix this for you?\n\nThis will not change your presets or settings, it will merely improve compatibility with XIVLauncher features."
-                                        )
-                                    )
+                                    .NewFrom("GShade 安装模式不适合与 XIVLauncher 一起使用, 是否让 XIVLauncher 修复?\n\n这不会更改预设或设置, 只是提高与 XIVLauncher 功能的兼容性")
                                     .WithButtons(MessageBoxButton.YesNo)
                                     .WithImage(MessageBoxImage.Warning)
                                     .WithParentWindow(parentWindow)

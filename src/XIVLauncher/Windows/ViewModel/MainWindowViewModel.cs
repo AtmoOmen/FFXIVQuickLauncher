@@ -17,7 +17,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Castle.Core.Internal;
-using CheapLoc;
 using FfxivArgLauncher;
 using MaterialDesignThemes.Wpf;
 using Serilog;
@@ -58,11 +57,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public Action Hide            { get; set; } = null!;
     public Action ReloadHeadlines { get; set; } = null!;
 
-    public bool   IsLoggingIn { get; set; }
-    public string Password    { get; set; } = null!;
-
-    private CancellationTokenSource? loginCancelSource;
-    private bool                     isInjecting;
+    public  bool                     IsLoggingIn                { get; set; }
+    public  string                   Password                   { get; set; } = null!;
+    private CancellationTokenSource? LoginCancelSource          { get; set; }
+    private CancellationTokenSource? ProcessRefreshCancelSource { get; set; }
+    private Task?                    ProcessRefreshTask         { get; set; }
+    private bool                     IsInjecting                { get; set; }
 
     public MainWindowViewModel(Window window)
     {
@@ -76,7 +76,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoginRepairCommand      = new SyncCommand(CreateLoginHandler(LoginAfterAction.Repair),              () => !IsLoggingIn);
         LoginForceQRCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.ForceQR),             () => !IsLoggingIn);
         InjectModeSwitchCommand = new SyncCommand(_ => { SwitchMode(); },                                   () => !IsLoggingIn);
-        InjectGameCommand       = new SyncCommand(_ => { TryInjectGame(); },                                () => !IsLoggingIn);
+        InjectGameCommand       = new SyncCommand(_ => { StartInject(); },                                   () => !IsLoggingIn && SelectedProcess != null);
         FakeStartCommand        = new SyncCommand(_ => { FakeStartGame(); },                                () => !IsLoggingIn);
         LoginCancelCommand      = new SyncCommand(CreateLoginHandler(LoginAfterAction.CancelLogin));
 
@@ -87,13 +87,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         WorldStatusIconColor   = new SolidColorBrush(Color.FromRgb(38, 38, 38));
         ModeSwitchIcon         = PackIconKind.Injection;
-        FFXIVProcessCollection = [];
+        FFXIVProcesses.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasAvailableProcesses));
+            OnPropertyChanged(nameof(ProcessSelectionHint));
+            CommandManager.InvalidateRequerySuggested();
+        };
     }
 
-    #region Public Workflow
+    #region 界面控制
 
-    public void SwitchCard(LoginCardType i)
-    {
+    public void SwitchCard(LoginCardType i) =>
         Window.Dispatcher.Invoke
         (() =>
             {
@@ -101,702 +105,140 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 LoginCardTransitionerIndex = (int)i;
                 ModeSwitchIcon             = i == LoginCardType.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
                 if (LoginCardTransitionerIndex == (int)LoginCardType.InjectMode)
-                    RefreshFfxivProcess();
+                    StartRefreshFFXIVProcess();
+                else
+                    StopRefreshFFXIVProcess(true);
             }
         );
-    }
 
-    public void TryLogin(LoginType loginType, string username, string password, bool doingAutoLogin, bool readWeGameInfo, LoginAfterAction action)
+    public void SwitchMode() =>
+        SwitchCard(LoginCardTransitionerIndex == (int)LoginCardType.InjectMode ? LoginCardType.MainPage : LoginCardType.InjectMode);
+
+    #endregion
+
+    #region 登录
+
+    public void StartLogin
+    (
+        LoginType        loginType,
+        string           username,
+        string           password,
+        bool             doingAutoLogin,
+        bool             readWeGameInfo,
+        LoginAfterAction action
+    )
     {
-        if (IsLoggingIn)
-            return;
-
-        //if (username == null) username = string.Empty;
         if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
         {
-            Window.Dispatcher.Invoke(() => TryLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
+            Window.Dispatcher.Invoke(() => StartLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
             return;
         }
+        
+        if (IsLoggingIn)
+            return;
+        
+        Log.Information("[MainWindow] 尝试开始登录");
 
-        IsEnabled = false;
-        //LoginCardTransitionerIndex = 0;
-        var currentCard = (LoginCardType)LoginCardTransitionerIndex;
-        SwitchCard(loginType == LoginType.QRCode ? LoginCardType.ScanQrCode : LoginCardType.Logining);
-        loginCancelSource = new CancellationTokenSource();
         IsLoggingIn       = true;
+        IsEnabled         = false;
+        LoginCancelSource = new();
+        CommandManager.InvalidateRequerySuggested();
+
+        var currentCard = (LoginCardType)LoginCardTransitionerIndex;
+        SwitchCard(loginType == LoginType.QRCode ? LoginCardType.ScanQRCode : LoginCardType.Logining);
 
         Task.Run
         (() =>
             {
                 try
                 {
-                    ExecuteLoginAsync(loginType, username, password, doingAutoLogin, readWeGameInfo, action).Wait();
+                    LoginAsync(loginType, username, password, doingAutoLogin, readWeGameInfo, action).Wait();
                 }
                 catch (Exception ex)
                 {
-                    CustomMessageBox.Builder.NewFromUnexpectedException(ex, "CreateLoginHandler/Task")
+                    CustomMessageBox.Builder
+                                    .NewFromUnexpectedException(ex, "CreateLoginHandler/Task")
                                     .WithParentWindow(Window)
                                     .Show();
                 }
+                finally
+                {
+                    SwitchCard(currentCard);
 
-                SwitchCard(currentCard);
-                IsLoggingIn = false;
-                IsEnabled   = true;
+                    IsLoggingIn = false;
+                    IsEnabled   = true;
+                    CommandManager.InvalidateRequerySuggested();
 
-                ReloadHeadlines();
-                Activate();
+                    ReloadHeadlines();
+                    Activate();
+                }
             }
         );
     }
 
     public void CancelLogin()
     {
-        if (loginCancelSource != null)
+        if (LoginCancelSource != null)
         {
-            Log.Information("取消登陆");
-            loginCancelSource.Cancel();
+            Log.Information("[MainWindow] 取消登录");
+
+            if (!LoginCancelSource.IsCancellationRequested)
+                LoginCancelSource.Cancel();
+            
+            LoginCancelSource.Dispose();
+            LoginCancelSource = null;
         }
     }
-
-    public void SwitchMode() =>
-        SwitchCard(LoginCardTransitionerIndex == (int)LoginCardType.InjectMode ? LoginCardType.MainPage : LoginCardType.InjectMode);
-
-    public void RefreshFfxivProcess()
-    {
-        if (!EnsureElevatedForInjectMode())
-            return;
-
-        loginCancelSource = new CancellationTokenSource();
-        Task.Run
-        (() =>
-            {
-                while (true)
-                {
-                    if (loginCancelSource.IsCancellationRequested)
-                        return;
-                    var currentSelectedProcessId = SelectedProcess?.ProcessID;
-                    var newProcesses             = AppUtil.GetGameProcess().ToArray();
-                    Application.Current.Dispatcher.Invoke
-                    (() =>
-                        {
-                            for (var i = FFXIVProcessCollection.Count - 1; i >= 0; i--)
-                            {
-                                if (newProcesses.All(p => p.Id != FFXIVProcessCollection[i].ProcessID))
-                                {
-                                    FFXIVProcessCollection[i].Dispose();
-                                    FFXIVProcessCollection.RemoveAt(i);
-                                    Log.Verbose("Refreshing Processes...(Remove)");
-                                }
-                            }
-
-                            foreach (var newProcess in newProcesses)
-                            {
-                                if (FFXIVProcessCollection.All(p => p.ProcessID != newProcess.Id))
-                                {
-                                    FFXIVProcessCollection.Add(new FFXIVProcess(newProcess));
-                                    Log.Verbose("Refreshing Processes...(Add)");
-                                }
-                                else
-                                    newProcess.Dispose();
-                            }
-
-                            if (currentSelectedProcessId.HasValue)
-                                SelectedProcess = FFXIVProcessCollection.FirstOrDefault(p => p.ProcessID == currentSelectedProcessId.Value);
-                        }
-                    );
-
-                    Log.Verbose("Refreshing Processes...");
-                    Thread.Sleep(1000);
-                }
-
-            }
-        );
-    }
-
-    public void TryInjectGame()
-    {
-        if (isInjecting)
-            return;
-        var selectedProcess = SelectedProcess;
-        if (selectedProcess == null)
-            return;
-
-        //if (username == null) username = string.Empty;
-        if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
-        {
-            Window.Dispatcher.Invoke(TryInjectGame);
-            return;
-        }
-
-        IsLoadingDialogOpen  = true;
-        LoadingDialogMessage = "注入灵魂中...";
-        isInjecting          = true;
-        Task.Run
-        (() =>
-            {
-                try
-                {
-                    if (!EnsureElevatedForInjectMode())
-                        return;
-
-                    var gamePid = selectedProcess.ProcessID;
-
-                    if (selectedProcess.HasInjected)
-                    {
-                        CustomMessageBox.Builder
-                                        .NewFrom("当前选择的进程已经注入了")
-                                        .WithButtons(MessageBoxButton.OK)
-                                        .WithCaption("XIVLauncherCN (Soil)")
-                                        .WithParentWindow(Window)
-                                        .Show();
-                    }
-                    else
-                    {
-                        if (InjectGame(gamePid))
-                        {
-                            selectedProcess.HasInjected = true;
-                            var dialog = CustomMessageBox.Builder
-                                                         .NewFrom("注入完成,是否退出XIVLauncherCN?")
-                                                         .WithButtons(MessageBoxButton.YesNo)
-                                                         .WithCaption("XIVLauncherCN (Soil)")
-                                                         .WithParentWindow(Window)
-                                                         .Show();
-
-                            if (dialog == MessageBoxResult.Yes)
-                            {
-                                Log.CloseAndFlush();
-                                Environment.Exit(0);
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Builder.NewFromUnexpectedException(ex, "InjectGame")
-                                    .WithParentWindow(Window)
-                                    .Show();
-                }
-
-                IsLoadingDialogOpen = false;
-                isInjecting         = false;
-                Activate();
-            }
-        );
-    }
-
-    public bool InjectGame(int gamePid, bool noThird = false, bool noPlugins = false)
-    {
-        var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;
-        var gameExeFolder = Path.GetDirectoryName(gameExePath);
-        var gamePath      = new DirectoryInfo(gameExeFolder!).Parent;
-        Log.Information($"GameExePath:{gameExePath},GameExeFolder:{gameExeFolder},GamePath;{gamePath}");
-
-        if (gamePath == null)
-        {
-            CustomMessageBox.Show("无法解析游戏目录", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: Window);
-            return false;
-        }
-
-        if (!DalamudLauncher.CanRunDalamud(gamePath))
-        {
-            CustomMessageBox.Show
-            (
-                $"""
-                 {Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!")}
-                 GameExePath:{gameExePath}
-                 GameExeFolder:{gameExeFolder}
-                 GamePath:{gamePath}
-                 GameVersion:{Repository.Ffxiv.GetVer(gamePath)}
-                 """,
-                "XIVLauncherCN (Soil)"
-            );
-            return false;
-        }
-
-        var dalamudLauncher = CreateDalamudLauncher(gamePath, DalamudLoadMethod.DllInject, noPlugins, noThird);
-        EnsureDalamudCompatibility();
-        var dalamudOk = TryPrepareDalamudUpdate(dalamudLauncher, App.Settings.GamePath, true);
-
-        Troubleshooting.LogTroubleshooting();
-
-        if (!dalamudOk)
-        {
-            CustomMessageBox.Show("Dalamud尚未下载完成", "注入失败", MessageBoxButton.OK, MessageBoxImage.Error);
-            return false;
-        }
-
-        dalamudLauncher.Inject(gamePid, noPlugins);
-        return true;
-    }
-
-    public async Task<FFXIVProcess?> StartGameAndAddon(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
-    {
-        var stopwatch = new Stopwatch();
-        stopwatch.Start();
-        var dalamudLauncher = CreateDalamudLauncher
-        (
-            App.Settings.GamePath,
-            App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
-            noPlugins,
-            noThird
-        );
-
-        var dalamudOk = false;
-        EnsureDalamudCompatibility();
-
-        if (App.Settings.InGameAddonEnabled && !forceNoDalamud)
-            dalamudOk = TryPrepareDalamudUpdate(dalamudLauncher, App.Settings.GamePath, false);
-
-        var gameRunner = new WindowsGameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
-        stopwatch.Stop();
-
-        if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
-        {
-            CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: Window);
-            return null;
-        }
-
-        // We won't do any sanity checks here anymore, since that should be handled in StartLogin
-        var launched = Launcher.LaunchGame
-        (
-            gameRunner,
-            loginResult.OAuthLogin!.SessionID,
-            loginResult.OAuthLogin!.SndaID,
-            loginResult.DCTravelPort,
-            Area.AreaID,
-            Area.AreaLobby,
-            Area.AreaGM,
-            Area.AreaConfigUpload,
-            Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
-            App.Settings.AdditionalLaunchArgs,
-            App.Settings.GamePath,
-            App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
-            App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware)
-        );
-
-        Troubleshooting.LogTroubleshooting();
-
-        if (launched == null)
-        {
-            Log.Information("GameProcess was null...");
-            IsLoggingIn = false;
-            return null;
-        }
-
-        var addonMgr = new AddonManager();
-
-        try
-        {
-            App.Settings.AddonList ??= [];
-
-            var addons = App.Settings.AddonList.Where(x => x.IsEnabled).Select(x => x.Addon).Cast<IAddon>().ToList();
-
-            addonMgr.RunAddons(launched.ProcessID, addons);
-        }
-        catch (Exception ex)
-        {
-            CustomMessageBox.Builder
-                            .NewFrom(ex, "Addons")
-                            .WithAppendText("\n\n")
-                            .WithAppendText
-                            (
-                                Loc.Localize
-                                (
-                                    "AddonLoadError",
-                                    "This could be caused by your antivirus, please check its logs and add any needed exclusions."
-                                )
-                            )
-                            .WithParentWindow(Window)
-                            .Show();
-
-            IsLoggingIn = false;
-
-            addonMgr.StopAddons();
-        }
-
-        Log.Debug("等待游戏进程退出");
-
-        if (dalamudOk)
-        {
-            await Launcher.RestartMonitor
-                          .MonitorAsync
-                          (
-                              launched,
-                              () => StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins),
-                              loginCancelSource?.Token ?? CancellationToken.None
-                          )
-                          .ConfigureAwait(false);
-        }
-        else
-            await Task.Run(() => launched.UnderlyingProcess.WaitForExit()).ConfigureAwait(false);
-
-        Log.Verbose("游戏进程已退出");
-
-        if (addonMgr.IsRunning)
-            addonMgr.StopAddons();
-
-        try
-        {
-            DCTravelListener?.Stop();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "无法关闭 DCTravelListener");
-        }
-
-        return launched;
-    }
-
-    #endregion
-
-    #region Shared Helpers
-
-    private static BitmapImage? ConvertByteArrayToBitmapImage(byte[] imageData)
-    {
-        if (imageData == null || imageData.Length == 0) return null;
-
-        var bitmapImage = new BitmapImage();
-
-        using (var stream = new MemoryStream(imageData))
-        {
-            stream.Seek(0, SeekOrigin.Begin); // 确保流的位置在起始处
-            bitmapImage.BeginInit();
-            bitmapImage.CacheOption  = BitmapCacheOption.OnLoad; // 加载后立即释放流
-            bitmapImage.StreamSource = stream;
-            bitmapImage.EndInit();
-            bitmapImage.Freeze(); // 可选：跨线程使用时冻结对象
-        }
-
-        return bitmapImage;
-    }
-
-    private static bool EnsureElevatedForInjectMode()
-    {
-        if (PlatformHelpers.IsElevated())
-            return true;
-
-        var currentProcessPath = Environment.ProcessPath;
-        if (string.IsNullOrEmpty(currentProcessPath))
-            return false;
-
-        Log.Error("当前XLCN并非管理器权限");
-        Process.Start
-        (
-            new ProcessStartInfo
-            {
-                UseShellExecute  = true,
-                WorkingDirectory = Environment.CurrentDirectory,
-                FileName         = currentProcessPath,
-                Verb             = "runas",
-                Arguments        = "--inject"
-            }
-        );
-        Environment.Exit(0);
-        return false;
-    }
-
-    private static DalamudLauncher CreateDalamudLauncher(DirectoryInfo gamePath, DalamudLoadMethod loadMethod, bool noPlugins, bool noThird) =>
-        new
-        (
-            new WindowsDalamudRunner(),
-            App.DalamudUpdater,
-            loadMethod,
-            gamePath,
-            new DirectoryInfo(Paths.RoamingPath),
-            new DirectoryInfo(Paths.RoamingPath),
-            ClientLanguage.ChineseSimplified,
-            (int)App.Settings.DalamudInjectionDelayMs,
-            false,
-            noPlugins,
-            noThird,
-            Troubleshooting.GetTroubleshootingJson()
-        );
-
-    private void EnsureDalamudCompatibility()
-    {
-        var dalamudCompatCheck = new WindowsDalamudCompatibilityCheck();
-
-        try
-        {
-            dalamudCompatCheck.EnsureCompatibility();
-        }
-        catch (IDalamudCompatibilityCheck.NoRedistsException ex)
-        {
-            Log.Error(ex, "No Dalamud Redists found");
-
-            CustomMessageBox.Show
-            (
-                Loc.Localize
-                (
-                    "DalamudVc2019RedistError",
-                    "The XIVLauncher in-game addon needs the Microsoft Visual C++ 2015-2019 redistributable to be installed to continue. Please install it from the Microsoft homepage."
-                ),
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: Window
-            );
-        }
-        catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
-        {
-            Log.Error(ex, "Architecture not supported");
-
-            CustomMessageBox.Show
-            (
-                Loc.Localize
-                (
-                    "DalamudArchError",
-                    "Dalamud cannot run your computer's architecture. Please make sure that you are running a 64-bit version of Windows.\nIf you are using Windows on ARM, please make sure that x64-Emulation is enabled for XIVLauncher."
-                ),
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: Window
-            );
-        }
-    }
-
-    private bool TryPrepareDalamudUpdate(DalamudLauncher dalamudLauncher, DirectoryInfo gamePath, bool appendWafStatusCodeHint)
-    {
-        try
-        {
-            var dalamudStatus = dalamudLauncher.HoldForUpdate(gamePath);
-            return dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Couldn't DalamudLauncher::HoldForUpdate()");
-
-            var ensurementErrorMessage = Loc.Localize
-            (
-                "DalamudEnsurementError",
-                "Could not download necessary data files to use Dalamud and plugins.\nThis could be a problem with your internet connection, or might be caused by your antivirus application blocking necessary files. The game will start, but you will not be able to use plugins.\n\nPlease check our FAQ for more information."
-            );
-
-            if (appendWafStatusCodeHint
-                && ex is HttpRequestException httpRequestException
-                && httpRequestException.StatusCode.HasValue
-                && (int)httpRequestException.StatusCode is 403 or 444 or 522)
-                ensurementErrorMessage = "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}.\n你的IP可能被WAF封禁, 请前往频道进行上报." + Environment.NewLine + ensurementErrorMessage;
-            else
-                ensurementErrorMessage = "错误: " + ex.Message + Environment.NewLine + ensurementErrorMessage;
-
-            CustomMessageBox.Builder
-                            .NewFrom(ensurementErrorMessage)
-                            .WithImage(MessageBoxImage.Warning)
-                            .WithButtons(MessageBoxButton.OK)
-                            .WithShowHelpLinks()
-                            .WithParentWindow(Window)
-                            .Show();
-            return false;
-        }
-    }
-
-    #endregion
-
-    #region Login Pipeline
-
-    private Action<object> CreateLoginHandler(LoginAfterAction action)
-    {
-        return p =>
-        {
-            if (action == LoginAfterAction.CancelLogin)
-            {
-                CancelLogin();
-                return;
-            }
-
-            if (IsLoggingIn)
-                return;
-
-            if (action == LoginAfterAction.Start) LoginMessage = string.Empty;
-
-            if (IsAutoLogin && !App.Settings.HasShownAutoLaunchDisclaimer.GetValueOrDefault(false))
-            {
-                CustomMessageBox.Builder
-                                .NewFrom
-                                (
-                                    Loc.Localize
-                                    (
-                                        "AutoLoginIntro",
-                                        "You are enabling Auto-Login.\nThis means that XIVLauncher will always log you in with the current account and you will not see this window.\n\nTo change settings and accounts, you have to hold the shift button on your keyboard while clicking the XIVLauncher icon."
-                                    )
-                                )
-                                .WithParentWindow(Window)
-                                .Show();
-
-                App.Settings.HasShownAutoLaunchDisclaimer = true;
-            }
-
-            if (GameHelpers.CheckIsGameOpen() && action == LoginAfterAction.Repair)
-            {
-                CustomMessageBox.Builder
-                                .NewFrom
-                                (
-                                    Loc.Localize
-                                    (
-                                        "GameIsOpenRepairError",
-                                        "The game and/or the official launcher are open. XIVLauncher cannot repair the game if this is the case.\nPlease close them and try again."
-                                    )
-                                )
-                                .WithImage(MessageBoxImage.Exclamation)
-                                .WithParentWindow(Window)
-                                .Show();
-
-                return;
-            }
-
-            if (action == LoginAfterAction.Repair)
-            {
-                var res = CustomMessageBox.Builder
-                                          .NewFrom
-                                          (
-                                              Loc.Localize
-                                              (
-                                                  "GameRepairDisclaimer",
-                                                  "XIVLauncher will now try to find corrupted game files and repair them.\nIf you use any TexTools mods, this will replace all of them and restore the game to its initial state.\n\nDo you want to continue?"
-                                              )
-                                          )
-                                          .WithButtons(MessageBoxButton.YesNo)
-                                          .WithImage(MessageBoxImage.Question)
-                                          .WithParentWindow(Window)
-                                          .Show();
-
-                if (res == MessageBoxResult.No)
-                    return;
-            }
-
-            TryLogin(LoginTypeOption.LoginType, Username, Password, IsFastLogin, IsReadWegameInfo, action);
-        };
-    }
-
-    private async Task<LoginData?> ReadWeGameInfoAsync(string username, string targetAreaId)
-    {
-        try
-        {
-            Process.Start
-            (
-                new ProcessStartInfo
-                {
-                    FileName        = "wegame://StartFor=2000340",
-                    UseShellExecute = true
-                }
-            );
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Could not Launch WeGame");
-        }
-
-        var pidList   = AppUtil.GetGameProcessIds().ToArray();
-        var argReader = new RemoteArgReader();
-
-        try
-        {
-            await argReader.Start();
-        }
-        catch (Win32Exception ex)
-        {
-            throw new Win32Exception
-                ($"{ex.Message}\n 请尝试手动打开{Path.Combine(AppContext.BaseDirectory, "XIVLauncher.ArgReader.exe")},如系统弹窗 Microsoft Defender SmartScreen 阻止了无法识别的应用启动。请选择仍要运行后，重新使用XIVLauncherCN。");
-        }
-
-        while (true)
-        {
-            if (loginCancelSource?.IsCancellationRequested ?? false)
-            {
-                argReader.Stop(false);
-                return null;
-            }
-
-            await Task.Delay(1000);
-            var newPidList = AppUtil.GetGameProcessIds().Except(pidList).ToArray();
-            LoginMessage = "请使用WeGame启动需要读取的FFXIV";
-#if DEBUG
-            newPidList = AppUtil.GetGameProcessIds().ToArray();
-#endif
-            if (newPidList.Length == 0)
-                continue;
-            var pid = newPidList.First();
-            await argReader.OpenProcess(pid);
-            var data = await argReader.ReadArgs();
-#if DEBUG
-            LoginMessage = "读取成功";
-#endif
-            argReader.Stop(true);
-            return data;
-        }
-    }
-
-    private async Task ExecuteLoginAsync(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, LoginAfterAction action)
+    
+    private async Task LoginAsync
+    (
+        LoginType        loginType,
+        string           username,
+        string?          inputPassword,
+        bool             doingAutoLogin,
+        bool             readWeGameInfo,
+        LoginAfterAction action
+    )
     {
         ProblemCheck.RunCheck(Window);
-
-        var bootRes = TryResolvePatchPath();
-
-        if (!bootRes)
+        
+        if (!TryResolvePatchPath())
             return;
-
-        var cutoffText = Loc.Localize
-        (
-            "KillswitchText",
-            "XIVLauncher cannot start the game at this time, as there were changes to the login process during a recent patch."
-            + "\nWe need to adjust to these changes and verify that our adjustments are safe before we can re-enable the launcher. Please try again later."
-            + "\n\nWe apologize for these circumstances.\n\nYou can use the \"Official Launcher\" button below to start the official launcher."
-            + "\n"
-        );
-
-        if (!string.IsNullOrEmpty(Updates.UpdateLease?.CutOffBootver) && !EnvironmentSettings.IsNoKillswitch)
-        {
-            var bootver = SeVersion.Parse(Repository.Boot.GetVer(App.Settings.GamePath));
-            var cutoff  = SeVersion.Parse(Updates.UpdateLease.CutOffBootver);
-
-            if (bootver > cutoff)
-            {
-                CustomMessageBox.Show(cutoffText, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.None, false, showOfficialLauncher: true);
-
-                Environment.Exit(0);
-                return;
-            }
-        }
 
         if (Area == null || Area.AreaID == "-1")
         {
             CustomMessageBox.Show
             (
-                "未能获取到服务器列表,无法登陆",
+                "获取服务器信息失败, 无法登录",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
                 parentWindow: Window
             );
+            
             return;
         }
 
-        if (!doingAutoLogin) App.Settings.AutologinEnabled = IsAutoLogin;
+        if (!doingAutoLogin) 
+            App.Settings.AutologinEnabled = IsAutoLogin;
         App.Settings.FastLogin = IsFastLogin;
-        // TODO: 太jb乱了，得重构
+        
         var finalLoginType = loginType;
         var secret         = string.Empty;
-        //var nSessionId = string.Empty;
-        inputPassword = inputPassword == PRESUDO_PASSWORD ? string.Empty : inputPassword?.Trim() ?? string.Empty;
-
-        var accountType = loginType.ToAccountType();
-
+        var accountType  = loginType.ToAccountType();
+        
         try
         {
+            inputPassword = inputPassword == PRESUDO_PASSWORD ? string.Empty : inputPassword?.Trim() ?? string.Empty;
+            
             var savedAccount = AccountManager.Accounts.FirstOrDefault(x => x.UserName == username && x.AccountType == accountType);
-
             switch (loginType)
             {
                 case LoginType.Static:
                     if (!inputPassword.IsNullOrEmpty())
                         secret = inputPassword;
                     else if (savedAccount?.Password is { Length: > 0 } savedPassword)
-                    {
                         secret = await AccountManager.Decrypt(savedPassword);
-                        //nSessionId = await AccountManager.CredProvider.Decrypt(savedAccount.NSessionId);
-                    }
 
                     ArgumentException.ThrowIfNullOrEmpty(username, "静态登录用户名");
                     ArgumentException.ThrowIfNullOrEmpty(secret,   "静态登录密码");
@@ -804,51 +246,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     break;
 
                 case LoginType.WeGameSID:
-                    if (!App.Settings.HasAgreeWeGameUsage.GetValueOrDefault(false))
-                    {
-                        var readWeGameUsageAsk = CustomMessageBox.Builder
-                                                                 .NewFrom
-                                                                 (
-                                                                     """
-                                                                     为保障您的账号安全，请在使用本功能前仔细阅读以下内容：
-                                                                     🔐 功能原理说明
-                                                                     本工具通过读取最终幻想14游戏中WeGame平台生成的会话密钥实现快速启动功能，不会对WeGame客户端进行任何修改，也不会获取您的WeGame账号密码等敏感信息。
-                                                                     ⚠️ 注意事项
-                                                                     会话密钥具有较长有效期，建议您：
-                                                                     定期通过WeGame官方客户端登录以刷新密钥
-                                                                     避免在公共/共享设备使用本功能
-                                                                     发现异常登录时立即通过WeGame重置密钥
-                                                                     本工具不会且无法主动更新会话密钥，密钥有效性完全依赖WeGame平台的生成机制
-
-                                                                     点击【确认使用】即表示您已理解：妥善保管设备安全是密钥有效性的最终保障，建议每30天通过官方客户端完整登录一次以保持最佳安全性
-                                                                     """
-                                                                 )
-                                                                 .WithImage(MessageBoxImage.Warning)
-                                                                 .WithButtons(MessageBoxButton.YesNo)
-                                                                 .WithYesButtonText("确认使用")
-                                                                 .WithCaption("WeGame SID登录功能说明")
-                                                                 .WithYesCountdown(15)
-                                                                 .WithParentWindow(Window)
-                                                                 .Show();
-
-                        if (readWeGameUsageAsk == MessageBoxResult.No)
-                        {
-                            App.Settings.HasAgreeWeGameUsage = false;
-                            return;
-                        }
-
-                        App.Settings.HasAgreeWeGameUsage = true;
-                    }
-
                     doingAutoLogin = true;
                     if (!readWeGameInfo && savedAccount?.TestSID is { Length: > 0 } testSid)
                         secret = await AccountManager.Decrypt(testSid);
 
                     readWeGameInfo = username.IsNullOrEmpty() || secret.IsNullOrEmpty();
-
                     if (readWeGameInfo)
                     {
-                        var loginData = await ReadWeGameInfoAsync(username, Area.AreaID);
+                        var loginData = await ReadWeGameAccountInfoAsync();
                         if (loginData == null)
                             return;
 
@@ -867,7 +272,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     if (inputPassword.IsNullOrEmpty() && savedAccount?.AutoLoginSessionKey is { Length: > 0 } autoLoginSessionKey)
                     {
                         secret = await AccountManager.CredProvider.Decrypt(autoLoginSessionKey);
-                        //nSessionId = await AccountManager.CredProvider.Decrypt(savedAccount.NSessionId);
                         finalLoginType = LoginType.AutoLoginSession;
                     }
 
@@ -877,20 +281,19 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         finalLoginType = LoginType.WeGameToken;
                     }
 
-                    ArgumentException.ThrowIfNullOrEmpty(secret, "自动登录密钥或者Token");
+                    ArgumentException.ThrowIfNullOrEmpty(secret, "WeGame 自动登录密钥");
                     break;
 
                 case LoginType.Slide:
                     if (doingAutoLogin && savedAccount?.AutoLoginSessionKey is { Length: > 0 } slideAutoLoginSessionKey)
                     {
                         secret = await AccountManager.Decrypt(slideAutoLoginSessionKey);
-                        //nSessionId = await AccountManager.CredProvider.Decrypt(savedAccount.NSessionId);
                         finalLoginType = LoginType.AutoLoginSession;
                     }
 
                     if (secret.IsNullOrEmpty())
                         finalLoginType = LoginType.Slide;
-                    ArgumentException.ThrowIfNullOrEmpty(username, "一键滑动登录用户名");
+                    ArgumentException.ThrowIfNullOrEmpty(username, "一键登录用户名");
                     break;
 
                 case LoginType.QRCode:
@@ -901,11 +304,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             if (ex is ArgumentException argEx)
             {
-                Log.Error(ex, "Failed to encrypt text");
+                Log.Error(ex, "[MainWindow] 加密文本失败");
                 CustomMessageBox.Show
                 (
-                    $"{argEx.ParamName}不能为空",
-                    "XIVLauncher Error",
+                    $"错误: {argEx.ParamName} 不能为空",
+                    "XIVLauncherCN (Soil)",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error
                 );
@@ -925,7 +328,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         };
 
         var loginResult = await TryLoginToGameAsync(finalLoginType, loginType, username, secret, doingAutoLogin, dcTraveler, action).ConfigureAwait(false);
-
         if (loginResult == null)
             return;
 
@@ -935,15 +337,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         loginResult.Areas = LoginAreas;
 
         if (loginResult.State == LoginState.NeedsPatchGame && action != LoginAfterAction.Repair)
-        {
-            // 如果需要打补丁且登陆异常，登陆异常状态会覆盖掉NeedsPatchGame，除非和国际服一样，登陆成功才能获取到补丁信息
-            // 所以直接改成打完补丁再登陆一遍算了
-            // 其实把补丁写到PendingPatches里面也行，通过PendingPatches是否为空来判定是否打补丁
-            // 但是考虑到tgt的有效期也就十分钟(大概)
-            // 网烂硬盘卡的人打完补丁，tgt也失效了，还得重新登陆
-            // 所以还是打好补丁再登陆吧
             action = LoginAfterAction.UpdateOnly;
-        }
 
         if (action != LoginAfterAction.UpdateOnly)
         {
@@ -957,7 +351,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     loginResult.DCTravelPort = APIHelper.GetAvailablePort();
                     DCTravelListener         = new(dcTraveler, loginResult.DCTravelPort, false);
-                    Log.Information("[DCTravelListener] 打开端口:{LoginResultDCTravelPort}", loginResult.DCTravelPort);
+                    Log.Information("[DCTravelListener] 打开监听端口: {LoginResultDCTravelPort}", loginResult.DCTravelPort);
                     _ = DCTravelListener.StartAsync();
                 }
 
@@ -1001,7 +395,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         Log.Information
         (
-            "[LR] {State} {NumPatches} {Playable}",
+            "[MainWindow] 登录结果: {State} {NumPatches} {Playable}",
             loginResult.State,
             loginResult.PendingPatches?.Length,
             oAuthLogin?.Playable
@@ -1016,7 +410,64 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 Environment.Exit(0);
         }
     }
+    
+    private async Task<LoginData?> ReadWeGameAccountInfoAsync()
+    {
+        try
+        {
+            Process.Start
+            (
+                new ProcessStartInfo
+                {
+                    FileName        = "wegame://StartFor=2000340",
+                    UseShellExecute = true
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MainWindow] 无法启动 WeGame");
+        }
 
+        var pidList   = FFXIVProcess.GetGameProcessIDs().ToArray();
+        var argReader = new RemoteArgReader();
+
+        try
+        {
+            await argReader.Start();
+        }
+        catch (Win32Exception ex)
+        {
+            throw new Win32Exception($"错误: {ex.Message}\n请尝试手动运行 {Path.Combine(AppContext.BaseDirectory, "XIVLauncher.ArgReader.exe")} 后重启 XIVLauncherCN");
+        }
+
+        while (true)
+        {
+            if (LoginCancelSource?.IsCancellationRequested ?? false)
+            {
+                argReader.Stop(false);
+                return null;
+            }
+
+            await Task.Delay(1000);
+            var newPidList = FFXIVProcess.GetGameProcessIDs().Except(pidList).ToArray();
+            LoginMessage = "请使用 WeGame 登录需要读取的 FFXIV 账号信息并启动游戏";
+#if DEBUG
+            newPidList = FFXIVProcess.GetGameProcessIDs().ToArray();
+#endif
+            if (newPidList.Length == 0)
+                continue;
+            var pid = newPidList.First();
+            await argReader.OpenProcess(pid);
+            var data = await argReader.ReadArgs();
+#if DEBUG
+            LoginMessage = "读取成功";
+#endif
+            argReader.Stop(true);
+            return data;
+        }
+    }
+    
     private async Task<LoginResult?> TryLoginToGameAsync
     (
         LoginType        type,
@@ -1028,10 +479,24 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoginAfterAction action
     )
     {
+        if (Area == null || Area.AreaID == "-1")
+        {
+            CustomMessageBox.Show
+            (
+                "获取服务器信息失败, 无法登录",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error,
+                parentWindow: Window
+            );
+            
+            return null;
+        }
+        
         try
         {
-            loginCancelSource ??= new CancellationTokenSource();
-            var loginCts = loginCancelSource;
+            LoginCancelSource ??= new CancellationTokenSource();
+            var loginCts = LoginCancelSource;
             var gamePath = App.Settings.GamePath;
             return await Launcher.LoginClient.LoginWithPatchCheck
                    (
@@ -1051,7 +516,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                if (requestLoginType != LoginType.QRCode)
                                    return;
 
-                               QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes);
+                               QRCodeBitmapImage = qrBytes.ToBitmapImage();
                            },
                            code =>
                            {
@@ -1070,7 +535,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             Log.Error(ex, "StartGame failed");
 
             var msgbox = new CustomMessageBox.Builder()
-                         .WithCaption(Loc.Localize("LoginNoOauthTitle", "Login issue"))
+                         .WithCaption("登录问题")
                          .WithImage(MessageBoxImage.Error)
                          .WithShowHelpLinks()
                          .WithShowDiscordLink()
@@ -1078,7 +543,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             if (ex is LoginException sdoLoginEx)
             {
-                if (loginCancelSource?.IsCancellationRequested ?? false)
+                if (LoginCancelSource?.IsCancellationRequested ?? false)
                 {
                     Log.Information("手动取消登录");
                     return null;
@@ -1110,33 +575,15 @@ public class MainWindowViewModel : INotifyPropertyChanged
             if (ex is IOException)
             {
                 msgbox
-                    .WithText
-                    (
-                        Loc.Localize
-                        (
-                            "LoginIoErrorSummary",
-                            "Could not locate game data files."
-                        )
-                    )
+                    .WithText("无法找到游戏数据文件")
                     .WithAppendText("\n\n")
-                    .WithAppendText
-                    (
-                        Loc.Localize
-                        (
-                            "LoginIoErrorActionable",
-                            "This may mean that the game path set in XIVLauncher isn't preset, e.g. on a disconnected drive or network storage. Please check the game path in the XIVLauncher settings."
-                        )
-                    );
+                    .WithAppendText("游戏路径可能设置无效, 例如位于断开连接的硬盘或网络存储上, 请在设置中检查游戏路径");
             }
             else if (ex is InvalidVersionFilesException)
             {
                 msgbox.WithTextFormatted
                 (
-                    Loc.Localize
-                    (
-                        "LoginInvalidVersionFiles",
-                        "Version information could not be read from your game files.\n\nYou need to reinstall or repair the game files. Right click the login button in XIVLauncher, and choose \"Repair Game\"."
-                    ),
+                    "无法从游戏文件中读取版本信息\n\n需要重新安装或修复游戏文件, 右键点击 XIVLauncher 中的登录按钮并选择\"修复游戏\"",
                     ex.Message
                 );
             }
@@ -1148,14 +595,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 if (string.IsNullOrWhiteSpace(oauthLoginException.OauthErrorMessage))
                 {
-                    msgbox.WithText
-                    (
-                        Loc.Localize
-                        (
-                            "LoginGenericError",
-                            "Could not log into your SE account.\nPlease check your username and password."
-                        )
-                    );
+                    msgbox.WithText("无法登录到 SE 账户\n请检查用户名和密码");
                 }
                 else
                 {
@@ -1166,39 +606,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                            .Replace("\r\n",   "\n")
                     );
                 }
-
-                //msgbox.WithAppendText("\n\n");
-                //if (otp == string.Empty)
-                //    msgbox.WithAppendTextFormatted(Loc.Localize("LoginGenericErrorCheckOtpUse",
-                //        "If you're using OTP, then tick on \"{0}\" checkbox and try again."), OtpLoc);
-                //else
-                //    msgbox.WithAppendText(Loc.Localize("LoginGenericErrorCheckOtp",
-                //        "Double check whether your OTP device's clock is correct.\nIf you have recently logged in, then try logging in again in 30 seconds."));
             }
-            // If GateStatus is not set (even gate server could not be contacted) or GateStatus is true (gate server says everything's fine but could not contact login servers)
-            else if (ex is HttpRequestException || ex is TaskCanceledException || ex is WebException)
+
+            else if (ex is HttpRequestException or TaskCanceledException or WebException)
             {
-                msgbox.WithText
-                (
-                    Loc.Localize
-                    (
-                        "LoginWebExceptionContent",
-                        "XIVLauncher could not establish a connection to the game servers.\n\nThis may be a temporary issue, or a problem with your internet connection. Please try again later."
-                    )
-                );
+                msgbox.WithText("XIVLauncher 无法连接到游戏服务器\n\n这可能是暂时性问题或网络连接问题, 请稍后重试");
             }
             else if (ex is InvalidResponseException iex)
             {
                 Log.Error("Invalid response from server! Context: {Message}\n{Document}", ex.Message, iex.Document);
 
-                msgbox.WithText
-                (
-                    Loc.Localize
-                    (
-                        "LoginGenericServerIssue",
-                        "The server has sent an invalid response. This is known to occur during outages or when servers are under heavy load.\nPlease wait a minute and try again, or try using the official launcher.\n\nYou can learn more about outages on the Lodestone."
-                    )
-                );
+                msgbox.WithText("服务器返回无效响应, 这通常发生在服务器中断或负载过高时\n请等待一分钟后重试, 或使用官方启动器\n\n可以在 Lodestone 上了解更多中断信息");
             }
             // Actual unexpected error; show error details
             else
@@ -1208,19 +626,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
                       .WithAppendDescription(ex.ToString())
                       .WithAppendSettingsDescription("Login")
                       .WithAppendText("\n\n")
-                      .WithAppendText
-                      (
-                          Loc.Localize
-                          (
-                              "CheckLoginInfoNotAdditionally",
-                              "Please check your login information or try again."
-                          )
-                      );
+                      .WithAppendText("请检查登录信息或稍后重试");
             }
 
             if (disableAutoLogin && App.Settings.AutologinEnabled)
             {
-                msgbox.WithAppendText(Loc.Localize("LoginNoOauthAutologinHint", "\n\nAuto-Login has been disabled."));
+                msgbox.WithAppendText("\n\n自动登录已被禁用");
                 App.Settings.AutologinEnabled = false;
             }
 
@@ -1229,49 +640,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private void FakeStartGame()
-    {
-        if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
-        {
-            Window.Dispatcher.Invoke(FakeStartGame);
-            return;
-        }
-
-        Task.Run
-        (() => StartGameAndAddon
-         (
-             new LoginResult
-             {
-                 OAuthLogin = new OAuthLoginResult
-                 {
-                     MaxExpansion  = 5,
-                     Playable      = true,
-                     Region        = 0,
-                     SessionID     = "0",
-                     TermsAccepted = true,
-                     SndaID        = "114514"
-                 },
-                 State    = LoginState.Ok,
-                 UniqueID = "0"
-             },
-             false,
-             false,
-             false
-         )
-        ).ConfigureAwait(false);
-    }
-
     private async Task<bool> ProcessLoginResultAsync(LoginResult loginResult, LoginAfterAction action)
     {
         if (loginResult.State == LoginState.NoService)
         {
             CustomMessageBox.Show
             (
-                Loc.Localize
-                (
-                    "LoginNoServiceMessage",
-                    "This account isn't eligible to play the game. Please make sure that you have an active subscription and that it is paid up.\n\nIf Auto-Login is enabled, hold shift while starting to access settings."
-                ),
+                "此账户没有游戏权限, 请确保账户已激活且订阅未过期\n\n如果启用了自动登录, 请在启动时按住 Shift 键以访问设置",
                 "Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -1287,11 +662,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             CustomMessageBox.Show
             (
-                Loc.Localize
-                (
-                    "LoginAcceptTermsMessage",
-                    "Please accept the Terms of Use in the official launcher."
-                ),
+                "请在官方启动器中接受使用条款",
                 "Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -1306,11 +677,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             CustomMessageBox.Show
             (
-                Loc.Localize
-                (
-                    "EverythingIsFuckedMessage",
-                    "Certain essential game files were modified/broken by a third party and the game can neither update nor start.\nYou have to reinstall the game to continue.\n\nIf this keeps happening, please contact us via Discord."
-                ),
+                "部分游戏文件已损坏或被第三方篡改, 无法进行更新和启动\n请重新安装游戏以修复此问题",
                 "Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -1335,11 +702,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 {
                     CustomMessageBox.Show
                     (
-                        Loc.Localize
-                        (
-                            "LoginRepairResponseIsNotNeedsPatchGame",
-                            "The server sent an incorrect response - the repair cannot proceed."
-                        ),
+                        "服务器返回错误响应, 无法进行修复",
                         "Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
@@ -1368,11 +731,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 var selfPatchAsk = CustomMessageBox.Show
                 (
-                    Loc.Localize
-                    (
-                        "PatchInstallDisclaimer",
-                        "A new patch has been found that needs to be installed before you can play.\nDo you wish for XIVLauncher to install it?"
-                    ),
+                    "发现新的补丁需要安装才能游玩\n是否让 XIVLauncher 安装?",
                     "Out of date",
                     MessageBoxButton.YesNo,
                     parentWindow: Window
@@ -1395,11 +754,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             CustomMessageBox.Show
             (
-                Loc.Localize
-                (
-                    "LoginNoStartOk",
-                    "An update check was executed and any pending updates were installed."
-                ),
+                "更新检查已完成, 所有待安装的更新均已安装",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information,
@@ -1416,11 +771,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             Log.Error("loginResult.State == NeedRetry");
             CustomMessageBox.Show
             (
-                Loc.Localize
-                (
-                    "LoginNeedRetry",
-                    "登录失败,建议尝试重新扫码登录."
-                ),
+                "登录失败, 建议尝试重新扫码登录",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information,
@@ -1433,11 +784,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (CustomMessageBox.AssertOrShowError(loginResult.State == LoginState.Ok, "ProcessLoginResultAsync: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: Window))
             return false;
-
-#if !DEBUG
-        //if (!await CheckGateStatus().ConfigureAwait(false))
-        //    return false;
-#endif
 
         Hide();
 
@@ -1459,7 +805,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 using var process = await StartGameAndAddon
                                     (
                                         loginResult,
-                                        action == LoginAfterAction.StartWithoutDalamud || Updates.HaveFeatureFlag(Updates.LeaseFeatureFlags.GlobalDisableDalamud),
+                                        action == LoginAfterAction.StartWithoutDalamud,
                                         action == LoginAfterAction.StartWithoutThird,
                                         action == LoginAfterAction.StartWithoutPlugins
                                     ).ConfigureAwait(false);
@@ -1473,11 +819,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     switch (new CustomMessageBox.Builder()
                             .WithTextFormatted
                             (
-                                Loc.Localize
-                                (
-                                    "LaunchGameNonZeroExitCode",
-                                    "It looks like the game has exited with a fatal error. Do you want to relaunch the game?\n\nExit code: 0x{0:X8}"
-                                ),
+                                "游戏似乎因致命错误而退出, 是否重新启动?\n\n退出代码: 0x{0:X8}",
                                 (uint)process.ExitCode
                             )
                             .WithImage(MessageBoxImage.Exclamation)
@@ -1487,9 +829,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             .WithButtons(MessageBoxButton.YesNoCancel)
                             .WithDefaultResult(MessageBoxResult.Yes)
                             .WithCancelResult(MessageBoxResult.No)
-                            .WithYesButtonText(Loc.Localize("LaunchGameRelaunch",         "_Relaunch"))
-                            .WithNoButtonText(Loc.Localize("LaunchGameClose",             "_Close"))
-                            .WithCancelButtonText(Loc.Localize("LaunchGameDoNotAskAgain", "_Don't ask again"))
+                            .WithYesButtonText("重启 (_R)")
+                            .WithNoButtonText("关闭 (_C)")
+                            .WithCancelButtonText("不再询问 (_D)")
                             .WithParentWindow(Window)
                             .Show())
                     {
@@ -1530,8 +872,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                           .WithButtons(MessageBoxButton.YesNo)
                           .WithDefaultResult(MessageBoxResult.No)
                           .WithCancelResult(MessageBoxResult.No)
-                          .WithYesButtonText(Loc.Localize("LaunchGameRetry", "_Try again"))
-                          .WithNoButtonText(Loc.Localize("LaunchGameClose",  "_Close"))
+                          .WithYesButtonText("重试 (_T)")
+                          .WithNoButtonText("关闭 (_C)")
                           .WithParentWindow(Window);
 
             //NOTE(goat): This HAS to handle all possible exceptions from StartGameAndAddon!!!!!
@@ -1558,54 +900,21 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                         if (count >= 2)
                         {
-                            summaries.Add
-                            (
-                                Loc.Localize
-                                (
-                                    "MultiboxDeniedWarningSummary",
-                                    "You can't launch more than two instances of the game by default."
-                                )
-                            );
-                            actionables.Add
-                            (
-                                string.Format
-                                (
-                                    Loc.Localize
-                                    (
-                                        "MultiboxDeniedWarningActionable",
-                                        "Please check if there is an instance of the game that did not close correctly. (Detected: {0})"
-                                    ),
-                                    count
-                                )
-                            );
+                            summaries.Add("默认情况下无法启动两个以上的游戏实例");
+                            actionables.Add($"请检查是否存在未正确关闭的游戏实例 (检测到: {count})");
                             descriptions.Add(null);
 
                             builder.WithButtons(MessageBoxButton.YesNoCancel)
                                    .WithDefaultResult(MessageBoxResult.Yes)
-                                   .WithCancelButtonText(Loc.Localize("LaunchGameKillThenRetry", "_Kill then try again"));
+                                   .WithCancelButtonText("终止后再试 (_K)");
                         }
                         else
                         {
-                            summaries.Add
-                            (
-                                Loc.Localize
-                                (
-                                    "GameExitedPrematurelyErrorSummary",
-                                    "XIVLauncher could not start the game correctly."
-                                )
-                            );
+                            summaries.Add("XIVLauncher 无法正确启动游戏");
                             descriptions.Add(null);
 
-                            var actionableText = Loc.Localize
-                            (
-                                "GameExitedPrematurelyErrorActionable",
-                                "This may be a temporary issue. Please try restarting your PC.\nIt is possible that your game installation is not valid - you can repair your game installation by right clicking the Login button and choosing \"Repair game\"."
-                            );
-                            actionableText += Loc.Localize
-                            (
-                                "GameExitedPrematurelyErrorAV",
-                                "\nThis issue could also be caused by your Antivirus program mistakenly marking XIVLauncher as malicious. You may have to add exclusions to its settings - please check our FAQ for more information."
-                            );
+                            var actionableText = "这可能是暂时性问题, 请尝试重启电脑\n游戏安装可能无效 - 可以右键点击登录按钮并选择\"修复游戏\"来修复安装";
+                            actionableText += "\n此问题也可能由杀毒软件误将 XIVLauncher 标记为恶意软件引起, 可能需要在设置中添加排除项 - 请查看常见问题获取更多信息";
 
                             actionables.Add(actionableText);
                         }
@@ -1615,90 +924,26 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         break;
 
                     case BinaryNotPresentException:
-                        summaries.Add
-                        (
-                            Loc.Localize
-                            (
-                                "BinaryNotPresentErrorSummary",
-                                "Could not find the game executable."
-                            )
-                        );
-                        actionables.Add
-                        (
-                            Loc.Localize
-                            (
-                                "BinaryNotPresentErrorActionable",
-                                "This might be caused by your antivirus. You may have to reinstall the game."
-                            )
-                        );
+                        summaries.Add("找不到游戏可执行文件");
+                        actionables.Add("这可能由杀毒软件引起, 可能需要重新安装游戏");
                         descriptions.Add(null);
                         break;
 
                     case IOException:
-                        summaries.Add
-                        (
-                            Loc.Localize
-                            (
-                                "LoginIoErrorSummary",
-                                "Could not locate game data files."
-                            )
-                        );
-                        summaries.Add
-                        (
-                            Loc.Localize
-                            (
-                                "LoginIoErrorActionable",
-                                "This may mean that the game path set in XIVLauncher isn't preset, e.g. on a disconnected drive or network storage. Please check the game path in the XIVLauncher settings."
-                            )
-                        );
+                        summaries.Add("无法找到游戏数据文件");
+                        summaries.Add("游戏路径可能设置无效, 例如位于断开连接的硬盘或网络存储上, 请在设置中检查游戏路径");
                         descriptions.Add(exception.ToString());
                         break;
 
                     case Win32Exception win32Exception:
-                        summaries.Add
-                        (
-                            string.Format
-                            (
-                                Loc.Localize
-                                (
-                                    "UnexpectedErrorSummary",
-                                    "Unexpected error has occurred. ({0})"
-                                ),
-                                $"0x{(uint)win32Exception.HResult:X8}: {win32Exception.Message}"
-                            )
-                        );
-                        actionables.Add
-                        (
-                            Loc.Localize
-                            (
-                                "UnexpectedErrorActionable",
-                                "Please report this error."
-                            )
-                        );
+                        summaries.Add($"发生未知错误 (0x{(uint)win32Exception.HResult:X8}: {win32Exception.Message})");
+                        actionables.Add("请反馈此错误");
                         descriptions.Add(exception.ToString());
                         break;
 
                     default:
-                        summaries.Add
-                        (
-                            string.Format
-                            (
-                                Loc.Localize
-                                (
-                                    "UnexpectedErrorSummary",
-                                    "Unexpected error has occurred. ({0})"
-                                ),
-                                exception.Message
-                            )
-                        );
-                        actionables.Add
-                        (
-                            Loc.Localize
-                            (
-                                "UnexpectedErrorActionable",
-                                "Please report this error."
-                            )
-                        );
+                        summaries.Add($"发生未知错误 ({exception.Message})");
+                        actionables.Add("请反馈此错误");
                         descriptions.Add(exception.ToString());
                         break;
                 }
@@ -1711,7 +956,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
             else
             {
-                builder.WithText(Loc.Localize("MultipleErrors", "Multiple errors have occurred."));
+                builder.WithText("发生了多个错误");
 
                 for (var i = 0; i < summaries.Count; i++)
                 {
@@ -1769,6 +1014,470 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    #endregion
+
+    #region 注入
+
+    public void StartInject()
+    {
+        if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
+        {
+            Window.Dispatcher.Invoke(StartInject);
+            return;
+        }
+
+        if (IsInjecting || SelectedProcess == null)
+            return;
+
+        IsLoadingDialogOpen  = true;
+        LoadingDialogMessage = "注入中...";
+        IsInjecting          = true;
+        CommandManager.InvalidateRequerySuggested();
+        
+        Task.Run
+        (() =>
+            {
+                try
+                {
+                    if (!PlatformHelpers.EnsureElevated())
+                        return;
+
+                    var gamePid = SelectedProcess.ProcessID;
+
+                    if (SelectedProcess.HasInjected)
+                    {
+                        CustomMessageBox.Builder
+                                        .NewFrom("选定进程已被注入")
+                                        .WithButtons(MessageBoxButton.OK)
+                                        .WithCaption("XIVLauncherCN (Soil)")
+                                        .WithParentWindow(Window)
+                                        .Show();
+                    }
+                    else
+                    {
+                        if (!InjectGameAndAddon(gamePid)) return;
+                        
+                        SelectedProcess.HasInjected = true;
+                        
+                        var dialog = CustomMessageBox.Builder
+                                                     .NewFrom("注入完成, 是否要退出 XIVLauncherCN")
+                                                     .WithButtons(MessageBoxButton.YesNo)
+                                                     .WithCaption("XIVLauncherCN (Soil)")
+                                                     .WithParentWindow(Window)
+                                                     .Show();
+
+                        if (dialog == MessageBoxResult.Yes)
+                        {
+                            Log.CloseAndFlush();
+                            Environment.Exit(0);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    CustomMessageBox.Builder
+                                    .NewFromUnexpectedException(ex, "InjectGame")
+                                    .WithParentWindow(Window)
+                                    .Show();
+                }
+                finally
+                {
+                    IsLoadingDialogOpen = false;
+                    IsInjecting         = false;
+                    CommandManager.InvalidateRequerySuggested();
+                    
+                    Activate();
+                }
+            }
+        );
+    }
+    
+    public bool InjectGameAndAddon(int gamePid, bool noThird = false, bool noPlugins = false)
+    {
+        var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;
+        var gameExeFolder = Path.GetDirectoryName(gameExePath);
+        var gamePath      = new DirectoryInfo(gameExeFolder!).Parent;
+        if (gamePath == null)
+        {
+            CustomMessageBox.Show
+            (
+                "无法解析游戏目录, 注入失败",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error,
+                parentWindow: Window
+            );
+            return false;
+        }
+
+        EnsureDalamudCompatibility();
+        
+        var dalamudLauncher = CreateDalamudLauncher(gamePath, DalamudLoadMethod.DllInject, noPlugins, noThird);
+        var dalamudOk       = EnsureDalamudUpdate(dalamudLauncher, App.Settings.GamePath, true);
+
+        Troubleshooting.LogTroubleshooting();
+
+        if (!dalamudOk)
+        {
+            CustomMessageBox.Show
+            (
+                "Dalamud 尚未准备完成, 注入失败",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
+            return false;
+        }
+
+        dalamudLauncher.Inject(gamePid, noPlugins);
+        return true;
+    }
+
+    #endregion
+
+    #region 进程
+
+    public void StartRefreshFFXIVProcess()
+    {
+        if (!PlatformHelpers.EnsureElevated())
+            return;
+
+        if (ProcessRefreshTask is { IsCompleted: false })
+            return;
+
+        ProcessRefreshCancelSource?.Dispose();
+        ProcessRefreshCancelSource = new();
+        
+        var processRefreshToken = ProcessRefreshCancelSource.Token;
+        ProcessRefreshTask = Task.Run
+        (
+            async () =>
+            {
+                try
+                {
+                    while (!processRefreshToken.IsCancellationRequested)
+                    {
+                        var newProcesses = FFXIVProcess.GetGameProcess();
+                        Application.Current.Dispatcher.Invoke
+                        (() =>
+                            {
+                                var selectedProcessId  = SelectedProcess?.ProcessID;
+                                var incomingProcessMap = newProcesses.ToDictionary(p => p.ProcessID);
+
+                                for (var i = FFXIVProcesses.Count - 1; i >= 0; i--)
+                                {
+                                    var existingProcess = FFXIVProcesses[i];
+
+                                    if (incomingProcessMap.TryGetValue(existingProcess.ProcessID, out var duplicateProcess))
+                                    {
+                                        duplicateProcess.Dispose();
+                                        incomingProcessMap.Remove(existingProcess.ProcessID);
+                                        continue;
+                                    }
+
+                                    existingProcess.Dispose();
+                                    FFXIVProcesses.RemoveAt(i);
+                                }
+
+                                foreach (var process in incomingProcessMap.Values)
+                                    FFXIVProcesses.Add(process);
+
+                                var nextSelectedProcess = selectedProcessId.HasValue
+                                                              ? FFXIVProcesses.FirstOrDefault(p => p.ProcessID == selectedProcessId.Value)
+                                                              : SelectedProcess;
+
+                                SelectedProcess = nextSelectedProcess ?? FFXIVProcesses.FirstOrDefault();
+                            }
+                        );
+
+                        Log.Verbose("Refreshing Processes...");
+                        await Task.Delay(1000, processRefreshToken);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // ignored
+                }
+            },
+            processRefreshToken
+        );
+    }
+    
+    private void StopRefreshFFXIVProcess(bool clearCollection)
+    {
+        if (ProcessRefreshCancelSource != null)
+        {
+            ProcessRefreshCancelSource.Cancel();
+            ProcessRefreshCancelSource.Dispose();
+            ProcessRefreshCancelSource = null;
+        }
+
+        ProcessRefreshTask = null;
+
+        if (!clearCollection)
+            return;
+
+        foreach (var process in FFXIVProcesses)
+            process.Dispose();
+
+        FFXIVProcesses.Clear();
+        SelectedProcess = null;
+    }
+    
+    #endregion
+    
+    #region 启动游戏
+    
+    public async Task<FFXIVProcess?> StartGameAndAddon(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
+    {
+        if (Area == null || Area.AreaID == "-1")
+        {
+            CustomMessageBox.Show
+            (
+                "获取服务器信息失败, 无法登录",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error,
+                parentWindow: Window
+            );
+            
+            return null;
+        }
+        
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+        var dalamudLauncher = CreateDalamudLauncher
+        (
+            App.Settings.GamePath,
+            App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
+            noPlugins,
+            noThird
+        );
+
+        var dalamudOk = false;
+        EnsureDalamudCompatibility();
+
+        if (App.Settings.InGameAddonEnabled && !forceNoDalamud)
+            dalamudOk = EnsureDalamudUpdate(dalamudLauncher, App.Settings.GamePath, false);
+
+        var gameRunner = new WindowsGameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
+        stopwatch.Stop();
+
+        if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
+        {
+            CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: Window);
+            return null;
+        }
+
+        // We won't do any sanity checks here anymore, since that should be handled in StartLogin
+        var launched = Launcher.LaunchGame
+        (
+            gameRunner,
+            loginResult.OAuthLogin!.SessionID,
+            loginResult.OAuthLogin!.SndaID,
+            loginResult.DCTravelPort,
+            Area.AreaID,
+            Area.AreaLobby,
+            Area.AreaGM,
+            Area.AreaConfigUpload,
+            Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
+            App.Settings.AdditionalLaunchArgs,
+            App.Settings.GamePath,
+            App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
+            App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware)
+        );
+
+        Troubleshooting.LogTroubleshooting();
+
+        if (launched == null)
+        {
+            Log.Information("GameProcess was null...");
+            IsLoggingIn = false;
+            return null;
+        }
+
+        var addonMgr = new AddonManager();
+
+        try
+        {
+            App.Settings.AddonList ??= [];
+
+            var addons = App.Settings.AddonList.Where(x => x.IsEnabled).Select(x => x.Addon).Cast<IAddon>().ToList();
+
+            addonMgr.RunAddons(launched.ProcessID, addons);
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Builder
+                            .NewFrom(ex, "Addons")
+                            .WithAppendText("\n\n")
+                            .WithAppendText("这可能由杀毒软件引起, 请检查日志并添加必要的排除项")
+                            .WithParentWindow(Window)
+                            .Show();
+
+            IsLoggingIn = false;
+
+            addonMgr.StopAddons();
+        }
+
+        Log.Debug("等待游戏进程退出");
+
+        if (dalamudOk)
+        {
+            await Launcher.RestartMonitor
+                          .MonitorAsync
+                          (
+                              launched,
+                              () => StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins),
+                              LoginCancelSource?.Token ?? CancellationToken.None
+                          )
+                          .ConfigureAwait(false);
+        }
+        else
+            await Task.Run(() => launched.UnderlyingProcess.WaitForExit()).ConfigureAwait(false);
+
+        Log.Verbose("游戏进程已退出");
+
+        if (addonMgr.IsRunning)
+            addonMgr.StopAddons();
+
+        try
+        {
+            DCTravelListener?.Stop();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "无法关闭 DCTravelListener");
+        }
+
+        return launched;
+    }
+    
+    private void FakeStartGame()
+    {
+        if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
+        {
+            Window.Dispatcher.Invoke(FakeStartGame);
+            return;
+        }
+
+        Task.Run
+        (() => StartGameAndAddon
+         (
+             new LoginResult
+             {
+                 OAuthLogin = new OAuthLoginResult
+                 {
+                     MaxExpansion  = 5,
+                     Playable      = true,
+                     Region        = 0,
+                     SessionID     = "0",
+                     TermsAccepted = true,
+                     SndaID        = "114514"
+                 },
+                 State    = LoginState.Ok,
+                 UniqueID = "0"
+             },
+             false,
+             false,
+             false
+         )
+        ).ConfigureAwait(false);
+    }
+
+    #endregion
+
+    #region 更新
+
+    private void EnsureDalamudCompatibility()
+    {
+        var dalamudCompatCheck = new WindowsDalamudCompatibilityCheck();
+
+        try
+        {
+            dalamudCompatCheck.EnsureCompatibility();
+        }
+        catch (IDalamudCompatibilityCheck.NoRedistsException ex)
+        {
+            Log.Error(ex, "[MainWindow] 未找到 Dalamud 所需的 Redists");
+
+            CustomMessageBox.Show
+            (
+                "Dalamud 需要安装 Microsoft Visual C++ 2015-2019 Redistributable, 请前往微软官网下载并安装",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Exclamation,
+                parentWindow: Window
+            );
+        }
+        catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
+        {
+            Log.Error(ex, "[MainWindow] 不受支持的本地环境架构");
+
+            CustomMessageBox.Show
+            (
+                "Dalamud 仅支持 64 位 Windows\n若本机为 ARM 架构, 请检查是否已为 XIVLauncher 启用 64 位模拟器",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Exclamation,
+                parentWindow: Window
+            );
+        }
+    }
+    
+    private bool EnsureDalamudUpdate(DalamudLauncher dalamudLauncher, DirectoryInfo gamePath, bool appendWafStatusCodeHint)
+    {
+        try
+        {
+            var dalamudStatus = dalamudLauncher.HoldForUpdate(gamePath);
+            return dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MainWindow] 尝试更新 Dalamud 时发生错误");
+
+            var ensurementErrorMessage = "下载 Dalamud 相关文件异常\n请检查本地网络连接, 或关闭杀毒软件\n游戏将照常启动, 但无法使用 Dalamud";
+
+            if (appendWafStatusCodeHint
+                && ex is HttpRequestException httpRequestException
+                && httpRequestException.StatusCode.HasValue
+                && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+                ensurementErrorMessage = $"服务器错误: {httpRequestException.StatusCode}\n{ensurementErrorMessage}";
+            else
+                ensurementErrorMessage = $"错误: {ex.Message}\n{ensurementErrorMessage}";
+
+            CustomMessageBox.Builder
+                            .NewFrom(ensurementErrorMessage)
+                            .WithImage(MessageBoxImage.Warning)
+                            .WithButtons(MessageBoxButton.OK)
+                            .WithShowHelpLinks()
+                            .WithParentWindow(Window)
+                            .Show();
+            return false;
+        }
+    }
+    
+    private bool TryResolvePatchPath()
+    {
+        try
+        {
+            App.Settings.PatchPath = Paths.ResolvePatchPath(App.Settings.PatchPath, Paths.RoamingPath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Builder
+                            .NewFrom(ex, nameof(TryResolvePatchPath))
+                            .WithAppendText("\n\n")
+                            .WithAppendText("解析更新文件路径失败")
+                            .WithParentWindow(Window)
+                            .Show();
+            Environment.Exit(0);
+
+            return false;
+        }
+    }
+    
     private async Task<bool> RepairGame(LoginResult loginResult)
     {
         var doLogin = false;
@@ -1786,19 +1495,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     Window,
                     n => n switch
                     {
-                        1 => Loc.Localize
-                        (
-                            "GameRepairProcessExitRequired1",
-                            "Close the following application to repair the game."
-                        ),
-                        _ => string.Format
-                        (
-                            Loc.Localize
-                            (
-                                "GameRepairProcessExitRequiredPlural",
-                                "Close the following applications to repair the game."
-                            )
-                        )
+                        1 => "关闭以下应用程序以修复游戏",
+                        _ => "关闭以下应用程序以修复游戏"
                     }
                 ))
                 return false;
@@ -1831,9 +1529,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                 (
                                                     verify.NumBrokenFiles switch
                                                     {
-                                                        0 => Loc.Localize("GameRepairSuccess0", "All game files seem to be valid."),
-                                                        1 => Loc.Localize("GameRepairSuccess1", "XIVLauncher has successfully repaired 1 game file."),
-                                                        _ => string.Format(Loc.Localize("GameRepairSuccessPlural", "XIVLauncher has successfully repaired {0} game files."), verify.NumBrokenFiles)
+                                                        0 => "所有游戏文件似乎都是完整的",
+                                                        1 => "XIVLauncher 已成功修复 1 个游戏文件",
+                                                        _ => $"XIVLauncher 已成功修复 {verify.NumBrokenFiles} 个游戏文件"
                                                     }
                                                 )
                                                 .WithAppendText
@@ -1841,35 +1539,16 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                     verify.MovedFiles.Count switch
                                                     {
                                                         0 => "",
-                                                        1 => "\n\n"
-                                                             + string.Format
-                                                             (
-                                                                 Loc.Localize
-                                                                 (
-                                                                     "GameRepairSuccessMoved1",
-                                                                     "Additionally, 1 file that did not come with the original game installation has been moved to {0}.\nIf you were using ReShade, you will have to reinstall it."
-                                                                 ),
-                                                                 verify.MovedFileToDir
-                                                             ),
-                                                        _ => "\n\n"
-                                                             + string.Format
-                                                             (
-                                                                 Loc.Localize
-                                                                 (
-                                                                     "GameRepairSuccessMovedPlural",
-                                                                     "Additionally, {0} files that did not come with the original game installation have been moved to {1}.\nIf you were using ReShade, you will have to reinstall it."
-                                                                 ),
-                                                                 verify.MovedFiles.Count,
-                                                                 verify.MovedFileToDir
-                                                             )
+                                                        1 => $"\n\n此外, 1 个非原始游戏安装文件已被移动到 {verify.MovedFileToDir}\n如果使用了 ReShade, 需要重新安装",
+                                                        _ => $"\n\n此外, {verify.MovedFiles.Count} 个非原始游戏安装文件已被移动到 {verify.MovedFileToDir}\n如果使用了 ReShade, 需要重新安装"
                                                     }
                                                 )
                                                 .WithDescription(verify.MovedFiles.Any() ? string.Join("\n", verify.MovedFiles.Select(x => $"* {x}")) : string.Empty)
                                                 .WithImage(MessageBoxImage.Information)
                                                 .WithButtons(MessageBoxButton.YesNoCancel)
-                                                .WithYesButtonText(Loc.Localize("GameRepairSuccess_LaunchGame", "_Launch game"))
-                                                .WithNoButtonText(Loc.Localize("GameRepairSuccess_VerifyAgain", "_Verify again"))
-                                                .WithCancelButtonText(Loc.Localize("GameRepairSuccess_Close",   "_Close"))
+                                                .WithYesButtonText("启动游戏 (_L)")
+                                                .WithNoButtonText("再次验证 (_V)")
+                                                .WithCancelButtonText("关闭 (_C)")
                                                 .WithParentWindow(Window)
                                                 .Show())
                         {
@@ -1898,15 +1577,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             doVerify = CustomMessageBox.Builder
                                                        .NewFrom
                                                        (
-                                                           Loc.Localize
-                                                           (
-                                                               "NoVersionReferenceError",
-                                                               "The version of the game you are on cannot be repaired by XIVLauncher yet, as reference information is not yet available.\nPlease try again later."
-                                                           )
+                                                           "当前游戏版本暂无法通过 XIVLauncher 修复, 参考信息尚不可用\n请稍后重试"
                                                        )
                                                        .WithImage(MessageBoxImage.Exclamation)
                                                        .WithButtons(MessageBoxButton.OKCancel)
-                                                       .WithOkButtonText(Loc.Localize("GameRepairSuccess_TryAgain", "_Try again"))
+                                                       .WithOkButtonText("重试 (_T)")
                                                        .WithParentWindow(Window)
                                                        .Show()
                                        == MessageBoxResult.OK;
@@ -1915,21 +1590,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         else if (verify.LastException != null && verify.LastException.ToString().Contains("Data error"))
                         {
                             doVerify = new CustomMessageBox.Builder()
-                                       .WithText
-                                       (
-                                           Loc.Localize
-                                           (
-                                               "GameRepairError_DataError",
-                                               "Your hard drive reported an error while checking game files. XIVLauncher cannot repair this installation, as the error may indicate a physical issue with your hard drive.\nPlease check your drive's health, or try to update its firmware.\nReinstalling the game in a new location may solve this issue temporarily."
-                                           )
-                                       )
+                                       .WithText("硬盘在检查游戏文件时报告错误, XIVLauncher 无法修复此安装, 错误可能表明硬盘存在物理问题\n请检查硬盘健康状况或尝试更新固件\n将游戏重新安装到新位置可能暂时解决此问题")
                                        .WithExitOnClose(CustomMessageBox.ExitOnCloseModes.DontExitOnClose)
                                        .WithImage(MessageBoxImage.Error)
                                        .WithShowHelpLinks()
                                        .WithShowDiscordLink()
                                        .WithShowNewGitHubIssue(false)
                                        .WithButtons(MessageBoxButton.OKCancel)
-                                       .WithOkButtonText(Loc.Localize("GameRepairSuccess_TryAgain", "_Try again"))
+                                       .WithOkButtonText("重试 (_T)")
                                        .WithParentWindow(Window)
                                        .Show()
                                        == MessageBoxResult.OK;
@@ -1939,10 +1607,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             if (verify.LastException == null)
                             {
                                 doVerify = new CustomMessageBox.Builder()
-                                           .WithText(Loc.Localize("GameRepairError", "An error occurred while repairing the game files.\nYou may have to reinstall the game."))
+                                           .WithText("修复游戏文件时发生错误\n可能需要重新安装游戏")
                                            .WithImage(MessageBoxImage.Exclamation)
                                            .WithButtons(MessageBoxButton.OKCancel)
-                                           .WithOkButtonText(Loc.Localize("GameRepairSuccess_TryAgain", "_Try again"))
+                                           .WithOkButtonText("重试 (_T)")
                                            .WithParentWindow(Window)
                                            .Show()
                                            == MessageBoxResult.OK;
@@ -1952,10 +1620,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                 doVerify = CustomMessageBox.Builder
                                                            .NewFrom(verify.LastException, "PatchVerifier")
                                                            .WithAppendText("\n\n")
-                                                           .WithAppendText(Loc.Localize("GameRepairError", "An error occurred while repairing the game files.\nYou may have to reinstall the game."))
+                                                           .WithAppendText("修复游戏文件时发生错误\n可能需要重新安装游戏")
                                                            .WithImage(MessageBoxImage.Exclamation)
                                                            .WithButtons(MessageBoxButton.OKCancel)
-                                                           .WithOkButtonText(Loc.Localize("GameRepairSuccess_TryAgain", "_Try again"))
+                                                           .WithOkButtonText("重试 (_T)")
                                                            .WithParentWindow(Window)
                                                            .Show()
                                            == MessageBoxResult.OK;
@@ -1978,7 +1646,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             CustomMessageBox.Show
             (
-                Loc.Localize("PatcherAlreadyInProgress", "XIVLauncher is already patching your game in another instance. Please check if XIVLauncher is still open."),
+                "XIVLauncher 正在另一个进程中更新游戏, 请检查是否已打开多个 XIVLauncher",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -1987,16 +1655,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
 
         return doLogin;
-    }
-
-    private GameRepairProgressWindow CreateGameRepairProgressWindow(PatchVerifier verify)
-    {
-        var dialog = new GameRepairProgressWindow(verify);
-        if (Window.IsVisible)
-            dialog.Owner = Window;
-        dialog.Show();
-        dialog.Activate();
-        return dialog;
     }
 
     private Task<bool> InstallGamePatch(LoginResult loginResult)
@@ -2008,6 +1666,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private async Task<bool> HandlePatchAsync(Repository repository, PatchListEntry[] pendingPatches, string sid)
     {
         using var installer = new Common.Game.Patch.PatchInstaller(App.Settings.KeepPatches ?? false);
+        
         var patcher = new PatchManager
         (
             App.Settings.PatchAcquisitionMethod ?? AcquisitionMethod.Aria,
@@ -2020,8 +1679,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
             Launcher,
             sid
         );
-        patcher.OnFail   += PatcherOnFail;
-        installer.OnFail += InstallerOnFail;
+        patcher.OnFail   += OnPatcherFail;
+        installer.OnFail += OnInstallerFail;
 
         Hide();
 
@@ -2048,17 +1707,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                  AriaLogFile = new FileInfo(Path.Combine(Paths.RoamingPath, "aria2.log")),
                                  IsGameOpen  = GameHelpers.CheckIsGameOpen,
                                  ContinueWhenGameOpen = () => CustomMessageBox.Builder
-                                                                              .NewFrom
-                                                                              (
-                                                                                  Loc.Localize
-                                                                                  (
-                                                                                      "GameIsOpenError",
-                                                                                      "The game and/or the official launcher are open. XIVLauncher cannot patch the game if this is the case.\nPlease close the official launcher and try again."
-                                                                                  )
-                                                                              )
+                                                                              .NewFrom("游戏和/或官方启动器正在运行, 在这种情况下 XIVLauncher 无法更新游戏\n请关闭官方启动器后重试")
                                                                               .WithImage(MessageBoxImage.Exclamation)
                                                                               .WithButtons(MessageBoxButton.OKCancel)
-                                                                              .WithOkButtonText(Loc.Localize("Refresh", "_Refresh"))
+                                                                              .WithOkButtonText("刷新 (_R)")
                                                                               .WithDefaultResult(MessageBoxResult.OK)
                                                                               .Show()
                                                               != MessageBoxResult.Cancel,
@@ -2067,19 +1719,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                      Window,
                                      n => n switch
                                      {
-                                         1 => Loc.Localize
-                                         (
-                                             "GameUpdateExitRequired1",
-                                             "Close the following application to patch the game."
-                                         ),
-                                         _ => string.Format
-                                         (
-                                             Loc.Localize
-                                             (
-                                                 "GameUpdateExitRequiredPlural",
-                                                 "Close the following applications to patch the game."
-                                             )
-                                         )
+                                         1 => "关闭以下应用程序以更新游戏",
+                                         _ => "关闭以下应用程序以更新游戏"
                                      }
                                  )
                              }
@@ -2093,7 +1734,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 case PatchExecutionStatus.AlreadyRunning:
                     CustomMessageBox.Show
                     (
-                        Loc.Localize("PatcherAlreadyInProgress", "XIVLauncher is already patching your game in another instance. Please check if XIVLauncher is still open."),
+                        "XIVLauncher 正在另一个进程中更新游戏, 请检查是否已打开多个 XIVLauncher",
                         "XIVLauncherCN (Soil)",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
@@ -2106,14 +1747,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     return false;
 
                 case PatchExecutionStatus.PatchInstallerError:
-                    var message = Loc.Localize
-                    (
-                        "PatchManNoInstaller",
-                        "The patch installer could not start correctly.\n{0}\n\nIf you have denied access to it, please try again. If this issue persists, please contact us via Discord."
-                    );
                     CustomMessageBox.Show
                     (
-                        string.Format(message, result.Exception?.Message),
+                        $"补丁安装程序无法正确启动\n{result.Exception?.Message}\n\n如果拒绝了访问权限, 请重试\n如果问题仍然存在, 请通过 Discord 联系我们",
                         "XIVLauncher Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
@@ -2133,16 +1769,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             case NotEnoughSpaceException.SpaceKind.Patches:
                                 CustomMessageBox.Show
                                 (
-                                    string.Format
-                                    (
-                                        Loc.Localize
-                                        (
-                                            "FreeSpaceError",
-                                            "There is not enough space on your drive to download patches.\n\nYou can change the location patches are downloaded to in the settings.\n\nRequired:{0}\nFree:{1}"
-                                        ),
-                                        bytesRequired,
-                                        bytesFree
-                                    ),
+                                    $"磁盘空间不足, 无法下载补丁\n\n可以在设置中更改补丁下载位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
                                     "XIVLauncher Error",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error,
@@ -2153,16 +1780,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             case NotEnoughSpaceException.SpaceKind.AllPatches:
                                 CustomMessageBox.Show
                                 (
-                                    string.Format
-                                    (
-                                        Loc.Localize
-                                        (
-                                            "FreeSpaceErrorAll",
-                                            "There is not enough space on your drive to download all patches.\n\nYou can change the location patches are downloaded to in the XIVLauncher settings.\n\nRequired:{0}\nFree:{1}"
-                                        ),
-                                        bytesRequired,
-                                        bytesFree
-                                    ),
+                                    $"磁盘空间不足, 无法下载所有补丁\n\n可以在 XIVLauncher 设置中更改补丁下载位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
                                     "XIVLauncher Error",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error,
@@ -2173,16 +1791,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             case NotEnoughSpaceException.SpaceKind.Game:
                                 CustomMessageBox.Show
                                 (
-                                    string.Format
-                                    (
-                                        Loc.Localize
-                                        (
-                                            "FreeSpaceGameError",
-                                            "There is not enough space on your drive to install patches.\n\nYou can change the location the game is installed to in the settings.\n\nRequired:{0}\nFree:{1}"
-                                        ),
-                                        bytesRequired,
-                                        bytesFree
-                                    ),
+                                    $"磁盘空间不足, 无法安装补丁\n\n可以在设置中更改游戏安装位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
                                     "XIVLauncher Error",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error,
@@ -2223,43 +1832,88 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private void PatcherOnFail(PatchListEntry patch, string context) =>
-        Environment.Exit(0);
+    #endregion
 
-    private void InstallerOnFail()
-    {
-        CustomMessageBox.Show
+    #region 杂项
+
+    private static DalamudLauncher CreateDalamudLauncher(DirectoryInfo gamePath, DalamudLoadMethod loadMethod, bool noPlugins, bool noThird) =>
+        new
         (
-            Loc.Localize("PatchInstallerInstallFailed", "The patch installer ran into an error.\nPlease report this error.\n\nPlease try again or use the official launcher."),
-            "XIVLauncher Error",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error
+            new WindowsDalamudRunner(),
+            App.DalamudUpdater,
+            loadMethod,
+            gamePath,
+            new DirectoryInfo(Paths.RoamingPath),
+            new DirectoryInfo(Paths.RoamingPath),
+            ClientLanguage.ChineseSimplified,
+            (int)App.Settings.DalamudInjectionDelayMs,
+            false,
+            noPlugins,
+            noThird,
+            Troubleshooting.GetTroubleshootingJson()
         );
 
-        Environment.Exit(0);
-    }
+    private Action<object> CreateLoginHandler(LoginAfterAction action) =>
+        _ =>
+        {
+            if (action == LoginAfterAction.CancelLogin)
+            {
+                CancelLogin();
+                return;
+            }
 
-    private bool TryResolvePatchPath()
+            if (IsLoggingIn)
+                return;
+
+            if (action == LoginAfterAction.Start) LoginMessage = string.Empty;
+
+            if (IsAutoLogin && !App.Settings.HasShownAutoLaunchDisclaimer.GetValueOrDefault(false))
+            {
+                CustomMessageBox.Builder
+                                .NewFrom("自动登录已启用, 后续将默认使用当前账号登录, 并不再显示主窗口\n若需要修改设置, 请在登录时按住 SHIFT 键")
+                                .WithParentWindow(Window)
+                                .Show();
+
+                App.Settings.HasShownAutoLaunchDisclaimer = true;
+            }
+
+            if (GameHelpers.CheckIsGameOpen() && action == LoginAfterAction.Repair)
+            {
+                CustomMessageBox.Builder
+                                .NewFrom("官方启动器或游戏正在运行中, 无法执行修复, 请关闭相关进程后重试")
+                                .WithImage(MessageBoxImage.Exclamation)
+                                .WithParentWindow(Window)
+                                .Show();
+
+                return;
+            }
+
+            if (action == LoginAfterAction.Repair)
+            {
+                var res = CustomMessageBox.Builder
+                                          .NewFrom("XIVLauncher 将会搜寻任何与原版不一致的游戏文件并替换修复\n这可能导致使用 TexTools 安装的模组被还原\n请确认")
+                                          .WithButtons(MessageBoxButton.YesNo)
+                                          .WithImage(MessageBoxImage.Question)
+                                          .WithParentWindow(Window)
+                                          .Show();
+
+                if (res == MessageBoxResult.No)
+                    return;
+            }
+
+            StartLogin(LoginTypeOption.LoginType, Username, Password, IsFastLogin, IsReadWegameInfo, action);
+        };
+    
+    private GameRepairProgressWindow CreateGameRepairProgressWindow(PatchVerifier verify)
     {
-        try
-        {
-            App.Settings.PatchPath = Paths.ResolvePatchPath(App.Settings.PatchPath, Paths.RoamingPath);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            CustomMessageBox.Builder
-                            .NewFrom(ex, nameof(TryResolvePatchPath))
-                            .WithAppendText("\n\n")
-                            .WithAppendText(Loc.Localize("BootPatchFailure", "Could not patch boot."))
-                            .WithParentWindow(Window)
-                            .Show();
-            Environment.Exit(0);
-
-            return false;
-        }
+        var dialog = new GameRepairProgressWindow(verify);
+        if (Window.IsVisible)
+            dialog.Owner = Window;
+        dialog.Show();
+        dialog.Activate();
+        return dialog;
     }
-
+    
     #endregion
 
     #region 事件
@@ -2270,13 +1924,43 @@ public class MainWindowViewModel : INotifyPropertyChanged
         handler?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public void OnWindowClosed(object sender, object args) =>
+    public void OnWindowClosed(object sender, object args)
+    {
+        StopRefreshFFXIVProcess(true);
+        CancelLogin();
         Application.Current.Shutdown();
+    }
 
     public void OnWindowClosing(object sender, CancelEventArgs args)
     {
         if (!IsLoggingIn) return;
         args.Cancel = true;
+    }
+    
+    private void OnPatcherFail(PatchListEntry patch, string context)
+    {
+        CustomMessageBox.Show
+        (
+            "安装更新时发生异常, 请重试或使用官方启动器完成游戏更新",
+            "XIVLauncherCN (Soil)",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error
+        );
+        
+        Environment.Exit(0);
+    }
+
+    private void OnInstallerFail()
+    {
+        CustomMessageBox.Show
+        (
+            "更新程序发生异常, 请重试或使用官方启动器完成游戏更新",
+            "XIVLauncherCN (Soil)",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error
+        );
+
+        Environment.Exit(0);
     }
 
     #endregion
@@ -2354,16 +2038,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
         set => App.Settings.SelectedServer = value;
     }
 
-    public LoginArea Area
+    public LoginArea? Area
     {
         get;
         set
         {
             field = value;
-            Log.Debug($"Area Change:{field} -> {value}");
             OnPropertyChanged(nameof(Area));
+            
+            Log.Information("大区变更 {OldArea} -> {NewArea}", field, value);
         }
-    } = null!;
+    }
 
     public bool IsEnabled
     {
@@ -2425,13 +2110,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public BitmapImage? QrCodeBitmapImage
+    public BitmapImage? QRCodeBitmapImage
     {
         get;
         set
         {
             field = value;
-            OnPropertyChanged(nameof(QrCodeBitmapImage));
+            OnPropertyChanged(nameof(QRCodeBitmapImage));
         }
     }
 
@@ -2445,25 +2130,28 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public ObservableCollection<FFXIVProcess> FFXIVProcessCollection
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(FFXIVProcessCollection));
-        }
-    }
+    public ObservableCollection<FFXIVProcess> FFXIVProcesses { get; } = [];
 
     public FFXIVProcess? SelectedProcess
     {
         get;
         set
         {
+            if (ReferenceEquals(field, value))
+                return;
+
             field = value;
             OnPropertyChanged(nameof(SelectedProcess));
+            OnPropertyChanged(nameof(CanOperateOnSelectedProcess));
+            CommandManager.InvalidateRequerySuggested();
         }
     }
+
+    public bool HasAvailableProcesses => FFXIVProcesses.Count > 0;
+
+    public bool CanOperateOnSelectedProcess => SelectedProcess != null;
+
+    public string ProcessSelectionHint => HasAvailableProcesses ? "选择要注入的进程" : "未检测到可注入进程";
 
     public LoginArea[] LoginAreas
     {
@@ -2481,7 +2169,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     {
         Logining   = 0,
         MainPage   = 1,
-        ScanQrCode = 2,
+        ScanQRCode = 2,
         InjectMode = 3
     }
 

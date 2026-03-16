@@ -5,9 +5,9 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
-using CheapLoc;
 using Serilog;
 using Velopack;
+using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
 using XIVLauncher.Windows;
@@ -15,18 +15,11 @@ using XIVLauncher.Windows;
 namespace XIVLauncher;
 
 internal class Updates
+(
+    ILauncherSettingsV3 settings
+)
 {
-    public static Lease? UpdateLease { get; private set; }
-    private const string UpdateUrl = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
-    private readonly ILauncherSettingsV3 settings;
-
-    public Updates(ILauncherSettingsV3 settings)
-    {
-        this.settings = settings;
-    }
-
-    public static bool HaveFeatureFlag(LeaseFeatureFlags flag) =>
-        UpdateLease != null && UpdateLease.Flags.HasFlag(flag);
+    private const string UPDATE_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
 
     public async Task Run(bool downloadPrerelease, ChangelogWindow? changelogWindow)
     {
@@ -38,7 +31,7 @@ internal class Updates
         try
         {
             // 游戏进程
-            if (Process.GetProcessesByName("ffxiv_dx11").Length > 0)
+            if (GameHelpers.CheckIsGameOpen())
             {
                 Log.Information("游戏正在运行, 跳过启动器更新检查");
                 OnUpdateCheckFinished?.Invoke(true);
@@ -46,7 +39,7 @@ internal class Updates
             }
 
             var updateOptions = new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
-            var updateSource  = new GitHubSource(UpdateUrl, settings.GitHubToken, true, "https://gh.atmoomen.top/", new XLHttpClientFileDownloader());
+            var updateSource  = new GitHubSource(UPDATE_URL, settings.GitHubToken, true, "https://gh.atmoomen.top/", new XLHttpClientFileDownloader());
             var mgr           = new UpdateManager(updateSource, updateOptions);
 
             var newRelease = await mgr.CheckForUpdatesAsync();
@@ -89,11 +82,7 @@ internal class Updates
         {
             Log.Error(ex, "更新失败");
 
-            var updateFailLoc = Loc.Localize
-            (
-                "updatefailureerror",
-                "XIVLauncherCN 检查更新失败, 请检查你的网络环境并将 XIVLauncherCN 加入杀毒软件白名单中"
-            );
+            var updateFailLoc = "XIVLauncherCN 检查更新失败, 请检查你的网络环境并将 XIVLauncherCN 加入杀毒软件白名单中";
 
             if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
             {
@@ -140,27 +129,4 @@ internal class Updates
     }
 
     public event Action<bool>? OnUpdateCheckFinished;
-
-    [Flags]
-    public enum LeaseFeatureFlags
-    {
-        None                       = 0,
-        GlobalDisableDalamud       = 1,
-        ForceProxyDalamudAndAssets = 1 << 1
-    }
-
-#pragma warning disable CS8618
-    public class Lease
-    {
-        public bool              Success       { get; set; }
-        public string?           Message       { get; set; }
-        public string?           CutOffBootver { get; set; }
-        public string            FrontierUrl   { get; set; }
-        public LeaseFeatureFlags Flags         { get; set; }
-
-        public string ReleasesList { get; set; }
-
-        public DateTime? ValidUntil { get; set; }
-    }
-#pragma warning restore CS8618
 }

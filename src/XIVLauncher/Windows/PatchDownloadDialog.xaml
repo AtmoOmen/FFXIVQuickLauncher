@@ -20,28 +20,28 @@
         <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="Auto" Margin="0,0,10,0">
             <StackPanel Margin="16,16,16,0">
                 <TextBlock x:Name="PatchProgressText" Foreground="{DynamicResource MaterialDesignBody}"
-                           HorizontalAlignment="Center" Text="{Binding PatchPreparingLoc}" Margin="0,0,0,15" />
+                           HorizontalAlignment="Center" Text="正在准备更新…" Margin="0,0,0,15" />
 
                 <TextBlock x:Name="Progress1Text" Foreground="{DynamicResource MaterialDesignBody}"
-                           HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}" />
+                           HorizontalAlignment="Center" Text="更新下载完成" />
                 <ProgressBar x:Name="Progress1" Value="0" Margin="0,0,0,10" />
                 <TextBlock x:Name="Progress2Text" Foreground="{DynamicResource MaterialDesignBody}"
-                           HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}" />
+                           HorizontalAlignment="Center" Text="更新下载完成" />
                 <ProgressBar x:Name="Progress2" Value="0" Margin="0,0,0,10" />
                 <TextBlock x:Name="Progress3Text" Foreground="{DynamicResource MaterialDesignBody}"
-                           HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}" />
+                           HorizontalAlignment="Center" Text="更新下载完成" />
                 <ProgressBar x:Name="Progress3" Value="0" Margin="0,0,0,10" />
                 <TextBlock x:Name="Progress4Text" Foreground="{DynamicResource MaterialDesignBody}"
-                           HorizontalAlignment="Center" Text="{Binding PatchDoneLoc}" />
+                           HorizontalAlignment="Center" Text="更新下载完成" />
                 <ProgressBar x:Name="Progress4" Value="0" Margin="0,0,0,10" />
                 <TextBlock x:Name="InstallingText" Foreground="{DynamicResource MaterialDesignBody}"
-                           HorizontalAlignment="Center" Text="{Binding PatchInstallingLoc}" />
+                           HorizontalAlignment="Center" Text="正在安装更新…" />
                 <ProgressBar IsIndeterminate="True" Margin="0,0,0,11" />
 
                 <TextBlock x:Name="BytesLeftText" Foreground="DarkGray" Margin="0,8,0,0" TextAlignment="Center"
-                           Text="{Binding PatchPreparingLoc}" />
+                           Text="正在准备更新…" />
                 <TextBlock x:Name="TimeLeftText" Foreground="DarkGray" Margin="0,0,0,12" TextAlignment="Center"
-                           Text="{Binding PatchPreparingLoc}" />
+                           Text="正在准备更新…" />
             </StackPanel>
         </materialDesign:Card>
     </Grid>

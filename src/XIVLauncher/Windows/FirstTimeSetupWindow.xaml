@@ -1,4 +1,4 @@
-﻿<Window x:Class="XIVLauncher.Windows.FirstTimeSetup"
+<Window x:Class="XIVLauncher.Windows.FirstTimeSetup"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -23,12 +23,12 @@
                 <StackPanel Margin="10, 0, 0, 0">
                     <TextBlock TextWrapping="Wrap" HorizontalAlignment="Left" VerticalAlignment="Top"
                                Margin="0,10,0,10" Foreground="{DynamicResource MaterialDesignBody}"
-                               Text="{Binding FirstTimeGamePathLoc}" />
+                               Text="请选择游戏文件夹" />
                     <components:FolderEntry x:Name="GamePathEntry" Description="Select a folder"
                                             Margin="0,0,0,40" Width="400" VerticalAlignment="Center"
                                             HorizontalAlignment="Left"
                                             Foreground="{DynamicResource MaterialDesignBody}" />
-                    <Button Content="{Binding NextLoc}" Width="79" VerticalAlignment="Bottom"
+                    <Button Content="下一步" Width="79" VerticalAlignment="Bottom"
                             HorizontalAlignment="Right" Margin="0,0,10,10" Click="NextButton_Click" />
                 </StackPanel>
             </TabItem>
@@ -37,14 +37,14 @@
                     <StackPanel Margin="10,10,10,0">
                         <TextBlock TextWrapping="Wrap" HorizontalAlignment="Left" VerticalAlignment="Top"
                                    Foreground="{DynamicResource MaterialDesignBody}"
-                                   Text="{Binding FirstTimeDalamudLoc}" />
+                                   Text="是否启用 Dalamud? 这将为游戏添加额外功能, 如 RMT 自动屏蔽、聊天消息和副本弹窗的 Discord 通知" />
 
-                        <CheckBox x:Name="HooksCheckBox" Content="{Binding FirstTimeDalamudCheckBoxLoc}"
+                        <CheckBox x:Name="HooksCheckBox" Content="启用 Dalamud"
                                   HorizontalAlignment="Left" Margin="0,25,0,50"
                                   Foreground="{DynamicResource MaterialDesignBody}" IsChecked="True" />
 
                     </StackPanel>
-                    <Button Content="{Binding NextLoc}" Width="79" VerticalAlignment="Bottom"
+                    <Button Content="下一步" Width="79" VerticalAlignment="Bottom"
                             HorizontalAlignment="Right" Margin="0,0,10,10" Click="NextButton_Click" />
                 </Grid>
             </TabItem>

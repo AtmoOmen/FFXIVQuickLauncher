@@ -66,7 +66,6 @@ public class StartupOrchestrator
         bootstrapSteps.Add(commandLineStep);
 
         normalSteps.Add(new SettingsStep(commandLineStep));
-        normalSteps.Add(new LocalizationStep());
         normalSteps.Add(new VelopackStep());
         normalSteps.Add(updateCheckStep);
         normalSteps.Add(new DalamudInitStep(updateCheckStep));

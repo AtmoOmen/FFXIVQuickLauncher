@@ -1,17 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Windows;
-using CheapLoc;
-using Microsoft.Win32;
-using Serilog;
-using XIVLauncher.Common;
+using System.Windows.Media.Imaging;
 using XIVLauncher.Common.Game.Patch;
-using XIVLauncher.Common.Util;
 using XIVLauncher.Common.Windows;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Windows;
@@ -20,29 +14,42 @@ namespace XIVLauncher;
 
 public static class AppUtil
 {
-    /// <summary>
-    ///     Gets the git hash value from the assembly
-    ///     or null if it cannot be found.
-    /// </summary>
-    public static string GetGitHash()
+    extension(byte[] data)
+    {
+        public BitmapImage? ToBitmapImage()
+        {
+            if (data is not { Length: > 0 }) return null;
+
+            var bitmapImage = new BitmapImage();
+
+            using var stream = new MemoryStream(data);
+
+            stream.Seek(0, SeekOrigin.Begin);
+            bitmapImage.BeginInit();
+            bitmapImage.CacheOption  = BitmapCacheOption.OnLoad;
+            bitmapImage.StreamSource = stream;
+            bitmapImage.EndInit();
+            bitmapImage.Freeze();
+
+            return bitmapImage;
+        }
+    }
+    
+    public static string? GetGitHash()
     {
         var asm   = typeof(AppUtil).Assembly;
         var attrs = asm.GetCustomAttributes<AssemblyMetadataAttribute>();
         return attrs.FirstOrDefault(a => a.Key == "GitHash")?.Value;
     }
 
-    /// <summary>
-    ///     Gets the build origin from the assembly
-    ///     or null if it cannot be found.
-    /// </summary>
-    public static string GetBuildOrigin()
+    public static string? GetBuildOrigin()
     {
         var asm   = typeof(AppUtil).Assembly;
         var attrs = asm.GetCustomAttributes<AssemblyMetadataAttribute>();
         return attrs.FirstOrDefault(a => a.Key == "BuildOrigin")?.Value;
     }
 
-    public static string GetAssemblyVersion()
+    public static string? GetAssemblyVersion()
     {
         var assembly = Assembly.GetExecutingAssembly();
         var fvi      = FileVersionInfo.GetVersionInfo(assembly.Location);
@@ -51,232 +58,74 @@ public static class AppUtil
 
     public static string GetFromResources(string resourceName)
     {
-        var       asm    = typeof(AppUtil).Assembly;
+        var asm = typeof(AppUtil).Assembly;
+        
         using var stream = asm.GetManifestResourceStream(resourceName);
+        if (stream == null)
+            return string.Empty;
+        
         using var reader = new StreamReader(stream);
 
         return reader.ReadToEnd();
     }
 
-    public static string TryGamePaths()
-    {
-        const string CN_1 = "Square";
-        const string CN_2 = "Enix";
-        const string GN   = "FINAL FANTASY XIV";
-        const string RN   = "A Realm Reborn";
-
-        var defaultPath = GetDefaultPath($"{CN_1}{CN_2}", $"{GN} - {RN}");
-
-        try
-        {
-            var foundVersions = new Dictionary<string, SeVersion>();
-
-            // foreach (var path in GetCommonPaths(CN_1, CN_2, GN, RN))
-            // {
-            //     if (!Directory.Exists(path) || !GameHelpers.IsValidGamePath(path) || foundVersions.ContainsKey(path))
-            //         continue;
-            //
-            //     var baseVersion = Repository.Ffxiv.GetVer(new DirectoryInfo(path));
-            //     foundVersions.Add(path, SeVersion.Parse(baseVersion));
-            // }
-
-            foreach (var registryView in new[] { RegistryView.Registry32, RegistryView.Registry64 })
-            {
-                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, registryView))
-                {
-                    // Should return "C:\Program Files (x86)\company\game\boot\ffxivboot.exe" if installed with default options.
-                    using (var subkey = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{2B41E132-07DF-4925-A3D3-F2D1765CCDFE}"))
-                    {
-                        if (subkey != null && subkey.GetValue("DisplayIcon", null) is string path)
-                        {
-                            // DisplayIcon includes "boot\ffxivboot.exe", need to remove it
-                            path = Directory.GetParent(path).FullName;
-
-                            if (Directory.Exists(path) && GameHelpers.IsValidGamePath(path) && !foundVersions.ContainsKey(path))
-                            {
-                                var baseVersion = Repository.Ffxiv.GetVer(new DirectoryInfo(path));
-                                foundVersions.Add(path, SeVersion.Parse(baseVersion));
-                            }
-                        }
-                    }
-
-                    using (var subkey = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\最终幻想14"))
-                    {
-                        if (subkey != null && subkey.GetValue("InstallLocation", null) is string path)
-                        {
-                            if (Directory.Exists(path) && GameHelpers.IsValidGamePath(path) && !foundVersions.ContainsKey(path))
-                            {
-                                // InstallLocation is the root path of the game (the one containing boot and game) itself
-                                var baseVersion = Repository.Ffxiv.GetVer(new DirectoryInfo(path));
-                                foundVersions.Add(path, SeVersion.Parse(baseVersion));
-                            }
-                        }
-                    }
-                }
-            }
-
-            return foundVersions.Count == 0 ? defaultPath : foundVersions.OrderByDescending(x => x.Value).First().Key;
-        }
-        catch (Exception)
-        {
-            return defaultPath;
-        }
-    }
-
-    /// <summary>
-    ///     Check if any file in the game directory is currently being used, and yell at the user if any.
-    ///     This function works on best effort basis, and is slow.
-    /// </summary>
-    /// <param name="parentWindow">Parent window.</param>
-    /// <param name="messageGenerator">Function that returns the relevant message.</param>
-    /// <returns>False if cancelled.</returns>
     public static bool TryYellOnGameFilesBeingOpen(Window parentWindow, Func<int, string> messageGenerator)
     {
         try
         {
+            var gamePath = Path.Combine(CommonSettings.Instance.GamePath.FullName, "game");
+
             while (true)
             {
                 using var restartManager = new WindowsRestartManager();
-                restartManager.Register(PatchVerifier.GetRelevantFiles(Path.Combine(CommonSettings.Instance.GamePath.FullName, "game")));
-                var programs = restartManager.GetInterferingProcesses(out _);
+                restartManager.Register(PatchVerifier.GetRelevantFiles(gamePath));
 
-                if (!programs.Any())
-                    break;
+                var programs = restartManager.GetInterferingProcesses(out _).ToArray();
+                if (programs.Length == 0)
+                    return true;
 
-                switch (CustomMessageBox.Builder
-                                        .NewFrom(messageGenerator(programs.Count))
-                                        .WithDescription
-                                        (
-                                            string.Join
-                                            (
-                                                "\n",
-                                                programs
-                                                    .Select
-                                                    (x =>
-                                                        {
-                                                            var process = x.Process;
-                                                            if (process == null)
-                                                                return $"{x.AppName} ({x.UniqueProcess.dwProcessId})";
+                var description = string.Join
+                (
+                    Environment.NewLine,
+                    programs.Select
+                    (x =>
+                        {
+                            var process = x.Process;
+                            if (process == null)
+                                return $"{x.AppName} ({x.UniqueProcess.dwProcessId})";
 
-                                                            var exeName = process.MainModule?.ModuleName ?? "??";
-                                                            var title   = process.MainWindowTitle;
-                                                            if (string.IsNullOrEmpty(title) || title == x.AppName)
-                                                                return $"{x.AppName} ({x.UniqueProcess.dwProcessId}: {exeName})";
+                            var pid     = x.UniqueProcess.dwProcessId;
+                            var exeName = process.MainModule?.ModuleName ?? "??";
+                            var title   = process.MainWindowTitle;
 
-                                                            return $"{x.AppName} ({x.UniqueProcess.dwProcessId}: {exeName}, \"{title}\")";
-                                                        }
-                                                    )
-                                            )
-                                        )
-                                        .WithImage(MessageBoxImage.Information)
-                                        .WithButtons(MessageBoxButton.YesNoCancel)
-                                        .WithYesButtonText(Loc.Localize("Refresh", "_Refresh"))
-                                        .WithNoButtonText(Loc.Localize("Ignore",   "_Ignore"))
-                                        .WithDefaultResult(MessageBoxResult.Yes)
-                                        .WithParentWindow(parentWindow)
-                                        .Show())
-                {
-                    case MessageBoxResult.Yes:
-                        break;
+                            return string.IsNullOrWhiteSpace(title) || title == x.AppName
+                                       ? $"{x.AppName} ({pid}: {exeName})"
+                                       : $"{x.AppName} ({pid}: {exeName}, \"{title}\")";
+                        }
+                    )
+                );
 
-                    case MessageBoxResult.No:
-                        return true;
+                var result = CustomMessageBox.Builder
+                                             .NewFrom(messageGenerator(programs.Length))
+                                             .WithDescription(description)
+                                             .WithImage(MessageBoxImage.Information)
+                                             .WithButtons(MessageBoxButton.YesNoCancel)
+                                             .WithYesButtonText("刷新 (_R)")
+                                             .WithNoButtonText("忽略 (_I)")
+                                             .WithDefaultResult(MessageBoxResult.Yes)
+                                             .WithParentWindow(parentWindow)
+                                             .Show();
 
-                    case MessageBoxResult.Cancel:
-                        return false;
-                }
+                if (result == MessageBoxResult.No)
+                    return true;
+
+                if (result == MessageBoxResult.Cancel)
+                    return false;
             }
         }
-        catch (Exception)
+        catch
         {
-            // ignore, as this is on a best-effort basis anyway.
+            return true;
         }
-
-        return true;
     }
-
-    public static IEnumerable<int> GetGameProcessIds()
-    {
-        var prcesses = Process.GetProcesses()
-                              .Where(p => p.ProcessName == "ffxiv_dx11")
-                              .Where(p => !p.MainWindowTitle.Contains("FINAL FANTASY XIV"));
-        if (PlatformHelpers.IsElevated())
-            prcesses = prcesses.Where(p => !p.HasExited);
-
-        return prcesses.Select(p => p.Id);
-    }
-
-    public static IEnumerable<Process> GetGameProcess()
-    {
-        var prcesses = Process.GetProcesses()
-                              .Where(p => p.ProcessName == "ffxiv_dx11")
-                              //.Where(p => p.ProcessName == "Notepad")
-                              .Where(p => !p.MainWindowTitle.Contains("FINAL FANTASY XIV"));
-        if (PlatformHelpers.IsElevated())
-            prcesses = prcesses.Where(p => !p.HasExited);
-
-        return prcesses;
-    }
-
-    public static void BringProcessMainWindowToFront(int pid)
-    {
-        try
-        {
-            var process = Process.GetProcessById(pid);
-
-            if (process != null)
-            {
-                var hWnd = process.MainWindowHandle;
-
-                if (hWnd != IntPtr.Zero)
-                {
-                    ShowWindow(hWnd, 9);
-                    SetForegroundWindow(hWnd);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error($"Fail to bring {pid} to front,{ex}");
-        }
-
-    }
-
-    private static string GetDefaultPath(string companyName, string gameName) => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), $"{companyName}\\{gameName}");
-
-    private static string[] GetCommonPaths(string companyName1, string companyName2, string gameName, string rebootName)
-    {
-        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-        var paths        = new List<string>();
-        var drives       = DriveInfo.GetDrives().Select(info => info.Name);
-
-        var commonPaths = new[]
-        {
-            $"{companyName1}{companyName2}\\{gameName} - {rebootName}",
-            $"\\{gameName} - {rebootName}",
-            $"Games\\{companyName1}{companyName2}\\{gameName} - {rebootName}",
-            $"Games\\{companyName1} {companyName2}\\{gameName} - {rebootName}"
-        };
-
-        foreach (var commonPath in commonPaths)
-        {
-            paths.Add(Path.Combine(programFiles, commonPath));
-
-            foreach (var drive in drives)
-            {
-                paths.Add(Path.Combine(drive, commonPath));
-                paths.Add(Path.Combine(drive, "Program Files (x86)", commonPath));
-            }
-        }
-
-        paths.Add(Path.Combine(programFiles, $"{gameName} - {rebootName}"));
-
-        return paths.ToArray();
-    }
-
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 }

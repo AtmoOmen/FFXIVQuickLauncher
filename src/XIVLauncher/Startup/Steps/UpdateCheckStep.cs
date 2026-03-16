@@ -18,7 +18,8 @@ public class UpdateCheckStep
     public string Name  => "更新检查";
     public int    Order => 70;
 
-    public  FileInfo?            DalamudRunnerOverride => commandLineStep.DalamudRunnerOverride;
+    public FileInfo? DalamudRunnerOverride => commandLineStep.DalamudRunnerOverride;
+    
     private UpdateLoadingDialog? updateWindow;
 
     public async Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)

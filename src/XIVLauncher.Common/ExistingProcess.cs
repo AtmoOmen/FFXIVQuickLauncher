@@ -24,6 +24,6 @@ public class ExistingProcess : Process
             "SetProcessHandle",
             BindingFlags.NonPublic | BindingFlags.Instance
         );
-        setProcessHandleMethod?.Invoke(this, new object[] { new SafeProcessHandle(handle, true) });
+        setProcessHandleMethod?.Invoke(this, [new SafeProcessHandle(handle, true)]);
     }
 }

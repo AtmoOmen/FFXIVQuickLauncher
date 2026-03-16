@@ -11,7 +11,6 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
-using CheapLoc;
 using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Common;
@@ -28,11 +27,7 @@ namespace XIVLauncher.Windows;
 /// </summary>
 public partial class CustomMessageBox : Window
 {
-    public static string ErrorExplanation = Loc.Localize
-    (
-        "ErrorExplanation",
-        "An error in XIVLauncher occurred. Please consult the FAQ. If this issue persists, please report\r\nit on GitHub by clicking the button below, describing the issue and copying the text in the box."
-    );
+    public static string ErrorExplanation = "XIVLauncher 发生错误, 请查阅常见问题\n如果问题仍然存在, 请点击下方按钮在 GitHub 上报告此问题, 描述问题并复制文本框中的内容";
 
     private readonly Builder _builder;
 
@@ -80,7 +75,7 @@ public partial class CustomMessageBox : Window
         switch (builder.Buttons)
         {
             case MessageBoxButton.OK:
-                Button1.Content    = builder.OkButtonText ?? ViewModel.OkLoc;
+                Button1.Content    = builder.OkButtonText ?? "确定";
                 Button2.Visibility = Visibility.Collapsed;
                 Button3.Visibility = Visibility.Collapsed;
                 (builder.DefaultResult switch
@@ -91,8 +86,8 @@ public partial class CustomMessageBox : Window
                 break;
 
             case MessageBoxButton.OKCancel:
-                Button1.Content    = builder.OkButtonText     ?? ViewModel.OkLoc;
-                Button2.Content    = builder.CancelButtonText ?? ViewModel.CancelWithShortcutLoc;
+                Button1.Content    = builder.OkButtonText     ?? "确定";
+                Button2.Content    = builder.CancelButtonText ?? "取消 (_C)";
                 Button3.Visibility = Visibility.Collapsed;
                 (builder.DefaultResult switch
                         {
@@ -103,9 +98,9 @@ public partial class CustomMessageBox : Window
                 break;
 
             case MessageBoxButton.YesNoCancel:
-                Button1.Content = builder.YesButtonText    ?? ViewModel.YesWithShortcutLoc;
-                Button2.Content = builder.NoButtonText     ?? ViewModel.NoWithShortcutLoc;
-                Button3.Content = builder.CancelButtonText ?? ViewModel.CancelWithShortcutLoc;
+                Button1.Content = builder.YesButtonText    ?? "是 (_Y)";
+                Button2.Content = builder.NoButtonText     ?? "否 (_N)";
+                Button3.Content = builder.CancelButtonText ?? "取消 (_C)";
                 (builder.DefaultResult switch
                         {
                             MessageBoxResult.Yes    => Button1,
@@ -116,8 +111,8 @@ public partial class CustomMessageBox : Window
                 break;
 
             case MessageBoxButton.YesNo:
-                Button1.Content    = builder.YesButtonText ?? ViewModel.YesWithShortcutLoc;
-                Button2.Content    = builder.NoButtonText  ?? ViewModel.NoWithShortcutLoc;
+                Button1.Content    = builder.YesButtonText ?? "是 (_Y)";
+                Button2.Content    = builder.NoButtonText  ?? "否 (_N)";
                 Button3.Visibility = Visibility.Collapsed;
                 (builder.DefaultResult switch
                         {
@@ -139,14 +134,14 @@ public partial class CustomMessageBox : Window
                                 countdown -= 1;
                                 if (countdown <= 0)
                                     break;
-                                Dispatcher.Invoke(() => Button1.Content = $"{builder.YesButtonText ?? ViewModel.YesWithShortcutLoc} ({countdown})");
+                                Dispatcher.Invoke(() => Button1.Content = $"{builder.YesButtonText ?? "是 (_Y)"} ({countdown})");
                             }
 
                             Dispatcher.Invoke
                             (() =>
                                 {
                                     Button1.IsEnabled = true;
-                                    Button1.Content   = builder.YesButtonText ?? ViewModel.YesWithShortcutLoc;
+                                    Button1.Content   = builder.YesButtonText ?? "是 (_Y)";
                                 }
                             );
                         }
@@ -244,14 +239,7 @@ public partial class CustomMessageBox : Window
         {
             Builder.NewFrom(e, context, fatal ? ExitOnCloseModes.ExitOnClose : ExitOnCloseModes.DontExitOnClose)
                    .WithAppendText("\n\n")
-                   .WithAppendText
-                   (
-                       Loc.Localize
-                       (
-                           "ErrorAssertionFailed",
-                           "Something that cannot happen happened."
-                       )
-                   )
+                   .WithAppendText("发生了不可能发生的事情")
                    .WithParentWindow(parentWindow)
                    .Show();
         }
@@ -355,7 +343,7 @@ public partial class CustomMessageBox : Window
         {
             Show
             (
-                Loc.Localize("RunOfficialLauncherNotPresentError", "You don't have a game installation set up. XIVLauncher can't start the official launcher."),
+                "没有设置游戏安装路径, XIVLauncher 无法启动官方启动器",
                 "Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -430,8 +418,8 @@ public partial class CustomMessageBox : Window
             if (exitOnCloseMode == ExitOnCloseModes.ExitOnClose)
             {
                 builder.WithButtons(MessageBoxButton.YesNo)
-                       .WithYesButtonText(Loc.Localize("Restart", "_Restart"))
-                       .WithNoButtonText(Loc.Localize("Exit",     "_Exit"));
+                       .WithYesButtonText("重新启动 (_R)")
+                       .WithNoButtonText("退出 (_E)");
             }
 
             // When this happens we probably don't want them to run into it again, in case it's an issue with a moved game for example
@@ -444,24 +432,9 @@ public partial class CustomMessageBox : Window
         public static Builder NewFromUnexpectedException(Exception exc, string context, ExitOnCloseModes exitOnCloseMode = ExitOnCloseModes.DontExitOnClose)
         {
             return NewFrom(exc, context, exitOnCloseMode)
-                   .WithAppendTextFormatted
-                   (
-                       Loc.Localize
-                       (
-                           "UnexpectedErrorSummary",
-                           "Unexpected error has occurred. ({0})"
-                       ),
-                       exc.Message
-                   )
+                   .WithAppendTextFormatted($"发生未知错误 ({exc.Message})")
                    .WithAppendText("\n")
-                   .WithAppendText
-                   (
-                       Loc.Localize
-                       (
-                           "UnexpectedErrorActionable",
-                           "Please report this error."
-                       )
-                   );
+                   .WithAppendText("请反馈此错误");
         }
 
         public Builder WithText(string text)
@@ -618,14 +591,7 @@ public partial class CustomMessageBox : Window
 
         public Builder WithExceptionText()
         {
-            return WithText
-            (
-                Loc.Localize
-                (
-                    "ErrorExplanation",
-                    "An error in XIVLauncher occurred. Please consult the FAQ. If this issue persists, please report\r\nit on GitHub by clicking the button below, describing the issue and copying the text in the box."
-                )
-            );
+            return WithText("XIVLauncher 发生错误, 请查阅常见问题\n如果问题仍然存在, 请点击下方按钮在 GitHub 上报告此问题, 描述问题并复制文本框中的内容");
         }
 
         public Builder WithAppendSettingsDescription(string context)

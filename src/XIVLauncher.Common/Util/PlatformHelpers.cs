@@ -17,26 +17,76 @@ namespace XIVLauncher.Common.Util;
 public static class PlatformHelpers
 {
     private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, 0);
-
-    /// <summary>
-    ///     Generates a temporary file name.
-    /// </summary>
-    /// <returns>A temporary file name that is almost guaranteed to be unique.</returns>
-    public static string GetTempFileName()
+    
+    public static bool EnsureElevated()
     {
-        // https://stackoverflow.com/a/50413126
-        return Path.Combine(Path.GetTempPath(), "xivlauncher_" + Guid.NewGuid());
+        if (IsElevated())
+            return true;
+
+        var currentProcessPath = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(currentProcessPath))
+            return false;
+
+        Log.Error("[PlatformHelper] 尚未获取管理员权限, 尝试以管理员模式重启程序");
+        
+        Process.Start
+        (
+            new ProcessStartInfo
+            {
+                UseShellExecute  = true,
+                WorkingDirectory = Environment.CurrentDirectory,
+                FileName         = currentProcessPath,
+                Verb             = "runas",
+                Arguments        = "--inject"
+            }
+        );
+        
+        Environment.Exit(0);
+        return false;
     }
+
+    public static void BringProcessForeground(int pid)
+    {
+        const int SW_RESTORE = 9;
+
+        try
+        {
+            var process = Process.GetProcessById(pid);
+            var hWnd    = process.MainWindowHandle;
+            if (hWnd == nint.Zero)
+                return;
+
+            if (IsIconic(hWnd))
+                ShowWindow(hWnd, SW_RESTORE);
+
+            SetForegroundWindow(hWnd);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[PlatformHelper] 尝试将 {pid} 进程带往前台失败", pid);
+        }
+
+        return;
+
+        [DllImport("user32.dll")]
+        static extern bool SetForegroundWindow(nint hWnd);
+
+        [DllImport("user32.dll")]
+        static extern bool ShowWindow(nint hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        static extern bool IsIconic(nint hWnd);
+    }
+
+    public static string GetTempFileName() =>
+        Path.Combine(Path.GetTempPath(), "xivlauncher_" + Guid.NewGuid());
 
     public static void DeleteAndRecreateDirectory(DirectoryInfo dir)
     {
-        if (!dir.Exists)
-            dir.Create();
-        else
-        {
+        if (dir.Exists)
             dir.Delete(true);
-            dir.Create();
-        }
+
+        dir.Create();
     }
 
     public static void CopyFilesRecursively(DirectoryInfo source, DirectoryInfo target)
@@ -97,7 +147,7 @@ public static class PlatformHelpers
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         socket.Bind(DefaultLoopbackEndpoint);
-        return ((IPEndPoint)socket.LocalEndPoint).Port;
+        return ((IPEndPoint)socket.LocalEndPoint!).Port;
     }
 
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
@@ -126,8 +176,8 @@ public static class PlatformHelpers
     public static string GetVersion()
     {
         var assembly  = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-        var attribute = (AssemblyInformationalVersionAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyInformationalVersionAttribute));
-        var name      = (AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly,              typeof(AssemblyProductAttribute));
+        var attribute = (AssemblyInformationalVersionAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyInformationalVersionAttribute))!;
+        var name      = (AssemblyProductAttribute)Attribute.GetCustomAttribute(assembly,              typeof(AssemblyProductAttribute))!;
         Console.WriteLine(name?.Product + " v" + attribute?.InformationalVersion);
         return name?.Product + " v" + attribute?.InformationalVersion;
     }

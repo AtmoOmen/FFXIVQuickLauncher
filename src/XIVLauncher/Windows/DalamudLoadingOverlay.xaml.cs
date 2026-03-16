@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.Timers;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
-using CheapLoc;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows.ViewModel;
@@ -41,27 +40,23 @@ public partial class DalamudLoadingOverlay : Window, IDalamudLoadingOverlay
                 switch (progress)
                 {
                     case IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud:
-                        ProgressTextBlock.Text = Loc.Localize("DalamudUpdateDalamud", "Updating core...");
+                        ProgressTextBlock.Text = "正在更新核心…";
                         break;
 
                     case IDalamudLoadingOverlay.DalamudUpdateStep.Assets:
-                        ProgressTextBlock.Text = Loc.Localize("DalamudUpdateAssets", "Updating assets...");
+                        ProgressTextBlock.Text = "正在更新资源文件…";
                         break;
 
                     case IDalamudLoadingOverlay.DalamudUpdateStep.Runtime:
-                        ProgressTextBlock.Text = Loc.Localize("DalamudUpdateRuntime", "Updating runtime...");
+                        ProgressTextBlock.Text = "正在更新依赖库…";
                         break;
 
                     case IDalamudLoadingOverlay.DalamudUpdateStep.Starting:
-                        ProgressTextBlock.Text = Loc.Localize("DalamudNowStarting", "Starting...");
+                        ProgressTextBlock.Text = "正在启动…";
                         break;
 
                     case IDalamudLoadingOverlay.DalamudUpdateStep.Unavailable:
-                        ProgressTextBlock.Text = Loc.Localize
-                        (
-                            "DalamudUnavailable",
-                            "Plugins are currently unavailable\ndue to a game update."
-                        );
+                        ProgressTextBlock.Text = "由于游戏更新, 插件目前无法使用";
                         InfoIcon.Visibility    = Visibility.Visible;
                         ProgressBar.Visibility = Visibility.Collapsed;
                         UpdateText.Visibility  = Visibility.Collapsed;

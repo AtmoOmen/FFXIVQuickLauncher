@@ -26,16 +26,16 @@
                           Drop="AccountListView_OnDrop">
                     <ListView.ContextMenu>
                         <ContextMenu Opened="AccountListViewContext_Opened" StaysOpen="true">
-                            <!--<MenuItem Header="{Binding AccountSwitcherSetProfilePicLoc}" Click="SetProfilePicture_OnClick"  Foreground="{DynamicResource MaterialDesignBody}"/>-->
-                            <MenuItem Header="{Binding AccountSwitcherCreateShortcutLoc}"
+                            <!--<MenuItem Header="更改头像" Click="SetProfilePicture_OnClick"  Foreground="{DynamicResource MaterialDesignBody}"/>-->
+                            <MenuItem Header="创建桌面快捷方式"
                                       Click="CreateDesktopShortcut_OnClick"
                                       Foreground="{DynamicResource MaterialDesignBody}" />
-                            <MenuItem Header="{Binding AccountSwitcherSetNoteLoc}" Click="SetNote_OnClick"
+                            <MenuItem Header="设置备注" Click="SetNote_OnClick"
                                       Foreground="{DynamicResource MaterialDesignBody}" />
-                            <MenuItem Header="{Binding RemoveLoc}" Click="RemoveAccount_OnClick"
+                            <MenuItem Header="移除" Click="RemoveAccount_OnClick"
                                       Foreground="{DynamicResource MaterialDesignBody}" />
                             <MenuItem x:Name="AccountEntrySavePasswordCheck" Visibility="Collapsed" IsCheckable="true"
-                                      Header="{Binding AccountSwitcherDontSavePasswordLoc}"
+                                      Header="不保存密码"
                                       Checked="DontSavePassword_OnChecked" Unchecked="DontSavePassword_OnUnchecked"
                                       Foreground="{DynamicResource MaterialDesignBody}" />
                         </ContextMenu>

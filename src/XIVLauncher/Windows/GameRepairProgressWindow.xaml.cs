@@ -89,11 +89,11 @@ public partial class GameRepairProgressWindow : Window
         switch (_verify.State)
         {
             case PatchVerifier.VerifyState.DownloadMeta:
-                CurrentStepText.Text = ViewModel.DownloadingMetaLoc;
+                CurrentStepText.Text = "正在下载元文件…";
                 InfoTextBlock.Text   = $"{_verify.CurrentFile}";
                 StatusTextBlock.Text =
                     $"{Math.Min(_verify.PatchSetIndex + 1, _verify.PatchSetCount)}/{_verify.PatchSetCount} - {APIHelper.BytesToString(_verify.Progress)}/{APIHelper.BytesToString(_verify.Total)}";
-                SpeedTextBlock.Text         = string.Format(ViewModel.SpeedUnitPerSecLoc, APIHelper.BytesToString(_verify.Speed));
+                SpeedTextBlock.Text         = $"{APIHelper.BytesToString(_verify.Speed)}/s";
                 EstimatedTimeTextBlock.Text = ViewModel.FormatEstimatedTime(_verify.Total - _verify.Progress, _verify.Speed);
                 Progress.Value              = _verify.Total != 0 ? 100.0 * _verify.Progress / _verify.Total : 0;
                 SetInstallItemsVisible(1);
@@ -102,8 +102,8 @@ public partial class GameRepairProgressWindow : Window
             case PatchVerifier.VerifyState.VerifyAndRepair:
                 CurrentStepText.Text = _verify.CurrentMetaInstallState switch
                 {
-                    IndexedZiPatchInstaller.InstallTaskState.NotStarted => ViewModel.VerifyingLoc,
-                    _                                                   => ViewModel.RepairingLoc
+                    IndexedZiPatchInstaller.InstallTaskState.NotStarted => "正在验证游戏文件…",
+                    _                                                   => "正在修复游戏文件…"
                 };
 
                 InfoTextBlock.Text = $"{_verify.CurrentFile}";
@@ -113,10 +113,10 @@ public partial class GameRepairProgressWindow : Window
 
                 SpeedTextBlock.Text = _verify.CurrentMetaInstallState switch
                 {
-                    IndexedZiPatchInstaller.InstallTaskState.WaitingForReattempt => ViewModel.ReattemptWaitingLoc,
-                    IndexedZiPatchInstaller.InstallTaskState.Connecting          => ViewModel.ConnectingLoc,
-                    IndexedZiPatchInstaller.InstallTaskState.Finishing           => ViewModel.FinishingLoc,
-                    _                                                            => string.Format(ViewModel.SpeedUnitPerSecLoc, APIHelper.BytesToString(_verify.Speed))
+                    IndexedZiPatchInstaller.InstallTaskState.WaitingForReattempt => "请等待, 然后再试一次…",
+                    IndexedZiPatchInstaller.InstallTaskState.Connecting          => "正在连接…",
+                    IndexedZiPatchInstaller.InstallTaskState.Finishing           => "正在结束…",
+                    _                                                            => $"{APIHelper.BytesToString(_verify.Speed)}/s"
                 };
 
                 EstimatedTimeTextBlock.Text = _verify.CurrentMetaInstallState switch

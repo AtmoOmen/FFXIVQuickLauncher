@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using CheapLoc;
 using MaterialDesignThemes.Wpf.Transitions;
 using Serilog;
 using XIVLauncher.Accounts.Cred;
@@ -73,10 +72,7 @@ public partial class SettingsControl
         else
             EntryPointDalamudLoadMethodRadioButton.IsChecked = true;
 
-        // Prevent raising events...
-        EnableHooksCheckBox.Checked   -= EnableHooksCheckBox_OnChecked;
-        EnableHooksCheckBox.IsChecked =  App.Settings.InGameAddonEnabled;
-        EnableHooksCheckBox.Checked   += EnableHooksCheckBox_OnChecked;
+        EnableHooksCheckBox.IsChecked = App.Settings.InGameAddonEnabled;
 
         EnableDcTravelCheckBox.IsChecked = true;
         EnableDcTravelCheckBox.IsEnabled = false;
@@ -102,7 +98,7 @@ public partial class SettingsControl
         {
             CustomMessageBox.Show
             (
-                Loc.Localize("SettingsGamePatchPathError", "Game and patch download paths cannot be the same.\nPlease make sure to choose distinct game and patch download paths."),
+                "游戏和补丁的下载路径不能相同\n请选择不同的游戏和补丁下载路径",
                 "XIVLauncher Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -249,7 +245,7 @@ public partial class SettingsControl
         {
             CustomMessageBox.Show
             (
-                Loc.Localize("IntegrityCheckBase", "The game is not installed to the path you specified.\nPlease install the game before running an integrity check."),
+                "游戏没有安装到指定的路径\n请在检查游戏完整性之前安装游戏",
                 "XIVLauncherCN (Soil)",
                 parentWindow: Window.GetWindow(this)
             );
@@ -275,11 +271,7 @@ public partial class SettingsControl
                             case IntegrityCheck.CompareResult.ReferenceNotFound:
                                 CustomMessageBox.Show
                                 (
-                                    Loc.Localize
-                                    (
-                                        "IntegrityCheckImpossible",
-                                        "There is no reference report yet for this game version. Please try again later."
-                                    ),
+                                    "此游戏版本尚无参考报告, 请稍后重试",
                                     "XIVLauncherCN (Soil)",
                                     parentWindow: Window.GetWindow(this)
                                 );
@@ -288,11 +280,7 @@ public partial class SettingsControl
                             case IntegrityCheck.CompareResult.ReferenceFetchFailure:
                                 CustomMessageBox.Show
                                 (
-                                    Loc.Localize
-                                    (
-                                        "IntegrityCheckNetworkError",
-                                        "Failed to download reference files for checking integrity. Check your internet connection and try again."
-                                    ),
+                                    "下载完整性检查参考文件失败, 请检查网络连接后重试",
                                     "XIVLauncherCN (Soil)",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error,
@@ -303,11 +291,7 @@ public partial class SettingsControl
                             case IntegrityCheck.CompareResult.Invalid:
                                 CustomMessageBox.Show
                                 (
-                                    Loc.Localize
-                                    (
-                                        "IntegrityCheckFailed",
-                                        "Some game files seem to be modified or corrupted. \n\nIf you use TexTools mods, this is an expected result.\n\nIf you do not use mods, right click the \"Login\" button on the XIVLauncher start page and choose \"Repair game\"."
-                                    ),
+                                    "部分游戏文件似乎已被修改或损坏\n\n如果使用 TexTools 模组, 这是预期结果\n\n如果不使用模组, 请右键点击 XIVLauncher 启动页面的「登录」按钮并选择「修复游戏」",
                                     "XIVLauncherCN (Soil)",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Exclamation,
@@ -317,7 +301,7 @@ public partial class SettingsControl
                                 break;
 
                             case IntegrityCheck.CompareResult.Valid:
-                                CustomMessageBox.Show(Loc.Localize("IntegrityCheckValid", "Your game install seems to be valid."), "XIVLauncherCN (Soil)", parentWindow: Window.GetWindow(this));
+                                CustomMessageBox.Show("游戏安装完整", "XIVLauncherCN (Soil)", parentWindow: Window.GetWindow(this));
                                 break;
                         }
                     }
@@ -340,7 +324,7 @@ public partial class SettingsControl
         {
             CustomMessageBox.Show
             (
-                Loc.Localize("IntegrityCheckBase", "The game is not installed to the path you specified.\nPlease install the game before running an integrity check."),
+                "游戏没有安装到指定的路径\n请在检查游戏完整性之前安装游戏",
                 "XIVLauncherCN (Soil)",
                 parentWindow: Window.GetWindow(this)
             );
@@ -358,44 +342,7 @@ public partial class SettingsControl
 
         window.ShowDialog();
     }
-
-    private void EnableHooksCheckBox_OnChecked(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            if (!string.IsNullOrEmpty(ViewModel.GamePath) && GameHelpers.IsValidGamePath(ViewModel.GamePath) && !DalamudLauncher.CanRunDalamud(new DirectoryInfo(ViewModel.GamePath)))
-            {
-                CustomMessageBox.Show
-                (
-                    Loc.Localize
-                    (
-                        "DalamudIncompatible",
-                        "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!"
-                    ),
-                    "XIVLauncherCN (Soil)",
-                    parentWindow: Window.GetWindow(this)
-                );
-            }
-        }
-        catch (Exception exc)
-        {
-            CustomMessageBox.Show
-            (
-                Loc.Localize
-                (
-                    "DalamudCompatCheckFailed",
-                    "Could not contact the server to get the current compatible game version for Dalamud. This might mean that your .NET installation is too old.\nPlease check the Discord for more information."
-                ),
-                "XIVLauncherCN Problem",
-                MessageBoxButton.OK,
-                MessageBoxImage.Hand,
-                parentWindow: Window.GetWindow(this)
-            );
-
-            Log.Error(exc, "Couldn't check dalamud compatibility.");
-        }
-    }
-
+    
     private void PluginsFolderButton_Click(object sender, RoutedEventArgs e)
     {
         var pluginsPath = Path.Combine(Paths.RoamingPath, "installedPlugins");
@@ -437,12 +384,12 @@ public partial class SettingsControl
 
         if (isBootOrGame)
         {
-            GamePathSafeguardText.Text       = ViewModel.GamePathSafeguardLoc;
+            GamePathSafeguardText.Text       = "请不要选择「game」文件夹, 请选择它的上层文件夹";
             GamePathSafeguardText.Visibility = Visibility.Visible;
         }
         else if (mightBeNonInternationalVersion && App.Settings.Language != ClientLanguage.ChineseSimplified)
         {
-            GamePathSafeguardText.Text       = ViewModel.GamePathSafeguardRegionLoc;
+            GamePathSafeguardText.Text       = "XIVLauncher 并不支持国服或韩服版本, 请确保选择的路径属于国际服版本";
             GamePathSafeguardText.Visibility = Visibility.Visible;
         }
         else

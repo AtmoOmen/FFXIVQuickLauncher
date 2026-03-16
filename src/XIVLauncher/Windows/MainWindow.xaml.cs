@@ -10,7 +10,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
-using CheapLoc;
 using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Accounts;
@@ -20,6 +19,7 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Http.Site;
+using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 using XIVLauncher.Xaml;
@@ -79,7 +79,7 @@ public partial class MainWindow : Window
         {
             new()
             {
-                Title = Loc.Localize("NewsLoading", "Loading..."),
+                Title = "加载中…",
                 Tag   = "DlError"
             }
         };
@@ -118,7 +118,7 @@ public partial class MainWindow : Window
 
             if (savedAccount.AccountType == XIVAccountType.WeGameSID)
             {
-                Model.TryLogin
+                Model.StartLogin
                 (
                     LoginType.WeGameSID,
                     savedAccount.LoginAccount,
@@ -130,7 +130,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                Model.TryLogin
+                Model.StartLogin
                 (
                     LoginType.AutoLoginSession,
                     savedAccount.LoginAccount,
@@ -300,7 +300,7 @@ public partial class MainWindow : Window
         {
             Log.Error(ex, "Could not get news");
             _ = Dispatcher.BeginInvoke
-                (new Action(() => { NewsListView.ItemsSource = new List<News> { new() { Title = Loc.Localize("NewsDlFailed", "Could not download news data."), Tag = "DlError" } }; }));
+                (new Action(() => { NewsListView.ItemsSource = new List<News> { new() { Title = "无法获取公告信息", Tag = "DlError" } }; }));
         }
     }
 
@@ -599,28 +599,6 @@ public partial class MainWindow : Window
             ((MainWindowViewModel)DataContext).Username = ((TextBox)sender).Text;
     }
 
-    private void FastLoginCheckBox_OnClick(object sender, RoutedEventArgs e)
-    {
-        //if (Model.IsFastLogin)
-        //{
-        //    LoginPassword.Password = String.Empty;
-        //}
-        //else
-        //{
-        //    LoginPassword.Password = _accountManager.CurrentAccount?.Password;
-        //}
-    }
-
-    //private void InjectGame_OnClick(object sender, RoutedEventArgs e)
-    //{
-    //    Task.Run(() =>
-    //    {
-    //        Model.InjectGame();
-    //        Environment.Exit(0);
-    //    }).ConfigureAwait(false);
-
-    //}
-
     private void BackToLoginPageButton_OnClick(object sender, RoutedEventArgs e) =>
         Dispatcher.Invoke(() => { Model.SwitchCard(MainWindowViewModel.LoginCardType.MainPage); });
 
@@ -630,7 +608,7 @@ public partial class MainWindow : Window
         (() =>
             {
                 if (Model.SelectedProcess != null)
-                    AppUtil.BringProcessMainWindowToFront(Model.SelectedProcess.ProcessID);
+                    PlatformHelpers.BringProcessForeground(Model.SelectedProcess.ProcessID);
             }
         );
     }

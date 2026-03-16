@@ -41,15 +41,15 @@ public partial class PatchDownloadDialog : Window
 
     public void SetGeneralProgress(int curr, int final, bool busy)
     {
-        PatchProgressText.Text = string.Format(ViewModel.PatchGeneralStatusLoc, $"{curr}/{final}");
-        InstallingText.Text    = busy ? string.Format(ViewModel.PatchInstallingFormattedLoc, curr) : ViewModel.PatchInstallingIdleLoc;
+        PatchProgressText.Text = $"正在更新第 {curr}/{final} 个补丁…";
+        InstallingText.Text    = busy ? $"正在安装第 #{curr} 个更新…" : "正在等待下载…";
     }
 
     public void SetLeft(long left, double rate)
     {
         var eta = rate == 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(left / rate);
-        BytesLeftText.Text = string.Format(ViewModel.PatchEtaLoc, APIHelper.BytesToString(left), APIHelper.BytesToString(rate));
-        TimeLeftText.Text  = APIHelper.GetTimeLeft(eta, ViewModel.PatchEtaTimeLoc);
+        BytesLeftText.Text = $"剩余 {APIHelper.BytesToString(left)} (下载速度: {APIHelper.BytesToString(rate)}/s)";
+        TimeLeftText.Text  = APIHelper.GetTimeLeft(eta, ["预计剩余时间: {0} 天 {1} 小时 {2} 分 {3} 秒", "预计剩余时间: {0} 小时 {1} 分 {2} 秒", "预计剩余时间: {0} 分 {1} 秒", "预计剩余时间: {0} 秒"]);
     }
 
     public void SetPatchProgress(int index, string patchName, double pct, bool indeterminate)
@@ -124,7 +124,7 @@ public partial class PatchDownloadDialog : Window
 
                     if (_manager.Slots[i] == PatchManager.SlotState.Done || activePatch == null)
                     {
-                        SetPatchProgress(i, ViewModel.PatchDoneLoc, 100f, false);
+                        SetPatchProgress(i, "更新下载完成", 100f, false);
                         continue;
                     }
 
@@ -133,7 +133,7 @@ public partial class PatchDownloadDialog : Window
                         SetPatchProgress
                         (
                             i,
-                            $"{activePatch.Patch} ({ViewModel.PatchCheckingLoc})",
+                            $"{activePatch.Patch} (正在检查更新…)",
                             100f,
                             true
                         );

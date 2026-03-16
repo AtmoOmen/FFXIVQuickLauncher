@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using CheapLoc;
 using CommandLine;
 using Newtonsoft.Json;
 using XIVLauncher.Common.Constant;
@@ -83,15 +82,7 @@ public class CommandLineStep : IStartupStep
 
     private static void GenerateLocalizables()
     {
-        try
-        {
-            Loc.ExportLocalizable();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.ToString());
-        }
-
+        // 本地化导出功能已禁用
         Environment.Exit(0);
     }
 }

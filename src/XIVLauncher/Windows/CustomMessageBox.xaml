@@ -51,7 +51,7 @@
             </StackPanel>
             <StackPanel.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="{Binding CopyWithShortcutLoc}" Command="{Binding Path=CopyMessageTextCommand}" />
+                    <MenuItem Header="复制 (_C)" Command="{Binding Path=CopyMessageTextCommand}" />
                 </ContextMenu>
             </StackPanel.ContextMenu>
         </StackPanel>
@@ -61,7 +61,7 @@
                     x:Name="OfficialLauncherButton" Margin="5,0,0,0" Click="OfficialLauncherButton_Click">
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="Launch" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="{Binding OfficialLauncherLoc}" />
+                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="官方启动器" />
                 </StackPanel>
             </Button>
             <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
@@ -75,14 +75,14 @@
                     x:Name="IntegrityReportButton" Margin="5,0,0,0" Click="IntegrityReportButton_Click">
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="FileDocument" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="{Binding OpenIntegrityReportLoc}" />
+                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="打开检查报告" />
                 </StackPanel>
             </Button>
             <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
                     x:Name="NewGitHubIssueButton" Margin="5,0,0,0" Click="NewGitHubIssueButton_OnClick">
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="Github" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="{Binding ReportErrorLoc}" />
+                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="报告错误" />
                 </StackPanel>
             </Button>
             <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"

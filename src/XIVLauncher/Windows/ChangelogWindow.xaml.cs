@@ -22,9 +22,7 @@ public partial class ChangelogWindow : Window
 
         var vm = new ChangeLogWindowViewModel();
         DataContext = vm;
-
-        ChangeLogText.Text = vm.ChangelogLoadingLoc;
-
+        
         Activate();
         Topmost = true;
         Topmost = false;
@@ -32,7 +30,7 @@ public partial class ChangelogWindow : Window
     }
 
     public void UpdateVersion(string version) =>
-        UpdateNotice.Text = string.Format(Model.UpdateNoticeLoc, version);
+        UpdateNotice.Text = string.Format("XIVLauncherCN (Soil) 已更新至 {0}", version);
 
     public new void Show()
     {

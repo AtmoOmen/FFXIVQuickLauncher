@@ -23,7 +23,7 @@
                         Margin="10,10,10,0"
                         TextWrapping="Wrap"
                         Foreground="{DynamicResource MaterialDesignBody}" />
-                    <TextBlock Margin="10" MaxWidth="650" Height="Auto" x:Name="ChangeLogText" TextWrapping="Wrap" />
+                    <TextBlock Margin="10" MaxWidth="650" Height="Auto" x:Name="ChangeLogText" Text="加载更新日志中……" TextWrapping="Wrap" />
                 </StackPanel>
 
                 <materialDesign:PackIcon Kind="Globe" HorizontalAlignment="Stretch"
@@ -32,7 +32,7 @@
             </StackPanel>
         </StackPanel>
 
-        <TextBlock Margin="10 20 10 20" MaxWidth="800" Height="Auto" Text="{Binding ChangelogThanksLoc}"
+        <TextBlock Margin="10 20 10 20" MaxWidth="800" Height="Auto" Text="XIVLauncher 是由无数来自世界各地的人共同创造出的、免费且开源的软件"
                    TextWrapping="Wrap" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
@@ -43,7 +43,7 @@
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="Discord" />
                     <TextBlock Margin="8 0 0 0" VerticalAlignment="Center"
-                               Text="{Binding JoinDiscordLoc}" />
+                               Text="加入 Discord 服务器" />
                 </StackPanel>
             </Button>-->
             <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
@@ -55,7 +55,7 @@
                 </StackPanel>
             </Button>
 
-            <Button Margin="0,0,0,0" HorizontalAlignment="Right" Click="CloseButton_Click" Content="{Binding OkLoc}" />
+            <Button Margin="0,0,0,0" HorizontalAlignment="Right" Click="CloseButton_Click" Content="确定" />
         </StackPanel>
     </StackPanel>
 </Window>

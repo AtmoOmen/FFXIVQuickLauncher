@@ -25,9 +25,6 @@ public class DalamudLauncher
     string            troubleshootingData
 )
 {
-    // always return true
-    public static bool CanRunDalamud(DirectoryInfo gamePath) => true;
-
     public DalamudInstallState HoldForUpdate(DirectoryInfo gamePathDir)
     {
         Log.Information("[HOOKS] DalamudLauncher::HoldForUpdate(gp:{0})", gamePathDir.FullName);

@@ -43,7 +43,6 @@ public interface ILauncherSettingsV3
     LoginType?                              SelectedLoginType    { get; set; }
     int?                                    SelectedServer       { get; set; }
     bool                                    FastLogin            { get; set; }
-    bool?                                   HasAgreeWeGameUsage  { get; set; }
     bool?                                   ShowWeGameTokenLogin { get; set; }
     CredType?                               CredType             { get; set; }
     bool?                                   EnableSkipUpdate     { get; set; }
