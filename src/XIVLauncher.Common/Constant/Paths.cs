@@ -1,17 +1,15 @@
 using System;
 using System.IO;
 
-namespace XIVLauncher.Common;
+namespace XIVLauncher.Common.Constant;
 
 public static class Paths
 {
-    public static string ResourcesPath =>
+    public static string ResourcesPath { get; } =
         Path.Join(AppContext.BaseDirectory, "Resources");
 
-    public static string RoamingPath { get; private set; }
-
-    static Paths() =>
-        RoamingPath = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XIVLauncherCN");
+    public static string RoamingPath { get; private set; } = 
+        Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XIVLauncherCN");
 
     public static void OverrideRoamingPath(string path) =>
         RoamingPath = Environment.ExpandEnvironmentVariables(path);
@@ -23,4 +21,7 @@ public static class Paths
 
         return configuredPatchPath ?? new DirectoryInfo(Path.Combine(roamingPath, "patches"));
     }
+    
+    public static string GetConfigPath(string prefix = "launcher") => 
+        Path.Join(RoamingPath, $"{prefix}ConfigV3.json");
 }

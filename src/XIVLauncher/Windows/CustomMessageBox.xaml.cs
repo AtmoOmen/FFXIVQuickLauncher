@@ -15,6 +15,7 @@ using CheapLoc;
 using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
@@ -375,7 +376,7 @@ public partial class CustomMessageBox : Window
         Process.Start(Path.Combine(Paths.RoamingPath, "integrityreport.txt"));
 
     private void NewGitHubIssueButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo($"{App.REPO_URL}/issues/new?assignees=octocat&labels=bug%2Ctriage&template=bugreport.yml") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(Links.REPO_URL) { UseShellExecute = true });
 
     private void PackTroubleshooting_OnClick(object sender, RoutedEventArgs e) =>
         PackGenerator.PackAndShowMessage();

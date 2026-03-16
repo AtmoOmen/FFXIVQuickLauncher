@@ -10,6 +10,7 @@ using System.Windows;
 using Serilog;
 using Serilog.Events;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.Rpc.Implementations;
 

@@ -1,0 +1,67 @@
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Threading;
+using Serilog;
+using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Dalamud;
+using XIVLauncher.Windows;
+
+namespace XIVLauncher.Startup.Steps;
+
+public class DalamudInitStep : IStartupStep
+{
+    private readonly UpdateCheckStep updateCheckStep;
+
+    public DalamudInitStep(UpdateCheckStep updateCheckStep)
+    {
+        this.updateCheckStep = updateCheckStep;
+    }
+
+    public string Name => "Dalamud 初始化";
+    public int Order => 90;
+
+    public Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            context.DalamudUpdater = new DalamudUpdater
+            (
+                new DirectoryInfo(Path.Combine(Paths.RoamingPath, "addon")),
+                new DirectoryInfo(Path.Combine(Paths.RoamingPath, "runtime")),
+                new DirectoryInfo(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
+                context.Settings.GitHubToken
+            );
+
+            if (updateCheckStep.DalamudRunnerOverride != null)
+                context.DalamudUpdater.RunnerOverride = updateCheckStep.DalamudRunnerOverride;
+
+            var dalamudWindowThread = new Thread(() => StartDalamudOverlayThread(context));
+            dalamudWindowThread.SetApartmentState(ApartmentState.STA);
+            dalamudWindowThread.IsBackground = true;
+            dalamudWindowThread.Start();
+
+            while (context.DalamudUpdater.Overlay == null)
+                Thread.Yield();
+
+            context.DalamudUpdater.Run(Updates.HaveFeatureFlag(Updates.LeaseFeatureFlags.ForceProxyDalamudAndAssets));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "无法启动 Dalamud 更新器");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static void StartDalamudOverlayThread(StartupContext context)
+    {
+        var overlay = new DalamudLoadingOverlay();
+        overlay.Hide();
+        context.DalamudUpdater.Overlay = overlay;
+
+        Dispatcher.Run();
+    }
+}

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Serilog;
 using Serilog.Events;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Patching.SdoFileDownload;
 
 namespace XIVLauncher.PatchInstaller.Commands;

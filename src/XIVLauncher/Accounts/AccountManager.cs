@@ -11,6 +11,7 @@ using SQLite;
 using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Accounts.Cred.CredProviders;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Settings;
 using XIVLauncher.Windows;
 

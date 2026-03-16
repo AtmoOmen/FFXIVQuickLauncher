@@ -10,15 +10,13 @@ using System.Security.Principal;
 using Serilog;
 using SharpCompress.Archives;
 using SharpCompress.Common;
+using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.Common.Util;
 
 public static class PlatformHelpers
 {
     private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, 0);
-
-    public static Platform GetPlatform()
-        => Platform.Win32;
 
     /// <summary>
     ///     Generates a temporary file name.
@@ -50,32 +48,8 @@ public static class PlatformHelpers
             file.CopyTo(Path.Combine(target.FullName, file.Name));
     }
 
-    public static void OpenBrowser(string url)
-    {
-        url = url.Replace("&", "^&");
-        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-    }
-
     public static bool IsElevated() =>
         new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
-
-    public static void Untar(string path, string output)
-    {
-        var psi = new ProcessStartInfo("tar")
-        {
-            Arguments = $"-xf \"{path}\" -C \"{output}\""
-        };
-
-        var tarProcess = Process.Start(psi);
-
-        if (tarProcess == null)
-            throw new Exception("Could not start tar.");
-
-        tarProcess.WaitForExit();
-
-        if (tarProcess.ExitCode != 0)
-            throw new Exception("Could not untar.");
-    }
 
     public static void Unzip7ZAsset(string path, string output)
     {

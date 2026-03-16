@@ -13,6 +13,7 @@ using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Addon.Implementations;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
@@ -488,9 +489,6 @@ public partial class SettingsControl
         var cw = new ChangelogWindow();
         cw.UpdateVersion(AppUtil.GetAssemblyVersion());
     }
-
-    private void LearnMoreButton_OnClick(object sender, RoutedEventArgs e) =>
-        PlatformHelpers.OpenBrowser("https://goatcorp.github.io/faq/mobile_otp");
 
     private void OpenAdvancedSettings_OnClick(object sender, RoutedEventArgs e)
     {

@@ -5,6 +5,7 @@ using System.Net;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.Accounts;
 

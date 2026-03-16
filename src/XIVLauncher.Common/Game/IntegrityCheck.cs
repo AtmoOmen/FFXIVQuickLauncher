@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.Common.Game;
 
@@ -162,9 +163,9 @@ public static class IntegrityCheck
 
     public static async Task<IntegrityCheckResult> RunIntegrityCheckAsync
     (
-        DirectoryInfo                     gamePath,
-        IProgress<IntegrityCheckProgress> progress,
-        bool                              onlyIndex = false
+        DirectoryInfo                      gamePath,
+        IProgress<IntegrityCheckProgress>? progress,
+        bool                               onlyIndex = false
     )
     {
         //var hashes = new Dictionary<string, string>();
@@ -181,10 +182,10 @@ public static class IntegrityCheck
 
     private static ConcurrentDictionary<string, (string Hash, ulong Size)> CheckDirectory
     (
-        DirectoryInfo                     directory,
-        string                            rootDirectory,
-        IProgress<IntegrityCheckProgress> progress,
-        bool                              onlyIndex = false
+        DirectoryInfo                      directory,
+        string                             rootDirectory,
+        IProgress<IntegrityCheckProgress>? progress,
+        bool                               onlyIndex = false
     )
     {
         var filesToProcess = new List<FileInfo>();
@@ -214,7 +215,7 @@ public static class IntegrityCheck
                     );
 
                     var hash       = md5.ComputeHash(stream);
-                    var hashString = BitConverter.ToString(hash).Replace("-", string.Empty);
+                    var hashString = Convert.ToHexString(hash);
 
                     results.TryAdd(relativePath, (hashString, (ulong)file.Length));
 

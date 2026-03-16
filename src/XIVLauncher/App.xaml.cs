@@ -1,117 +1,52 @@
 using System;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
 using System.Windows.Threading;
-using CheapLoc;
-using CommandLine;
-using Config.Net;
-using Newtonsoft.Json;
 using Serilog;
-using Serilog.Events;
-using Velopack;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Dalamud;
-using XIVLauncher.Common.Game;
-using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Common.Support;
-using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
-using XIVLauncher.Settings.Parsers;
-using XIVLauncher.Support;
+using XIVLauncher.Startup;
 using XIVLauncher.Windows;
-using XIVLauncher.Xaml;
-using DateTimeOffset = System.DateTimeOffset;
 
 namespace XIVLauncher;
 
-/// <summary>
-///     Interaction logic for App.xaml
-/// </summary>
 public partial class App
 {
-    public class CmdLineOptions
+    #region 静态属性
+
+    public static StartupContext StartupContext { get; private set; } = null!;
+
+    public static ILauncherSettingsV3 Settings       => StartupContext.Settings;
+    public static AccountManager      AccountManager => StartupContext.AccountManager;
+    public static DalamudUpdater      DalamudUpdater => StartupContext.DalamudUpdater;
+    public static bool                InjectMode     => StartupContext.InjectMode;
+    public static bool GlobalIsDisableAutologin
     {
-        [CommandLine.Option("dalamud-runner-override", Required = false, HelpText = "Path to a folder to override the dalamud runner with.")]
-        public string RunnerOverride { get; set; }
-
-        [CommandLine.Option("roamingPath", Required = false, HelpText = "Path to a folder to override the roaming path for XL with.")]
-        public string RoamingPath { get; set; }
-
-        [CommandLine.Option("noautologin", Required = false, HelpText = "Disable autologin.")]
-        public bool NoAutoLogin { get; set; }
-
-        [CommandLine.Option("gen-localizable", Required = false, HelpText = "Generate localizable files.")]
-        public bool DoGenerateLocalizables { get; set; }
-
-        [CommandLine.Option("gen-integrity", Required = false, HelpText = "Generate integrity files. Provide a game path.")]
-        public string DoGenerateIntegrity { get; set; }
-
-        [CommandLine.Option("account", Required = false, HelpText = "Account name to use.")]
-        public string AccountName { get; set; }
-
-        [CommandLine.Option("clientlang", Required = false, HelpText = "Client language to use.")]
-        public ClientLanguage? ClientLanguage { get; set; }
-
-        // We don't care about these, just need it so that the parser doesn't error
-        [CommandLine.Option("squirrel-updated", Hidden = true)]
-        public string SquirrelUpdated { get; set; }
-
-        [CommandLine.Option("squirrel-install", Hidden = true)]
-        public string SquirrelInstall { get; set; }
-
-        [CommandLine.Option("squirrel-obsolete", Hidden = true)]
-        public string SquirrelObsolete { get; set; }
-
-        [CommandLine.Option("squirrel-uninstall", Hidden = true)]
-        public string SquirrelUninstall { get; set; }
-
-        [CommandLine.Option("squirrel-firstrun", Hidden = true)]
-        public bool SquirrelFirstRun { get; set; }
-
-        [CommandLine.Option("inject", Hidden = true)]
-        public bool InjectMode { get; set; }
+        get => StartupContext.IsDisableAutologin;
+        set => StartupContext.IsDisableAutologin = value;
     }
 
-    public const string REPO_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
+    #endregion
 
-    public static ILauncherSettingsV3 Settings;
-    public static AccountManager      AccountManager;
-#if !XL_NOAUTOUPDATE
-    private UpdateLoadingDialog _updateWindow;
-#endif
+    #region 字段
 
-    public static CmdLineOptions CommandLine { get; private set; }
+    private StartupOrchestrator? orchestrator;
+    private MainWindow? mainWindow;
+    private bool isUseFullExceptionHandler;
 
-    private FileInfo   _dalamudRunnerOverride;
-    private MainWindow _mainWindow;
+    #endregion
 
-    public static bool           GlobalIsDisableAutologin { get; private set; }
-    public static bool           InjectMode               { get; private set; }
-    public static DalamudUpdater DalamudUpdater           { get; private set; }
-
-    public static Brush UABrush = new LinearGradientBrush
-    (
-        [
-            new(Color.FromArgb(0xFF, 0xFF, 0x4D, 0x00), 0.0f), // 暗琥珀色
-            new(Color.FromArgb(0xFF, 0xFF, 0xD7, 0x00), 1.0f)
-        ],
-        0.7f
-    );
+    #region 入口
 
     public App()
     {
 #if !DEBUG
         try
         {
-            AppDomain.CurrentDomain.UnhandledException += EarlyInitExceptionHandler;
-            TaskScheduler.UnobservedTaskException      += TaskSchedulerOnUnobservedTaskException;
+            AppDomain.CurrentDomain.UnhandledException += OnEarlyInitException;
+            TaskScheduler.UnobservedTaskException      += OnUnobservedTaskException;
         }
         catch
         {
@@ -120,164 +55,68 @@ public partial class App
 #endif
     }
 
-    private static void OnSerilogLogLine(object sender, (string Line, LogEventLevel Level, DateTimeOffset TimeStamp, System.Exception Exception) e)
+    private async void App_OnStartup(object sender, StartupEventArgs e)
     {
-        if (e.Exception == null)
-            return;
-
-        Troubleshooting.LogException(e.Exception, e.Line);
-    }
-
-    private void SetupSettings()
-    {
-        Settings = new ConfigurationBuilder<ILauncherSettingsV3>()
-                   .UseCommandLineArgs()
-                   .UseJsonFile(GetConfigPath("launcher"))
-                   .UseTypeParser(new DirectoryInfoParser())
-                   .UseTypeParser(new AddonListParser())
-                   .UseTypeParser(new CommonJsonParser<PreserveWindowPosition.WindowPlacement>())
-                   .Build();
-
-        MachineCode.IsDynamicDeviceId = Settings.DynamicDeviceId;
-
-        if (Settings.EnableVerboseLog.GetValueOrDefault(false))
-            LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
-        Settings.EnableVerboseLog = false;
-        Log.Information($"Current log level is {LogInit.LevelSwitch.MinimumLevel}");
+        orchestrator = new StartupOrchestrator(this, Dispatcher);
 
         try
         {
-            if (!string.IsNullOrEmpty(CommandLine.AccountName))
-            {
-                Settings.CurrentAccountId = CommandLine.AccountName;
-                Log.Verbose("Account override: '{0}'", CommandLine.AccountName);
-            }
+            await orchestrator.RunAsync();
 
-            if (CommandLine.ClientLanguage != null)
-                Settings.Language = ClientLanguage.ChineseSimplified;
+            StartupContext = orchestrator.GetContext();
+
+            OnStartupCompleted();
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Could not apply settings overrides from command line");
+            Log.Error(ex, "启动流程失败");
+            MessageBox.Show($"启动失败: {ex.Message}", "XIVLauncher 错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            Environment.Exit(-1);
         }
     }
 
-    private void OnUpdateCheckFinished(bool finishUp)
+    private void OnStartupCompleted()
+    {
+        isUseFullExceptionHandler = true;
+
+        mainWindow = new MainWindow();
+        mainWindow.Initialize();
+
+        if (StartupContext.InjectMode)
+            mainWindow.Model.InjectModeSwitchCommand.Execute(null);
+    }
+
+    #endregion
+
+    #region 事件处理
+
+    private void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        if (e.Observed) return;
+
+        OnEarlyInitException(sender, new UnhandledExceptionEventArgs(e.Exception, true));
+    }
+
+    private void OnEarlyInitException(object? sender, UnhandledExceptionEventArgs e)
     {
         Dispatcher.Invoke
         (() =>
             {
-                _useFullExceptionHandler = true;
+                Log.Error((Exception)e.ExceptionObject, "未处理的异常");
 
-#if !XL_NOAUTOUPDATE
-                if (_updateWindow != null)
-                    _updateWindow.Hide();
-#endif
-
-                if (!finishUp)
-                    return;
-
-                _mainWindow = new MainWindow();
-                _mainWindow.Initialize();
-
-                try
-                {
-                    DalamudUpdater = new DalamudUpdater
-                    (
-                        new DirectoryInfo(Path.Combine(Paths.RoamingPath, "addon")),
-                        new DirectoryInfo(Path.Combine(Paths.RoamingPath, "runtime")),
-                        new DirectoryInfo(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
-                        Settings.GitHubToken
-                    );
-
-                    if (_dalamudRunnerOverride != null)
-                        DalamudUpdater.RunnerOverride = _dalamudRunnerOverride;
-
-                    var dalamudWindowThread = new Thread(DalamudOverlayThreadStart);
-                    dalamudWindowThread.SetApartmentState(ApartmentState.STA);
-                    dalamudWindowThread.IsBackground = true;
-                    dalamudWindowThread.Start();
-
-                    while (DalamudUpdater.Overlay == null)
-                        Thread.Yield();
-
-                    DalamudUpdater.Run(Updates.HaveFeatureFlag(Updates.LeaseFeatureFlags.ForceProxyDalamudAndAssets));
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Could not start dalamud updater");
-                }
-
-                if (InjectMode)
-                    _mainWindow.Model.InjectModeSwitchCommand.Execute(null);
-            }
-        );
-    }
-
-    // We need this because the main dispatcher is blocked by the main window/login task.
-    private static void DalamudOverlayThreadStart()
-    {
-        var overlay = new DalamudLoadingOverlay();
-        overlay.Hide();
-
-        DalamudUpdater.Overlay = overlay;
-
-        Dispatcher.Run();
-    }
-
-    private static void GenerateIntegrity(string path)
-    {
-        var result            = IntegrityCheck.RunIntegrityCheckAsync(new DirectoryInfo(path), null).GetAwaiter().GetResult();
-        var saveIntegrityPath = Path.Combine(Paths.RoamingPath, $"{result.GameVersion}.json");
-
-        File.WriteAllText(saveIntegrityPath, JsonConvert.SerializeObject(result));
-
-        MessageBox.Show($"Successfully hashed {result.Hashes.Count} files to {path}.", "Hello Franz", MessageBoxButton.OK, MessageBoxImage.Asterisk);
-        Environment.Exit(0);
-    }
-
-    private static void GenerateLocalizables()
-    {
-        try
-        {
-            Loc.ExportLocalizable();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.ToString());
-        }
-
-        Environment.Exit(0);
-    }
-
-    private bool _useFullExceptionHandler;
-
-    private void TaskSchedulerOnUnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
-    {
-        if (!e.Observed)
-            EarlyInitExceptionHandler(sender, new UnhandledExceptionEventArgs(e.Exception, true));
-    }
-
-    private void EarlyInitExceptionHandler(object sender, UnhandledExceptionEventArgs e)
-    {
-        Dispatcher.Invoke
-        (() =>
-            {
-                Log.Error((Exception)e.ExceptionObject, "Unhandled exception");
-
-                if (_useFullExceptionHandler)
+                if (isUseFullExceptionHandler)
                 {
                     CustomMessageBox.Builder
-                                    .NewFrom((Exception)e.ExceptionObject, "Unhandled", CustomMessageBox.ExitOnCloseModes.ExitOnClose)
-                                    .WithAppendText("\n\nError during early initialization. Please report this error.\n\n" + e.ExceptionObject)
+                                    .NewFrom((Exception)e.ExceptionObject, "未处理", CustomMessageBox.ExitOnCloseModes.ExitOnClose)
+                                    .WithAppendText("\n\n初始化早期阶段发生错误, 请反馈此问题\n\n" + e.ExceptionObject)
                                     .Show();
                 }
                 else
                 {
                     MessageBox.Show
                     (
-                        "Error during early initialization. Please report this error.\n\n" + e.ExceptionObject,
-                        "XIVLauncher Error",
+                        "初始化早期阶段发生错误, 请反馈此问题\n\n" + e.ExceptionObject,
+                        "XIVLauncher 错误",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error
                     );
@@ -288,200 +127,51 @@ public partial class App
         );
     }
 
-    private static string GetConfigPath(string prefix) => Path.Combine(Paths.RoamingPath, $"{prefix}ConfigV3.json");
+    #endregion
 
-    private void App_OnStartup(object sender, StartupEventArgs e)
+    #region 嵌套类型
+
+    public class CommandLineOptions
     {
-        // HW rendering commonly causes issues with material design, so we turn it off by default for now
-        try
-        {
-            if (!EnvironmentSettings.IsHardwareRendered)
-                RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
-        }
-        catch
-        {
-            // ignored
-        }
+        [CommandLine.Option("dalamud-runner-override", Required = false, HelpText = "用于覆盖 Dalamud 运行器的文件夹路径")]
+        public string RunnerOverride { get; set; } = null!;
 
-        try
-        {
-            LogInit.Setup
-            (
-                Path.Combine(Paths.RoamingPath, "output.log"),
-                Environment.GetCommandLineArgs()
-            );
+        [CommandLine.Option("roamingPath", Required = false, HelpText = "用于覆盖 XIVLauncher 漫游路径的文件夹路径")]
+        public string RoamingPath { get; set; } = null!;
 
-            Log.Information("========================================================");
-            Log.Information("Starting a session(v{Version} - {Hash})", AppUtil.GetAssemblyVersion(), AppUtil.GetGitHash());
+        [CommandLine.Option("noautologin", Required = false, HelpText = "禁用自动登录")]
+        public bool NoAutoLogin { get; set; }
 
-            SerilogEventSink.Instance.LogLine += OnSerilogLogLine;
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Could not set up logging. Please report this error.\n\n" + ex.Message, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        [CommandLine.Option("gen-localizable", Required = false, HelpText = "生成本地化文件")]
+        public bool DoGenerateLocalizables { get; set; }
 
-        try
-        {
-            var helpWriter = new StringWriter();
-            var parser = new Parser
-            (config =>
-                {
-                    config.HelpWriter             = helpWriter;
-                    config.IgnoreUnknownArguments = true;
-                }
-            );
-            var result = parser.ParseArguments<CmdLineOptions>(Environment.GetCommandLineArgs());
+        [CommandLine.Option("gen-integrity", Required = false, HelpText = "生成完整性校验文件, 请提供游戏路径")]
+        public string DoGenerateIntegrity { get; set; } = null!;
 
-            if (result.Errors.Any())
-                MessageBox.Show(helpWriter.ToString(), "Help");
+        [CommandLine.Option("account", Required = false, HelpText = "要使用的账号名称")]
+        public string AccountName { get; set; } = null!;
 
-            CommandLine = result.Value ?? new CmdLineOptions();
+        [CommandLine.Option("clientlang", Required = false, HelpText = "要使用的客户端语言")]
+        public ClientLanguage? ClientLanguage { get; set; }
 
-            if (!string.IsNullOrEmpty(CommandLine.RoamingPath))
-                Paths.OverrideRoamingPath(CommandLine.RoamingPath);
+        [CommandLine.Option("squirrel-updated", Hidden = true)]
+        public string SquirrelUpdated { get; set; } = null!;
 
-            if (!string.IsNullOrEmpty(CommandLine.RunnerOverride))
-                _dalamudRunnerOverride = new FileInfo(CommandLine.RunnerOverride);
+        [CommandLine.Option("squirrel-install", Hidden = true)]
+        public string SquirrelInstall { get; set; } = null!;
 
-            if (CommandLine.NoAutoLogin)
-                GlobalIsDisableAutologin = true;
+        [CommandLine.Option("squirrel-obsolete", Hidden = true)]
+        public string SquirrelObsolete { get; set; } = null!;
 
-            if (!string.IsNullOrEmpty(CommandLine.DoGenerateIntegrity))
-                GenerateIntegrity(CommandLine.DoGenerateIntegrity);
+        [CommandLine.Option("squirrel-uninstall", Hidden = true)]
+        public string SquirrelUninstall { get; set; } = null!;
 
-            if (CommandLine.DoGenerateLocalizables)
-                GenerateLocalizables();
+        [CommandLine.Option("squirrel-firstrun", Hidden = true)]
+        public bool SquirrelFirstRun { get; set; }
 
-            if (CommandLine.InjectMode)
-                InjectMode = true;
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Could not parse command line arguments. Please report this error.\n\n" + ex.Message, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-
-        try
-        {
-            SetupSettings();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Settings were corrupted, resetting");
-            File.Delete(GetConfigPath("launcher"));
-            SetupSettings();
-        }
-
-        AccountManager = new AccountManager(Settings);
-#if !XL_LOC_FORCEFALLBACKS
-        try
-        {
-            Settings.LauncherLanguage ??= LauncherLanguage.SimplifiedChinese;
-
-            Log.Information("Trying to set up Loc for language code {0}", Settings.LauncherLanguage.GetLocalizationCode());
-
-            if (!Settings.LauncherLanguage.IsDefault())
-                Loc.Setup(AppUtil.GetFromResources($"XIVLauncher.Resources.Loc.xl.xl_{Settings.LauncherLanguage.GetLocalizationCode()}.json"));
-            else
-                Loc.SetupWithFallbacks();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Could not get language information. Setting up fallbacks.");
-            Loc.Setup("{}");
-        }
-#else
-        // Force all fallbacks
-        Loc.Setup("{}");
-#endif
-
-        VelopackApp.Build().Run();
-#if !XL_NOAUTOUPDATE
-        if (!EnvironmentSettings.IsDisableUpdates)
-        {
-            try
-            {
-                Log.Information("Starting update check...");
-
-                _updateWindow = new UpdateLoadingDialog();
-                _updateWindow.Show();
-
-                var updateMgr = new Updates();
-                updateMgr.OnUpdateCheckFinished += OnUpdateCheckFinished;
-
-                ChangelogWindow changelogWindow = null;
-
-                try
-                {
-                    changelogWindow = new ChangelogWindow();
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Could not load changelog window");
-                }
-
-                Task.Run(() => updateMgr.Run(EnvironmentSettings.IsPreRelease, changelogWindow));
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Could not dispatch update check");
-
-                if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
-                {
-                    MessageBox.Show
-                    (
-                        "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}" + ex,
-                        "XIVLauncher Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error
-                    );
-                }
-                else
-                {
-                    MessageBox.Show
-                    (
-                        "错误: " + ex.Message + Environment.NewLine + "XIVLauncher could not check for updates. Please check your internet connection or try again.\n\n" + ex,
-                        "XIVLauncher Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error
-                    );
-                }
-
-                Environment.Exit(0);
-                return;
-            }
-        }
-#endif
-
-        try
-        {
-            if (Settings.LauncherLanguage == LauncherLanguage.Russian)
-            {
-                var dict = new ResourceDictionary
-                {
-                    { "PrimaryHueLightBrush", UABrush },
-                    //{"PrimaryHueLightForegroundBrush", uaBrush},
-                    { "PrimaryHueMidBrush", UABrush },
-                    //{"PrimaryHueMidForegroundBrush", uaBrush},
-                    { "PrimaryHueDarkBrush", UABrush }
-                    //{"PrimaryHueDarkForegroundBrush", uaBrush},
-                };
-                Resources.MergedDictionaries.Add(dict);
-            }
-        }
-        catch
-        {
-            // ignored
-        }
-
-        if (EnvironmentSettings.IsDisableUpdates)
-        {
-            OnUpdateCheckFinished(true);
-            return;
-        }
-
-#if XL_NOAUTOUPDATE
-        OnUpdateCheckFinished(true);
-#endif
+        [CommandLine.Option("inject", Hidden = true)]
+        public bool InjectMode { get; set; }
     }
+
+    #endregion
 }

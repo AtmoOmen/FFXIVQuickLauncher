@@ -5,6 +5,7 @@ using FfxivArgLauncher;
 using Serilog;
 using Serilog.Events;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.PatcherIpc;
 using XIVLauncher.Common.Patching.Rpc.Implementations;
 

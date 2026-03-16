@@ -8,6 +8,7 @@ using CheapLoc;
 using Microsoft.Win32;
 using Serilog;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows;
 

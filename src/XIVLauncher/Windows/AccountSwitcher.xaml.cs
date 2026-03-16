@@ -14,6 +14,7 @@ using System.Windows.Media.Imaging;
 using CheapLoc;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.ViewModel;
 using Point = System.Windows.Point;
 

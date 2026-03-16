@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Windows;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using ZipArchive = System.IO.Compression.ZipArchive;
 
 namespace XIVLauncher.Support;

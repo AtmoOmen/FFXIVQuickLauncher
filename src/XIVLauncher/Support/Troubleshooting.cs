@@ -102,8 +102,7 @@ public static class Troubleshooting
             LauncherHash          = AppUtil.GetGitHash(),
             Official              = AppUtil.GetBuildOrigin() == "goatcorp/FFXIVQuickLauncher",
             DpiAwareness          = App.Settings.DpiAwareness.GetValueOrDefault(),
-            Platform              = PlatformHelpers.GetPlatform(),
-
+            
             ObservedGameVersion = ffxivVer,
             ObservedEx1Version  = ex1Ver,
             ObservedEx2Version  = ex2Ver,
@@ -165,9 +164,7 @@ public static class Troubleshooting
         public bool Official { get; set; }
 
         public DpiAwareness DpiAwareness { get; set; }
-
-        public Platform Platform { get; set; }
-
+        
         public string ObservedGameVersion { get; set; }
 
         public string ObservedEx1Version { get; set; }
