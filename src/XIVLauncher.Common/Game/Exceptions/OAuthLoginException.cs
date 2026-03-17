@@ -10,7 +10,7 @@ public partial class OAuthLoginException
     string? document
 ) : Exception(document ?? "未知错误")
 {
-    public string? OauthErrorMessage { get; private set; } = document;
+    public string? OAuthErrorMessage { get; private set; } = document;
 
     private static string? GetErrorMessage(string document)
     {

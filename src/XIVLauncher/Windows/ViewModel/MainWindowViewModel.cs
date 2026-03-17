@@ -327,7 +327,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
         };
 
-        var loginResult = await TryLoginToGameAsync(finalLoginType, loginType, username, secret, doingAutoLogin, dcTraveler, action).ConfigureAwait(false);
+        var loginResult = await LoginToGameAsync(finalLoginType, loginType, username, secret, doingAutoLogin, dcTraveler, action).ConfigureAwait(false);
         if (loginResult == null)
             return;
 
@@ -468,7 +468,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
     
-    private async Task<LoginResult?> TryLoginToGameAsync
+    private async Task<LoginResult?> LoginToGameAsync
     (
         LoginType        type,
         LoginType        fallbackLoginType,
@@ -495,7 +495,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         
         try
         {
-            LoginCancelSource ??= new CancellationTokenSource();
+            LoginCancelSource = new();
             var loginCts = LoginCancelSource;
             var gamePath = App.Settings.GamePath;
             return await Launcher.LoginClient.LoginWithPatchCheck
@@ -523,7 +523,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                if (requestLoginType != LoginType.Slide)
                                    return;
 
-                               Log.Information($"叨鱼确认码:{code}");
+                               Log.Information("[MainWindow] 接收到叨鱼确认码: {Code}", code);
                                LoginMessage = $"确认码: {code}";
                            }
                        ),
@@ -532,10 +532,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "StartGame failed");
+            Log.Error(ex, "[MainWindow] 尝试登录至游戏失败");
 
             var msgbox = new CustomMessageBox.Builder()
-                         .WithCaption("登录问题")
+                         .WithCaption("登录异常")
                          .WithImage(MessageBoxImage.Error)
                          .WithShowHelpLinks()
                          .WithShowDiscordLink()
@@ -545,13 +545,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 if (LoginCancelSource?.IsCancellationRequested ?? false)
                 {
-                    Log.Information("手动取消登录");
+                    Log.Information("[MainWindow] 手动取消登录");
                     return null;
                 }
 
                 if (sdoLoginEx.RemoveAutoLoginSessionKey)
                 {
-                    Log.Information("快速登录失败,清除 SessionKey: {Username}", username);
+                    Log.Information("[MainWindow] 快速登录失败, 清除 SessionKey: {Username}", username);
                     var account = AccountManager.Accounts.FirstOrDefault(x => x.UserName == username);
 
                     if (account != null)
@@ -565,68 +565,64 @@ public class MainWindowViewModel : INotifyPropertyChanged
                          .WithCaption("登录异常")
                          .WithImage(MessageBoxImage.Question)
                          .WithParentWindow(Window)
-                         .WithText($"{sdoLoginEx.Message}\n(错误码: {sdoLoginEx.ErrorCode})");
+                         .WithText($"错误: {sdoLoginEx.Message}\n({sdoLoginEx.ErrorCode})");
                 msgbox.Show();
                 return null;
             }
 
             var disableAutoLogin = false;
 
-            if (ex is IOException)
+            switch (ex)
             {
-                msgbox
-                    .WithText("无法找到游戏数据文件")
-                    .WithAppendText("\n\n")
-                    .WithAppendText("游戏路径可能设置无效, 例如位于断开连接的硬盘或网络存储上, 请在设置中检查游戏路径");
-            }
-            else if (ex is InvalidVersionFilesException)
-            {
-                msgbox.WithTextFormatted
-                (
-                    "无法从游戏文件中读取版本信息\n\n需要重新安装或修复游戏文件, 右键点击 XIVLauncher 中的登录按钮并选择\"修复游戏\"",
-                    ex.Message
-                );
-            }
-            else if (ex is OAuthLoginException oauthLoginException)
-            {
-                disableAutoLogin = true;
-                LoginMessage     = "";
-                QRDialog.CloseQRWindow(Window);
+                case IOException:
+                    msgbox
+                        .WithText("搜寻游戏文件失败, 游戏路径可能设置错误");
+                    break;
 
-                if (string.IsNullOrWhiteSpace(oauthLoginException.OauthErrorMessage))
+                case InvalidVersionFilesException:
+                    msgbox.WithText("从游戏文件中读取版本信息失败, 可能需要重新安装或修复游戏文件");
+                    break;
+
+                case OAuthLoginException oauthLoginException:
                 {
-                    msgbox.WithText("无法登录到 SE 账户\n请检查用户名和密码");
-                }
-                else
-                {
-                    msgbox.WithText
-                    (
-                        oauthLoginException.OauthErrorMessage
-                                           .Replace("\\r\\n", "\n")
-                                           .Replace("\r\n",   "\n")
-                    );
-                }
-            }
+                    disableAutoLogin = true;
+                    LoginMessage     = string.Empty;
+                    QRDialog.CloseQRWindow(Window);
 
-            else if (ex is HttpRequestException or TaskCanceledException or WebException)
-            {
-                msgbox.WithText("XIVLauncher 无法连接到游戏服务器\n\n这可能是暂时性问题或网络连接问题, 请稍后重试");
-            }
-            else if (ex is InvalidResponseException iex)
-            {
-                Log.Error("Invalid response from server! Context: {Message}\n{Document}", ex.Message, iex.Document);
+                    if (string.IsNullOrWhiteSpace(oauthLoginException.OAuthErrorMessage))
+                        msgbox.WithText("登录账号失败, 请检查用户名和密码");
+                    else
+                    {
+                        msgbox.WithText
+                        (
+                            oauthLoginException.OAuthErrorMessage
+                                               .Replace("\\r\\n", "\n")
+                                               .Replace("\r\n",   "\n")
+                        );
+                    }
 
-                msgbox.WithText("服务器返回无效响应, 这通常发生在服务器中断或负载过高时\n请等待一分钟后重试, 或使用官方启动器\n\n可以在 Lodestone 上了解更多中断信息");
-            }
-            // Actual unexpected error; show error details
-            else
-            {
-                disableAutoLogin = true;
-                msgbox.WithShowNewGitHubIssue()
-                      .WithAppendDescription(ex.ToString())
-                      .WithAppendSettingsDescription("Login")
-                      .WithAppendText("\n\n")
-                      .WithAppendText("请检查登录信息或稍后重试");
+                    break;
+                }
+
+                case HttpRequestException or TaskCanceledException or WebException:
+                    msgbox.WithText("连接游戏服务器失败, 请稍后重试");
+                    break;
+
+                case InvalidResponseException iex:
+                    Log.Error("[MainWindow] 游戏服务器返回无效响应: {Message}\n{Document}", ex.Message, iex.Document);
+
+                    msgbox.WithText("服务器返回无效响应, 请稍后重试");
+                    break;
+
+                // Actual unexpected error; show error details
+                default:
+                    disableAutoLogin = true;
+                    msgbox.WithShowNewGitHubIssue()
+                          .WithAppendDescription(ex.ToString())
+                          .WithAppendSettingsDescription("Login")
+                          .WithAppendText("\n\n")
+                          .WithAppendText("请检查登录信息, 并在稍后重试");
+                    break;
             }
 
             if (disableAutoLogin && App.Settings.AutologinEnabled)
@@ -642,49 +638,46 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private async Task<bool> ProcessLoginResultAsync(LoginResult loginResult, LoginAfterAction action)
     {
-        if (loginResult.State == LoginState.NoService)
+        switch (loginResult.State)
         {
-            CustomMessageBox.Show
-            (
-                "此账户没有游戏权限, 请确保账户已激活且订阅未过期\n\n如果启用了自动登录, 请在启动时按住 Shift 键以访问设置",
-                "Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error,
-                false,
-                false,
-                parentWindow: Window
-            );
+            case LoginState.NoService:
+                CustomMessageBox.Show
+                (
+                    "该账号无游戏游玩权限, 请检查当前账号状态",
+                    "XIVLauncherCN (Soil)",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error,
+                    false,
+                    false,
+                    parentWindow: Window
+                );
 
-            return false;
-        }
+                return false;
 
-        if (loginResult.State == LoginState.NoTerms)
-        {
-            CustomMessageBox.Show
-            (
-                "请在官方启动器中接受使用条款",
-                "Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error,
-                showOfficialLauncher: true,
-                parentWindow: Window
-            );
+            case LoginState.NoTerms:
+                CustomMessageBox.Show
+                (
+                    "该账号尚未接受游玩使用条款, 请前往官方启动器进行相关操作",
+                    "XIVLauncherCN (Soil)",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error,
+                    showOfficialLauncher: true,
+                    parentWindow: Window
+                );
 
-            return false;
-        }
+                return false;
 
-        if (loginResult.State == LoginState.NeedsPatchBoot)
-        {
-            CustomMessageBox.Show
-            (
-                "部分游戏文件已损坏或被第三方篡改, 无法进行更新和启动\n请重新安装游戏以修复此问题",
-                "Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error,
-                parentWindow: Window
-            );
+            case LoginState.NeedsPatchBoot:
+                CustomMessageBox.Show
+                (
+                    "部分游戏文件损坏, 当前无法更新与启动游戏, 请重新安装游戏",
+                    "XIVLauncherCN (Soil)",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error,
+                    parentWindow: Window
+                );
 
-            return false;
+                return false;
         }
 
         if (action == LoginAfterAction.Repair)
@@ -702,8 +695,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 {
                     CustomMessageBox.Show
                     (
-                        "服务器返回错误响应, 无法进行修复",
-                        "Error",
+                        "游戏服务器返回错误响应, 无法修复游戏",
+                        "XIVLauncherCN (Soil)",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
                         parentWindow: Window
@@ -714,11 +707,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
             catch (Exception ex)
             {
-                /*
-                 * We should never reach here.
-                 * If server responds badly, then it should not even have reached this point, as error cases should have been handled before.
-                 * If RepairGame was unsuccessful, then it should have handled all of its possible errors, instead of propagating it upwards.
-                 */
                 CustomMessageBox.Builder.NewFrom(ex, "ProcessLoginResultAsync/Repair").WithParentWindow(Window).Show();
 
                 return false;
@@ -731,8 +719,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 var selfPatchAsk = CustomMessageBox.Show
                 (
-                    "发现新的补丁需要安装才能游玩\n是否让 XIVLauncher 安装?",
-                    "Out of date",
+                    "需要更新游戏才能继续游玩\n是否要下载更新文件并安装?",
+                    "XIVLauncherCN (Soil)",
                     MessageBoxButton.YesNo,
                     parentWindow: Window
                 );
@@ -754,7 +742,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             CustomMessageBox.Show
             (
-                "更新检查已完成, 所有待安装的更新均已安装",
+                "更新检查已完成, 无剩余待安装更新内容",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information,
@@ -789,7 +777,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         while (true)
         {
-            List<Exception> exceptions = new();
+            List<Exception> exceptions = [];
 
             try
             {
@@ -797,8 +785,16 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 if (oauthLogin == null || oauthLogin.SessionID.IsNullOrEmpty() || oauthLogin.SndaID.IsNullOrEmpty())
                 {
-                    Log.Error("SID或SNDAID为空，取消登录");
-                    CustomMessageBox.Show("SID或SNDAID为空", "Error", MessageBoxButton.OK, MessageBoxImage.Error, showOfficialLauncher: true, parentWindow: Window);
+                    Log.Error("[MainWindow] SID 或 SNDAID 为空，取消登录");
+                    CustomMessageBox.Show
+                    (
+                        "登录异常: SID 或 SNDAID 为空",
+                        "XIVLauncherCN (Soil)",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error,
+                        showOfficialLauncher: true,
+                        parentWindow: Window
+                    );
                     return false;
                 }
 
@@ -816,24 +812,26 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 // 正常退出 / 重启
                 if (process.ExitCode is not (0 or 0x12345678) && (App.Settings.TreatNonZeroExitCodeAsFailure ?? false))
                 {
-                    switch (new CustomMessageBox.Builder()
-                            .WithTextFormatted
-                            (
-                                "游戏似乎因致命错误而退出, 是否重新启动?\n\n退出代码: 0x{0:X8}",
-                                (uint)process.ExitCode
-                            )
-                            .WithImage(MessageBoxImage.Exclamation)
-                            .WithShowHelpLinks()
-                            .WithShowDiscordLink()
-                            .WithShowNewGitHubIssue()
-                            .WithButtons(MessageBoxButton.YesNoCancel)
-                            .WithDefaultResult(MessageBoxResult.Yes)
-                            .WithCancelResult(MessageBoxResult.No)
-                            .WithYesButtonText("重启 (_R)")
-                            .WithNoButtonText("关闭 (_C)")
-                            .WithCancelButtonText("不再询问 (_D)")
-                            .WithParentWindow(Window)
-                            .Show())
+                    var message = new CustomMessageBox.Builder()
+                                  .WithTextFormatted
+                                  (
+                                      "游戏异常退出, 是否尝试重新启动?\n\n退出码: 0x{0:X8}",
+                                      (uint)process.ExitCode
+                                  )
+                                  .WithImage(MessageBoxImage.Exclamation)
+                                  .WithShowHelpLinks()
+                                  .WithShowDiscordLink()
+                                  .WithShowNewGitHubIssue()
+                                  .WithButtons(MessageBoxButton.YesNoCancel)
+                                  .WithDefaultResult(MessageBoxResult.Yes)
+                                  .WithCancelResult(MessageBoxResult.No)
+                                  .WithYesButtonText("重启")
+                                  .WithNoButtonText("关闭")
+                                  .WithCancelButtonText("不再询问")
+                                  .WithParentWindow(Window)
+                                  .Show();
+                    
+                    switch (message)
                     {
                         case MessageBoxResult.Yes:
                             continue;
@@ -851,7 +849,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
             catch (AggregateException ex)
             {
-                Log.Error(ex, "StartGameAndError resulted in one or more exceptions.");
+                Log.Error(ex, "[MainWindow] 尝试处理登录结果时出现一个或多个异常");
 
                 var innerException = ex.Flatten().InnerException;
                 if (innerException != null)
@@ -859,7 +857,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "StartGameAndError resulted in an exception.");
+                Log.Error(ex, "[MainWindow] 尝试处理登录结果时出现异常");
 
                 exceptions.Add(ex);
             }
@@ -872,14 +870,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
                           .WithButtons(MessageBoxButton.YesNo)
                           .WithDefaultResult(MessageBoxResult.No)
                           .WithCancelResult(MessageBoxResult.No)
-                          .WithYesButtonText("重试 (_T)")
-                          .WithNoButtonText("关闭 (_C)")
+                          .WithYesButtonText("重试")
+                          .WithNoButtonText("关闭")
                           .WithParentWindow(Window);
 
-            //NOTE(goat): This HAS to handle all possible exceptions from StartGameAndAddon!!!!!
-            List<string>  summaries    = new();
-            List<string>  actionables  = new();
-            List<string?> descriptions = new();
+            List<string>  summaries    = [];
+            List<string>  actionables  = [];
+            List<string?> descriptions = [];
 
             foreach (var exception in exceptions)
             {
@@ -900,23 +897,18 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                         if (count >= 2)
                         {
-                            summaries.Add("默认情况下无法启动两个以上的游戏实例");
-                            actionables.Add($"请检查是否存在未正确关闭的游戏实例 (检测到: {count})");
+                            summaries.Add("默认情况下无法启动两个以上游戏进程");
+                            actionables.Add($"请检查是否存在尚未正常关闭的游戏进程 (当前: {count})");
                             descriptions.Add(null);
 
                             builder.WithButtons(MessageBoxButton.YesNoCancel)
                                    .WithDefaultResult(MessageBoxResult.Yes)
-                                   .WithCancelButtonText("终止后再试 (_K)");
+                                   .WithCancelButtonText("终止后重试");
                         }
                         else
                         {
                             summaries.Add("XIVLauncher 无法正确启动游戏");
                             descriptions.Add(null);
-
-                            var actionableText = "这可能是暂时性问题, 请尝试重启电脑\n游戏安装可能无效 - 可以右键点击登录按钮并选择\"修复游戏\"来修复安装";
-                            actionableText += "\n此问题也可能由杀毒软件误将 XIVLauncher 标记为恶意软件引起, 可能需要在设置中添加排除项 - 请查看常见问题获取更多信息";
-
-                            actionables.Add(actionableText);
                         }
 
                         builder.WithShowNewGitHubIssue(false);
@@ -925,25 +917,23 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     case BinaryNotPresentException:
                         summaries.Add("找不到游戏可执行文件");
-                        actionables.Add("这可能由杀毒软件引起, 可能需要重新安装游戏");
+                        actionables.Add("可能需要重新安装游戏");
                         descriptions.Add(null);
                         break;
 
                     case IOException:
-                        summaries.Add("无法找到游戏数据文件");
-                        summaries.Add("游戏路径可能设置无效, 例如位于断开连接的硬盘或网络存储上, 请在设置中检查游戏路径");
+                        summaries.Add("无法找到游戏文件");
+                        summaries.Add("请检查游戏路径设置情况");
                         descriptions.Add(exception.ToString());
                         break;
 
                     case Win32Exception win32Exception:
-                        summaries.Add($"发生未知错误 (0x{(uint)win32Exception.HResult:X8}: {win32Exception.Message})");
-                        actionables.Add("请反馈此错误");
+                        summaries.Add($"未知错误 (0x{(uint)win32Exception.HResult:X8}: {win32Exception.Message})");
                         descriptions.Add(exception.ToString());
                         break;
 
                     default:
-                        summaries.Add($"发生未知错误 ({exception.Message})");
-                        actionables.Add("请反馈此错误");
+                        summaries.Add($"未知错误 ({exception.Message})");
                         descriptions.Add(exception.ToString());
                         break;
                 }
@@ -963,7 +953,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     builder.WithAppendText($"\n{i + 1}. {summaries[i]}\n    => {actionables[i]}");
                     if (string.IsNullOrWhiteSpace(descriptions[i]))
                         continue;
-                    builder.WithAppendDescription($"########## Exception {i + 1} ##########\n{descriptions[i]}\n\n");
+                    builder.WithAppendDescription($"########## 异常 {i + 1} ##########\n{descriptions[i]}\n\n");
                 }
             }
 
@@ -995,7 +985,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                 }
                                 catch (Exception ex2)
                                 {
-                                    Log.Warning(ex2, "Could not kill process (PID={0}, name={1})", process.Id, process.ProcessName);
+                                    Log.Warning(ex2, "结束进程失败 (PID={0}, name={1})", process.Id, process.ProcessName);
                                 }
                                 finally
                                 {
@@ -1488,16 +1478,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
             Debug.Assert(loginResult.PendingPatches        != null);
             Debug.Assert(loginResult.PendingPatches.Length != 0);
 
-            Log.Information("STARTING REPAIR");
+            Log.Information("[MainWindow] 开始修复游戏");
 
             if (!AppUtil.TryYellOnGameFilesBeingOpen
                 (
                     Window,
-                    n => n switch
-                    {
-                        1 => "关闭以下应用程序以修复游戏",
-                        _ => "关闭以下应用程序以修复游戏"
-                    }
+                    _ => "关闭以下进程以修复游戏"
                 ))
                 return false;
 
@@ -1521,36 +1507,37 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 progressDialog.Dispatcher.Invoke(progressDialog.Hide);
 
+                var windowResult =
+                    CustomMessageBox.Builder
+                                    .NewFrom
+                                    (
+                                        verify.NumBrokenFiles switch
+                                        {
+                                            0 => "未检测到任何损坏的游戏文件",
+                                            _ => $"已成功修复 {verify.NumBrokenFiles} 个游戏文件"
+                                        }
+                                    )
+                                    .WithAppendText
+                                    (
+                                        verify.MovedFiles.Count switch
+                                        {
+                                            0 => string.Empty,
+                                            _ => $"\n已将对应的 {verify.MovedFiles.Count} 个非原始游戏文件移动至 {verify.MovedFileToDir}",
+                                        }
+                                    )
+                                    .WithDescription(verify.MovedFiles.Count != 0 ? string.Join("\n", verify.MovedFiles.Select(x => $"* {x}")) : string.Empty)
+                                    .WithImage(MessageBoxImage.Information)
+                                    .WithButtons(MessageBoxButton.YesNoCancel)
+                                    .WithYesButtonText("启动游戏")
+                                    .WithNoButtonText("再次验证")
+                                    .WithCancelButtonText("关闭")
+                                    .WithParentWindow(Window)
+                                    .Show();
+                
                 switch (verify.State)
                 {
                     case PatchVerifier.VerifyState.Done:
-                        switch (CustomMessageBox.Builder
-                                                .NewFrom
-                                                (
-                                                    verify.NumBrokenFiles switch
-                                                    {
-                                                        0 => "所有游戏文件似乎都是完整的",
-                                                        1 => "XIVLauncher 已成功修复 1 个游戏文件",
-                                                        _ => $"XIVLauncher 已成功修复 {verify.NumBrokenFiles} 个游戏文件"
-                                                    }
-                                                )
-                                                .WithAppendText
-                                                (
-                                                    verify.MovedFiles.Count switch
-                                                    {
-                                                        0 => "",
-                                                        1 => $"\n\n此外, 1 个非原始游戏安装文件已被移动到 {verify.MovedFileToDir}\n如果使用了 ReShade, 需要重新安装",
-                                                        _ => $"\n\n此外, {verify.MovedFiles.Count} 个非原始游戏安装文件已被移动到 {verify.MovedFileToDir}\n如果使用了 ReShade, 需要重新安装"
-                                                    }
-                                                )
-                                                .WithDescription(verify.MovedFiles.Any() ? string.Join("\n", verify.MovedFiles.Select(x => $"* {x}")) : string.Empty)
-                                                .WithImage(MessageBoxImage.Information)
-                                                .WithButtons(MessageBoxButton.YesNoCancel)
-                                                .WithYesButtonText("启动游戏 (_L)")
-                                                .WithNoButtonText("再次验证 (_V)")
-                                                .WithCancelButtonText("关闭 (_C)")
-                                                .WithParentWindow(Window)
-                                                .Show())
+                        switch (windowResult)
                         {
                             case MessageBoxResult.Yes:
                                 doLogin  = true;
@@ -1574,30 +1561,28 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                         if (verify.LastException is NoVersionReferenceException)
                         {
-                            doVerify = CustomMessageBox.Builder
-                                                       .NewFrom
-                                                       (
-                                                           "当前游戏版本暂无法通过 XIVLauncher 修复, 参考信息尚不可用\n请稍后重试"
-                                                       )
-                                                       .WithImage(MessageBoxImage.Exclamation)
-                                                       .WithButtons(MessageBoxButton.OKCancel)
-                                                       .WithOkButtonText("重试 (_T)")
-                                                       .WithParentWindow(Window)
-                                                       .Show()
-                                       == MessageBoxResult.OK;
+                            doVerify =
+                                CustomMessageBox.Builder
+                                                .NewFrom("当前游戏版本无对应可用的版本参考信息, 暂时无法通过 XIVLauncher 修复")
+                                                .WithImage(MessageBoxImage.Exclamation)
+                                                .WithButtons(MessageBoxButton.OKCancel)
+                                                .WithOkButtonText("重试")
+                                                .WithParentWindow(Window)
+                                                .Show()
+                                == MessageBoxResult.OK;
                         }
                         // Seemingly no better way to detect this, probably brittle if this is localized
                         else if (verify.LastException != null && verify.LastException.ToString().Contains("Data error"))
                         {
                             doVerify = new CustomMessageBox.Builder()
-                                       .WithText("硬盘在检查游戏文件时报告错误, XIVLauncher 无法修复此安装, 错误可能表明硬盘存在物理问题\n请检查硬盘健康状况或尝试更新固件\n将游戏重新安装到新位置可能暂时解决此问题")
+                                       .WithText("修复失败: 检查游戏文件过程中硬盘报错，可能表明其存在物理故障\n请检查硬盘健康状态, 或尝试更新硬盘固件\n将游戏重新安装至其他路径, 或可暂时解决该问题")
                                        .WithExitOnClose(CustomMessageBox.ExitOnCloseModes.DontExitOnClose)
                                        .WithImage(MessageBoxImage.Error)
                                        .WithShowHelpLinks()
                                        .WithShowDiscordLink()
                                        .WithShowNewGitHubIssue(false)
                                        .WithButtons(MessageBoxButton.OKCancel)
-                                       .WithOkButtonText("重试 (_T)")
+                                       .WithOkButtonText("重试")
                                        .WithParentWindow(Window)
                                        .Show()
                                        == MessageBoxResult.OK;
@@ -1607,10 +1592,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             if (verify.LastException == null)
                             {
                                 doVerify = new CustomMessageBox.Builder()
-                                           .WithText("修复游戏文件时发生错误\n可能需要重新安装游戏")
+                                           .WithText("修复失败: 未知错误, 可能需要重新安装游戏")
                                            .WithImage(MessageBoxImage.Exclamation)
                                            .WithButtons(MessageBoxButton.OKCancel)
-                                           .WithOkButtonText("重试 (_T)")
+                                           .WithOkButtonText("重试")
                                            .WithParentWindow(Window)
                                            .Show()
                                            == MessageBoxResult.OK;
@@ -1620,10 +1605,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                 doVerify = CustomMessageBox.Builder
                                                            .NewFrom(verify.LastException, "PatchVerifier")
                                                            .WithAppendText("\n\n")
-                                                           .WithAppendText("修复游戏文件时发生错误\n可能需要重新安装游戏")
+                                                           .WithAppendText("修复失败: 可能需要重新安装游戏")
                                                            .WithImage(MessageBoxImage.Exclamation)
                                                            .WithButtons(MessageBoxButton.OKCancel)
-                                                           .WithOkButtonText("重试 (_T)")
+                                                           .WithOkButtonText("重试")
                                                            .WithParentWindow(Window)
                                                            .Show()
                                            == MessageBoxResult.OK;
@@ -1646,7 +1631,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             CustomMessageBox.Show
             (
-                "XIVLauncher 正在另一个进程中更新游戏, 请检查是否已打开多个 XIVLauncher",
+                "XIVLauncher 正在另一进程中执行游戏更新, 请检查是否开启了多个 XIVLauncher 实例",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -1706,22 +1691,19 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                  Patcher     = patcher,
                                  AriaLogFile = new FileInfo(Path.Combine(Paths.RoamingPath, "aria2.log")),
                                  IsGameOpen  = GameHelpers.CheckIsGameOpen,
-                                 ContinueWhenGameOpen = () => CustomMessageBox.Builder
-                                                                              .NewFrom("游戏和/或官方启动器正在运行, 在这种情况下 XIVLauncher 无法更新游戏\n请关闭官方启动器后重试")
-                                                                              .WithImage(MessageBoxImage.Exclamation)
-                                                                              .WithButtons(MessageBoxButton.OKCancel)
-                                                                              .WithOkButtonText("刷新 (_R)")
-                                                                              .WithDefaultResult(MessageBoxResult.OK)
-                                                                              .Show()
-                                                              != MessageBoxResult.Cancel,
+                                 ContinueWhenGameOpen =
+                                     () => CustomMessageBox.Builder
+                                                           .NewFrom("官方启动器或游戏正在运行, 无法进行游戏更新\n请全部关闭后重试")
+                                                           .WithImage(MessageBoxImage.Exclamation)
+                                                           .WithButtons(MessageBoxButton.OKCancel)
+                                                           .WithOkButtonText("刷新")
+                                                           .WithDefaultResult(MessageBoxResult.OK)
+                                                           .Show()
+                                           != MessageBoxResult.Cancel,
                                  EnsureGameFilesClosed = () => AppUtil.TryYellOnGameFilesBeingOpen
                                  (
                                      Window,
-                                     n => n switch
-                                     {
-                                         1 => "关闭以下应用程序以更新游戏",
-                                         _ => "关闭以下应用程序以更新游戏"
-                                     }
+                                     _ => "关闭以下进程以更新游戏"
                                  )
                              }
                          ).ConfigureAwait(false);
@@ -1734,7 +1716,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 case PatchExecutionStatus.AlreadyRunning:
                     CustomMessageBox.Show
                     (
-                        "XIVLauncher 正在另一个进程中更新游戏, 请检查是否已打开多个 XIVLauncher",
+                        "XIVLauncher 正在另一进程中执行游戏更新, 请检查是否开启了多个 XIVLauncher 实例",
                         "XIVLauncherCN (Soil)",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
@@ -1749,8 +1731,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 case PatchExecutionStatus.PatchInstallerError:
                     CustomMessageBox.Show
                     (
-                        $"补丁安装程序无法正确启动\n{result.Exception?.Message}\n\n如果拒绝了访问权限, 请重试\n如果问题仍然存在, 请通过 Discord 联系我们",
-                        "XIVLauncher Error",
+                        $"错误: 无法正确启动补丁安装程序\n{result.Exception?.Message}",
+                        "XIVLauncherCN (Soil)",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
                         parentWindow: Window
@@ -1767,21 +1749,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         switch (sex.Kind)
                         {
                             case NotEnoughSpaceException.SpaceKind.Patches:
-                                CustomMessageBox.Show
-                                (
-                                    $"磁盘空间不足, 无法下载补丁\n\n可以在设置中更改补丁下载位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
-                                    "XIVLauncher Error",
-                                    MessageBoxButton.OK,
-                                    MessageBoxImage.Error,
-                                    parentWindow: Window
-                                );
-                                break;
-
                             case NotEnoughSpaceException.SpaceKind.AllPatches:
                                 CustomMessageBox.Show
                                 (
-                                    $"磁盘空间不足, 无法下载所有补丁\n\n可以在 XIVLauncher 设置中更改补丁下载位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
-                                    "XIVLauncher Error",
+                                    $"磁盘空间不足, 无法安装更新文件\n可在设置中更改下载位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
+                                    "XIVLauncherCN (Soil)",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error,
                                     parentWindow: Window
@@ -1791,8 +1763,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             case NotEnoughSpaceException.SpaceKind.Game:
                                 CustomMessageBox.Show
                                 (
-                                    $"磁盘空间不足, 无法安装补丁\n\n可以在设置中更改游戏安装位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
-                                    "XIVLauncher Error",
+                                    $"磁盘空间不足, 无法安装更新文件\n\n可在设置中更改游戏安装位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
+                                    "XIVLauncherCN (Soil)",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Error,
                                     parentWindow: Window
@@ -1809,10 +1781,20 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 default:
                     if (result.Exception == null)
-                        CustomMessageBox.Show("补丁流程发生未知错误", "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: Window);
+                    {
+                        CustomMessageBox.Show
+                        (
+                            "安装更新文件失败: 未知错误",
+                            "XIVLauncherCN (Soil)",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error,
+                            parentWindow: Window
+                        );
+                    }
                     else
                     {
-                        CustomMessageBox.Builder.NewFromUnexpectedException(result.Exception, "HandlePatchAsync")
+                        CustomMessageBox.Builder
+                                        .NewFromUnexpectedException(result.Exception, "HandlePatchAsync")
                                         .WithParentWindow(Window)
                                         .Show();
                     }

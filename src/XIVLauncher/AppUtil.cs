@@ -110,8 +110,8 @@ public static class AppUtil
                                              .WithDescription(description)
                                              .WithImage(MessageBoxImage.Information)
                                              .WithButtons(MessageBoxButton.YesNoCancel)
-                                             .WithYesButtonText("刷新 (_R)")
-                                             .WithNoButtonText("忽略 (_I)")
+                                             .WithYesButtonText("刷新")
+                                             .WithNoButtonText("忽略")
                                              .WithDefaultResult(MessageBoxResult.Yes)
                                              .WithParentWindow(parentWindow)
                                              .Show();

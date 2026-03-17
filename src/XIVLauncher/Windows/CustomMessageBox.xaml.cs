@@ -87,7 +87,7 @@ public partial class CustomMessageBox : Window
 
             case MessageBoxButton.OKCancel:
                 Button1.Content    = builder.OkButtonText     ?? "确定";
-                Button2.Content    = builder.CancelButtonText ?? "取消 (_C)";
+                Button2.Content    = builder.CancelButtonText ?? "取消";
                 Button3.Visibility = Visibility.Collapsed;
                 (builder.DefaultResult switch
                         {
@@ -98,9 +98,9 @@ public partial class CustomMessageBox : Window
                 break;
 
             case MessageBoxButton.YesNoCancel:
-                Button1.Content = builder.YesButtonText    ?? "是 (_Y)";
-                Button2.Content = builder.NoButtonText     ?? "否 (_N)";
-                Button3.Content = builder.CancelButtonText ?? "取消 (_C)";
+                Button1.Content = builder.YesButtonText    ?? "是";
+                Button2.Content = builder.NoButtonText     ?? "否";
+                Button3.Content = builder.CancelButtonText ?? "取消";
                 (builder.DefaultResult switch
                         {
                             MessageBoxResult.Yes    => Button1,
@@ -111,8 +111,8 @@ public partial class CustomMessageBox : Window
                 break;
 
             case MessageBoxButton.YesNo:
-                Button1.Content    = builder.YesButtonText ?? "是 (_Y)";
-                Button2.Content    = builder.NoButtonText  ?? "否 (_N)";
+                Button1.Content    = builder.YesButtonText ?? "是";
+                Button2.Content    = builder.NoButtonText  ?? "否";
                 Button3.Visibility = Visibility.Collapsed;
                 (builder.DefaultResult switch
                         {
@@ -134,14 +134,14 @@ public partial class CustomMessageBox : Window
                                 countdown -= 1;
                                 if (countdown <= 0)
                                     break;
-                                Dispatcher.Invoke(() => Button1.Content = $"{builder.YesButtonText ?? "是 (_Y)"} ({countdown})");
+                                Dispatcher.Invoke(() => Button1.Content = $"{builder.YesButtonText ?? "是"} ({countdown})");
                             }
 
                             Dispatcher.Invoke
                             (() =>
                                 {
                                     Button1.IsEnabled = true;
-                                    Button1.Content   = builder.YesButtonText ?? "是 (_Y)";
+                                    Button1.Content   = builder.YesButtonText ?? "是";
                                 }
                             );
                         }
@@ -418,8 +418,8 @@ public partial class CustomMessageBox : Window
             if (exitOnCloseMode == ExitOnCloseModes.ExitOnClose)
             {
                 builder.WithButtons(MessageBoxButton.YesNo)
-                       .WithYesButtonText("重新启动 (_R)")
-                       .WithNoButtonText("退出 (_E)");
+                       .WithYesButtonText("重新启动")
+                       .WithNoButtonText("退出");
             }
 
             // When this happens we probably don't want them to run into it again, in case it's an issue with a moved game for example
