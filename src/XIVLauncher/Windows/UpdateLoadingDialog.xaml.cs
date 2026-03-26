@@ -1,4 +1,5 @@
-﻿using System.Windows.Input;
+using System.Windows.Input;
+using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
 
@@ -7,8 +8,8 @@ public partial class UpdateLoadingDialog
     public UpdateLoadingDialog()
     {
         InitializeComponent();
-        
-        DataContext =  new();
+
+        DataContext =  new UpdateLoadingDialogViewModel();
         MouseMove   += UpdateLoadingDialog_OnMouseMove;
     }
 

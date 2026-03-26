@@ -9,7 +9,6 @@
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Medium"
-
         AllowsTransparency="True"
         Background="Transparent" ShowInTaskbar="False"
         Topmost="True"
@@ -19,17 +18,21 @@
         <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="124" Margin="0,0,56,0">
             <StackPanel Margin="16,16,16,0">
                 <TextBlock Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center"
-                           Text="正在更新 Dalamud 框架…" x:Name="UpdateText" />
+                           Text="{Binding UpdateText}" />
 
                 <materialDesign:PackIcon Kind="About" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                                         Width="30" Height="30" Foreground="White" x:Name="InfoIcon"
-                                         Visibility="Collapsed" Margin="0,8,0,0" />
+                                         Width="30" Height="30" Foreground="White"
+                                         Visibility="{Binding InfoVisibility}" Margin="0,8,0,0" />
 
-                <ProgressBar
-                    IsIndeterminate="True" Margin="0,20,0,0" x:Name="ProgressBar" />
+                <ProgressBar IsIndeterminate="{Binding IsProgressIndeterminate}"
+                             Value="{Binding ProgressValue}"
+                             Visibility="{Binding ProgressBarVisibility}"
+                             Margin="0,20,0,0" />
 
-                <TextBlock Foreground="DarkGray" Margin="0, 16,0,0" TextAlignment="Center" x:Name="ProgressTextBlock" />
-                <TextBlock Foreground="DarkGray" Margin="0, 4,0,0" TextAlignment="Center" x:Name="PercentageTextBlock" />
+                <TextBlock Foreground="DarkGray" Margin="0, 16,0,0" TextAlignment="Center"
+                           Text="{Binding ProgressText}" />
+                <TextBlock Foreground="DarkGray" Margin="0, 4,0,0" TextAlignment="Center"
+                           Text="{Binding PercentageText}" />
             </StackPanel>
         </materialDesign:Card>
     </Grid>

@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Threading;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Accounts;
@@ -52,9 +52,10 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        DataContext     = new MainWindowViewModel(this);
-        _accountManager = Model.AccountManager;
-        _launcher       = Model.Launcher;
+        DataContext                  =  new MainWindowViewModel(this);
+        _accountManager              =  Model.AccountManager;
+        _launcher                    =  Model.Launcher;
+        Model.Settings.SettingsSaved += (_, _) => Task.Run(SetupHeadlines);
 
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
@@ -219,7 +220,7 @@ public partial class MainWindow : Window
         (() =>
             {
                 Model.LoginAreas = [.. areas];
-                Model.Area     = Model.LoginAreas[0];
+                Model.Area       = Model.LoginAreas[0];
             }
         );
     }
@@ -487,9 +488,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SettingsControl_OnSettingsDismissed(object sender, EventArgs e) =>
-        Task.Run(SetupHeadlines);
-    
     private void LoginPassword_OnPasswordChanged(object sender, RoutedEventArgs e)
     {
         if (DataContext != null)
@@ -504,10 +502,8 @@ public partial class MainWindow : Window
         SwitchBanner(bannerDotInfo.Index);
     }
 
-    private void RadioButton_MouseEnter(object sender, MouseEventArgs e)
-    {
+    private void RadioButton_MouseEnter(object sender, MouseEventArgs e) =>
         _bannerChangeTimer?.Stop();
-    }
 
     private void RadioButton_MouseLeave(object sender, MouseEventArgs e) =>
         _bannerChangeTimer?.Start();
@@ -548,9 +544,6 @@ public partial class MainWindow : Window
         for (var i = 0; i < _bannerDotList.Count; i++)
             _bannerDotList[i].Active = i == activeIndex;
     }
-
-    private void SettingsControl_OnCloseMainWindowGracefully(object sender, EventArgs e) =>
-        Close();
 
     private void MainWindow_OnClosing(object sender, CancelEventArgs e)
     {

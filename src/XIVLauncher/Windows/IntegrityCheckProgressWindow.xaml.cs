@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Input;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Windows.ViewModel;
@@ -10,6 +10,8 @@ namespace XIVLauncher.Windows;
 /// </summary>
 public partial class IntegrityCheckProgressWindow : Window
 {
+    private IntegrityCheckProgressWindowViewModel ViewModel => (IntegrityCheckProgressWindowViewModel)DataContext;
+
     public IntegrityCheckProgressWindow()
     {
         InitializeComponent();
@@ -20,7 +22,7 @@ public partial class IntegrityCheckProgressWindow : Window
     }
 
     public void UpdateProgress(IntegrityCheck.IntegrityCheckProgress progress) =>
-        InfoTextBlock.Text = $"{progress.CurrentFile}";
+        ViewModel.CurrentFile = progress.CurrentFile;
 
     private void IntegrityCheckProgressWindow_OnMouseMove(object sender, MouseEventArgs e)
     {

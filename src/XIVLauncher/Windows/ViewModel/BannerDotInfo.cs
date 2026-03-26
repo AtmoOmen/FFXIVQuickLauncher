@@ -4,17 +4,15 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public class BannerDotInfo : INotifyPropertyChanged
 {
-    private bool _active;
-
     public bool Active
     {
-        get => _active;
+        get;
         set
         {
-            if (_active == value)
+            if (field == value)
                 return;
 
-            _active = value;
+            field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Active)));
         }
     }

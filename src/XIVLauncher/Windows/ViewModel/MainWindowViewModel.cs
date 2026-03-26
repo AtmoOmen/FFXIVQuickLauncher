@@ -38,6 +38,7 @@ using XIVLauncher.Common.Windows;
 using XIVLauncher.Game;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Support;
+using XIVLauncher.Windows.Services;
 using XIVLauncher.Xaml;
 using Constants = XIVLauncher.Common.Constants;
 using DCTravelClient = XIVLauncher.Common.Game.DCTravel.DCTravelClient;
@@ -46,7 +47,8 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public class MainWindowViewModel : INotifyPropertyChanged
 {
-    public const string PRESUDO_PASSWORD = "********假的密码********";
+    public const string                   PRESUDO_PASSWORD = "********假的密码********";
+    public       SettingsControlViewModel Settings { get; }
 
     public Launcher          Launcher         { get; private set; }
     public AccountManager    AccountManager   { get; private set; } = App.AccountManager;
@@ -66,7 +68,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public MainWindowViewModel(Window window)
     {
-        Window = window;
+        Window   = window;
+        Settings = new SettingsControlViewModel(new DialogService(window), new ExternalLaunchService());
 
         StartLoginCommand       = new SyncCommand(CreateLoginHandler(LoginAfterAction.Start),               () => !IsLoggingIn);
         LoginNoStartCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.UpdateOnly),          () => !IsLoggingIn);
@@ -76,7 +79,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoginRepairCommand      = new SyncCommand(CreateLoginHandler(LoginAfterAction.Repair),              () => !IsLoggingIn);
         LoginForceQRCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.ForceQR),             () => !IsLoggingIn);
         InjectModeSwitchCommand = new SyncCommand(_ => { SwitchMode(); },                                   () => !IsLoggingIn);
-        InjectGameCommand       = new SyncCommand(_ => { StartInject(); },                                   () => !IsLoggingIn && SelectedProcess != null);
+        InjectGameCommand       = new SyncCommand(_ => { StartInject(); },                                  () => !IsLoggingIn && SelectedProcess != null);
         FakeStartCommand        = new SyncCommand(_ => { FakeStartGame(); },                                () => !IsLoggingIn);
         LoginCancelCommand      = new SyncCommand(CreateLoginHandler(LoginAfterAction.CancelLogin));
 
@@ -85,8 +88,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
         var worldStatusBrushOk = new SolidColorBrush(Color.FromRgb(0x21, 0x96, 0xf3));
         WorldStatusIconColor = worldStatusBrushOk;
 
-        WorldStatusIconColor   = new SolidColorBrush(Color.FromRgb(38, 38, 38));
-        ModeSwitchIcon         = PackIconKind.Injection;
+        WorldStatusIconColor = new SolidColorBrush(Color.FromRgb(38, 38, 38));
+        ModeSwitchIcon       = PackIconKind.Injection;
         FFXIVProcesses.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasAvailableProcesses));
@@ -133,10 +136,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
             Window.Dispatcher.Invoke(() => StartLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
             return;
         }
-        
+
         if (IsLoggingIn)
             return;
-        
+
         Log.Information("[MainWindow] 尝试开始登录");
 
         IsLoggingIn       = true;
@@ -184,12 +187,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             if (!LoginCancelSource.IsCancellationRequested)
                 LoginCancelSource.Cancel();
-            
+
             LoginCancelSource.Dispose();
             LoginCancelSource = null;
         }
     }
-    
+
     private async Task LoginAsync
     (
         LoginType        loginType,
@@ -201,7 +204,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     )
     {
         ProblemCheck.RunCheck(Window);
-        
+
         if (!TryResolvePatchPath())
             return;
 
@@ -215,23 +218,24 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 MessageBoxImage.Error,
                 parentWindow: Window
             );
-            
+
             return;
         }
 
-        if (!doingAutoLogin) 
+        if (!doingAutoLogin)
             App.Settings.AutologinEnabled = IsAutoLogin;
         App.Settings.FastLogin = IsFastLogin;
-        
+
         var finalLoginType = loginType;
         var secret         = string.Empty;
-        var accountType  = loginType.ToAccountType();
-        
+        var accountType    = loginType.ToAccountType();
+
         try
         {
             inputPassword = inputPassword == PRESUDO_PASSWORD ? string.Empty : inputPassword?.Trim() ?? string.Empty;
-            
+
             var savedAccount = AccountManager.Accounts.FirstOrDefault(x => x.UserName == username && x.AccountType == accountType);
+
             switch (loginType)
             {
                 case LoginType.Static:
@@ -251,6 +255,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         secret = await AccountManager.Decrypt(testSid);
 
                     readWeGameInfo = username.IsNullOrEmpty() || secret.IsNullOrEmpty();
+
                     if (readWeGameInfo)
                     {
                         var loginData = await ReadWeGameAccountInfoAsync();
@@ -271,7 +276,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 case LoginType.WeGameToken:
                     if (inputPassword.IsNullOrEmpty() && savedAccount?.AutoLoginSessionKey is { Length: > 0 } autoLoginSessionKey)
                     {
-                        secret = await AccountManager.CredProvider.Decrypt(autoLoginSessionKey);
+                        secret         = await AccountManager.CredProvider.Decrypt(autoLoginSessionKey);
                         finalLoginType = LoginType.AutoLoginSession;
                     }
 
@@ -287,7 +292,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 case LoginType.Slide:
                     if (doingAutoLogin && savedAccount?.AutoLoginSessionKey is { Length: > 0 } slideAutoLoginSessionKey)
                     {
-                        secret = await AccountManager.Decrypt(slideAutoLoginSessionKey);
+                        secret         = await AccountManager.Decrypt(slideAutoLoginSessionKey);
                         finalLoginType = LoginType.AutoLoginSession;
                     }
 
@@ -410,7 +415,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 Environment.Exit(0);
         }
     }
-    
+
     private async Task<LoginData?> ReadWeGameAccountInfoAsync()
     {
         try
@@ -467,7 +472,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return data;
         }
     }
-    
+
     private async Task<LoginResult?> LoginToGameAsync
     (
         LoginType        type,
@@ -489,10 +494,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 MessageBoxImage.Error,
                 parentWindow: Window
             );
-            
+
             return null;
         }
-        
+
         try
         {
             LoginCancelSource = new();
@@ -830,7 +835,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                   .WithCancelButtonText("不再询问")
                                   .WithParentWindow(Window)
                                   .Show();
-                    
+
                     switch (message)
                     {
                         case MessageBoxResult.Yes:
@@ -1023,7 +1028,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoadingDialogMessage = "注入中...";
         IsInjecting          = true;
         CommandManager.InvalidateRequerySuggested();
-        
+
         Task.Run
         (() =>
             {
@@ -1046,9 +1051,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     else
                     {
                         if (!InjectGameAndAddon(gamePid)) return;
-                        
+
                         SelectedProcess.HasInjected = true;
-                        
+
                         var dialog = CustomMessageBox.Builder
                                                      .NewFrom("注入完成, 是否要退出 XIVLauncherCN")
                                                      .WithButtons(MessageBoxButton.YesNo)
@@ -1075,18 +1080,19 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     IsLoadingDialogOpen = false;
                     IsInjecting         = false;
                     CommandManager.InvalidateRequerySuggested();
-                    
+
                     Activate();
                 }
             }
         );
     }
-    
+
     public bool InjectGameAndAddon(int gamePid, bool noThird = false, bool noPlugins = false)
     {
         var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;
         var gameExeFolder = Path.GetDirectoryName(gameExePath);
         var gamePath      = new DirectoryInfo(gameExeFolder!).Parent;
+
         if (gamePath == null)
         {
             CustomMessageBox.Show
@@ -1101,7 +1107,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
 
         EnsureDalamudCompatibility();
-        
+
         var dalamudLauncher = CreateDalamudLauncher(gamePath, DalamudLoadMethod.DllInject, noPlugins, noThird);
         var dalamudOk       = EnsureDalamudUpdate(dalamudLauncher, App.Settings.GamePath, true);
 
@@ -1137,7 +1143,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         ProcessRefreshCancelSource?.Dispose();
         ProcessRefreshCancelSource = new();
-        
+
         var processRefreshToken = ProcessRefreshCancelSource.Token;
         ProcessRefreshTask = Task.Run
         (
@@ -1192,7 +1198,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             processRefreshToken
         );
     }
-    
+
     private void StopRefreshFFXIVProcess(bool clearCollection)
     {
         if (ProcessRefreshCancelSource != null)
@@ -1213,11 +1219,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
         FFXIVProcesses.Clear();
         SelectedProcess = null;
     }
-    
+
     #endregion
-    
+
     #region 启动游戏
-    
+
     public async Task<FFXIVProcess?> StartGameAndAddon(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
     {
         if (Area == null || Area.AreaID == "-1")
@@ -1230,10 +1236,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 MessageBoxImage.Error,
                 parentWindow: Window
             );
-            
+
             return null;
         }
-        
+
         var stopwatch = new Stopwatch();
         stopwatch.Start();
         var dalamudLauncher = CreateDalamudLauncher
@@ -1342,7 +1348,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         return launched;
     }
-    
+
     private void FakeStartGame()
     {
         if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
@@ -1414,7 +1420,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             );
         }
     }
-    
+
     private bool EnsureDalamudUpdate(DalamudLauncher dalamudLauncher, DirectoryInfo gamePath, bool appendWafStatusCodeHint)
     {
         try
@@ -1446,7 +1452,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
     }
-    
+
     private bool TryResolvePatchPath()
     {
         try
@@ -1467,7 +1473,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
     }
-    
+
     private async Task<bool> RepairGame(LoginResult loginResult)
     {
         var doLogin = false;
@@ -1522,7 +1528,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                         verify.MovedFiles.Count switch
                                         {
                                             0 => string.Empty,
-                                            _ => $"\n已将对应的 {verify.MovedFiles.Count} 个非原始游戏文件移动至 {verify.MovedFileToDir}",
+                                            _ => $"\n已将对应的 {verify.MovedFiles.Count} 个非原始游戏文件移动至 {verify.MovedFileToDir}"
                                         }
                                     )
                                     .WithDescription(verify.MovedFiles.Count != 0 ? string.Join("\n", verify.MovedFiles.Select(x => $"* {x}")) : string.Empty)
@@ -1533,7 +1539,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                     .WithCancelButtonText("关闭")
                                     .WithParentWindow(Window)
                                     .Show();
-                
+
                 switch (verify.State)
                 {
                     case PatchVerifier.VerifyState.Done:
@@ -1651,7 +1657,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private async Task<bool> HandlePatchAsync(Repository repository, PatchListEntry[] pendingPatches, string sid)
     {
         using var installer = new Common.Game.Patch.PatchInstaller(App.Settings.KeepPatches ?? false);
-        
+
         var patcher = new PatchManager
         (
             App.Settings.PatchAcquisitionMethod ?? AcquisitionMethod.Aria,
@@ -1885,7 +1891,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             StartLogin(LoginTypeOption.LoginType, Username, Password, IsFastLogin, IsReadWegameInfo, action);
         };
-    
+
     private GameRepairProgressWindow CreateGameRepairProgressWindow(PatchVerifier verify)
     {
         var dialog = new GameRepairProgressWindow(verify);
@@ -1895,7 +1901,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         dialog.Activate();
         return dialog;
     }
-    
+
     #endregion
 
     #region 事件
@@ -1918,7 +1924,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         if (!IsLoggingIn) return;
         args.Cancel = true;
     }
-    
+
     private void OnPatcherFail(PatchListEntry patch, string context)
     {
         CustomMessageBox.Show
@@ -1928,7 +1934,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             MessageBoxButton.OK,
             MessageBoxImage.Error
         );
-        
+
         Environment.Exit(0);
     }
 
@@ -2027,7 +2033,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             field = value;
             OnPropertyChanged(nameof(Area));
-            
+
             Log.Information("大区变更 {OldArea} -> {NewArea}", field, value);
         }
     }

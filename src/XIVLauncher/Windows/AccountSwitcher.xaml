@@ -1,43 +1,65 @@
-<Window x:Class="XIVLauncher.Windows.AccountSwitcher"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        xmlns:accounts="clr-namespace:XIVLauncher.Accounts"
-        mc:Ignorable="d"
-        Title="Account Switcher" WindowStartupLocation="CenterScreen"
-        Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        TextElement.FontWeight="Medium"
-
-        AllowsTransparency="True"
-        Background="Transparent"
-        WindowStyle="None" Height="400" Width="269.186" Deactivated="AccountSwitcher_OnDeactivated" Topmost="True">
+<Window
+    x:Class="XIVLauncher.Windows.AccountSwitcher"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:accounts="clr-namespace:XIVLauncher.Accounts"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
+    Title="账户切换"
+    Width="269.186"
+    Height="400"
+    AllowsTransparency="True"
+    Background="Transparent"
+    Deactivated="AccountSwitcher_OnDeactivated"
+    Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+    ResizeMode="NoResize"
+    TextElement.FontWeight="Medium"
+    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    Topmost="True"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None"
+    mc:Ignorable="d"
+    d:DataContext="{d:DesignInstance viewModel:AccountSwitcherViewModel}">
     <Grid Margin="0,0,0,0">
         <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="390" Margin="0,0,10,0">
             <StackPanel Margin="16,16,10,0">
-                <ListView x:Name="AccountListView"
-                          MaxHeight="370"
-                          AllowDrop="True"
-                          MouseUp="AccountListView_OnMouseUp"
-                          PreviewMouseLeftButtonDown="AccountListView_OnPreviewMouseLeftButtonDown"
-                          PreviewMouseMove="AccountListView_OnPreviewMouseMove"
-                          Drop="AccountListView_OnDrop">
+                <ListView
+                    x:Name="AccountListView"
+                    MaxHeight="370"
+                    AllowDrop="True"
+                    Drop="AccountListView_OnDrop"
+                    ItemsSource="{Binding Entries}"
+                    MouseUp="AccountListView_OnMouseUp"
+                    PreviewMouseLeftButtonDown="AccountListView_OnPreviewMouseLeftButtonDown"
+                    PreviewMouseMove="AccountListView_OnPreviewMouseMove"
+                    SelectedItem="{Binding SelectedEntry}">
                     <ListView.ContextMenu>
-                        <ContextMenu Opened="AccountListViewContext_Opened" StaysOpen="true">
-                            <!--<MenuItem Header="更改头像" Click="SetProfilePicture_OnClick"  Foreground="{DynamicResource MaterialDesignBody}"/>-->
-                            <MenuItem Header="创建桌面快捷方式"
-                                      Click="CreateDesktopShortcut_OnClick"
-                                      Foreground="{DynamicResource MaterialDesignBody}" />
-                            <MenuItem Header="设置备注" Click="SetNote_OnClick"
-                                      Foreground="{DynamicResource MaterialDesignBody}" />
-                            <MenuItem Header="移除" Click="RemoveAccount_OnClick"
-                                      Foreground="{DynamicResource MaterialDesignBody}" />
-                            <MenuItem x:Name="AccountEntrySavePasswordCheck" Visibility="Collapsed" IsCheckable="true"
-                                      Header="不保存密码"
-                                      Checked="DontSavePassword_OnChecked" Unchecked="DontSavePassword_OnUnchecked"
-                                      Foreground="{DynamicResource MaterialDesignBody}" />
+                        <ContextMenu
+                            DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                            StaysOpen="True">
+                            <MenuItem
+                                Command="{Binding SetProfilePictureCommand}"
+                                Foreground="{DynamicResource MaterialDesignBody}"
+                                Header="设置头像" />
+                            <MenuItem
+                                Command="{Binding CreateDesktopShortcutCommand}"
+                                Foreground="{DynamicResource MaterialDesignBody}"
+                                Header="创建桌面快捷方式" />
+                            <MenuItem
+                                Command="{Binding SetNoteCommand}"
+                                Foreground="{DynamicResource MaterialDesignBody}"
+                                Header="设置备注" />
+                            <MenuItem
+                                Command="{Binding RemoveAccountCommand}"
+                                Foreground="{DynamicResource MaterialDesignBody}"
+                                Header="移除" />
+                            <MenuItem
+                                Foreground="{DynamicResource MaterialDesignBody}"
+                                Header="不保存密码"
+                                IsCheckable="True"
+                                IsChecked="{Binding IsSelectedAccountPasswordNotSaved, Mode=TwoWay}" />
                         </ContextMenu>
                     </ListView.ContextMenu>
 
@@ -46,6 +68,7 @@
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                         </Style>
                     </ListView.ItemContainerStyle>
+
                     <ListView.ItemTemplate>
                         <DataTemplate x:Name="SingleLineDataTemplate" DataType="accounts:AccountSwitcherEntry">
                             <Grid>
@@ -54,25 +77,23 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" Height="42">
+
+                                <StackPanel Height="42" Orientation="Horizontal">
                                     <Image Source="{Binding ProfileImage}" />
-                                    <TextBlock Text="{Binding Account.DisplayName}" VerticalAlignment="Center"
-                                               Margin="12,0,0,0" />
+                                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
+                                               Text="{Binding Account.DisplayName}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                    <materialDesign:PackIcon Height="20" Width="20"
-                                                             Margin="0,0,0,0" HorizontalAlignment="Right"
+                                    <materialDesign:PackIcon Height="20" Width="20" HorizontalAlignment="Right"
                                                              VerticalAlignment="Center">
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
                                                 <Style.Triggers>
-                                                    <DataTrigger
-                                                        Binding="{Binding Account.IsWeGame}" Value="true">
+                                                    <DataTrigger Binding="{Binding Account.IsWeGame}" Value="true">
                                                         <Setter Property="Kind" Value="Qqchat" />
                                                     </DataTrigger>
-                                                    <DataTrigger
-                                                        Binding="{Binding Account.IsWeGame}" Value="false">
+                                                    <DataTrigger Binding="{Binding Account.IsWeGame}" Value="false">
                                                         <Setter Property="Visibility" Value="Collapsed" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -80,18 +101,15 @@
                                         </materialDesign:PackIcon.Style>
                                     </materialDesign:PackIcon>
 
-                                    <materialDesign:PackIcon Height="20" Width="20"
-                                                             Margin="0,0,0,0" HorizontalAlignment="Right"
+                                    <materialDesign:PackIcon Height="20" Width="20" HorizontalAlignment="Right"
                                                              VerticalAlignment="Center">
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
                                                 <Style.Triggers>
-                                                    <DataTrigger
-                                                        Binding="{Binding Account.AutoLogin}" Value="True">
+                                                    <DataTrigger Binding="{Binding Account.AutoLogin}" Value="True">
                                                         <Setter Property="Kind" Value="AccountKeyOutline" />
                                                     </DataTrigger>
-                                                    <DataTrigger
-                                                        Binding="{Binding Account.AutoLogin}" Value="False">
+                                                    <DataTrigger Binding="{Binding Account.AutoLogin}" Value="False">
                                                         <Setter Property="Visibility" Value="Collapsed" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -100,7 +118,6 @@
                                     </materialDesign:PackIcon>
                                 </StackPanel>
                             </Grid>
-
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>

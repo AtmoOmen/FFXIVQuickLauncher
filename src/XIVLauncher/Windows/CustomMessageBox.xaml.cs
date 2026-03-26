@@ -13,7 +13,6 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using MaterialDesignThemes.Wpf;
 using Serilog;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
@@ -589,10 +588,8 @@ public partial class CustomMessageBox : Window
             return this;
         }
 
-        public Builder WithExceptionText()
-        {
-            return WithText("XIVLauncher 发生错误, 请查阅常见问题\n如果问题仍然存在, 请点击下方按钮在 GitHub 上报告此问题, 描述问题并复制文本框中的内容");
-        }
+        public Builder WithExceptionText() =>
+            WithText("XIVLauncher 发生错误, 请查阅常见问题\n如果问题仍然存在, 请点击下方按钮在 GitHub 上报告此问题, 描述问题并复制文本框中的内容");
 
         public Builder WithAppendSettingsDescription(string context)
         {

@@ -5,26 +5,33 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
-        Title="Integrity check progress" WindowStartupLocation="CenterScreen"
-        Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
+        Title="Integrity check progress"
+        WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+        ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Medium"
-
         AllowsTransparency="True"
         Background="Transparent"
-        WindowStyle="None" Height="130.401" Width="263.516">
+        WindowStyle="None"
+        Height="130.401"
+        Width="263.516">
     <Grid>
         <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="114" Margin="0,0,10,0">
             <StackPanel Margin="16,16,10,10">
-                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center"
-                           Margin="0,0,0,10" Text="正在检查游戏完整性…" />
+                <TextBlock Foreground="{DynamicResource MaterialDesignBody}"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,10"
+                           Text="正在检查游戏完整性..." />
                 <ProgressBar Style="{StaticResource MaterialDesignCircularProgressBar}"
                              Value="0"
-                             IsIndeterminate="True" Height="35" Width="35" Margin="0,0,0,10" />
-                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center"
-                           x:Name="InfoTextBlock">
-                    FileName
-                </TextBlock>
+                             IsIndeterminate="True"
+                             Height="35"
+                             Width="35"
+                             Margin="0,0,0,10" />
+                <TextBlock Foreground="{DynamicResource MaterialDesignBody}"
+                           HorizontalAlignment="Center"
+                           Text="{Binding CurrentFile}" />
             </StackPanel>
         </materialDesign:Card>
     </Grid>

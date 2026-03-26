@@ -12,23 +12,56 @@
         Background="{DynamicResource MaterialDesignPaper}"
         TextElement.FontWeight="Medium">
     <Grid>
-        <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,10,0,0"
+        <TextBlock HorizontalAlignment="Left"
+                   VerticalAlignment="Top"
+                   Margin="10,10,0,0"
                    Text="请选择希望自动启动的软件" />
-        <components:FileEntry x:Name="PathEntry" Description="Select an Addon file"
-                              Filters="EXE File, *.exe;Powershell Script, *.ps1;Shell Script, *.bat" Margin="10,0,0,80"
-                              Width="400" VerticalAlignment="Center" HorizontalAlignment="Left" />
-        <Label Margin="10,0,0,10" Width="400" VerticalAlignment="Center" HorizontalAlignment="Left"
+        <components:FileEntry x:Name="PathEntry"
+                              Description="Select an Addon file"
+                              Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
+                              Filters="EXE File, *.exe;Powershell Script, *.ps1;Shell Script, *.bat"
+                              Margin="10,0,0,80"
+                              Width="400"
+                              VerticalAlignment="Center"
+                              HorizontalAlignment="Left" />
+        <Label Margin="10,0,0,10"
+               Width="400"
+               VerticalAlignment="Center"
+               HorizontalAlignment="Left"
                Content="命令行参数" />
-        <TextBox x:Name="CommandLineTextBox" Margin="10,0,0,-30" Width="400"
-                 VerticalAlignment="Center" HorizontalAlignment="Left" />
-        <CheckBox x:Name="AdminCheckBox" Content="以管理员身份运行" Margin="10,0,0,-100" Width="400"
-                  VerticalAlignment="Center" HorizontalAlignment="Left" Checked="AdminCheckBox_OnChecked"
-                  Unchecked="AdminCheckBox_OnUnchecked" />
-        <CheckBox x:Name="RunOnCloseCheckBox" Content="游戏结束时运行" Margin="10,0,0,-140"
-                  Width="400" VerticalAlignment="Center" HorizontalAlignment="Left" />
-        <CheckBox x:Name="KillCheckBox" Content="随游戏关闭" Margin="10,0,0,-180"
-                  Width="400" VerticalAlignment="Center" HorizontalAlignment="Left" />
-        <Button Content="确定" Width="79" VerticalAlignment="Bottom" HorizontalAlignment="Right"
-                Margin="0,0,10,10" Click="NextButton_Click" />
+        <TextBox x:Name="CommandLineTextBox"
+                 Margin="10,0,0,-30"
+                 Width="400"
+                 Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
+                 VerticalAlignment="Center"
+                 HorizontalAlignment="Left" />
+        <CheckBox x:Name="AdminCheckBox"
+                  Content="以管理员身份运行"
+                  Margin="10,0,0,-100"
+                  Width="400"
+                  VerticalAlignment="Center"
+                  HorizontalAlignment="Left"
+                  IsChecked="{Binding RunAsAdmin}" />
+        <CheckBox x:Name="RunOnCloseCheckBox"
+                  Content="游戏结束时运行"
+                  Margin="10,0,0,-140"
+                  Width="400"
+                  VerticalAlignment="Center"
+                  HorizontalAlignment="Left"
+                  IsChecked="{Binding RunOnClose}" />
+        <CheckBox x:Name="KillCheckBox"
+                  Content="随游戏关闭"
+                  Margin="10,0,0,-180"
+                  Width="400"
+                  VerticalAlignment="Center"
+                  HorizontalAlignment="Left"
+                  IsEnabled="{Binding CanKillAfterClose}"
+                  IsChecked="{Binding KillAfterClose}" />
+        <Button Content="确定"
+                Width="79"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Right"
+                Margin="0,0,10,10"
+                Click="NextButton_Click" />
     </Grid>
 </Window>

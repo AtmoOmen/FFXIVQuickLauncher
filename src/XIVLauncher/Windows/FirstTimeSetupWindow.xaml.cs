@@ -1,10 +1,4 @@
-using System;
-using System.IO;
-using System.Windows;
-using Serilog;
-using XIVLauncher.Common;
-using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Util;
+using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
@@ -14,151 +8,34 @@ namespace XIVLauncher.Windows;
 /// </summary>
 public partial class FirstTimeSetup
 {
-    public bool WasCompleted { get; private set; }
+    public           bool             WasCompleted { get; private set; }
+    private readonly IShortcutService _shortcutService = new ShortcutService();
+
+    private FirstTimeSetupViewModel ViewModel => (FirstTimeSetupViewModel)DataContext;
 
     public FirstTimeSetup()
     {
         InitializeComponent();
 
-        DataContext = new();
-
-        var detectedPath = Paths.GetGamePath();
-        if (detectedPath != null) 
-            GamePathEntry.Text = detectedPath;
-
-        try
+        DataContext = new FirstTimeSetupViewModel(new DialogService(this), _shortcutService);
+        ViewModel.CloseRequested += (_, _) =>
         {
-            var desktop       = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory); //获取桌面文件夹路径
-            var directoryInfo = new DirectoryInfo(Environment.CurrentDirectory).Parent;
-            if (directoryInfo != null)
-                CreateShortcut(desktop, "XIVLauncherCN (Soil)", Path.Combine(directoryInfo.FullName, "XIVLauncherCN.exe"));
-        }
-        catch
-        {
-            CustomMessageBox.Show
-            (
-                "创建快捷方式失败，如需要请手动创建快捷方式到桌面。",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: this
-            );
-        }
+            WasCompleted = ViewModel.WasCompleted;
+            Close();
+        };
+        ViewModel.EnsureDesktopShortcut();
     }
 
     public static void CreateShortcut
     (
-        string directory,
-        string shortcutName,
-        string targetPath,
-        string description  = null,
-        string iconLocation = null
-    )
-    {
-        if (!Directory.Exists(directory))
-        {
-            if (directory != null)
-                Directory.CreateDirectory(directory);
-        }
+        string  directory,
+        string  shortcutName,
+        string  targetPath,
+        string? description  = null,
+        string? iconLocation = null
+    ) =>
+        new ShortcutService().CreateShortcut(directory, shortcutName, targetPath, description, iconLocation);
 
-        if (directory != null)
-        {
-            var     shortcutPath = Path.Combine(directory, $"{shortcutName}.lnk");
-            var     shellType    = Type.GetTypeFromProgID("WScript.Shell");
-            dynamic shell        = Activator.CreateInstance(shellType);
-            var     shortcut     = shell.CreateShortcut(shortcutPath);                                       //创建快捷方式对象
-            shortcut.TargetPath       = targetPath;                                                          //指定目标路径
-            shortcut.WorkingDirectory = Path.GetDirectoryName(targetPath);                                   //设置起始位置
-            shortcut.WindowStyle      = 1;                                                                   //设置运行方式，默认为常规窗口
-            shortcut.Description      = description;                                                         //设置备注
-            shortcut.IconLocation     = string.IsNullOrWhiteSpace(iconLocation) ? targetPath : iconLocation; //设置图标路径
-            shortcut.Save();                                                                                 //保存快捷方式
-        }
-    }
-
-    public static string GetShortcutTargetFile(string path)
-    {
-        var     shellType = Type.GetTypeFromProgID("WScript.Shell");
-        dynamic shell     = Activator.CreateInstance(shellType);
-        var     shortcut  = shell.CreateShortcut(path);
-
-        return shortcut.TargetPath;
-    }
-
-    private void NextButton_Click(object sender, RoutedEventArgs e)
-    {
-        Log.Information($"[FirstTimeSetup] 当前步骤索引: {SetupTabControl.SelectedIndex}");
-
-        switch (SetupTabControl.SelectedIndex)
-        {
-            case 0 when string.IsNullOrEmpty(GamePathEntry.Text):
-                CustomMessageBox.Show
-                (
-                    "请选择游戏所在文件夹",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error,
-                    false,
-                    false,
-                    parentWindow: this
-                );
-                return;
-
-            case 0 when !GameHelpers.LetChoosePath(GamePathEntry.Text):
-                CustomMessageBox.Show
-                (
-                    "请不要选择「game」文件夹, 请选择它的上层文件夹",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error,
-                    parentWindow: this
-                );
-                return;
-
-            case 0:
-            {
-                if (!GameHelpers.IsValidGamePath(GamePathEntry.Text))
-                {
-                    if (CustomMessageBox.Show
-                        (
-                            "选择的文件夹中没有游戏安装\nXIVLauncher 将在首次登录时安装游戏\n是否继续?",
-                            "XIVLauncherCN (Soil)",
-                            MessageBoxButton.YesNo,
-                            parentWindow: this
-                        )
-                        != MessageBoxResult.Yes)
-                        return;
-                }
-
-                if (GamePathEntry.Text.StartsWith('C'))
-                {
-                    if (CustomMessageBox.Show
-                        (
-                            "你选择的游戏路径位于 C 盘\nXIVLauncherCN 无法正常登陆, 请将游戏移出 C 盘或者使用管理员启动 XIVLauncherCN",
-                            "XIVLauncherCN (Soil)",
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Warning,
-                            parentWindow: this
-                        )
-                        != MessageBoxResult.Yes)
-                        return;
-                }
-
-                break;
-            }
-
-            case 1:
-                App.Settings.GamePath           = new(GamePathEntry.Text);
-                App.Settings.Language           = ClientLanguage.ChineseSimplified;
-                App.Settings.InGameAddonEnabled = HooksCheckBox.IsChecked == true;
-
-                App.Settings.AddonList = [];
-
-                WasCompleted = true;
-                Close();
-                break;
-        }
-
-        SetupTabControl.SelectedIndex++;
-    }
+    public static string GetShortcutTargetFile(string path) =>
+        new ShortcutService().GetShortcutTargetFile(path);
 }

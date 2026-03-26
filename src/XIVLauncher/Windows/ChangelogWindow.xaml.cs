@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Media;
 using System.Windows;
 using Newtonsoft.Json;
@@ -12,25 +12,26 @@ namespace XIVLauncher.Windows;
 /// </summary>
 public partial class ChangelogWindow : Window
 {
-    private ChangeLogWindowViewModel Model => DataContext as ChangeLogWindowViewModel;
+    private ChangeLogWindowViewModel Model => (ChangeLogWindowViewModel)DataContext;
 
     public ChangelogWindow()
     {
         InitializeComponent();
 
         DiscordButton.Click += SupportLinks.OpenDiscordChannel;
+        DataContext         =  new ChangeLogWindowViewModel();
 
-        var vm = new ChangeLogWindowViewModel();
-        DataContext = vm;
-        
         Activate();
         Topmost = true;
         Topmost = false;
         Focus();
     }
 
-    public void UpdateVersion(string version) =>
-        UpdateNotice.Text = string.Format("XIVLauncherCN (Soil) 已更新至 {0}", version);
+    public void UpdateVersion(string version)
+    {
+        Model.UpdateNotice = string.Format("XIVLauncherCN (Soil) 已更新至 {0}", version);
+        Show();
+    }
 
     public new void Show()
     {
@@ -43,19 +44,19 @@ public partial class ChangelogWindow : Window
 
     public class VersionMeta
     {
-        [JsonProperty("version")] public string Version { get; set; }
+        [JsonProperty("version")] public string Version { get; set; } = string.Empty;
 
-        [JsonProperty("url")] public string Url { get; set; }
+        [JsonProperty("url")] public string Url { get; set; } = string.Empty;
 
-        [JsonProperty("changelog")] public string Changelog { get; set; }
+        [JsonProperty("changelog")] public string Changelog { get; set; } = string.Empty;
 
         [JsonProperty("when")] public DateTime When { get; set; }
     }
 
     public class ReleaseMeta
     {
-        [JsonProperty("releaseVersion")] public VersionMeta ReleaseVersion { get; set; }
+        [JsonProperty("releaseVersion")] public VersionMeta ReleaseVersion { get; set; } = new();
 
-        [JsonProperty("prereleaseVersion")] public VersionMeta PrereleaseVersion { get; set; }
+        [JsonProperty("prereleaseVersion")] public VersionMeta PrereleaseVersion { get; set; } = new();
     }
 }

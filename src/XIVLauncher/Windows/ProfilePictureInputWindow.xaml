@@ -4,28 +4,46 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="更改头像" Height="268.361" Width="535.302"
+        Title="更改头像"
+        Height="268.361"
+        Width="535.302"
         WindowStartupLocation="CenterScreen"
-        Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
+        Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+        ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         Background="{DynamicResource MaterialDesignPaper}"
         TextElement.FontWeight="Medium">
     <StackPanel>
-        <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,10,0,0"
+        <TextBlock HorizontalAlignment="Left"
+                   VerticalAlignment="Top"
+                   Margin="10,10,0,0"
                    Text="请输入角色名称及其所在服务器" />
 
         <StackPanel Orientation="Vertical" Width="180" HorizontalAlignment="Left" Margin="10,20,0,0">
-            <Label Width="210" VerticalAlignment="Center" HorizontalAlignment="Left"
+            <Label Width="210"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Left"
                    Content="角色名称" />
-            <TextBox x:Name="CharacterNameTextBox" Width="203" />
+            <TextBox x:Name="CharacterNameTextBox"
+                     Width="203"
+                     Text="{Binding CharacterName, UpdateSourceTrigger=PropertyChanged}" />
         </StackPanel>
 
         <StackPanel Orientation="Vertical" Width="180" HorizontalAlignment="Left" Margin="10,10,0,0">
-            <Label Width="210" VerticalAlignment="Center" HorizontalAlignment="Left" Content="服务器名称" />
-            <TextBox x:Name="WorldNameTextBox" Width="203" />
+            <Label Width="210"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Left"
+                   Content="服务器名称" />
+            <TextBox x:Name="WorldNameTextBox"
+                     Width="203"
+                     Text="{Binding WorldName, UpdateSourceTrigger=PropertyChanged}" />
         </StackPanel>
 
-        <Button Content="确定" Width="79" VerticalAlignment="Bottom" HorizontalAlignment="Right"
-                Click="NextButton_Click" Margin="220,50,0,0" />
+        <Button Content="确定"
+                Width="79"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Right"
+                Click="NextButton_Click"
+                Margin="220,50,0,0" />
     </StackPanel>
 </Window>

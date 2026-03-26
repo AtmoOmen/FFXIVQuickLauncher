@@ -15,7 +15,7 @@ namespace XIVLauncher.Windows;
 /// </summary>
 public partial class PatchDownloadDialog : Window
 {
-    public           PatchDownloadDialogViewModel ViewModel => DataContext as PatchDownloadDialogViewModel;
+    public           PatchDownloadDialogViewModel ViewModel => (PatchDownloadDialogViewModel)DataContext;
     private readonly PatchManager                 _manager;
 
     private readonly Timer _timer;
@@ -41,66 +41,31 @@ public partial class PatchDownloadDialog : Window
 
     public void SetGeneralProgress(int curr, int final, bool busy)
     {
-        PatchProgressText.Text = $"正在更新第 {curr}/{final} 个补丁…";
-        InstallingText.Text    = busy ? $"正在安装第 #{curr} 个更新…" : "正在等待下载…";
+        ViewModel.PatchProgressText = $"正在更新第 {curr}/{final} 个补丁...";
+        ViewModel.InstallingText    = busy ? $"正在安装第 #{curr} 个更新..." : "正在等待下载...";
     }
 
     public void SetLeft(long left, double rate)
     {
         var eta = rate == 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(left / rate);
-        BytesLeftText.Text = $"剩余 {APIHelper.BytesToString(left)} (下载速度: {APIHelper.BytesToString(rate)}/s)";
-        TimeLeftText.Text  = APIHelper.GetTimeLeft(eta, ["预计剩余时间: {0} 天 {1} 小时 {2} 分 {3} 秒", "预计剩余时间: {0} 小时 {1} 分 {2} 秒", "预计剩余时间: {0} 分 {1} 秒", "预计剩余时间: {0} 秒"]);
+        ViewModel.BytesLeftText = $"剩余 {APIHelper.BytesToString(left)} (下载速度: {APIHelper.BytesToString(rate)}/s)";
+        ViewModel.TimeLeftText  = APIHelper.GetTimeLeft(eta, ["预计剩余时间: {0} 天 {1} 小时 {2} 分 {3} 秒", "预计剩余时间: {0} 小时 {1} 分 {2} 秒", "预计剩余时间: {0} 分 {1} 秒", "预计剩余时间: {0} 秒"]);
     }
 
-    public void SetPatchProgress(int index, string patchName, double pct, bool indeterminate)
-    {
-        switch (index)
-        {
-            case 0:
-                SetProgressBar1Progress(patchName, pct, indeterminate);
-                break;
+    public void SetPatchProgress(int index, string patchName, double pct, bool indeterminate) =>
+        ViewModel.SetProgress(index, patchName, pct, indeterminate);
 
-            case 1:
-                SetProgressBar2Progress(patchName, pct, indeterminate);
-                break;
+    public void SetProgressBar1Progress(string patchName, double percentage, bool indeterminate) =>
+        ViewModel.SetProgress(0, patchName, percentage, indeterminate);
 
-            case 2:
-                SetProgressBar3Progress(patchName, pct, indeterminate);
-                break;
+    public void SetProgressBar2Progress(string patchName, double percentage, bool indeterminate) =>
+        ViewModel.SetProgress(1, patchName, percentage, indeterminate);
 
-            case 3:
-                SetProgressBar4Progress(patchName, pct, indeterminate);
-                break;
-        }
-    }
+    public void SetProgressBar3Progress(string patchName, double percentage, bool indeterminate) =>
+        ViewModel.SetProgress(2, patchName, percentage, indeterminate);
 
-    public void SetProgressBar1Progress(string patchName, double percentage, bool indeterminate)
-    {
-        Progress1.Value           = percentage;
-        Progress1.IsIndeterminate = indeterminate;
-        Progress1Text.Text        = patchName;
-    }
-
-    public void SetProgressBar2Progress(string patchName, double percentage, bool indeterminate)
-    {
-        Progress2.Value           = percentage;
-        Progress2.IsIndeterminate = indeterminate;
-        Progress2Text.Text        = patchName;
-    }
-
-    public void SetProgressBar3Progress(string patchName, double percentage, bool indeterminate)
-    {
-        Progress3.Value           = percentage;
-        Progress3.IsIndeterminate = indeterminate;
-        Progress3Text.Text        = patchName;
-    }
-
-    public void SetProgressBar4Progress(string patchName, double percentage, bool indeterminate)
-    {
-        Progress4.Value           = percentage;
-        Progress4.IsIndeterminate = indeterminate;
-        Progress4Text.Text        = patchName;
-    }
+    public void SetProgressBar4Progress(string patchName, double percentage, bool indeterminate) =>
+        ViewModel.SetProgress(3, patchName, percentage, indeterminate);
 
     private void PatchDownloadDialog_OnMouseMove(object sender, MouseEventArgs e)
     {
@@ -129,25 +94,11 @@ public partial class PatchDownloadDialog : Window
                     }
 
                     if (_manager.Slots[i] == PatchManager.SlotState.Checking)
-                    {
-                        SetPatchProgress
-                        (
-                            i,
-                            $"{activePatch.Patch} (正在检查更新…)",
-                            100f,
-                            true
-                        );
-                    }
+                        SetPatchProgress(i, $"{activePatch.Patch} (正在检查更新...)", 100f, true);
                     else
                     {
                         var pct = Math.Round((double)(100 * _manager.Progresses[i]) / activePatch.Patch.Length, 2);
-                        SetPatchProgress
-                        (
-                            i,
-                            $"{activePatch.Patch} ({pct:#0.0}%, {APIHelper.BytesToString(_manager.Speeds[i])}/s)",
-                            pct,
-                            false
-                        );
+                        SetPatchProgress(i, $"{activePatch.Patch} ({pct:#0.0}%, {APIHelper.BytesToString(_manager.Speeds[i])}/s)", pct, false);
                     }
                 }
 

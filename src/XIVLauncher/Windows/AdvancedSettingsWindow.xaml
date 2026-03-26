@@ -13,25 +13,41 @@
         TextElement.FontWeight="Medium"
         d:DataContext="{d:DesignInstance viewModel:AdvancedSettingsViewModel}">
     <Grid>
-        <StackPanel Orientation="Vertical" Margin="10, 20, 0, 50">
+        <StackPanel Orientation="Vertical" Margin="10,20,0,50">
             <CheckBox x:Name="ExitLauncherAfterGameExitCheckbox"
                       Content="等待游戏退出后再关闭 XIVLauncher"
-                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
+                      HorizontalAlignment="Left"
+                      Margin="0,0,0,7"
+                      Foreground="DarkGray"
+                      IsChecked="{Binding ExitLauncherAfterGameExit}" />
             <CheckBox x:Name="TreatNonZeroExitCodeAsFailureCheckbox"
-                      Content="视非零游戏退出码为游戏崩溃"
-                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray"
-                      ToolTip="勾选后, 发生此类情况时将自动重新打开 XIVLauncher 界面"
+                      Content="将非零退出码视为崩溃"
+                      HorizontalAlignment="Left"
+                      Margin="0,0,0,7"
+                      Foreground="DarkGray"
+                      ToolTip="开启后，发生异常退出时会自动重新打开 XIVLauncher 界面"
+                      IsChecked="{Binding TreatNonZeroExitCodeAsFailure}"
                       IsEnabled="{Binding ElementName=ExitLauncherAfterGameExitCheckbox, Path=IsChecked}" />
             <CheckBox x:Name="EnableVerboseLog"
-                      Content="调整日志等级为 Verbose"
-                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray"
-                      ToolTip="勾选后, XIVLauncher 会输出更为详尽甚至琐碎的日志信息, 这可能会导致相关日志文件体积显著增大" />
+                      Content="将日志级别提升为 Verbose"
+                      HorizontalAlignment="Left"
+                      Margin="0,0,0,7"
+                      Foreground="DarkGray"
+                      ToolTip="开启后会输出更详细的日志，日志文件体积也会明显变大"
+                      IsChecked="{Binding EnableVerboseLog}" />
             <CheckBox x:Name="EnableSkipUpdate"
                       Content="跳过 XIVLauncher 更新"
-                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
+                      HorizontalAlignment="Left"
+                      Margin="0,0,0,7"
+                      Foreground="DarkGray"
+                      IsChecked="{Binding EnableSkipUpdate}" />
         </StackPanel>
 
-        <Button Content="确认" Width="79" VerticalAlignment="Bottom"
-                HorizontalAlignment="Right" Margin="0,0,10,10" Click="CloseButton_OnClick" />
+        <Button Content="确认"
+                Width="79"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Right"
+                Margin="0,0,10,10"
+                Click="CloseButton_OnClick" />
     </Grid>
 </Window>

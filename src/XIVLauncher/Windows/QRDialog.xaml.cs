@@ -7,14 +7,13 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
 
 /// <summary>
 ///     Interaction logic for OtpInputDialog.xaml
 /// </summary>
-public partial class QRDialog : Window
+public partial class QRDialog
 {
     //private OtpInputDialogViewModel ViewModel => DataContext as OtpInputDialogViewModel;
 
@@ -28,8 +27,6 @@ public partial class QRDialog : Window
         InitializeComponent();
 
         //_otpInputPromptDefaultBrush = OtpInputPrompt.Foreground;
-
-        DataContext = new OtpInputDialogViewModel();
 
         MouseMove += OtpInputDialog_OnMouseMove;
         Activated += (_, _) => QRImage.Focus();
