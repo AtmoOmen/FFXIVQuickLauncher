@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using XIVLauncher.Common;
@@ -52,7 +51,7 @@ internal sealed class FirstTimeSetupViewModel : ViewModelBase
         try
         {
             var desktop      = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            var launcherPath = Assembly.GetEntryAssembly()?.Location ?? Path.Combine(AppContext.BaseDirectory, "XIVLauncherCN.exe");
+            var launcherPath = Paths.ResolveExecutablePath();
 
             _shortcutService.CreateShortcut(desktop, "XIVLauncherCN (Soil)", launcherPath);
         }

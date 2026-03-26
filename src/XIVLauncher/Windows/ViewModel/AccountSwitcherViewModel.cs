@@ -4,7 +4,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
@@ -131,7 +130,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         try
         {
             var iconPath     = ResolveShortcutIconPath(SelectedEntry);
-            var launcherPath = Assembly.GetEntryAssembly()?.Location ?? Path.Combine(AppContext.BaseDirectory, "XIVLauncherCN.exe");
+            var launcherPath = Paths.ResolveExecutablePath();
             var desktop      = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 
             _shortcutService.CreateShortcut
@@ -261,7 +260,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     private static string ResolveShortcutIconPath(AccountSwitcherEntry entry)
     {
-        var launcherPath = Assembly.GetEntryAssembly()?.Location ?? Path.Combine(AppContext.BaseDirectory, "XIVLauncherCN.exe");
+        var launcherPath = Paths.ResolveExecutablePath();
 
         if (!AccountSwitcherEntry.TryGetCustomProfileImagePath(entry.Account, out var customProfileImagePath))
             return launcherPath;

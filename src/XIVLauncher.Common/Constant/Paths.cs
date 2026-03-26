@@ -18,6 +18,24 @@ public static class Paths
     public static void OverrideRoamingPath(string path) =>
         RoamingPath = Environment.ExpandEnvironmentVariables(path);
 
+    public static string ResolveExecutablePath()
+    {
+        var currentProcessPath = Environment.ProcessPath;
+        if (IsExecutableFile(currentProcessPath))
+            return currentProcessPath!;
+
+        var launcherExecutablePath = Path.Combine(AppContext.BaseDirectory, "XIVLauncherCN.exe");
+        if (IsExecutableFile(launcherExecutablePath))
+            return launcherExecutablePath;
+
+        return currentProcessPath ?? launcherExecutablePath;
+    }
+
+    private static bool IsExecutableFile(string? filePath) =>
+        !string.IsNullOrWhiteSpace(filePath)
+        && File.Exists(filePath)
+        && string.Equals(Path.GetExtension(filePath), ".exe", StringComparison.OrdinalIgnoreCase);
+    
     public static DirectoryInfo ResolvePatchPath(DirectoryInfo? configuredPatchPath, string roamingPath)
     {
         if (configuredPatchPath is { Exists: false })
