@@ -81,9 +81,11 @@
                                         </TransformGroup>
                                     </ItemsControl.LayoutTransform>
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
+                                        <DataTemplate DataType="{x:Type viewModel:BannerDotInfo}">
                                             <RadioButton GroupName="banner"
+                                                         IsChecked="{Binding Active, Mode=OneWay}"
                                                          RenderTransformOrigin="0.5,0.5"
+                                                         Checked="BannerDot_OnChecked"
                                                          MouseEnter="RadioButton_MouseEnter"
                                                          MouseLeave="RadioButton_MouseLeave">
                                                 <RadioButton.RenderTransform>
@@ -106,18 +108,49 @@
                                 Margin="0 10 0 0"
                                 Height="94"
                                 HorizontalAlignment="Left" Width="{DynamicResource BannerCardWidth}">
-                                <ListView x:Name="NewsListView" MouseUp="NewsListView_OnMouseUp"
-                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                          HorizontalContentAlignment="Stretch">
-                                    <ListView.ItemContainerStyle>
-                                        <Style TargetType="ListViewItem"
-                                               BasedOn="{StaticResource {x:Type ListViewItem}}">
-                                            <Setter Property="Padding" Value="6,4,6,4" />
+                                <ListBox x:Name="NewsListView"
+                                         MouseUp="NewsListView_OnMouseUp"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Padding="0"
+                                         ScrollViewer.CanContentScroll="True"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                         VirtualizingPanel.ScrollUnit="Item"
+                                         HorizontalContentAlignment="Stretch">
+                                    <ListBox.Template>
+                                        <ControlTemplate TargetType="ListBox">
+                                            <Border
+                                                Background="{TemplateBinding Background}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                Padding="{TemplateBinding Padding}"
+                                                SnapsToDevicePixels="True">
+                                                <ScrollViewer
+                                                    Focusable="False"
+                                                    CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
+                                                    HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                                                    VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
+                                                    <ItemsPresenter />
+                                                </ScrollViewer>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ListBox.Template>
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel />
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem"
+                                               BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                            <Setter Property="Height" Value="23.5" />
+                                            <Setter Property="Padding" Value="6,0,6,0" />
                                             <Setter Property="MinHeight" Value="0" />
+                                            <Setter Property="Margin" Value="0" />
                                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                         </Style>
-                                    </ListView.ItemContainerStyle>
-                                    <ListView.ItemTemplate>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
                                         <DataTemplate x:Name="SingleLineDataTemplate"
                                                       DataType="site:News">
                                             <Grid>
@@ -127,8 +160,8 @@
                                                 </Grid.ColumnDefinitions>
                                                 <materialDesign:PackIcon
                                                     Grid.Column="0"
-                                                    VerticalAlignment="Top"
-                                                    Margin="0,2,0,0"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0"
                                                     Height="15" Width="15">
                                                     <materialDesign:PackIcon.Style>
                                                         <Style TargetType="materialDesign:PackIcon">
@@ -157,12 +190,16 @@
                                                         </Style>
                                                     </materialDesign:PackIcon.Style>
                                                 </materialDesign:PackIcon>
-                                                <TextBlock Grid.Column="1" Text="{Binding Title}" TextWrapping="Wrap"
-                                                           VerticalAlignment="Top" Margin="12,0,0,0" />
+                                                <TextBlock Grid.Column="1"
+                                                           Margin="12,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding Title}"
+                                                           TextWrapping="NoWrap"
+                                                           TextTrimming="CharacterEllipsis" />
                                             </Grid>
                                         </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
                             </materialDesign:Card>
 
                             <StackPanel

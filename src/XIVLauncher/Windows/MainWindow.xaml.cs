@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using System.Windows.Media.Imaging;
 using MaterialDesignThemes.Wpf;
 using Serilog;
@@ -253,14 +254,15 @@ public partial class MainWindow : Window
                 _bannerDotList.Add(new() { Index = i });
             }
 
-            _bannerDotList[0].Active = true;
+            _currentBannerIndex = 0;
+            SetBannerDotActiveState(_currentBannerIndex);
 
             _ = Dispatcher.BeginInvoke
             (
                 new Action
                 (() =>
                     {
-                        BannerImage.Source    = _bannerBitmaps[0];
+                        BannerImage.Source    = _bannerBitmaps[_currentBannerIndex];
                         BannerDot.ItemsSource = _bannerDotList;
                     }
                 )
@@ -268,28 +270,7 @@ public partial class MainWindow : Window
 
             _bannerChangeTimer = new Timer { Interval = 5000 };
 
-            _bannerChangeTimer.Elapsed += (o, args) =>
-            {
-                _bannerDotList.ToList().ForEach(x => x.Active = false);
-
-                if (_currentBannerIndex + 1 > _banners.Count - 1)
-                    _currentBannerIndex = 0;
-                else
-                    _currentBannerIndex++;
-
-                _bannerDotList[_currentBannerIndex].Active = true;
-
-                Dispatcher.BeginInvoke
-                (
-                    new Action
-                    (() =>
-                        {
-                            BannerImage.Source    = _bannerBitmaps[_currentBannerIndex];
-                            BannerDot.ItemsSource = _bannerDotList.ToList();
-                        }
-                    )
-                );
-            };
+            _bannerChangeTimer.Elapsed += (_, _) => Dispatcher.BeginInvoke(new Action(ShowNextBanner), DispatcherPriority.Background);
 
             _bannerChangeTimer.AutoReset = true;
             _bannerChangeTimer.Start();
@@ -515,17 +496,58 @@ public partial class MainWindow : Window
             ((MainWindowViewModel)DataContext).Password = ((PasswordBox)sender).Password;
     }
 
+    private void BannerDot_OnChecked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { DataContext: BannerDotInfo bannerDotInfo })
+            return;
+
+        SwitchBanner(bannerDotInfo.Index);
+    }
+
     private void RadioButton_MouseEnter(object sender, MouseEventArgs e)
     {
-        ((RadioButton)sender).IsChecked = true;
-        _currentBannerIndex             = _bannerDotList.FirstOrDefault(x => x.Active)?.Index ?? _currentBannerIndex;
-        Dispatcher.BeginInvoke(new Action(() => BannerImage.Source = _bannerBitmaps[_currentBannerIndex]));
-
-        _bannerChangeTimer.Stop();
+        _bannerChangeTimer?.Stop();
     }
 
     private void RadioButton_MouseLeave(object sender, MouseEventArgs e) =>
-        _bannerChangeTimer.Start();
+        _bannerChangeTimer?.Start();
+
+    private void ShowNextBanner()
+    {
+        if (_banners == null || _banners.Count == 0)
+            return;
+
+        var nextBannerIndex = _currentBannerIndex + 1 > _banners.Count - 1
+                                  ? 0
+                                  : _currentBannerIndex + 1;
+
+        SwitchBanner(nextBannerIndex);
+    }
+
+    private void SwitchBanner(int bannerIndex)
+    {
+        if (_bannerBitmaps == null || _bannerDotList == null)
+            return;
+
+        if (bannerIndex < 0 || bannerIndex >= _bannerBitmaps.Length || bannerIndex >= _bannerDotList.Count)
+            return;
+
+        if (_currentBannerIndex == bannerIndex && BannerImage.Source == _bannerBitmaps[bannerIndex])
+            return;
+
+        _currentBannerIndex = bannerIndex;
+        SetBannerDotActiveState(bannerIndex);
+        BannerImage.Source = _bannerBitmaps[bannerIndex];
+    }
+
+    private void SetBannerDotActiveState(int activeIndex)
+    {
+        if (_bannerDotList == null)
+            return;
+
+        for (var i = 0; i < _bannerDotList.Count; i++)
+            _bannerDotList[i].Active = i == activeIndex;
+    }
 
     private void SettingsControl_OnCloseMainWindowGracefully(object sender, EventArgs e) =>
         Close();
@@ -614,9 +636,4 @@ public partial class MainWindow : Window
     }
 
     //private SdoArea[] _sdoAreas;
-    private class BannerDotInfo
-    {
-        public bool Active { get; set; }
-        public int  Index  { get; set; }
-    }
 }
