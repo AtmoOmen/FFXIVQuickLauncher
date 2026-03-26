@@ -429,7 +429,11 @@ public partial class MainWindow : Window
 
     private void AccountSwitcherButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var switcher = new AccountSwitcher(_accountManager);
+        var switcher = new AccountSwitcher(_accountManager)
+        {
+            Owner = this,
+            ShowInTaskbar = false
+        };
 
         var locationFromScreen = AccountSwitcherButton.PointToScreen(new Point(0, 0));
         var source             = PresentationSource.FromVisual(this);

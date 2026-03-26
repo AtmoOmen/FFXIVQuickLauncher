@@ -1,24 +1,48 @@
+using System.Windows.Media;
 using XIVLauncher.Accounts;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal class ProfilePictureInputWindowViewModel : ViewModelBase
+internal sealed class ProfilePictureInputWindowViewModel : ViewModelBase
 {
-    public string CharacterName
+    public string SelectedFilePath
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            OnPropertyChanged(nameof(HasSelectedFile));
+        }
     } = string.Empty;
 
-    public string WorldName
+    public ImageSource PreviewImage
     {
         get;
         set => SetProperty(ref field, value);
-    } = string.Empty;
+    } = AccountSwitcherEntry.GetDefaultProfileImage();
+
+    public bool HasSelectedFile => !string.IsNullOrWhiteSpace(SelectedFilePath);
 
     public void Load(XIVAccount account)
     {
-        CharacterName = account.ChosenCharacterName  ?? string.Empty;
-        WorldName     = account.ChosenCharacterWorld ?? string.Empty;
+        SelectedFilePath = AccountSwitcherEntry.TryGetCustomProfileImagePath(account, out var imagePath)
+                               ? imagePath
+                               : string.Empty;
+
+        PreviewImage = AccountSwitcherEntry.GetProfileImage(account);
+    }
+
+    public void SetPreviewImage(string imagePath)
+    {
+        SelectedFilePath = imagePath;
+        PreviewImage     = AccountSwitcherEntry.LoadProfileImageFromPath(imagePath);
+    }
+
+    public void ClearPreviewImage()
+    {
+        SelectedFilePath = string.Empty;
+        PreviewImage     = AccountSwitcherEntry.GetDefaultProfileImage();
     }
 }

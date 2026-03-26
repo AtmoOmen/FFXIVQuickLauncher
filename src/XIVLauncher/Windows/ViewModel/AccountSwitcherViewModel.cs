@@ -5,8 +5,11 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common.Constant;
@@ -29,10 +32,10 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     public AccountSwitcherEntry? SelectedEntry
     {
-        get => _selectedEntry;
+        get;
         set
         {
-            if (!SetProperty(ref _selectedEntry, value))
+            if (!SetProperty(ref field, value))
                 return;
 
             OnPropertyChanged(nameof(IsSelectedAccountPasswordNotSaved));
@@ -62,7 +65,6 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
     private readonly AccountManager        _accountManager;
     private readonly IDialogService        _dialogService;
     private readonly IShortcutService      _shortcutService;
-    private          AccountSwitcherEntry? _selectedEntry;
 
     public AccountSwitcherViewModel(AccountManager accountManager, IDialogService? dialogService = null, IShortcutService? shortcutService = null)
     {
@@ -80,7 +82,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     public void RefreshEntries(string? selectedAccountId = null)
     {
-        selectedAccountId ??= SelectedEntry?.Account.Id;
+        selectedAccountId ??= SelectedEntry?.Account.Id ?? _accountManager.CurrentAccount?.Id;
 
         Entries.Clear();
 
@@ -169,12 +171,16 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         if (SelectedEntry == null)
             return;
 
-        if (!_dialogService.ShowProfilePictureInput(SelectedEntry.Account, out var resultName, out var resultWorld))
+        if (!_dialogService.ShowProfilePictureInput(SelectedEntry.Account, out var profileImagePath))
             return;
 
         var account = FindTrackedAccount(SelectedEntry.Account);
-        account.ChosenCharacterName  = resultName  ?? string.Empty;
-        account.ChosenCharacterWorld = resultWorld ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(profileImagePath))
+            AccountSwitcherEntry.RemoveCustomProfileImage(account);
+        else
+            AccountSwitcherEntry.SaveCustomProfileImage(account, profileImagePath);
+
         _accountManager.Save();
 
         RefreshEntries(account.Id);
@@ -203,12 +209,12 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         RefreshEntries(account.Id);
     }
 
-    private static Bitmap BitmapImageToBitmap(BitmapImage bitmapImage)
+    private static Bitmap BitmapSourceToBitmap(BitmapSource bitmapSource)
     {
         using var outputStream = new MemoryStream();
 
         BitmapEncoder encoder = new BmpBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmapImage));
+        encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
         encoder.Save(outputStream);
 
         using var bitmap = new Bitmap(outputStream);
@@ -257,14 +263,21 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
     {
         var launcherPath = Assembly.GetEntryAssembly()?.Location ?? Path.Combine(AppContext.BaseDirectory, "XIVLauncherCN.exe");
 
-        if (string.IsNullOrWhiteSpace(entry.Account.ThumbnailUrl) || entry.ProfileImage is not BitmapImage bitmapImage)
+        if (!AccountSwitcherEntry.TryGetCustomProfileImagePath(entry.Account, out var customProfileImagePath))
+            return launcherPath;
+
+        if (string.Equals(Path.GetExtension(customProfileImagePath), ".ico", StringComparison.OrdinalIgnoreCase))
+            return customProfileImagePath;
+
+        if (entry.ProfileImage is not BitmapSource bitmapSource)
             return launcherPath;
 
         var iconDirectory = Path.Combine(Paths.RoamingPath, "profileIcons");
         Directory.CreateDirectory(iconDirectory);
 
-        var iconPath = Path.Combine(iconDirectory, $"{entry.Account.Id}.ico");
-        SaveAsIcon(BitmapImageToBitmap(bitmapImage), iconPath);
+        var iconFileName = $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(entry.Account.Id)))}.ico";
+        var iconPath = Path.Combine(iconDirectory, iconFileName);
+        SaveAsIcon(BitmapSourceToBitmap(bitmapSource), iconPath);
         return iconPath;
     }
 

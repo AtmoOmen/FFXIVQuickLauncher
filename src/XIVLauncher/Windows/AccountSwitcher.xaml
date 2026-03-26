@@ -33,12 +33,12 @@
                     ItemsSource="{Binding Entries}"
                     MouseUp="AccountListView_OnMouseUp"
                     PreviewMouseLeftButtonDown="AccountListView_OnPreviewMouseLeftButtonDown"
+                    PreviewMouseRightButtonDown="AccountListView_OnPreviewMouseRightButtonDown"
                     PreviewMouseMove="AccountListView_OnPreviewMouseMove"
+                    SelectionMode="Single"
                     SelectedItem="{Binding SelectedEntry}">
                     <ListView.ContextMenu>
-                        <ContextMenu
-                            DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
-                            StaysOpen="True">
+                        <ContextMenu Language="zh-CN">
                             <MenuItem
                                 Command="{Binding SetProfilePictureCommand}"
                                 Foreground="{DynamicResource MaterialDesignBody}"
@@ -66,6 +66,38 @@
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="BorderBrush" Value="Transparent" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="Margin" Value="0,0,0,6" />
+                            <Setter Property="Padding" Value="6" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border
+                                            x:Name="ItemBorder"
+                                            Padding="{TemplateBinding Padding}"
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="4">
+                                            <ContentPresenter
+                                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ItemBorder" Property="Background" Value="#12000000" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="ItemBorder" Property="Background" Value="#16FFFFFF" />
+                                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
                         </Style>
                     </ListView.ItemContainerStyle>
 
@@ -79,7 +111,13 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Height="42" Orientation="Horizontal">
-                                    <Image Source="{Binding ProfileImage}" />
+                                    <Border Width="42" Height="42" ClipToBounds="True" CornerRadius="4">
+                                        <Image
+                                            Width="42"
+                                            Height="42"
+                                            Source="{Binding ProfileImage}"
+                                            Stretch="UniformToFill" />
+                                    </Border>
                                     <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
                                                Text="{Binding Account.DisplayName}" />
                                 </StackPanel>

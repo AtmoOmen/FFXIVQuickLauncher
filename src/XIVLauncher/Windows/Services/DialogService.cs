@@ -72,14 +72,13 @@ internal sealed class DialogService
         return window.Result;
     }
 
-    public bool ShowProfilePictureInput(XIVAccount account, out string? resultName, out string? resultWorld)
+    public bool ShowProfilePictureInput(XIVAccount account, out string? profileImagePath)
     {
         var window = new ProfilePictureInputWindow(account);
         PrepareOwner(window);
-        window.ShowDialog();
-        resultName  = window.ResultName;
-        resultWorld = window.ResultWorld;
-        return !string.IsNullOrWhiteSpace(resultName) || !string.IsNullOrWhiteSpace(resultWorld);
+        var dialogResult = window.ShowDialog();
+        profileImagePath = window.ResultPath;
+        return dialogResult == true;
     }
 
     public void ShowChangelog(string version)

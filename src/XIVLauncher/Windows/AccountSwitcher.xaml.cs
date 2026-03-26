@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -33,6 +34,9 @@ public partial class AccountSwitcher : Window
             new DialogService(this),
             new ShortcutService()
         );
+
+        if (AccountListView.ContextMenu != null)
+            AccountListView.ContextMenu.DataContext = DataContext;
     }
 
     private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
@@ -65,8 +69,10 @@ public partial class AccountSwitcher : Window
 
     private void AccountSwitcher_OnDeactivated(object sender, EventArgs e)
     {
-        if (!_closing)
-            Close();
+        if (_closing || AccountListView.ContextMenu?.IsOpen == true || OwnedWindows.OfType<Window>().Any(window => window.IsVisible))
+            return;
+
+        Close();
     }
 
     private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -76,6 +82,15 @@ public partial class AccountSwitcher : Window
 
         if (_draggedItem != null)
             _draggedItem.IsSelected = true;
+    }
+
+    private void AccountListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is { } listViewItem)
+        {
+            AccountListView.SelectedItem = listViewItem.DataContext;
+            listViewItem.IsSelected = true;
+        }
     }
 
     private void AccountListView_OnPreviewMouseMove(object sender, MouseEventArgs e)

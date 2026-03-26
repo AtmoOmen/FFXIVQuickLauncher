@@ -1,16 +1,15 @@
+using System;
 using System.Windows;
+using Microsoft.Win32;
 using XIVLauncher.Accounts;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
 
-/// <summary>
-///     Interaction logic for FirstTimeSetup.xaml
-/// </summary>
 public partial class ProfilePictureInputWindow : Window
 {
-    public  string                             ResultName  = string.Empty;
-    public  string                             ResultWorld = string.Empty;
+    public string? ResultPath { get; private set; }
+
     private ProfilePictureInputWindowViewModel ViewModel => (ProfilePictureInputWindowViewModel)DataContext;
 
     public ProfilePictureInputWindow(XIVAccount account)
@@ -21,11 +20,45 @@ public partial class ProfilePictureInputWindow : Window
         ViewModel.Load(account);
     }
 
-    private void NextButton_Click(object sender, RoutedEventArgs e)
+    private void BrowseButton_OnClick(object sender, RoutedEventArgs e)
     {
-        ResultName  = ViewModel.CharacterName;
-        ResultWorld = ViewModel.WorldName;
+        var dialog = new OpenFileDialog
+        {
+            Title = "选择头像文件",
+            CheckFileExists = true,
+            Multiselect = false,
+            Filter = "头像文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.ico|图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif|图标文件|*.ico|所有文件|*.*"
+        };
 
-        Close();
+        if (dialog.ShowDialog(this) != true)
+            return;
+
+        try
+        {
+            ViewModel.SetPreviewImage(dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show
+            (
+                this,
+                $"无法加载所选头像文件。\n{ex.Message}",
+                "设置头像",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
+        }
+    }
+
+    private void ClearButton_OnClick(object sender, RoutedEventArgs e) =>
+        ViewModel.ClearPreviewImage();
+
+    private void CancelButton_OnClick(object sender, RoutedEventArgs e) =>
+        DialogResult = false;
+
+    private void ConfirmButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        ResultPath = ViewModel.SelectedFilePath;
+        DialogResult = true;
     }
 }

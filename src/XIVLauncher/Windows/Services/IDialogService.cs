@@ -29,7 +29,7 @@ internal interface IDialogService
 
     GenericAddon? ShowGenericAddonSetup(GenericAddon? addon = null);
 
-    bool ShowProfilePictureInput(XIVAccount account, out string? resultName, out string? resultWorld);
+    bool ShowProfilePictureInput(XIVAccount account, out string? profileImagePath);
 
     void ShowChangelog(string version);
 }
