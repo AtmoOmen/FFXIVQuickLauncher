@@ -930,6 +930,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         summaries.Add("无法找到游戏文件");
                         summaries.Add("请检查游戏路径设置情况");
                         descriptions.Add(exception.ToString());
+                        descriptions.Add(exception.ToString());
                         break;
 
                     case Win32Exception win32Exception:
@@ -946,8 +947,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             if (exceptions.Count == 1)
             {
-                builder.WithText($"{summaries[0]}\n\n{actionables[0]}")
-                       .WithDescription(descriptions[0] ?? string.Empty);
+                var summary     = summaries.ElementAtOrDefault(0) ?? "发生了未知错误";
+                var actionable  = actionables.ElementAtOrDefault(0);
+                var description = descriptions.ElementAtOrDefault(0) ?? string.Empty;
+                var text        = string.IsNullOrWhiteSpace(actionable) ? summary : $"{summary}\n\n{actionable}";
+
+                builder.WithText(text)
+                       .WithDescription(description);
             }
             else
             {
@@ -955,10 +961,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 for (var i = 0; i < summaries.Count; i++)
                 {
-                    builder.WithAppendText($"\n{i + 1}. {summaries[i]}\n    => {actionables[i]}");
-                    if (string.IsNullOrWhiteSpace(descriptions[i]))
+                    var summary     = summaries[i];
+                    var actionable  = actionables.ElementAtOrDefault(i);
+                    var description = descriptions.ElementAtOrDefault(i);
+
+                    builder.WithAppendText($"\n{i + 1}. {summary}");
+
+                    if (!string.IsNullOrWhiteSpace(actionable))
+                        builder.WithAppendText($"\n    => {actionable}");
+                    if (string.IsNullOrWhiteSpace(description))
                         continue;
-                    builder.WithAppendDescription($"########## 异常 {i + 1} ##########\n{descriptions[i]}\n\n");
+                    builder.WithAppendDescription($"########## 异常 {i + 1} ##########\n{description}\n\n");
                 }
             }
 
