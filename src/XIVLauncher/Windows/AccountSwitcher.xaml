@@ -44,22 +44,29 @@
                                 Foreground="{DynamicResource MaterialDesignBody}"
                                 Header="设置头像" />
                             <MenuItem
-                                Command="{Binding CreateDesktopShortcutCommand}"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                Header="创建桌面快捷方式" />
-                            <MenuItem
                                 Command="{Binding SetNoteCommand}"
                                 Foreground="{DynamicResource MaterialDesignBody}"
                                 Header="设置备注" />
                             <MenuItem
-                                Command="{Binding RemoveAccountCommand}"
+                                Command="{Binding ConfigureDeviceProfileCommand}"
                                 Foreground="{DynamicResource MaterialDesignBody}"
-                                Header="移除" />
+                                Header="设置设备信息" />
+                            <Separator />
+                            <MenuItem
+                                Command="{Binding CreateDesktopShortcutCommand}"
+                                Foreground="{DynamicResource MaterialDesignBody}"
+                                Header="创建桌面快捷方式" />
+                            <Separator />
                             <MenuItem
                                 Foreground="{DynamicResource MaterialDesignBody}"
                                 Header="不保存密码"
                                 IsCheckable="True"
                                 IsChecked="{Binding IsSelectedAccountPasswordNotSaved, Mode=TwoWay}" />
+                            <Separator />
+                            <MenuItem
+                                Command="{Binding RemoveAccountCommand}"
+                                Foreground="{DynamicResource MaterialDesignBody}"
+                                Header="移除" />
                         </ContextMenu>
                     </ListView.ContextMenu>
 

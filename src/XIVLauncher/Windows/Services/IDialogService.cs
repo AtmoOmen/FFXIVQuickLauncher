@@ -31,5 +31,7 @@ internal interface IDialogService
 
     bool ShowProfilePictureInput(XIVAccount account, out string? profileImagePath);
 
+    bool ShowAccountDeviceProfileSettings(XIVAccount account, AccountManager accountManager);
+
     void ShowChangelog(string version);
 }

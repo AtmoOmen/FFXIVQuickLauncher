@@ -15,7 +15,6 @@ using XIVLauncher.Common.Addon.Implementations;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
@@ -158,12 +157,6 @@ public sealed class SettingsControlViewModel : ViewModelBase
         set => SetProperty(ref field, value);
     }
 
-    public bool DynamicDeviceId
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
-
     public int CredTypeIndex
     {
         get;
@@ -284,7 +277,6 @@ public sealed class SettingsControlViewModel : ViewModelBase
         DpiAwarenessIndex             = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware);
         VersionLabelText              = $"XIVLauncher - v{AppUtil.GetAssemblyVersion()} - {AppUtil.GetGitHash()} - {Environment.Version}";
         SpeedLimitMb                  = (decimal)App.Settings.SpeedLimitBytes / BytesToMb;
-        DynamicDeviceId               = App.Settings.DynamicDeviceId;
         CredTypeIndex                 = (int)App.Settings.CredType.GetValueOrDefault(CredType.WindowsCredManager);
         GitHubToken                   = App.Settings.GitHubToken ?? string.Empty;
 
@@ -320,8 +312,6 @@ public sealed class SettingsControlViewModel : ViewModelBase
         App.Settings.DpiAwareness            = (DpiAwareness)DpiAwarenessIndex;
         App.Settings.SpeedLimitBytes         = (long)((SpeedLimitMb ?? 0) * BytesToMb);
         App.Settings.GitHubToken             = GitHubToken;
-        App.Settings.DynamicDeviceId         = DynamicDeviceId;
-        MachineCode.IsDynamicDeviceId        = DynamicDeviceId;
         App.Settings.CredType                = (CredType)CredTypeIndex;
         App.AccountManager.ChangeCredType(App.Settings.CredType);
 

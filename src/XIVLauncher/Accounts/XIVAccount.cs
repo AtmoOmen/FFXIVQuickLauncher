@@ -31,6 +31,20 @@ public class XIVAccount : IEquatable<XIVAccount>
     public string? TestSID             { get; set; }
     public string  NSessionId          { get; set; } = null!;
 
+    public string DeviceProfileDeviceId { get; set; } = string.Empty;
+
+    public string DeviceProfileMacAddress { get; set; } = string.Empty;
+
+    public string DeviceProfileHostName { get; set; } = string.Empty;
+
+    public bool DeviceProfileDynamicEnabled { get; set; }
+
+    public DeviceProfileRotationMode DeviceProfileRotationMode { get; set; } = DeviceProfileRotationMode.Periodic;
+
+    public int DeviceProfileRotationDays { get; set; } = AccountManager.DefaultDeviceProfileRotationDays;
+
+    public long DeviceProfileLastGeneratedUtcTicks { get; set; }
+
     [Ignore] public string ThumbnailUrl { get; set; } = null!;
 
     [Ignore] public string ChosenCharacterName { get; set; } = null!;

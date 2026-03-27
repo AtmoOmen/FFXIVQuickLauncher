@@ -1,0 +1,211 @@
+<Window
+    x:Class="XIVLauncher.Windows.AccountDeviceProfileSettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
+    xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+    Title="账号设备信息设置"
+    Width="860"
+    ResizeMode="NoResize"
+    SizeToContent="Height"
+    Background="{DynamicResource MaterialDesignPaper}"
+    Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+    TextElement.FontWeight="Medium"
+    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    WindowStartupLocation="CenterOwner"
+    mc:Ignorable="d"
+    d:DataContext="{d:DesignInstance viewModel:AccountDeviceProfileSettingsWindowViewModel}">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding AccountDisplayName}" />
+            <TextBlock
+                Margin="0,10,0,0"
+                Foreground="DarkGray"
+                Text="账号登录时，盛趣会要求发送一系列本机设备信息。为了保护个人隐私，你可以直接修改下方内容，为不同账号发送不同的虚拟设备信息。"
+                TextWrapping="Wrap" />
+
+            <materialDesign:Card Margin="0,20,0,0" Padding="20">
+                <StackPanel>
+                    <CheckBox
+                        Content="启用"
+                        IsChecked="{Binding DynamicEnabled}" />
+
+                    <CheckBox
+                        Margin="0,14,0,0"
+                        Content="定期自动更换"
+                        IsChecked="{Binding PeriodicRefreshEnabled}"
+                        IsEnabled="{Binding DynamicEnabled}" />
+
+                    <StackPanel Margin="28,12,0,0" Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" Text="每隔" />
+                        <xctk:IntegerUpDown
+                            Width="90"
+                            Margin="10,0,10,0"
+                            Minimum="1"
+                            IsEnabled="{Binding CanEditRotationDays}"
+                            Value="{Binding RotationDays}" />
+                        <TextBlock VerticalAlignment="Center" Text="天自动更换一次" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Margin="0,14,0,0"
+                        Foreground="DarkGray"
+                        Text="{Binding RotationSummaryText}"
+                        TextWrapping="Wrap" />
+
+                    <Grid Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="{Binding LastGeneratedText}" TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                Text="{Binding NextRotationTimeText}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <TextBlock
+                            Grid.Column="2"
+                            VerticalAlignment="Center"
+                            Text="{Binding RemainingRotationTimeText}"
+                            TextWrapping="Wrap" />
+                    </Grid>
+                </StackPanel>
+            </materialDesign:Card>
+
+            <materialDesign:Card Margin="0,18,0,0" Padding="20">
+                <StackPanel IsEnabled="{Binding DynamicEnabled}">
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="设备信息详情" />
+
+                    <StackPanel
+                        Margin="0,18,0,0"
+                        Orientation="Horizontal"
+                        IsEnabled="{Binding DynamicEnabled}">
+                        <Button
+                            MinWidth="132"
+                            Margin="0,0,12,0"
+                            Click="RefreshAllButton_OnClick"
+                            Content="刷新全部设备信息" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            Foreground="DarkGray"
+                            Text="你可以直接修改下方输入框，或随机生成一整套仿真设备信息。"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <Grid Margin="0,18,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="设备 ID" />
+                        <TextBox
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Margin="0,0,12,0"
+                            Text="{Binding DeviceId, UpdateSourceTrigger=LostFocus}" />
+                        <Button
+                            Grid.Row="0"
+                            Grid.Column="2"
+                            MinWidth="72"
+                            Click="RefreshDeviceIdButton_OnClick"
+                            Content="刷新" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,14,0,0" VerticalAlignment="Center" Text="MAC 地址" />
+                        <TextBox
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Margin="0,14,12,0"
+                            Text="{Binding MacAddress, UpdateSourceTrigger=LostFocus}" />
+                        <Button
+                            Grid.Row="1"
+                            Grid.Column="2"
+                            Margin="0,14,0,0"
+                            MinWidth="72"
+                            Click="RefreshMacAddressButton_OnClick"
+                            Content="刷新" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,14,0,0" VerticalAlignment="Center" Text="MAC 哈希" />
+                        <TextBox
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Margin="0,14,0,0"
+                            IsReadOnly="True"
+                            Text="{Binding MacHash, Mode=OneWay}" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,14,0,0" VerticalAlignment="Center" Text="CASCID" />
+                        <TextBox
+                            Grid.Row="3"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="2"
+                            Margin="0,14,0,0"
+                            IsReadOnly="True"
+                            Text="{Binding CasCid, Mode=OneWay}" />
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,14,0,0" VerticalAlignment="Center" Text="主机名" />
+                        <TextBox
+                            Grid.Row="4"
+                            Grid.Column="1"
+                            Margin="0,14,12,0"
+                            Text="{Binding HostName, UpdateSourceTrigger=LostFocus}" />
+                        <Button
+                            Grid.Row="4"
+                            Grid.Column="2"
+                            Margin="0,14,0,0"
+                            MinWidth="72"
+                            Click="RefreshHostNameButton_OnClick"
+                            Content="刷新" />
+                    </Grid>
+                </StackPanel>
+            </materialDesign:Card>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal">
+                <Button
+                    MinWidth="112"
+                    Margin="0,0,12,0"
+                    Click="ImportButton_OnClick"
+                    Content="导入" />
+                <Button
+                    MinWidth="112"
+                    Click="ExportButton_OnClick"
+                    Content="导出" />
+            </StackPanel>
+
+            <Button
+                Grid.Column="2"
+                MinWidth="96"
+                Click="ConfirmButton_OnClick"
+                Content="确定" />
+        </Grid>
+    </Grid>
+</Window>

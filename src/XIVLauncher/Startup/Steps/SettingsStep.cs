@@ -8,7 +8,6 @@ using Serilog.Events;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Support;
 using XIVLauncher.Settings;
 using XIVLauncher.Settings.Parsers;
@@ -57,8 +56,6 @@ public class SettingsStep
                            .UseTypeParser(new AddonListParser())
                            .UseTypeParser(new CommonJsonParser<PreserveWindowPosition.WindowPlacement>())
                            .Build();
-
-        MachineCode.IsDynamicDeviceId = context.Settings.DynamicDeviceId;
 
         if (LogInit.LevelSwitch != null && context.Settings.EnableVerboseLog.GetValueOrDefault(false))
             LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;

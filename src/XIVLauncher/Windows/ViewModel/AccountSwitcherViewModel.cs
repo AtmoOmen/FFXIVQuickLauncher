@@ -29,6 +29,8 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     public ICommand SetNoteCommand { get; }
 
+    public ICommand ConfigureDeviceProfileCommand { get; }
+
     public AccountSwitcherEntry? SelectedEntry
     {
         get;
@@ -64,17 +66,20 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
     private readonly AccountManager        _accountManager;
     private readonly IDialogService        _dialogService;
     private readonly IShortcutService      _shortcutService;
+    private readonly Action?               _requestClose;
 
-    public AccountSwitcherViewModel(AccountManager accountManager, IDialogService? dialogService = null, IShortcutService? shortcutService = null)
+    public AccountSwitcherViewModel(AccountManager accountManager, IDialogService? dialogService = null, IShortcutService? shortcutService = null, Action? requestClose = null)
     {
         _accountManager  = accountManager;
         _dialogService   = dialogService   ?? new DialogService();
         _shortcutService = shortcutService ?? new ShortcutService();
+        _requestClose    = requestClose;
 
         CreateDesktopShortcutCommand = new SyncCommand(_ => CreateDesktopShortcut(),     () => SelectedEntry != null);
         RemoveAccountCommand         = new SyncCommand(_ => RemoveSelectedAccount(),     () => SelectedEntry != null);
         SetProfilePictureCommand     = new SyncCommand(_ => SetSelectedProfilePicture(), () => SelectedEntry != null);
         SetNoteCommand               = new SyncCommand(_ => SetSelectedNote(),           () => SelectedEntry != null);
+        ConfigureDeviceProfileCommand = new SyncCommand(_ => ConfigureSelectedDeviceProfile(), () => SelectedEntry != null);
 
         RefreshEntries();
     }
@@ -167,13 +172,16 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     public void SetSelectedProfilePicture()
     {
-        if (SelectedEntry == null)
+        var selectedEntry = SelectedEntry;
+        if (selectedEntry == null)
             return;
 
-        if (!_dialogService.ShowProfilePictureInput(SelectedEntry.Account, out var profileImagePath))
+        _requestClose?.Invoke();
+
+        if (!_dialogService.ShowProfilePictureInput(selectedEntry.Account, out var profileImagePath))
             return;
 
-        var account = FindTrackedAccount(SelectedEntry.Account);
+        var account = FindTrackedAccount(selectedEntry.Account);
 
         if (string.IsNullOrWhiteSpace(profileImagePath))
             AccountSwitcherEntry.RemoveCustomProfileImage(account);
@@ -187,10 +195,12 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     public void SetSelectedNote()
     {
-        if (SelectedEntry == null)
+        var selectedEntry = SelectedEntry;
+        if (selectedEntry == null)
             return;
 
-        var account = FindTrackedAccount(SelectedEntry.Account);
+        var account = FindTrackedAccount(selectedEntry.Account);
+        _requestClose?.Invoke();
         var result = _dialogService.ShowTextInput
         (
             "请输入账号备注。留空时将显示原始账号名。",
@@ -206,6 +216,19 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         _accountManager.Save();
 
         RefreshEntries(account.Id);
+    }
+
+    public void ConfigureSelectedDeviceProfile()
+    {
+        var selectedEntry = SelectedEntry;
+        if (selectedEntry == null)
+            return;
+
+        var account = FindTrackedAccount(selectedEntry.Account);
+        _requestClose?.Invoke();
+        var changed = _dialogService.ShowAccountDeviceProfileSettings(account, _accountManager);
+        if (changed)
+            RefreshEntries(account.Id);
     }
 
     private static Bitmap BitmapSourceToBitmap(BitmapSource bitmapSource)

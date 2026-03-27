@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
@@ -12,6 +13,8 @@ using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Accounts.Cred.CredProviders;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Settings;
 using XIVLauncher.Windows;
 
@@ -19,6 +22,8 @@ namespace XIVLauncher.Accounts;
 
 public class AccountManager
 {
+    public const int DefaultDeviceProfileRotationDays = 7;
+
     public ObservableCollection<XIVAccount> Accounts;
 
     public XIVAccount CurrentAccount
@@ -197,10 +202,117 @@ public class AccountManager
             existingAccount.TestSID             = account.TestSID;
             existingAccount.AreaName            = account.AreaName;
             existingAccount.NSessionId          = account.NSessionId;
+            existingAccount.DeviceProfileDeviceId         = account.DeviceProfileDeviceId;
+            existingAccount.DeviceProfileMacAddress       = account.DeviceProfileMacAddress;
+            existingAccount.DeviceProfileHostName         = account.DeviceProfileHostName;
+            existingAccount.DeviceProfileDynamicEnabled   = account.DeviceProfileDynamicEnabled;
+            existingAccount.DeviceProfileRotationMode     = account.DeviceProfileRotationMode;
+            existingAccount.DeviceProfileRotationDays     = NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays);
+            existingAccount.DeviceProfileLastGeneratedUtcTicks = account.DeviceProfileLastGeneratedUtcTicks;
         }
         else
             Accounts.Add(account);
     }
+
+    public XIVAccount? FindAccount(string? userName, XIVAccountType accountType)
+    {
+        if (string.IsNullOrWhiteSpace(userName))
+            return null;
+
+        return Accounts.FirstOrDefault
+        (
+            account => account.AccountType == accountType && string.Equals(account.UserName, userName, StringComparison.Ordinal)
+        );
+    }
+
+    public ResolvedDeviceProfile ResolveDeviceProfile(string? userName, XIVAccountType accountType)
+    {
+        var account = FindAccount(userName, accountType);
+        if (account == null)
+        {
+            return new ResolvedDeviceProfile
+            (
+                FakeMachineInfo.CreateSnapshot(),
+                false,
+                DeviceProfileRotationMode.Periodic,
+                DefaultDeviceProfileRotationDays,
+                DateTimeOffset.UtcNow.UtcTicks
+            );
+        }
+
+        var snapshot = GetOrCreateDeviceProfileSnapshot(account);
+        return new ResolvedDeviceProfile
+        (
+            snapshot,
+            account.DeviceProfileDynamicEnabled,
+            account.DeviceProfileRotationMode,
+            NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays),
+            account.DeviceProfileLastGeneratedUtcTicks
+        );
+    }
+
+    public DeviceProfileSnapshot GetOrCreateDeviceProfileSnapshot(XIVAccount account)
+    {
+        var trackedAccount = GetTrackedAccount(account);
+        var nowUtc         = DateTimeOffset.UtcNow;
+        var isChanged      = NormalizeDeviceProfileSettings(trackedAccount);
+
+        if (!HasDeviceProfile(trackedAccount) || ShouldRotateDeviceProfile(trackedAccount, nowUtc))
+        {
+            ApplyDeviceProfileSnapshot(trackedAccount, FakeMachineInfo.CreateSnapshot(), nowUtc);
+            isChanged = true;
+        }
+
+        if (isChanged)
+            Save(trackedAccount);
+
+        return CreateDeviceProfileSnapshot(trackedAccount);
+    }
+
+    public DeviceProfileSnapshot RefreshDeviceProfile(XIVAccount account)
+    {
+        var trackedAccount = GetTrackedAccount(account);
+        NormalizeDeviceProfileSettings(trackedAccount);
+
+        var snapshot = FakeMachineInfo.CreateSnapshot();
+        ApplyDeviceProfileSnapshot(trackedAccount, snapshot, DateTimeOffset.UtcNow);
+        Save(trackedAccount);
+        return snapshot;
+    }
+
+    public void UpdateDeviceProfileSettings(XIVAccount account, bool dynamicEnabled, DeviceProfileRotationMode rotationMode, int rotationDays)
+    {
+        var trackedAccount = GetTrackedAccount(account);
+
+        trackedAccount.DeviceProfileDynamicEnabled = dynamicEnabled;
+        trackedAccount.DeviceProfileRotationMode   = NormalizeDeviceProfileRotationMode(rotationMode);
+        trackedAccount.DeviceProfileRotationDays   = NormalizeDeviceProfileRotationDays(rotationDays);
+
+        Save(trackedAccount);
+    }
+
+    public void SaveDeviceProfileSnapshot(XIVAccount account, DeviceProfileSnapshot snapshot, long generatedUtcTicks)
+    {
+        var trackedAccount   = GetTrackedAccount(account);
+        var generatedAtUtc   = new DateTimeOffset(generatedUtcTicks, TimeSpan.Zero);
+
+        ApplyDeviceProfileSnapshot(trackedAccount, snapshot, generatedAtUtc);
+        Save(trackedAccount);
+    }
+
+    public void ApplyResolvedDeviceProfile(XIVAccount account, ResolvedDeviceProfile resolvedDeviceProfile)
+    {
+        account.DeviceProfileDynamicEnabled = resolvedDeviceProfile.DynamicEnabled;
+        account.DeviceProfileRotationMode   = NormalizeDeviceProfileRotationMode(resolvedDeviceProfile.RotationMode);
+        account.DeviceProfileRotationDays   = NormalizeDeviceProfileRotationDays(resolvedDeviceProfile.RotationDays);
+        account.DeviceProfileDeviceId       = resolvedDeviceProfile.Snapshot.DeviceId;
+        account.DeviceProfileMacAddress     = resolvedDeviceProfile.Snapshot.MacAddress;
+        account.DeviceProfileHostName       = resolvedDeviceProfile.Snapshot.HostName;
+        account.DeviceProfileLastGeneratedUtcTicks = resolvedDeviceProfile.LastGeneratedUtcTicks;
+    }
+
+    public static int NormalizeDeviceProfileRotationDays(int rotationDays) =>
+        rotationDays < 1 ? DefaultDeviceProfileRotationDays : rotationDays;
 
     public void RemoveAccount(XIVAccount account)
     {
@@ -281,6 +393,7 @@ public class AccountManager
             SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.FullMutex
         );
         db.CreateTable<XIVAccount>();
+        MigrateAccountsTable();
     }
 
     public void Load()
@@ -303,11 +416,101 @@ public class AccountManager
         // If the file is corrupted, this will be null anyway
         Accounts ??= new ObservableCollection<XIVAccount>(db.Table<XIVAccount>());
 
-        foreach (var account in Accounts)
+        foreach (var account in Accounts.ToArray())
         {
             if (account.UserName.IsNullOrEmpty() || account.Id.IsNullOrEmpty())
                 Accounts.Remove(account);
         }
+    }
+
+    private XIVAccount GetTrackedAccount(XIVAccount account) =>
+        Accounts.FirstOrDefault(existing => existing.Id == account.Id) ?? account;
+
+    private static bool HasDeviceProfile(XIVAccount account) =>
+        !string.IsNullOrWhiteSpace(account.DeviceProfileDeviceId)
+        && !string.IsNullOrWhiteSpace(account.DeviceProfileMacAddress)
+        && !string.IsNullOrWhiteSpace(account.DeviceProfileHostName);
+
+    private static DeviceProfileSnapshot CreateDeviceProfileSnapshot(XIVAccount account) =>
+        new()
+        {
+            DeviceId   = account.DeviceProfileDeviceId,
+            MacAddress = account.DeviceProfileMacAddress,
+            HostName   = account.DeviceProfileHostName
+        };
+
+    private static void ApplyDeviceProfileSnapshot(XIVAccount account, DeviceProfileSnapshot snapshot, DateTimeOffset generatedAtUtc)
+    {
+        account.DeviceProfileDeviceId             = snapshot.DeviceId;
+        account.DeviceProfileMacAddress           = snapshot.MacAddress;
+        account.DeviceProfileHostName             = snapshot.HostName;
+        account.DeviceProfileLastGeneratedUtcTicks = generatedAtUtc.UtcTicks;
+    }
+
+    private static bool ShouldRotateDeviceProfile(XIVAccount account, DateTimeOffset nowUtc)
+    {
+        if (!account.DeviceProfileDynamicEnabled || NormalizeDeviceProfileRotationMode(account.DeviceProfileRotationMode) != DeviceProfileRotationMode.Periodic)
+            return false;
+
+        if (account.DeviceProfileLastGeneratedUtcTicks <= 0)
+            return true;
+
+        var lastGeneratedUtc = new DateTimeOffset(account.DeviceProfileLastGeneratedUtcTicks, TimeSpan.Zero);
+        var interval         = TimeSpan.FromDays(NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays));
+        return nowUtc - lastGeneratedUtc >= interval;
+    }
+
+    private static bool NormalizeDeviceProfileSettings(XIVAccount account)
+    {
+        var normalizedRotationMode = NormalizeDeviceProfileRotationMode(account.DeviceProfileRotationMode);
+        var normalizedRotationDays = NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays);
+        var isChanged              = false;
+
+        if (account.DeviceProfileRotationMode != normalizedRotationMode)
+        {
+            account.DeviceProfileRotationMode = normalizedRotationMode;
+            isChanged                         = true;
+        }
+
+        if (account.DeviceProfileRotationDays != normalizedRotationDays)
+        {
+            account.DeviceProfileRotationDays = normalizedRotationDays;
+            isChanged                         = true;
+        }
+
+        return isChanged;
+    }
+
+    private static DeviceProfileRotationMode NormalizeDeviceProfileRotationMode(DeviceProfileRotationMode rotationMode) =>
+        Enum.IsDefined(typeof(DeviceProfileRotationMode), rotationMode) ? rotationMode : DeviceProfileRotationMode.Periodic;
+
+    private void MigrateAccountsTable()
+    {
+        var columns = db!.Query<SQLiteTableColumn>("PRAGMA table_info(\"XIVAccount\")")
+                         .Select(column => column.name)
+                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        EnsureColumn(columns, "DeviceProfileDeviceId", "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(columns, "DeviceProfileMacAddress", "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(columns, "DeviceProfileHostName", "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(columns, "DeviceProfileDynamicEnabled", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(columns, "DeviceProfileRotationMode", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(columns, "DeviceProfileRotationDays", $"INTEGER NOT NULL DEFAULT {DefaultDeviceProfileRotationDays}");
+        EnsureColumn(columns, "DeviceProfileLastGeneratedUtcTicks", "INTEGER NOT NULL DEFAULT 0");
+    }
+
+    private void EnsureColumn(ISet<string> columns, string columnName, string definition)
+    {
+        if (columns.Contains(columnName))
+            return;
+
+        db!.Execute($"ALTER TABLE \"XIVAccount\" ADD COLUMN \"{columnName}\" {definition}");
+        columns.Add(columnName);
+    }
+
+    private sealed class SQLiteTableColumn
+    {
+        public string name { get; set; } = string.Empty;
     }
 
     #endregion

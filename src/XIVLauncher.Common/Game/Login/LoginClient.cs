@@ -11,30 +11,30 @@ namespace XIVLauncher.Common.Game.Login;
 
 public sealed class LoginClient
 {
-    private FrozenDictionary<LoginType, ILoginChannel> Channels       { get; set; }
-    private LoginChannelContext                        ChannelContext { get; set; }
-
-    public LoginClient()
-    {
-        ChannelContext = new();
-        Channels       = DiscoverChannels(ChannelContext);
-    }
-
     public async Task<LoginResult> LoginAsync(LoginType loginType, LoginRequest request, CancellationToken cancellationToken = default)
     {
-        if (!Channels.TryGetValue(loginType, out var channel))
+        var channels = DiscoverChannels(new LoginChannelContext(request.DeviceProfile));
+
+        if (!channels.TryGetValue(loginType, out var channel))
             throw new ArgumentOutOfRangeException(nameof(loginType), loginType, $"未知登录渠道: {loginType}");
 
         cancellationToken.ThrowIfCancellationRequested();
         return await channel.LoginAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<LoginResult> LoginBySessionKey(string account, string autoLoginSessionKey, DCTravelClient? dcTravelClient)
+    public async Task<LoginResult> LoginBySessionKey
+    (
+        string                account,
+        string                autoLoginSessionKey,
+        DCTravelClient?       dcTravelClient,
+        DeviceProfileSnapshot deviceProfile
+    )
     {
         var request = new LoginRequest
         {
             Account        = account,
             Secret         = autoLoginSessionKey,
+            DeviceProfile  = deviceProfile,
             DCTravelClient = dcTravelClient
         };
         return await LoginAsync(LoginType.AutoLoginSession, request).ConfigureAwait(false);

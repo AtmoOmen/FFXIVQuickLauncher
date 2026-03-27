@@ -429,9 +429,8 @@ public partial class MainWindow : Window
 
     private void AccountSwitcherButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var switcher = new AccountSwitcher(_accountManager)
+        var switcher = new AccountSwitcher(_accountManager, this)
         {
-            Owner = this,
             ShowInTaskbar = false
         };
 

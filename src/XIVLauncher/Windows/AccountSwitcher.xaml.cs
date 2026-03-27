@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -23,20 +22,26 @@ public partial class AccountSwitcher : Window
     private Point         _startPoint;
     private ListViewItem? _draggedItem;
     private bool          _closing;
+    private Window?       _ownerWindow;
 
-    public AccountSwitcher(AccountManager accountManager)
+    public AccountSwitcher(AccountManager accountManager, Window? ownerWindow = null)
     {
         InitializeComponent();
+        _ownerWindow = ownerWindow;
 
         DataContext = new AccountSwitcherViewModel
         (
             accountManager,
-            new DialogService(this),
-            new ShortcutService()
+            new DialogService(ownerWindow ?? this),
+            new ShortcutService(),
+            CloseFromMenuAction
         );
 
         if (AccountListView.ContextMenu != null)
             AccountListView.ContextMenu.DataContext = DataContext;
+
+        Loaded += (_, _) => AttachOwnerWindow();
+        Closed += (_, _) => DetachOwnerWindow();
     }
 
     private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
@@ -69,9 +74,62 @@ public partial class AccountSwitcher : Window
 
     private void AccountSwitcher_OnDeactivated(object sender, EventArgs e)
     {
-        if (_closing || AccountListView.ContextMenu?.IsOpen == true || OwnedWindows.OfType<Window>().Any(window => window.IsVisible))
+        if (_closing || AccountListView.ContextMenu?.IsOpen == true)
             return;
 
+        Close();
+    }
+
+    private void AttachOwnerWindow()
+    {
+        if (_ownerWindow == null)
+            return;
+
+        _ownerWindow.StateChanged     += OwnerWindow_OnStateChanged;
+        _ownerWindow.IsVisibleChanged += OwnerWindow_OnIsVisibleChanged;
+    }
+
+    private void DetachOwnerWindow()
+    {
+        if (_ownerWindow == null)
+            return;
+
+        _ownerWindow.StateChanged     -= OwnerWindow_OnStateChanged;
+        _ownerWindow.IsVisibleChanged -= OwnerWindow_OnIsVisibleChanged;
+        _ownerWindow = null;
+    }
+
+    private void OwnerWindow_OnStateChanged(object? sender, EventArgs e)
+    {
+        if (_ownerWindow?.WindowState != WindowState.Minimized)
+            return;
+
+        CloseFromOwner();
+    }
+
+    private void OwnerWindow_OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is not false)
+            return;
+
+        CloseFromOwner();
+    }
+
+    private void CloseFromOwner()
+    {
+        if (_closing)
+            return;
+
+        _closing = true;
+        Close();
+    }
+
+    private void CloseFromMenuAction()
+    {
+        if (_closing)
+            return;
+
+        _closing = true;
         Close();
     }
 

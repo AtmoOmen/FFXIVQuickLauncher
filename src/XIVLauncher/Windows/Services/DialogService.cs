@@ -34,7 +34,7 @@ internal sealed class DialogService
             showDiscordLink,
             showReportLinks,
             showOfficialLauncher,
-            parentWindow ?? owner!
+            parentWindow ?? ResolveOwnerWindow()!
         );
 
     public string? ShowTextInput(string text, string caption, string initialText, Window? parentWindow = null)
@@ -43,7 +43,7 @@ internal sealed class DialogService
                                       .WithCaption(caption)
                                       .WithButtons(MessageBoxButton.OKCancel)
                                       .WithInputTextBox(initialText)
-                                      .WithParentWindow(parentWindow ?? owner!);
+                                      .WithParentWindow(parentWindow ?? ResolveOwnerWindow()!);
 
         return builder.Show() == MessageBoxResult.OK ? builder.InputTextBoxText : null;
     }
@@ -81,6 +81,13 @@ internal sealed class DialogService
         return dialogResult == true;
     }
 
+    public bool ShowAccountDeviceProfileSettings(XIVAccount account, AccountManager accountManager)
+    {
+        var window = new AccountDeviceProfileSettingsWindow(account, accountManager);
+        PrepareOwner(window);
+        return window.ShowDialog() == true;
+    }
+
     public void ShowChangelog(string version)
     {
         var window = new ChangelogWindow();
@@ -91,10 +98,23 @@ internal sealed class DialogService
 
     private void PrepareOwner(Window window)
     {
-        if (owner?.IsVisible == true)
+        if (ResolveOwnerWindow() is { IsVisible: true } ownerWindow)
         {
-            window.Owner         = owner;
+            window.Owner         = ownerWindow;
             window.ShowInTaskbar = false;
         }
+    }
+
+    private Window? ResolveOwnerWindow()
+    {
+        if (owner == null)
+            return null;
+
+        var ownerWindow = owner;
+
+        while (ownerWindow.Owner is { } parentOwner)
+            ownerWindow = parentOwner;
+
+        return ownerWindow.IsVisible ? ownerWindow : owner;
     }
 }

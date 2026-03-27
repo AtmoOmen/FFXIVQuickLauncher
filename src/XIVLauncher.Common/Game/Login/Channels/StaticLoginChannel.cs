@@ -14,7 +14,7 @@ public sealed class StaticLoginChannel
     public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var guid       = await context.GetGuidAsync().ConfigureAwait(false);
-        var macAddress = MachineCode.GetMacAddress();
+        var macAddress = request.DeviceProfile.MacHash;
         var result = await context.GetJsonAsync
                      (
                          "staticLogin.json",

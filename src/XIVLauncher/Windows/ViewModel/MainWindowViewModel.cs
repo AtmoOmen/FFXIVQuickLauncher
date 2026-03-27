@@ -228,13 +228,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         var finalLoginType = loginType;
         var secret         = string.Empty;
-        var accountType    = loginType.ToAccountType();
+        var savedAccount   = FindSavedAccount(loginType, username);
+        var accountType    = ResolveAccountType(loginType, savedAccount);
 
         try
         {
             inputPassword = inputPassword == PRESUDO_PASSWORD ? string.Empty : inputPassword?.Trim() ?? string.Empty;
-
-            var savedAccount = AccountManager.Accounts.FirstOrDefault(x => x.UserName == username && x.AccountType == accountType);
 
             switch (loginType)
             {
@@ -271,6 +270,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     }
 
                     finalLoginType = LoginType.WeGameSID;
+                    savedAccount   = FindSavedAccount(finalLoginType, username);
+                    accountType    = ResolveAccountType(finalLoginType, savedAccount);
                     break;
 
                 case LoginType.WeGameToken:
@@ -323,6 +324,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
             throw;
         }
 
+        var resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(username, accountType);
+        var deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
+
         var dcTraveler = new DCTravelClient(string.Empty)
         {
             SetSdoAreaFunc = name =>
@@ -332,7 +336,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
         };
 
-        var loginResult = await LoginToGameAsync(finalLoginType, loginType, username, secret, doingAutoLogin, dcTraveler, action).ConfigureAwait(false);
+        var loginResult = await LoginToGameAsync(finalLoginType, loginType, username, secret, doingAutoLogin, deviceProfileSnapshot, dcTraveler, action).ConfigureAwait(false);
         if (loginResult == null)
             return;
 
@@ -365,9 +369,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     AutoLogin    = loginType == LoginType.WeGameSID || doingAutoLogin,
                     LoginAccount = oAuthLogin?.InputUserID!,
                     SndaId       = oAuthLogin?.SndaID!,
-                    AccountType  = loginType.ToAccountType(),
+                    AccountType  = accountType,
                     AreaName     = Area.AreaName
                 };
+
+                AccountManager.ApplyResolvedDeviceProfile(accountToSave, resolvedDeviceProfile);
 
                 if (doingAutoLogin && accountToSave.AccountType != XIVAccountType.WeGameSID)
                 {
@@ -378,8 +384,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     {
                         DCTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
                         {
-                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey(username, oAuthLogin.AutoLoginSessionKey, DCTravelListener.DCTravelClient).ConfigureAwait
-                                                     (false);
+                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey
+                                                 (
+                                                     username,
+                                                     oAuthLogin.AutoLoginSessionKey,
+                                                     DCTravelListener.DCTravelClient,
+                                                     deviceProfileSnapshot
+                                                 ).ConfigureAwait(false);
                             return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
                         };
                     }
@@ -480,6 +491,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         string           username,
         string           secret,
         bool             autoLogin,
+        DeviceProfileSnapshot deviceProfile,
         DCTravelClient   dcTravelClient,
         LoginAfterAction action
     )
@@ -514,6 +526,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                            username,
                            secret,
                            autoLogin,
+                           deviceProfile,
                            dcTravelClient,
                            loginCts,
                            qrBytes =>
@@ -1904,6 +1917,25 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             StartLogin(LoginTypeOption.LoginType, Username, Password, IsFastLogin, IsReadWegameInfo, action);
         };
+
+    private XIVAccount? FindSavedAccount(LoginType loginType, string username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+            return null;
+
+        if (loginType == LoginType.AutoLoginSession)
+        {
+            return AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.LoginAccount, username, StringComparison.Ordinal))
+                   ?? AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.UserName, username, StringComparison.Ordinal));
+        }
+
+        return AccountManager.FindAccount(username, loginType.ToAccountType());
+    }
+
+    private static XIVAccountType ResolveAccountType(LoginType loginType, XIVAccount? savedAccount) =>
+        loginType == LoginType.AutoLoginSession
+            ? savedAccount?.AccountType ?? XIVAccountType.Sdo
+            : loginType.ToAccountType();
 
     private GameRepairProgressWindow CreateGameRepairProgressWindow(PatchVerifier verify)
     {

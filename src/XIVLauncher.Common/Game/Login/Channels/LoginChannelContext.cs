@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -22,12 +21,16 @@ public sealed class LoginChannelContext
 
     private readonly HttpClient      loginHttpClient;
     private readonly CookieContainer loginCookies;
+    private readonly DeviceProfileSnapshot deviceProfile;
     private readonly string          casCID;
 
     private int casDomainMode;
 
-    public LoginChannelContext()
+    public LoginChannelContext(DeviceProfileSnapshot deviceProfile)
     {
+        ArgumentNullException.ThrowIfNull(deviceProfile);
+
+        this.deviceProfile = deviceProfile;
         loginCookies = new CookieContainer();
         var loginHandler = new HttpClientHandler
         {
@@ -36,7 +39,7 @@ public sealed class LoginChannelContext
         };
 
         loginHttpClient = new HttpClient(loginHandler);
-        casCID          = $"CID{MachineCode.GetMD5(Encoding.ASCII.GetBytes(MachineCode.GetMAC()))}";
+        casCID          = deviceProfile.CasCid;
         casDomainMode   = 0;
     }
 
@@ -271,7 +274,6 @@ public sealed class LoginChannelContext
 
     private Uri BuildSdoRequestUri(string endPoint, IReadOnlyList<string> paras, string appID)
     {
-        var mac      = MachineCode.GetMAC();
         var allParas = new List<string>(paras.Count + 20);
         allParas.AddRange(paras);
         allParas.AddRange
@@ -287,11 +289,11 @@ public sealed class LoginChannelContext
                 "endpointOS=1",
                 "version=21",
                 "customSecurityLevel=2",
-                $"deviceId={MachineCode.GetDeviceID()}",
+                $"deviceId={deviceProfile.DeviceId}",
                 "thirdLoginExtern=0",
-                $"macId={mac}",
+                $"macId={deviceProfile.MacAddress}",
                 "epIp=",
-                $"epName={MachineCode.GetHostName()}",
+                $"epName={deviceProfile.HostName}",
                 "extendInfo=",
                 "sdoVersion=",
                 "runTimeId=",
