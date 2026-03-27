@@ -4,9 +4,9 @@ namespace XIVLauncher.Accounts;
 
 public sealed record ResolvedDeviceProfile
 (
-    DeviceProfileSnapshot      Snapshot,
-    bool                       DynamicEnabled,
-    DeviceProfileRotationMode  RotationMode,
-    int                        RotationDays,
-    long                       LastGeneratedUtcTicks
+    DeviceProfileSnapshot Snapshot,
+    bool                  DynamicEnabled,
+    bool                  IsRotationEnabled,
+    int                   RotationDays,
+    long                  LastGeneratedUtcTicks
 );

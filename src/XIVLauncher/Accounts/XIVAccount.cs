@@ -39,17 +39,11 @@ public class XIVAccount : IEquatable<XIVAccount>
 
     public bool DeviceProfileDynamicEnabled { get; set; }
 
-    public DeviceProfileRotationMode DeviceProfileRotationMode { get; set; } = DeviceProfileRotationMode.Periodic;
+    public bool IsDeviceProfileRotation { get; set; }
 
-    public int DeviceProfileRotationDays { get; set; } = AccountManager.DefaultDeviceProfileRotationDays;
+    public int DeviceProfileRotationDays { get; set; } = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS;
 
     public long DeviceProfileLastGeneratedUtcTicks { get; set; }
-
-    [Ignore] public string ThumbnailUrl { get; set; } = null!;
-
-    [Ignore] public string ChosenCharacterName { get; set; } = null!;
-
-    [Ignore] public string ChosenCharacterWorld { get; set; } = null!;
 
     public void GenerateID() =>
         Id = $"{UserName}|{AccountType}";

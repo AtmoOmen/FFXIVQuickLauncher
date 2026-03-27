@@ -366,11 +366,18 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 var accountToSave = new XIVAccount
                 {
-                    AutoLogin    = loginType == LoginType.WeGameSID || doingAutoLogin,
-                    LoginAccount = oAuthLogin?.InputUserID!,
-                    SndaId       = oAuthLogin?.SndaID!,
-                    AccountType  = accountType,
-                    AreaName     = Area.AreaName
+                    AutoLogin                         = loginType == LoginType.WeGameSID || doingAutoLogin,
+                    LoginAccount                      = oAuthLogin?.InputUserID!,
+                    SndaId                            = oAuthLogin?.SndaID!,
+                    AccountType                       = accountType,
+                    AreaName                          = Area.AreaName,
+                    DeviceProfileDeviceId             = savedAccount?.DeviceProfileDeviceId ?? string.Empty,
+                    DeviceProfileMacAddress           = savedAccount?.DeviceProfileMacAddress ?? string.Empty,
+                    DeviceProfileHostName             = savedAccount?.DeviceProfileHostName ?? string.Empty,
+                    DeviceProfileDynamicEnabled       = savedAccount?.DeviceProfileDynamicEnabled ?? false,
+                    IsDeviceProfileRotation           = savedAccount?.IsDeviceProfileRotation ?? true,
+                    DeviceProfileRotationDays         = savedAccount?.DeviceProfileRotationDays ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
+                    DeviceProfileLastGeneratedUtcTicks = savedAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0
                 };
 
                 AccountManager.ApplyResolvedDeviceProfile(accountToSave, resolvedDeviceProfile);

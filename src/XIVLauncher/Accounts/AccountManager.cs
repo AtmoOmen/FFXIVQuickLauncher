@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using Castle.Core.Internal;
@@ -11,18 +12,18 @@ using Serilog;
 using SQLite;
 using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Accounts.Cred.CredProviders;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Settings;
 using XIVLauncher.Windows;
+using Lock = System.Threading.Lock;
 
 namespace XIVLauncher.Accounts;
 
 public class AccountManager
 {
-    public const int DefaultDeviceProfileRotationDays = 7;
+    public const int DEFAULT_DEVICE_PROFILE_ROTATION_DAYS = 7;
 
     public ObservableCollection<XIVAccount> Accounts;
 
@@ -32,12 +33,18 @@ public class AccountManager
         set => _setting.CurrentAccountId = value.Id;
     }
 
-    public           ICredProvider CredProvider { get; private set; }
-    private readonly object        syncRoot = new();
+    public ICredProvider CredProvider { get; private set; }
+
+    private static readonly string                SharedDeviceProfilePath        = Path.Combine(Paths.RoamingPath, "sharedDeviceProfile.json");
+    private static readonly JsonSerializerOptions SharedDeviceProfileJsonOptions = new() { WriteIndented = true };
+    private static readonly Lock                  SharedDeviceProfileSyncRoot    = new();
+    private readonly        object                syncRoot                       = new();
 
     private readonly ILauncherSettingsV3 _setting;
 
     private readonly CredData CredData;
+
+    private static StoredDeviceProfileSnapshot? sharedDeviceProfile;
 
     private SQLiteConnection? db;
     private CredType?         CurrentCredType;
@@ -54,6 +61,9 @@ public class AccountManager
         Accounts.CollectionChanged += Accounts_CollectionChanged;
         ChangeCredType(setting.CredType.GetValueOrDefault(CredType.WindowsCredManager));
     }
+
+    public static int NormalizeDeviceProfileRotationDays(int rotationDays) =>
+        rotationDays < 1 ? DEFAULT_DEVICE_PROFILE_ROTATION_DAYS : rotationDays;
 
     public async Task<string> Encrypt(string text)
     {
@@ -195,19 +205,19 @@ public class AccountManager
         if (existingAccount != null)
         {
             Log.Verbose("Updating account...");
-            existingAccount.Id                  = account.Id;
-            existingAccount.Password            = account.Password;
-            existingAccount.AutoLogin           = account.AutoLogin;
-            existingAccount.AutoLoginSessionKey = account.AutoLoginSessionKey;
-            existingAccount.TestSID             = account.TestSID;
-            existingAccount.AreaName            = account.AreaName;
-            existingAccount.NSessionId          = account.NSessionId;
-            existingAccount.DeviceProfileDeviceId         = account.DeviceProfileDeviceId;
-            existingAccount.DeviceProfileMacAddress       = account.DeviceProfileMacAddress;
-            existingAccount.DeviceProfileHostName         = account.DeviceProfileHostName;
-            existingAccount.DeviceProfileDynamicEnabled   = account.DeviceProfileDynamicEnabled;
-            existingAccount.DeviceProfileRotationMode     = account.DeviceProfileRotationMode;
-            existingAccount.DeviceProfileRotationDays     = NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays);
+            existingAccount.Id                                 = account.Id;
+            existingAccount.Password                           = account.Password;
+            existingAccount.AutoLogin                          = account.AutoLogin;
+            existingAccount.AutoLoginSessionKey                = account.AutoLoginSessionKey;
+            existingAccount.TestSID                            = account.TestSID;
+            existingAccount.AreaName                           = account.AreaName;
+            existingAccount.NSessionId                         = account.NSessionId;
+            existingAccount.DeviceProfileDeviceId              = account.DeviceProfileDeviceId;
+            existingAccount.DeviceProfileMacAddress            = account.DeviceProfileMacAddress;
+            existingAccount.DeviceProfileHostName              = account.DeviceProfileHostName;
+            existingAccount.DeviceProfileDynamicEnabled        = account.DeviceProfileDynamicEnabled;
+            existingAccount.IsDeviceProfileRotation            = account.IsDeviceProfileRotation;
+            existingAccount.DeviceProfileRotationDays          = NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays);
             existingAccount.DeviceProfileLastGeneratedUtcTicks = account.DeviceProfileLastGeneratedUtcTicks;
         }
         else
@@ -220,23 +230,37 @@ public class AccountManager
             return null;
 
         return Accounts.FirstOrDefault
-        (
-            account => account.AccountType == accountType && string.Equals(account.UserName, userName, StringComparison.Ordinal)
+        (account => account.AccountType == accountType && string.Equals(account.UserName, userName, StringComparison.Ordinal)
         );
     }
 
     public ResolvedDeviceProfile ResolveDeviceProfile(string? userName, XIVAccountType accountType)
     {
         var account = FindAccount(userName, accountType);
+
         if (account == null)
         {
+            var sharedProfile = GetSharedDeviceProfileState();
             return new ResolvedDeviceProfile
             (
-                FakeMachineInfo.CreateSnapshot(),
+                sharedProfile.ToSnapshot(),
                 false,
-                DeviceProfileRotationMode.Periodic,
-                DefaultDeviceProfileRotationDays,
-                DateTimeOffset.UtcNow.UtcTicks
+                true,
+                DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
+                sharedProfile.GeneratedUtcTicks
+            );
+        }
+
+        if (!account.DeviceProfileDynamicEnabled)
+        {
+            var sharedProfile = GetSharedDeviceProfileState();
+            return new ResolvedDeviceProfile
+            (
+                sharedProfile.ToSnapshot(),
+                false,
+                account.IsDeviceProfileRotation,
+                NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays),
+                sharedProfile.GeneratedUtcTicks
             );
         }
 
@@ -245,7 +269,7 @@ public class AccountManager
         (
             snapshot,
             account.DeviceProfileDynamicEnabled,
-            account.DeviceProfileRotationMode,
+            account.IsDeviceProfileRotation,
             NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays),
             account.DeviceProfileLastGeneratedUtcTicks
         );
@@ -269,6 +293,23 @@ public class AccountManager
         return CreateDeviceProfileSnapshot(trackedAccount);
     }
 
+    public DeviceProfileSnapshot GetEditableDeviceProfileSnapshot(XIVAccount account)
+    {
+        var trackedAccount = GetTrackedAccount(account);
+        NormalizeDeviceProfileSettings(trackedAccount);
+        if (!trackedAccount.DeviceProfileDynamicEnabled)
+            return GetSharedDeviceProfileState().ToSnapshot();
+
+        return HasDeviceProfile(trackedAccount) ? CreateDeviceProfileSnapshot(trackedAccount) : FakeMachineInfo.CreateSnapshot();
+    }
+
+    public DeviceProfileSnapshot? TryGetSavedDeviceProfileSnapshot(XIVAccount account)
+    {
+        var trackedAccount = GetTrackedAccount(account);
+        NormalizeDeviceProfileSettings(trackedAccount);
+        return HasDeviceProfile(trackedAccount) ? CreateDeviceProfileSnapshot(trackedAccount) : null;
+    }
+
     public DeviceProfileSnapshot RefreshDeviceProfile(XIVAccount account)
     {
         var trackedAccount = GetTrackedAccount(account);
@@ -280,12 +321,15 @@ public class AccountManager
         return snapshot;
     }
 
-    public void UpdateDeviceProfileSettings(XIVAccount account, bool dynamicEnabled, DeviceProfileRotationMode rotationMode, int rotationDays)
+    public long GetSharedDeviceProfileGeneratedUtcTicks() =>
+        GetSharedDeviceProfileState().GeneratedUtcTicks;
+
+    public void UpdateDeviceProfileSettings(XIVAccount account, bool dynamicEnabled, bool isDeviceProfileRotation, int rotationDays)
     {
         var trackedAccount = GetTrackedAccount(account);
 
         trackedAccount.DeviceProfileDynamicEnabled = dynamicEnabled;
-        trackedAccount.DeviceProfileRotationMode   = NormalizeDeviceProfileRotationMode(rotationMode);
+        trackedAccount.IsDeviceProfileRotation     = isDeviceProfileRotation;
         trackedAccount.DeviceProfileRotationDays   = NormalizeDeviceProfileRotationDays(rotationDays);
 
         Save(trackedAccount);
@@ -293,8 +337,8 @@ public class AccountManager
 
     public void SaveDeviceProfileSnapshot(XIVAccount account, DeviceProfileSnapshot snapshot, long generatedUtcTicks)
     {
-        var trackedAccount   = GetTrackedAccount(account);
-        var generatedAtUtc   = new DateTimeOffset(generatedUtcTicks, TimeSpan.Zero);
+        var trackedAccount = GetTrackedAccount(account);
+        var generatedAtUtc = new DateTimeOffset(generatedUtcTicks, TimeSpan.Zero);
 
         ApplyDeviceProfileSnapshot(trackedAccount, snapshot, generatedAtUtc);
         Save(trackedAccount);
@@ -303,16 +347,17 @@ public class AccountManager
     public void ApplyResolvedDeviceProfile(XIVAccount account, ResolvedDeviceProfile resolvedDeviceProfile)
     {
         account.DeviceProfileDynamicEnabled = resolvedDeviceProfile.DynamicEnabled;
-        account.DeviceProfileRotationMode   = NormalizeDeviceProfileRotationMode(resolvedDeviceProfile.RotationMode);
+        account.IsDeviceProfileRotation     = resolvedDeviceProfile.IsRotationEnabled;
         account.DeviceProfileRotationDays   = NormalizeDeviceProfileRotationDays(resolvedDeviceProfile.RotationDays);
-        account.DeviceProfileDeviceId       = resolvedDeviceProfile.Snapshot.DeviceId;
-        account.DeviceProfileMacAddress     = resolvedDeviceProfile.Snapshot.MacAddress;
-        account.DeviceProfileHostName       = resolvedDeviceProfile.Snapshot.HostName;
+
+        if (!resolvedDeviceProfile.DynamicEnabled)
+            return;
+
+        account.DeviceProfileDeviceId              = resolvedDeviceProfile.Snapshot.DeviceId;
+        account.DeviceProfileMacAddress            = resolvedDeviceProfile.Snapshot.MacAddress;
+        account.DeviceProfileHostName              = resolvedDeviceProfile.Snapshot.HostName;
         account.DeviceProfileLastGeneratedUtcTicks = resolvedDeviceProfile.LastGeneratedUtcTicks;
     }
-
-    public static int NormalizeDeviceProfileRotationDays(int rotationDays) =>
-        rotationDays < 1 ? DefaultDeviceProfileRotationDays : rotationDays;
 
     public void RemoveAccount(XIVAccount account)
     {
@@ -441,15 +486,15 @@ public class AccountManager
 
     private static void ApplyDeviceProfileSnapshot(XIVAccount account, DeviceProfileSnapshot snapshot, DateTimeOffset generatedAtUtc)
     {
-        account.DeviceProfileDeviceId             = snapshot.DeviceId;
-        account.DeviceProfileMacAddress           = snapshot.MacAddress;
-        account.DeviceProfileHostName             = snapshot.HostName;
+        account.DeviceProfileDeviceId              = snapshot.DeviceId;
+        account.DeviceProfileMacAddress            = snapshot.MacAddress;
+        account.DeviceProfileHostName              = snapshot.HostName;
         account.DeviceProfileLastGeneratedUtcTicks = generatedAtUtc.UtcTicks;
     }
 
     private static bool ShouldRotateDeviceProfile(XIVAccount account, DateTimeOffset nowUtc)
     {
-        if (!account.DeviceProfileDynamicEnabled || NormalizeDeviceProfileRotationMode(account.DeviceProfileRotationMode) != DeviceProfileRotationMode.Periodic)
+        if (!account.DeviceProfileDynamicEnabled || !account.IsDeviceProfileRotation)
             return false;
 
         if (account.DeviceProfileLastGeneratedUtcTicks <= 0)
@@ -462,15 +507,8 @@ public class AccountManager
 
     private static bool NormalizeDeviceProfileSettings(XIVAccount account)
     {
-        var normalizedRotationMode = NormalizeDeviceProfileRotationMode(account.DeviceProfileRotationMode);
         var normalizedRotationDays = NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays);
         var isChanged              = false;
-
-        if (account.DeviceProfileRotationMode != normalizedRotationMode)
-        {
-            account.DeviceProfileRotationMode = normalizedRotationMode;
-            isChanged                         = true;
-        }
 
         if (account.DeviceProfileRotationDays != normalizedRotationDays)
         {
@@ -481,36 +519,118 @@ public class AccountManager
         return isChanged;
     }
 
-    private static DeviceProfileRotationMode NormalizeDeviceProfileRotationMode(DeviceProfileRotationMode rotationMode) =>
-        Enum.IsDefined(typeof(DeviceProfileRotationMode), rotationMode) ? rotationMode : DeviceProfileRotationMode.Periodic;
-
     private void MigrateAccountsTable()
     {
         var columns = db!.Query<SQLiteTableColumn>("PRAGMA table_info(\"XIVAccount\")")
                          .Select(column => column.name)
                          .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        EnsureColumn(columns, "DeviceProfileDeviceId", "TEXT NOT NULL DEFAULT ''");
-        EnsureColumn(columns, "DeviceProfileMacAddress", "TEXT NOT NULL DEFAULT ''");
-        EnsureColumn(columns, "DeviceProfileHostName", "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(columns, "DeviceProfileDeviceId",       "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(columns, "DeviceProfileMacAddress",     "TEXT NOT NULL DEFAULT ''");
+        EnsureColumn(columns, "DeviceProfileHostName",       "TEXT NOT NULL DEFAULT ''");
         EnsureColumn(columns, "DeviceProfileDynamicEnabled", "INTEGER NOT NULL DEFAULT 0");
-        EnsureColumn(columns, "DeviceProfileRotationMode", "INTEGER NOT NULL DEFAULT 0");
-        EnsureColumn(columns, "DeviceProfileRotationDays", $"INTEGER NOT NULL DEFAULT {DefaultDeviceProfileRotationDays}");
+        var addedRotationColumn = EnsureColumn(columns, "IsDeviceProfileRotation", "INTEGER NOT NULL DEFAULT 1");
+        EnsureColumn(columns, "DeviceProfileRotationDays",          $"INTEGER NOT NULL DEFAULT {DEFAULT_DEVICE_PROFILE_ROTATION_DAYS}");
         EnsureColumn(columns, "DeviceProfileLastGeneratedUtcTicks", "INTEGER NOT NULL DEFAULT 0");
+
+        if (addedRotationColumn && columns.Contains("DeviceProfileRotationMode"))
+            db!.Execute("UPDATE \"XIVAccount\" SET \"IsDeviceProfileRotation\" = CASE WHEN \"DeviceProfileRotationMode\" = 0 THEN 1 ELSE 0 END");
     }
 
-    private void EnsureColumn(ISet<string> columns, string columnName, string definition)
+    private bool EnsureColumn(ISet<string> columns, string columnName, string definition)
     {
         if (columns.Contains(columnName))
-            return;
+            return false;
 
         db!.Execute($"ALTER TABLE \"XIVAccount\" ADD COLUMN \"{columnName}\" {definition}");
         columns.Add(columnName);
+        return true;
+    }
+
+    private static bool HasDeviceProfile(DeviceProfileSnapshot snapshot) =>
+        !string.IsNullOrWhiteSpace(snapshot.DeviceId)
+        && !string.IsNullOrWhiteSpace(snapshot.MacAddress)
+        && !string.IsNullOrWhiteSpace(snapshot.HostName);
+
+    private static StoredDeviceProfileSnapshot GetSharedDeviceProfileState()
+    {
+        lock (SharedDeviceProfileSyncRoot)
+        {
+            sharedDeviceProfile ??= LoadOrCreateSharedDeviceProfileState();
+            return sharedDeviceProfile;
+        }
+    }
+
+    private static StoredDeviceProfileSnapshot LoadOrCreateSharedDeviceProfileState()
+    {
+        try
+        {
+            if (File.Exists(SharedDeviceProfilePath))
+            {
+                var json   = File.ReadAllText(SharedDeviceProfilePath);
+                var stored = JsonSerializer.Deserialize<StoredDeviceProfileSnapshot>(json, SharedDeviceProfileJsonOptions);
+                if (stored != null && HasDeviceProfile(stored.ToSnapshot()))
+                    return stored;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "读取共享设备信息失败，将重新生成。");
+        }
+
+        var generated = new StoredDeviceProfileSnapshot(FakeMachineInfo.CreateSnapshot(), DateTimeOffset.UtcNow.UtcTicks);
+        PersistSharedDeviceProfileState(generated);
+        return generated;
+    }
+
+    private static void PersistSharedDeviceProfileState(StoredDeviceProfileSnapshot state)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(SharedDeviceProfilePath)!);
+            var json = JsonSerializer.Serialize(state, SharedDeviceProfileJsonOptions);
+            File.WriteAllText(SharedDeviceProfilePath, json);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "保存共享设备信息失败。");
+        }
     }
 
     private sealed class SQLiteTableColumn
     {
         public string name { get; set; } = string.Empty;
+    }
+
+    private sealed class StoredDeviceProfileSnapshot
+    {
+        public string DeviceId { get; init; } = string.Empty;
+
+        public string MacAddress { get; init; } = string.Empty;
+
+        public string HostName { get; init; } = string.Empty;
+
+        public long GeneratedUtcTicks { get; init; }
+
+        public StoredDeviceProfileSnapshot()
+        {
+        }
+
+        public StoredDeviceProfileSnapshot(DeviceProfileSnapshot snapshot, long generatedUtcTicks)
+        {
+            DeviceId          = snapshot.DeviceId;
+            MacAddress        = snapshot.MacAddress;
+            HostName          = snapshot.HostName;
+            GeneratedUtcTicks = generatedUtcTicks;
+        }
+
+        public DeviceProfileSnapshot ToSnapshot() =>
+            new()
+            {
+                DeviceId   = DeviceId,
+                MacAddress = MacAddress,
+                HostName   = HostName
+            };
     }
 
     #endregion

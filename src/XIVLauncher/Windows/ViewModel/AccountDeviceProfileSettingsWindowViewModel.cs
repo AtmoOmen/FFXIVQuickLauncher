@@ -12,8 +12,21 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
     AccountManager accountManager
 ) : ViewModelBase
 {
-    private XIVAccount _account = null!;
-    private long       _generatedUtcTicks;
+    public string MacHash =>
+        TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _)
+            ? FakeMachineInfo.GetMacHash(normalizedValue)
+            : string.Empty;
+
+    public string CasCid =>
+        TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _)
+            ? FakeMachineInfo.GetCasCid(normalizedValue)
+            : string.Empty;
+
+    public bool CanEditRotationDays => DynamicEnabled && PeriodicRefreshEnabled;
+
+    public bool CanShowPeriodicRefreshInfo => DynamicEnabled && PeriodicRefreshEnabled;
+
+    public long GeneratedUtcTicks { get; private set; }
 
     public string AccountDisplayName
     {
@@ -60,7 +73,7 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
             UpdateRotationSummary();
         }
-    } = AccountManager.DefaultDeviceProfileRotationDays;
+    } = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS;
 
     public string DeviceId
     {
@@ -87,20 +100,6 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         set => SetProperty(ref field, value);
     } = string.Empty;
 
-    public string MacHash =>
-        TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _)
-            ? FakeMachineInfo.GetMacHash(normalizedValue)
-            : string.Empty;
-
-    public string CasCid =>
-        TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _)
-            ? FakeMachineInfo.GetCasCid(normalizedValue)
-            : string.Empty;
-
-    public bool CanEditRotationDays => DynamicEnabled && PeriodicRefreshEnabled;
-
-    public bool CanShowPeriodicRefreshInfo => DynamicEnabled && PeriodicRefreshEnabled;
-
     public string LastGeneratedText
     {
         get;
@@ -125,18 +124,28 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         private set => SetProperty(ref field, value);
     } = string.Empty;
 
-    public long GeneratedUtcTicks => _generatedUtcTicks;
+    private XIVAccount             _account = null!;
+    private DeviceProfileSnapshot? _savedSnapshot;
+    private bool                   _snapshotTouched;
 
     public void Load(XIVAccount account)
     {
         _account = accountManager.Accounts.First(existing => existing.Id == account.Id);
 
-        var snapshot = accountManager.GetOrCreateDeviceProfileSnapshot(_account);
-        _generatedUtcTicks = _account.DeviceProfileLastGeneratedUtcTicks;
+        var savedSnapshot = accountManager.TryGetSavedDeviceProfileSnapshot(_account);
+        var snapshot = _account.DeviceProfileDynamicEnabled
+                           ? savedSnapshot ?? accountManager.GetEditableDeviceProfileSnapshot(_account)
+                           : accountManager.GetEditableDeviceProfileSnapshot(_account);
+
+        _savedSnapshot = savedSnapshot;
+        GeneratedUtcTicks = _account.DeviceProfileDynamicEnabled
+                                ? _account.DeviceProfileLastGeneratedUtcTicks
+                                : accountManager.GetSharedDeviceProfileGeneratedUtcTicks();
+        _snapshotTouched = false;
 
         AccountDisplayName     = _account.DisplayName;
         DynamicEnabled         = _account.DeviceProfileDynamicEnabled;
-        PeriodicRefreshEnabled = _account.DeviceProfileRotationMode == DeviceProfileRotationMode.Periodic;
+        PeriodicRefreshEnabled = _account.IsDeviceProfileRotation;
         RotationDays           = AccountManager.NormalizeDeviceProfileRotationDays(_account.DeviceProfileRotationDays);
 
         ApplySnapshot(snapshot);
@@ -146,19 +155,30 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
     public void Save()
     {
         var snapshot = CreateValidatedSnapshot();
-        if (HasSnapshotChanged(snapshot))
-            _generatedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
+        if (DynamicEnabled && !_account.DeviceProfileDynamicEnabled && !_snapshotTouched && _savedSnapshot != null)
+            snapshot = _savedSnapshot;
+
+        var shouldPersistSnapshot = DynamicEnabled || _snapshotTouched;
+
+        if (shouldPersistSnapshot && HasSnapshotChanged(snapshot))
+            GeneratedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
 
         accountManager.UpdateDeviceProfileSettings
         (
             _account,
             DynamicEnabled,
-            PeriodicRefreshEnabled ? DeviceProfileRotationMode.Periodic : DeviceProfileRotationMode.Manual,
+            PeriodicRefreshEnabled,
             RotationDays
         );
 
-        accountManager.SaveDeviceProfileSnapshot(_account, snapshot, _generatedUtcTicks);
+        if (shouldPersistSnapshot)
+        {
+            accountManager.SaveDeviceProfileSnapshot(_account, snapshot, GeneratedUtcTicks);
+            _savedSnapshot = snapshot;
+        }
+
         ApplySnapshot(snapshot);
+        _snapshotTouched = false;
         UpdateRotationSummary();
     }
 
@@ -188,7 +208,8 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         DeviceId               = normalizedDeviceId;
         MacAddress             = normalizedMacAddress;
         HostName               = normalizedHostName;
-        _generatedUtcTicks     = generatedUtcTicks > 0 ? generatedUtcTicks : DateTimeOffset.UtcNow.UtcTicks;
+        GeneratedUtcTicks      = generatedUtcTicks > 0 ? generatedUtcTicks : DateTimeOffset.UtcNow.UtcTicks;
+        _snapshotTouched       = true;
         UpdateRotationSummary();
     }
 
@@ -247,95 +268,6 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         return true;
     }
 
-    private void ApplySnapshot(DeviceProfileSnapshot snapshot)
-    {
-        DeviceId   = snapshot.DeviceId;
-        MacAddress = snapshot.MacAddress;
-        HostName   = snapshot.HostName;
-    }
-
-    private DeviceProfileSnapshot CreateValidatedSnapshot()
-    {
-        if (!TryNormalizeDeviceId(DeviceId, out var deviceId, out var deviceIdError))
-            throw new InvalidOperationException(deviceIdError);
-
-        if (!TryNormalizeMacAddress(MacAddress, out var macAddress, out var macAddressError))
-            throw new InvalidOperationException(macAddressError);
-
-        if (!TryNormalizeHostName(HostName, out var hostName, out var hostNameError))
-            throw new InvalidOperationException(hostNameError);
-
-        return new DeviceProfileSnapshot
-        {
-            DeviceId   = deviceId,
-            MacAddress = macAddress,
-            HostName   = hostName
-        };
-    }
-
-    private bool HasSnapshotChanged(DeviceProfileSnapshot snapshot)
-    {
-        var savedSnapshot = accountManager.GetOrCreateDeviceProfileSnapshot(_account);
-
-        return !string.Equals(savedSnapshot.DeviceId, snapshot.DeviceId, StringComparison.Ordinal)
-               || !string.Equals(savedSnapshot.MacAddress, snapshot.MacAddress, StringComparison.Ordinal)
-               || !string.Equals(savedSnapshot.HostName, snapshot.HostName, StringComparison.Ordinal);
-    }
-
-    private DeviceProfileSnapshot CreateSnapshot() =>
-        new()
-        {
-            DeviceId   = DeviceId,
-            MacAddress = MacAddress,
-            HostName   = HostName
-        };
-
-    private void TouchGeneratedTime()
-    {
-        _generatedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
-        UpdateRotationSummary();
-    }
-
-    private void UpdateRotationSummary()
-    {
-        if (_generatedUtcTicks <= 0)
-        {
-            LastGeneratedText         = "最近生成时间：尚未生成";
-            NextRotationTimeText      = "下次自动更换：未启用";
-            RemainingRotationTimeText = "剩余时间：未启用";
-            RotationSummaryText       = "当前机器码将保持不变。";
-            return;
-        }
-
-        var generatedAtLocal = new DateTimeOffset(_generatedUtcTicks, TimeSpan.Zero).ToLocalTime();
-        LastGeneratedText = $"最近生成时间：{generatedAtLocal:yyyy-MM-dd HH:mm:ss}";
-
-        if (!DynamicEnabled)
-        {
-            NextRotationTimeText      = "下次自动更换：未启用动态设备信息";
-            RemainingRotationTimeText = "剩余时间：未启用动态设备信息";
-            RotationSummaryText       = "当前账号将始终使用这套固定设备信息";
-            return;
-        }
-
-        if (!PeriodicRefreshEnabled)
-        {
-            NextRotationTimeText      = "下次自动更换：未启用定期更换";
-            RemainingRotationTimeText = "剩余时间：需要手动刷新";
-            RotationSummaryText       = "已启用动态设备信息，但只会在你手动刷新时更换。";
-            return;
-        }
-
-        var nextRotationLocal = generatedAtLocal.AddDays(RotationDays);
-        var remaining         = nextRotationLocal - DateTimeOffset.Now;
-        if (remaining < TimeSpan.Zero)
-            remaining = TimeSpan.Zero;
-
-        NextRotationTimeText      = $"下次自动更换：{nextRotationLocal:yyyy-MM-dd HH:mm:ss}";
-        RemainingRotationTimeText = $"剩余时间：{FormatRemainingTime(remaining)}";
-        RotationSummaryText       = $"已启用动态设备信息，将每隔 {RotationDays} 天自动更换一次。";
-    }
-
     private static string FormatRemainingTime(TimeSpan remaining)
     {
         if (remaining <= TimeSpan.Zero)
@@ -347,12 +279,12 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         var minutes    = remaining.Minutes;
 
         if (days > 0)
-            return $"{days} 天 {hours} 小时 {minutes} 分";
+            return $"{days} 天 {hours} 小时 {minutes} 分钟";
 
         if (totalHours >= 1)
-            return $"{hours} 小时 {minutes} 分";
+            return $"{hours} 小时 {minutes} 分钟";
 
-        return $"{Math.Max(minutes, 1)} 分";
+        return $"{Math.Max(minutes, 1)} 分钟";
     }
 
     private static bool TryNormalizeDeviceId(string input, out string normalizedValue, out string errorMessage)
@@ -429,4 +361,90 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
     [GeneratedRegex("^[0-9A-F]{32}:[0-9A-F]{32}:[0-9A-F]{32}$", RegexOptions.Compiled)]
     private static partial Regex DeviceIdRegex();
+
+    private void ApplySnapshot(DeviceProfileSnapshot snapshot)
+    {
+        DeviceId   = snapshot.DeviceId;
+        MacAddress = snapshot.MacAddress;
+        HostName   = snapshot.HostName;
+    }
+
+    private DeviceProfileSnapshot CreateValidatedSnapshot()
+    {
+        if (!TryNormalizeDeviceId(DeviceId, out var deviceId, out var deviceIdError))
+            throw new InvalidOperationException(deviceIdError);
+
+        if (!TryNormalizeMacAddress(MacAddress, out var macAddress, out var macAddressError))
+            throw new InvalidOperationException(macAddressError);
+
+        if (!TryNormalizeHostName(HostName, out var hostName, out var hostNameError))
+            throw new InvalidOperationException(hostNameError);
+
+        return new DeviceProfileSnapshot
+        {
+            DeviceId   = deviceId,
+            MacAddress = macAddress,
+            HostName   = hostName
+        };
+    }
+
+    private bool HasSnapshotChanged(DeviceProfileSnapshot snapshot)
+    {
+        var savedSnapshot = accountManager.TryGetSavedDeviceProfileSnapshot(_account);
+        if (savedSnapshot == null)
+            return true;
+
+        return !string.Equals(savedSnapshot.DeviceId,      snapshot.DeviceId,   StringComparison.Ordinal)
+               || !string.Equals(savedSnapshot.MacAddress, snapshot.MacAddress, StringComparison.Ordinal)
+               || !string.Equals(savedSnapshot.HostName,   snapshot.HostName,   StringComparison.Ordinal);
+    }
+
+    private void TouchGeneratedTime()
+    {
+        GeneratedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
+        _snapshotTouched  = true;
+        UpdateRotationSummary();
+    }
+
+    private void UpdateRotationSummary()
+    {
+        if (GeneratedUtcTicks <= 0)
+        {
+            LastGeneratedText         = "最近生成时间：尚未生成";
+            NextRotationTimeText      = "下次自动更换：尚未生成";
+            RemainingRotationTimeText = "当前状态：尚未生成";
+            RotationSummaryText = DynamicEnabled
+                                      ? "当前账号尚未生成独立设备信息，保存后将使用当前这套模拟设备信息。"
+                                      : "当前未启用账号独立设备信息，登录时将使用内置共享设备信息。";
+            return;
+        }
+
+        var generatedAtLocal = new DateTimeOffset(GeneratedUtcTicks, TimeSpan.Zero).ToLocalTime();
+        LastGeneratedText = $"最近生成时间：{generatedAtLocal:yyyy-MM-dd HH:mm:ss}";
+
+        if (!DynamicEnabled)
+        {
+            NextRotationTimeText      = "下次自动更换：未启用账号独立设备信息";
+            RemainingRotationTimeText = "当前状态：正在使用共享设备信息";
+            RotationSummaryText       = "当前未启用账号独立设备信息，登录时将使用内置共享设备信息。";
+            return;
+        }
+
+        if (!PeriodicRefreshEnabled)
+        {
+            NextRotationTimeText      = "下次自动更换：未启用定期自动更换";
+            RemainingRotationTimeText = "当前状态：需要手动刷新";
+            RotationSummaryText       = "已启用账号独立设备信息，当前会固定使用这套模拟设备信息。";
+            return;
+        }
+
+        var nextRotationLocal = generatedAtLocal.AddDays(RotationDays);
+        var remaining         = nextRotationLocal - DateTimeOffset.Now;
+        if (remaining < TimeSpan.Zero)
+            remaining = TimeSpan.Zero;
+
+        NextRotationTimeText      = $"下次自动更换：{nextRotationLocal:yyyy-MM-dd HH:mm:ss}";
+        RemainingRotationTimeText = $"剩余时间：{FormatRemainingTime(remaining)}";
+        RotationSummaryText       = $"已启用账号独立设备信息，并将每隔 {RotationDays} 天自动更换一次。";
+    }
 }
