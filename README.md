@@ -76,12 +76,6 @@ dotnet build .\src\XIVLauncher.sln -c Release
 - [DalamudAssets](https://github.com/AtmoOmen/DalamudAssets): Dalamud 相关静态资源。
 - [PluginDistD17](https://github.com/Dalamud-DailyRoutines/PluginDistD17): 插件分发仓库。
 
-## 目标群体
-
-- 想要自主可控的 FF14 第三方启动器。
-- 需要多账号切换、账号头像、设备画像管理这类细节能力。
-- 更在意资源链路透明、自维护方便，而不是语焉不详的“你滥用了我们的服务器资源”。
-
 ## 免责声明
 
 - 本项目为非官方启动器，与 `SQUARE ENIX`、`盛趣游戏` 均无附属关系。
