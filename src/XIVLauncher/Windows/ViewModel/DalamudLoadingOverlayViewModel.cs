@@ -20,12 +20,6 @@ internal class DalamudLoadingOverlayViewModel : ViewModelBase
         set => SetProperty(ref field, value);
     } = string.Empty;
 
-    public bool IsInfoVisible
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
-
     public bool IsProgressBarVisible
     {
         get;

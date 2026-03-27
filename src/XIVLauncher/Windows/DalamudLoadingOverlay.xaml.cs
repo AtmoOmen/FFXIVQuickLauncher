@@ -58,7 +58,6 @@ public partial class DalamudLoadingOverlay : Window, IDalamudLoadingOverlay
 
                     case IDalamudLoadingOverlay.DalamudUpdateStep.Unavailable:
                         ViewModel.ProgressText         = "由于游戏更新，插件目前暂时不可用";
-                        ViewModel.IsInfoVisible        = true;
                         ViewModel.IsProgressBarVisible = false;
                         ViewModel.UpdateText           = string.Empty;
                         break;
