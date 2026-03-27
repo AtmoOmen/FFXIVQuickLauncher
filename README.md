@@ -7,6 +7,7 @@
     <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/AtmoOmen/FFXIVQuickLauncher/ci-workflow.yml?branch=CN&label=%E6%9E%84%E5%BB%BA&style=for-the-badge" /></a>
     <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest"><img alt="Latest Release" src="https://img.shields.io/github/v/release/AtmoOmen/FFXIVQuickLauncher?display_name=release&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&style=for-the-badge" /></a>
     <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/AtmoOmen/FFXIVQuickLauncher/total?label=%E7%B4%AF%E8%AE%A1%E4%B8%8B%E8%BD%BD&style=for-the-badge" /></a>
+    <a href="https://discord.gg/dailyroutines"><img alt="Discord" src="https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" /></a>
   </p>
 
   <p>
@@ -16,11 +17,6 @@
     <img alt="GPL-3.0" src="https://img.shields.io/badge/License-GPL--3.0-2F855A?style=flat-square" />
   </p>
 
-  <p>
-    <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest">发行版下载</a>
-    ·
-    <a href="https://discord.gg/dailyroutines">Discord</a>
-  </p>
 </div>
 
 <p align="center">
@@ -29,14 +25,14 @@
 
 ## 分支差异
 
-| 维度 | Soil |
+| 侧重点 | Soil |
 | --- | --- |
-| 发布方式 | GitHub Actions 自动构建，GitHub Release 发版 |
-| 隐私保护 | 支持账号分离指定不同的本地设备信息，无任何数据上报逻辑 |
-| 维护边界 | 仅支持 Windows 11 x64 环境，大幅精简代码 |
-| 自托管友好 | 相关仓库、脚本和资源组织方式清晰可见，无需云服务器托管 <br/> *不必为语焉不详的“服务器资源滥用”时刻担心软件、插件可用性* |
-| 插件省心 | 无 Dalamud 启动游戏版本检测，无 Dalamud 插件封禁机制 <br/> *不必忍受奇怪、随心所欲的插件封禁双重标准* |
-| 代码舒心 | 大量代码重构、界面优化、操作逻辑优化 |
+| 发布链路 | GitHub Actions 自动构建，GitHub Release 发版 |
+| 隐私与隔离 | 支持账号级独立设备信息，无任何数据上报逻辑 |
+| 平台取舍 | 仅支持 Windows 11 x64 环境，大幅精简代码 |
+| 资源自治 | 相关仓库、脚本和资源组织方式清晰可见，无需云服务器托管 <br/> *不必为语焉不详的“服务器资源滥用”时刻担心软件、插件可用性* |
+| 插件策略 | 无 Dalamud 启动游戏版本检测，无 Dalamud 插件封禁机制 <br/> *不必忍受奇怪、随心所欲的插件封禁双重标准* |
+| 工程与体验 | 大量代码重构、界面优化、操作逻辑优化 |
 
 ## 下载与使用
 
