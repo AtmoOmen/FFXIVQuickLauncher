@@ -19,7 +19,7 @@ public class UpdateCheckStep
     public int    Order => 70;
 
     public FileInfo? DalamudRunnerOverride => commandLineStep.DalamudRunnerOverride;
-    
+
     private UpdateLoadingDialog? updateWindow;
 
     public async Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
@@ -33,7 +33,7 @@ public class UpdateCheckStep
 
         try
         {
-            Log.Information("开始检查更新...");
+            Log.Information("开始检查启动器更新");
 
             updateWindow = new();
             updateWindow.Show();
@@ -42,7 +42,6 @@ public class UpdateCheckStep
                 throw new InvalidOperationException("更新检查阶段无法获取设置对象");
 
             var updateMgr = new Updates(context.Settings);
-            updateMgr.OnUpdateCheckFinished += finishUp => OnUpdateCheckFinished(context, finishUp);
 
             ChangelogWindow? changelogWindow = null;
 
@@ -52,10 +51,25 @@ public class UpdateCheckStep
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "无法加载更新日志窗口");
+                Log.Error(ex, "无法创建更新日志窗口");
             }
 
-            await updateMgr.Run(EnvironmentSettings.IsPreRelease, changelogWindow).ConfigureAwait(false);
+            var shouldContinueStartup = await updateMgr.Run
+            (
+                EnvironmentSettings.IsPreRelease,
+                changelogWindow,
+                () => CloseUpdateWindow(context)
+            ).ConfigureAwait(false);
+
+            CloseUpdateWindow(context);
+
+            if (!shouldContinueStartup)
+            {
+                context.IsRestartingForUpdate = true;
+                return;
+            }
+
+            context.IsUpdateFinished = true;
         }
         catch (Exception ex)
         {
@@ -69,13 +83,15 @@ public class UpdateCheckStep
 #if !XL_NOAUTOUPDATE
     private static void HandleUpdateError(Exception ex)
     {
-        Log.Error(ex, "无法执行更新检查");
+        Log.Error(ex, "执行更新检查失败");
 
-        if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+        if (ex is HttpRequestException httpRequestException &&
+            httpRequestException.StatusCode.HasValue &&
+            (int)httpRequestException.StatusCode is 403 or 444 or 522)
         {
             MessageBox.Show
             (
-                "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}" + ex,
+                $"错误：服务端返回错误代码 {httpRequestException.StatusCode}\n\n{ex}",
                 "XIVLauncher 错误",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
@@ -85,7 +101,7 @@ public class UpdateCheckStep
         {
             MessageBox.Show
             (
-                "错误: " + ex.Message + Environment.NewLine + "XIVLauncher 无法检查更新, 请检查网络连接或稍后重试\n\n" + ex,
+                $"错误：{ex.Message}{Environment.NewLine}XIVLauncher 无法检查更新，请检查网络连接后重试。{Environment.NewLine}{Environment.NewLine}{ex}",
                 "XIVLauncher 错误",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
@@ -96,24 +112,23 @@ public class UpdateCheckStep
     }
 #endif
 
-    private void OnUpdateCheckFinished(StartupContext context, bool finishUp)
+    private void CloseUpdateWindow(StartupContext context)
     {
-        context.Dispatcher.Invoke
-        (() =>
-            {
-                updateWindow?.Hide();
+        void CloseCore()
+        {
+            if (updateWindow == null)
+                return;
 
-                if (!finishUp)
-                {
-                    UpdateCheckFinished?.Invoke(this, false);
-                    return;
-                }
+            updateWindow.Close();
+            updateWindow = null;
+        }
 
-                context.IsUpdateFinished = true;
-                UpdateCheckFinished?.Invoke(this, true);
-            }
-        );
+        if (context.Dispatcher.CheckAccess())
+        {
+            CloseCore();
+            return;
+        }
+
+        context.Dispatcher.Invoke(CloseCore);
     }
-
-    public event EventHandler<bool>? UpdateCheckFinished;
 }

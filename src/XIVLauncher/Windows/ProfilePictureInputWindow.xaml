@@ -4,7 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Title="设置头像"
+    xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
+    Title="头像设置"
     Width="560"
     Height="320"
     Background="{DynamicResource MaterialDesignPaper}"
@@ -13,7 +14,7 @@
     TextElement.FontWeight="Medium"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     WindowStartupLocation="CenterOwner"
-    mc:Ignorable="d">
+    mc:Ignorable="d" d:DataContext="{d:DesignInstance viewModel:ProfilePictureInputWindowViewModel}">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

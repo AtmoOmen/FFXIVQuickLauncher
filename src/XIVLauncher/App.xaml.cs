@@ -87,6 +87,9 @@ public partial class App
             {
                 await orchestrator.RunAsync();
 
+                if (StartupContext.IsRestartingForUpdate)
+                    return;
+
                 OnStartupCompleted();
             }
             catch (Exception ex)

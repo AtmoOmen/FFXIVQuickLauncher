@@ -28,7 +28,7 @@ public class StartupOrchestrator
     {
         await ExecuteBootstrapStepsAsync(cancellationToken);
 
-        Log.Information("开始启动流程, 共 {Count} 个正常步骤", normalSteps.Count);
+        Log.Information("开始执行启动流程，共 {Count} 个常规步骤", normalSteps.Count);
 
         foreach (var step in normalSteps)
         {
@@ -36,9 +36,15 @@ public class StartupOrchestrator
 
             try
             {
-                Log.Information("执行启动步骤: {Name} (Order: {Order})", step.Name, step.Order);
+                Log.Information("执行启动步骤：{Name}（Order: {Order}）", step.Name, step.Order);
                 await step.ExecuteAsync(context, cancellationToken);
                 ValidateStepResult(step);
+
+                if (context.IsRestartingForUpdate)
+                {
+                    Log.Information("检测到启动器即将重启更新，提前结束剩余启动步骤");
+                    return;
+                }
             }
             catch (OperationCanceledException)
             {
@@ -90,7 +96,7 @@ public class StartupOrchestrator
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"预初始化步骤执行失败: {step.Name}", ex);
+                throw new InvalidOperationException($"预初始化步骤执行失败：{step.Name}", ex);
             }
         }
     }
@@ -98,6 +104,6 @@ public class StartupOrchestrator
     private void ValidateStepResult(IStartupStep step)
     {
         if (step is SettingsStep && context.Settings == null)
-            throw new InvalidOperationException("设置初始化完成后 StartupContext.Settings 仍为空");
+            throw new InvalidOperationException("设置初始化完成后，StartupContext.Settings 仍然为空");
     }
 }

@@ -86,6 +86,7 @@ internal sealed class DialogService
         var window = new ChangelogWindow();
         PrepareOwner(window);
         window.UpdateVersion(version);
+        window.ShowDialog();
     }
 
     private void PrepareOwner(Window window)

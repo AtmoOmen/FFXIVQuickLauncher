@@ -1,7 +1,5 @@
 #nullable enable
 using System;
-using System.Diagnostics;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
@@ -15,80 +13,94 @@ using XIVLauncher.Windows;
 namespace XIVLauncher;
 
 internal class Updates
-(
-    ILauncherSettingsV3 settings
-)
 {
-    private const string UPDATE_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
+    private const string UpdateUrl = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
+    private readonly ILauncherSettingsV3 settings;
 
-    public async Task Run(bool downloadPrerelease, ChangelogWindow? changelogWindow)
+    public Updates(ILauncherSettingsV3 settings) =>
+        this.settings = settings;
+
+    public async Task<bool> Run(bool downloadPrerelease, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)
     {
 #if XL_NOAUTOUPDATE
-        OnUpdateCheckFinished?.Invoke(true);
-        return;
-#endif
-        
+        return true;
+#else
+        _ = downloadPrerelease;
+
         try
         {
-            // 游戏进程
             if (GameHelpers.CheckIsGameOpen())
             {
-                Log.Information("游戏正在运行, 跳过启动器更新检查");
-                OnUpdateCheckFinished?.Invoke(true);
-                return;
+                Log.Information("游戏正在运行，跳过启动器更新检查");
+                return true;
             }
 
-            var updateOptions = new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
-            var updateSource  = new GitHubSource(UPDATE_URL, settings.GitHubToken, true, "https://gh.atmoomen.top/", new XLHttpClientFileDownloader());
-            var mgr           = new UpdateManager(updateSource, updateOptions);
-
-            var newRelease = await mgr.CheckForUpdatesAsync();
-
-            if (newRelease != null)
+            var updateOptions = new UpdateOptions
             {
-                var changelog = newRelease.TargetFullRelease.NotesMarkdown;
-                await mgr.DownloadUpdatesAsync(newRelease);
+                ExplicitChannel       = "win",
+                AllowVersionDowngrade = true
+            };
 
-                if (changelogWindow == null)
-                {
-                    Log.Error("changelogWindow was null");
-                    mgr.ApplyUpdatesAndRestart(newRelease);
-                    return;
-                }
+            var updateSource = new GitHubSource
+            (
+                UpdateUrl,
+                settings.GitHubToken,
+                true,
+                "https://gh.atmoomen.top/",
+                new XLHttpClientFileDownloader()
+            );
 
-                try
-                {
-                    changelogWindow.Dispatcher.Invoke
-                    (() =>
-                        {
-                            changelogWindow.UpdateVersion(newRelease.TargetFullRelease.Version.ToString());
-                            changelogWindow.ChangeLogText.Text = changelog;
-                            changelogWindow.Show();
-                            changelogWindow.Closed += (_, _) => { mgr.ApplyUpdatesAndRestart(newRelease); };
-                        }
-                    );
+            var updateManager = new UpdateManager(updateSource, updateOptions);
+            var newRelease    = await updateManager.CheckForUpdatesAsync();
 
-                    OnUpdateCheckFinished?.Invoke(false);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "无法显示更新日志窗口");
-                }
+            if (newRelease == null)
+                return true;
+
+            var changelog = newRelease.TargetFullRelease.NotesMarkdown;
+            await updateManager.DownloadUpdatesAsync(newRelease);
+
+            if (changelogWindow == null)
+            {
+                Log.Error("更新日志窗口为空，直接进入更新安装流程");
+                updateManager.ApplyUpdatesAndRestart(newRelease);
+                return false;
             }
-            else
-                OnUpdateCheckFinished?.Invoke(true);
+
+            try
+            {
+                await changelogWindow.Dispatcher.InvokeAsync
+                (() =>
+                    {
+                        beforeShowChangelog?.Invoke();
+                        changelogWindow.UpdateVersion(newRelease.TargetFullRelease.Version.ToString());
+                        changelogWindow.ChangeLogText.Text = changelog;
+                        changelogWindow.ShowDialog();
+                    }
+                );
+
+                updateManager.ApplyUpdatesAndRestart(newRelease);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "无法显示更新日志窗口，直接进入更新安装流程");
+                updateManager.ApplyUpdatesAndRestart(newRelease);
+                return false;
+            }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "更新失败");
+            Log.Error(ex, "启动器更新失败");
 
-            var updateFailLoc = "XIVLauncherCN 检查更新失败, 请检查你的网络环境并将 XIVLauncherCN 加入杀毒软件白名单中";
+            var updateFailHint = "XIVLauncherCN 检查更新失败，请检查你的网络环境，并将 XIVLauncherCN 加入杀毒软件白名单。";
 
-            if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+            if (ex is HttpRequestException httpRequestException &&
+                httpRequestException.StatusCode.HasValue &&
+                (int)httpRequestException.StatusCode is 403 or 444 or 522)
             {
                 CustomMessageBox.Show
                 (
-                    $"错误: GitHub 服务器返回错误代码 {httpRequestException.StatusCode}.\n" + Environment.NewLine + updateFailLoc,
+                    $"错误：GitHub 服务器返回错误代码 {httpRequestException.StatusCode}。{Environment.NewLine}{Environment.NewLine}{updateFailHint}",
                     "XIVLauncherCN (Soil)",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error,
@@ -99,7 +111,7 @@ internal class Updates
             {
                 CustomMessageBox.Show
                 (
-                    $"错误: {ex.Message}" + Environment.NewLine + updateFailLoc,
+                    $"错误：{ex.Message}{Environment.NewLine}{Environment.NewLine}{updateFailHint}",
                     "XIVLauncherCN (Soil)",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error,
@@ -111,7 +123,7 @@ internal class Updates
             {
                 var result = CustomMessageBox.Show
                 (
-                    "无法检查更新, 根据你的设置, 是否继续使用当前版本?\n" + "请注意: 这说明你当前可能无法连接 Github, 即使进入 XIVLauncher 也无法完成 Dalamud 的更新检查与下载",
+                    "无法检查更新。根据你的设置，是否继续使用当前版本？\n请注意：这通常意味着当前无法连接 GitHub，即使进入 XIVLauncher，也可能无法完成 Dalamud 的更新检查与下载。",
                     "XIVLauncherCN (Soil)",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question,
@@ -119,14 +131,12 @@ internal class Updates
                     showHelpLinks: false
                 );
 
-                if (result == MessageBoxResult.Yes) OnUpdateCheckFinished?.Invoke(true);
-                else Environment.Exit(1);
+                return result == MessageBoxResult.Yes;
             }
-            else Environment.Exit(1);
+
+            Environment.Exit(1);
+            return false;
         }
-
-        ServicePointManager.SecurityProtocol = SecurityProtocolType.SystemDefault;
+#endif
     }
-
-    public event Action<bool>? OnUpdateCheckFinished;
 }

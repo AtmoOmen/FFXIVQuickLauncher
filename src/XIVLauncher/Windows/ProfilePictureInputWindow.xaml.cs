@@ -6,7 +6,7 @@ using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
 
-public partial class ProfilePictureInputWindow : Window
+public partial class ProfilePictureInputWindow
 {
     public string? ResultPath { get; private set; }
 
@@ -24,10 +24,10 @@ public partial class ProfilePictureInputWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Title = "选择头像文件",
+            Title           = "选择头像文件",
             CheckFileExists = true,
-            Multiselect = false,
-            Filter = "头像文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.ico|图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif|图标文件|*.ico|所有文件|*.*"
+            Multiselect     = false,
+            Filter          = "头像文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.ico|图片文件|*.png;*.jpg;*.jpeg;*.bmp;*.gif|图标文件|*.ico|所有文件|*.*"
         };
 
         if (dialog.ShowDialog(this) != true)
@@ -53,12 +53,9 @@ public partial class ProfilePictureInputWindow : Window
     private void ClearButton_OnClick(object sender, RoutedEventArgs e) =>
         ViewModel.ClearPreviewImage();
 
-    private void CancelButton_OnClick(object sender, RoutedEventArgs e) =>
-        DialogResult = false;
-
     private void ConfirmButton_OnClick(object sender, RoutedEventArgs e)
     {
-        ResultPath = ViewModel.SelectedFilePath;
+        ResultPath   = ViewModel.SelectedFilePath;
         DialogResult = true;
     }
 }

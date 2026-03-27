@@ -8,7 +8,7 @@ using XIVLauncher.Windows.ViewModel;
 namespace XIVLauncher.Windows;
 
 /// <summary>
-///     Interaction logic for ErrorWindow.xaml
+///     更新日志窗口。
 /// </summary>
 public partial class ChangelogWindow : Window
 {
@@ -27,17 +27,23 @@ public partial class ChangelogWindow : Window
         Focus();
     }
 
-    public void UpdateVersion(string version)
-    {
-        Model.UpdateNotice = string.Format("XIVLauncherCN (Soil) 已更新至 {0}", version);
-        Show();
-    }
+    public void UpdateVersion(string version) =>
+        Model.UpdateNotice = $"XIVLauncherCN (Soil) 已更新至 {version}";
 
     public new void Show()
     {
-        SystemSounds.Asterisk.Play();
+        PlayOpenSound();
         base.Show();
     }
+
+    public new bool? ShowDialog()
+    {
+        PlayOpenSound();
+        return base.ShowDialog();
+    }
+
+    private static void PlayOpenSound() =>
+        SystemSounds.Asterisk.Play();
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) =>
         Close();
