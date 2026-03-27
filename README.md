@@ -1,41 +1,111 @@
-# XIVLauncherCN (Soil) [![Actions Status](https://img.shields.io/github/actions/workflow/status/AtmoOmen/FFXIVQuickLauncher/ci-workflow.yml?branch=CN)](https://github.com/AtmoOmen/FFXIVQuickLauncher/actions) [![Discord Shield](https://discordapp.com/api/guilds/1258981591124938762/widget.png?style=shield)](https://discord.gg/dailyroutines) [![GitHub all releases](https://img.shields.io/github/downloads/AtmoOmen/FFXIVQuickLauncher/total)](https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest) [![GitHub release (latest by date)](https://img.shields.io/github/v/release/AtmoOmen/FFXIVQuickLauncher)](https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest) <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases"><img src="https://github.com/AtmoOmen/FFXIVQuickLauncher/raw/CN/src/XIVLauncher/Resources/logo.png" alt="XL logo" width="100" align="right"/></a>
+<div align="center">
+  <h1>XIVLauncherCN (Soil)</h1>
+  <img src="src/XIVLauncher/Resources/logo.png" alt="XIVLauncherCN (Soil) Logo" width="180" />
 
-XIVLauncherCN (Soil) 是 最终幻想14 非官方启动器 XIVLauncherCN 的分支
 
-注: 本项目完全不使用 ottercorp 的服务器资源, 全部使用 Github 或者 公益 CDN 实现
+  <p>
+    <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/AtmoOmen/FFXIVQuickLauncher/ci-workflow.yml?branch=CN&label=%E6%9E%84%E5%BB%BA&style=for-the-badge" /></a>
+    <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest"><img alt="Latest Release" src="https://img.shields.io/github/v/release/AtmoOmen/FFXIVQuickLauncher?display_name=release&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&style=for-the-badge" /></a>
+    <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/AtmoOmen/FFXIVQuickLauncher/total?label=%E7%B4%AF%E8%AE%A1%E4%B8%8B%E8%BD%BD&style=for-the-badge" /></a>
+  </p>
+
+  <p>
+    <img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-0A66C2?style=flat-square" />
+    <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-0F6CBD?style=flat-square" />
+    <img alt="WPF" src="https://img.shields.io/badge/UI-WPF-3A7BD5?style=flat-square" />
+    <img alt="GPL-3.0" src="https://img.shields.io/badge/License-GPL--3.0-2F855A?style=flat-square" />
+  </p>
+
+  <p>
+    <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest">发行版下载</a>
+    ·
+    <a href="https://discord.gg/dailyroutines">Discord</a>
+  </p>
+</div>
 
 <p align="center">
-  <a href="https://github.com/goatcorp/FFXIVQuickLauncher/releases">
-    <img src="https://raw.githubusercontent.com/goatcorp/FFXIVQuickLauncher/master/misc/screenshot.png" alt="drawing" width="500"/>
+  <img src="misc/screenshot.png" alt="XIVLauncherCN (Soil) 截图" width="960" />
+</p>
+
+## 分支差异
+
+| 维度 | Soil |
+| --- | --- |
+| 发布方式 | GitHub Actions 自动构建，GitHub Release 发版 |
+| 隐私保护 | 支持账号分离指定不同的本地设备信息，无任何数据上报逻辑 |
+| 维护边界 | 仅支持 Windows 11 x64 环境，大幅精简代码 |
+| 自托管友好 | 相关仓库、脚本和资源组织方式清晰可见，无需云服务器托管 <br/> *不必为语焉不详的“服务器资源滥用”时刻担心软件、插件可用性* |
+| 插件省心 | 无 Dalamud 启动游戏版本检测，无 Dalamud 插件封禁机制 <br/> *不必忍受奇怪、随心所欲的插件封禁双重标准* |
+| 代码舒心 | 大量代码重构、界面优化、操作逻辑优化 |
+
+## 下载与使用
+
+### 直接使用
+
+1. 前往 [Releases](https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest) 下载最新版本。
+2. 按照启动器引导选择国服游戏目录并完成初始设置。
+
+> [!NOTE]
+> 当前分支聚焦 `Windows 10 2004+ / Windows 11` 的 `x64` 环境，不提供 Linux、macOS 与 Steam 相关支持。
+
+### 自行构建
+
+前置要求：
+
+- `Windows x64`
+- `.NET SDK 10.0.100` 或更新版本
+- 支持 Git 子模块
+
+```powershell
+git clone --recurse-submodules https://github.com/AtmoOmen/FFXIVQuickLauncher.git
+cd FFXIVQuickLauncher
+dotnet restore .\src\XIVLauncher.sln
+dotnet build .\src\XIVLauncher.sln -c ReleaseNoUpdate
+```
+
+和 CI 一样生成正式发布包：
+
+```powershell
+dotnet build .\src\XIVLauncher.sln -c Release
+.\scripts\CreateHashList.ps1 .\src\bin\win-x64
+```
+
+## 自维护
+
+如果你想基于 Soil 继续维护自己的版本，请一并关注以下仓库：
+
+- [FFXIVQuickLauncher](https://github.com/AtmoOmen/FFXIVQuickLauncher): 启动器本体。
+- [XLCNSoilAssets](https://github.com/Dalamud-DailyRoutines/XLCNSoilAssets): 启动器与补丁相关资源。
+- [Dalamud (Soil)](https://github.com/AtmoOmen/Dalamud): Dalamud 本体分支。
+- [DalamudAssets](https://github.com/AtmoOmen/DalamudAssets): Dalamud 相关静态资源。
+- [PluginDistD17](https://github.com/Dalamud-DailyRoutines/PluginDistD17): 插件分发仓库。
+
+## 目标群体
+
+- 想要自主可控的 FF14 第三方启动器。
+- 需要多账号切换、账号头像、设备画像管理这类细节能力。
+- 更在意资源链路透明、自维护方便，而不是语焉不详的“你滥用了我们的服务器资源”。
+
+## 免责声明
+
+- 本项目为非官方启动器，与 `SQUARE ENIX`、`盛趣游戏` 均无附属关系。
+- 使用任何第三方启动器都可能伴随潜在风险，请自行评估并承担后果。
+- 项目以社区维护为主，不承诺对所有环境、所有外部服务异常都提供即时支持。
+
+## 鸣谢
+
+- 感谢 [goatcorp/FFXIVQuickLauncher](https://github.com/goatcorp/FFXIVQuickLauncher) 提供长期演化的基础。
+- 感谢所有为国服链路、资源整理、插件生态和反馈测试投入时间的人。
+- 感谢 [JetBrains OSS Sponsorship](https://www.jetbrains.com/community/opensource/#support) 对开源项目的支持。
+
+<p align="center">
+  <a href="https://www.jetbrains.com/community/opensource/#support">
+    <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.png" alt="JetBrains" width="140" />
   </a>
 </p>
 
-## 与 XIVLauncherCN 的区别 [信息可能滞后]
+---
 
-- 删除了 Dalamud 启动时的游戏版本检测
-- 删除了所有的数据上报逻辑
-- 删除了国服 Dalamud 的插件封禁逻辑
-- 一大堆鸡零狗碎的界面、逻辑优化等等...
-
-## 我也想自己维护, 怎么操作
-
-请关注以下仓库, 修改其中所有涉及到 `AtmoOmen` 的链接、工作流和脚本 (当然你也可以不改, 都是走 GitHub)
-
-- [XIVLauncherCN (Soil)](https://github.com/AtmoOmen/FFXIVQuickLauncher): 启动器本体。在 IDE 内全局查找 `AtmoOmen` 并进行替换
-- [XLCNSoilAssets](https://github.com/Dalamud-DailyRoutines/XLCNSoilAssets): 启动器相关资源, 主要为游戏客户端的完整性文件与补丁信息文件。内含完整的维护更新指引, 可以继续使用或者自己维护
-- [Dalamud (Soil)](https://github.com/AtmoOmen/Dalamud): Dalamud 本体。在 IDE 内全局查找 `AtmoOmen` 并进行替换
-- [DalamudAssets](https://github.com/AtmoOmen/DalamudAssets): Dalamud 相关资源。修改 `hash.py` 文件, 修改为原始的 Github 链接或使用自己的反代服务。其中, `asset.json` 中各个文件的 hash 会在 push 时由工作流直接更新, `Version` 则需要手动修改 —— 除非是 breaking changes, 否则正常情况下确实不需要更改 `Version`
-- [PluginDistD17](https://github.com/Dalamud-DailyRoutines/PluginDistD17): Dalamud 主库插件分发; 目前没有采用 XLWebService 自动生成的模式, 而是工作流+脚本手动生成。修改 `Make-Pluginmaster.ps1` 文件中的相关地址。需要生成时手动运行一次工作流即可。
-
-## 免责声明
-XIVLauncher 并不符合 Square Enix 的服务条款。 我们已经尽力地确保使用 XIVLauncher 对所有人来说都是安全的，且目前还没有玩家因此被封禁，但我们不能否认它存在的可能性。<br>您可以在[此处](https://goatcorp.github.io/faq/xl_troubleshooting#q-are-xivlauncher-dalamud-and-dalamud-plugins-safe-to-use)查到有关的信息。
-
-## 特别鸣谢
-<a href="https://www.jetbrains.com/community/opensource/#support">
-   <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.png" alt="JetBrains" width="200px" height="200px"><br/>
-
-   <p>JetBrains OSS Sponsorship</p>
-</a>
-
-
-##### Final Fantasy XIV © 2010-2021 SQUARE ENIX CO., LTD. 保留所有权利。 我们不以任何形式附属于 SQUARE ENIX CO。
+<div align="center">
+  <sub>Final Fantasy XIV © SQUARE ENIX CO., LTD. 本项目仅为社区维护的第三方工具。</sub>
+</div>
