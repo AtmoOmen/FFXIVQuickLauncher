@@ -10,6 +10,8 @@ namespace XIVLauncher.Common.Game;
 public class RestartMonitor
 {
     private const int RESTART_EXIT_CODE = 0x12345678;
+    private static readonly TimeSpan RestartedProcessExitTimeout      = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan RestartedProcessExitPollInterval = TimeSpan.FromMilliseconds(200);
 
     public async Task MonitorAsync
     (
@@ -88,11 +90,21 @@ public class RestartMonitor
             try
             {
                 newProcess.UnderlyingProcess.Kill();
-                await newProcess.UnderlyingProcess.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "无法终止重启后的游戏进程");
+                Log.Error(ex, "无法发送终止请求到重启后的游戏进程");
+                break;
+            }
+
+            if (!await WaitForProcessExitAsync(newProcess.ProcessID, processName, cancellationToken).ConfigureAwait(false))
+            {
+                Log.Error
+                (
+                    "重启后的游戏进程 {ProcessId} 在 {TimeoutSeconds} 秒内仍未退出",
+                    newProcess.ProcessID,
+                    RestartedProcessExitTimeout.TotalSeconds
+                );
                 break;
             }
 
@@ -152,5 +164,40 @@ public class RestartMonitor
         }
 
         return null;
+    }
+
+    private async Task<bool> WaitForProcessExitAsync(int processId, string processName, CancellationToken cancellationToken)
+    {
+        var deadline = Environment.TickCount64 + (long)RestartedProcessExitTimeout.TotalMilliseconds;
+
+        while (ProcessExists(processId, processName))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (Environment.TickCount64 >= deadline)
+                return false;
+
+            await Task.Delay(RestartedProcessExitPollInterval, cancellationToken).ConfigureAwait(false);
+        }
+
+        return true;
+    }
+
+    private static bool ProcessExists(int processId, string processName)
+    {
+        foreach (var process in Process.GetProcessesByName(processName))
+        {
+            try
+            {
+                if (process.Id == processId)
+                    return true;
+            }
+            finally
+            {
+                process.Dispose();
+            }
+        }
+
+        return false;
     }
 }
