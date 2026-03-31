@@ -88,6 +88,13 @@ internal sealed class DialogService
         return window.ShowDialog() == true;
     }
 
+    public bool ShowSharedDeviceProfileSettings(AccountManager accountManager)
+    {
+        var window = new AccountDeviceProfileSettingsWindow(accountManager);
+        PrepareOwner(window);
+        return window.ShowDialog() == true;
+    }
+
     public void ShowChangelog(string version)
     {
         var window = new ChangelogWindow();

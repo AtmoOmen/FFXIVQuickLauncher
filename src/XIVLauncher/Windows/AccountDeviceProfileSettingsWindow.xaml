@@ -7,7 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
-    Title="账号设备信息设置"
+    Title="{Binding WindowTitle}"
     Width="860"
     ResizeMode="NoResize"
     SizeToContent="Height"
@@ -29,23 +29,25 @@
             <TextBlock
                 Margin="0,10,0,0"
                 Foreground="DarkGray"
-                Text="账号登录时，盛趣会要求上传一系列设备标识。为进一步保护个人隐私，你可以选择单独配置账号设备信息。"
+                Text="{Binding DescriptionText}"
                 TextWrapping="Wrap" />
 
             <materialDesign:Card Margin="0,20,0,0" Padding="20">
                 <StackPanel>
                     <CheckBox
+                        Visibility="{Binding AccountModeOptionsVisibility}"
                         Content="启用账号独立设备信息"
                         IsChecked="{Binding DynamicEnabled}"
                         ToolTip="启用后，可为当前账号单独配置一套设备信息；禁用时，则使用启动器内部统一随机生成共享使用的设备信息。"/>
 
                     <CheckBox
                         Margin="0,14,0,0"
+                        Visibility="{Binding AccountModeOptionsVisibility}"
                         Content="定期自动更换"
                         IsChecked="{Binding PeriodicRefreshEnabled}"
                         IsEnabled="{Binding DynamicEnabled}" />
 
-                    <StackPanel Margin="28,12,0,0" Orientation="Horizontal">
+                    <StackPanel Margin="28,12,0,0" Orientation="Horizontal" Visibility="{Binding AccountModeOptionsVisibility}">
                         <TextBlock VerticalAlignment="Center" Text="每隔" />
                         <xctk:IntegerUpDown
                             Width="90"
@@ -87,13 +89,13 @@
             </materialDesign:Card>
 
             <materialDesign:Card Margin="0,18,0,0" Padding="20">
-                <StackPanel IsEnabled="{Binding DynamicEnabled}">
+                <StackPanel IsEnabled="{Binding CanEditDeviceDetails}">
                     <TextBlock FontSize="18" FontWeight="SemiBold" Text="设备信息详情" />
 
                     <StackPanel
                         Margin="0,18,0,0"
                         Orientation="Horizontal"
-                        IsEnabled="{Binding DynamicEnabled}">
+                        IsEnabled="{Binding CanEditDeviceDetails}">
                         <Button
                             MinWidth="132"
                             Margin="0,0,12,0"
@@ -102,7 +104,7 @@
                         <TextBlock
                             VerticalAlignment="Center"
                             Foreground="DarkGray"
-                            Text="可以直接修改下方输入框，或随机生成一整套新的仿真设备信息。"
+                            Text="{Binding DeviceDetailsHintText}"
                             TextWrapping="Wrap" />
                     </StackPanel>
 

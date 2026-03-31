@@ -33,5 +33,7 @@ internal interface IDialogService
 
     bool ShowAccountDeviceProfileSettings(XIVAccount account, AccountManager accountManager);
 
+    bool ShowSharedDeviceProfileSettings(AccountManager accountManager);
+
     void ShowChangelog(string version);
 }

@@ -88,6 +88,76 @@ public sealed class LoginChannelContext
         return result.Data.Guid;
     }
 
+    public Task<LoginResponse> GetSafePhoneSystemConfigAsync() =>
+        GetJsonAsSdoClient("/authen/v2/getSystemConfig?logintype=godown", []);
+
+    public Task<LoginResponse> InitSafePhoneSmsLoginAsync(string account, string? flowId = null, bool isVoice = false)
+    {
+        var paras = new List<string>(3)
+        {
+            $"inputUserId={account}",
+            $"isVoice={(isVoice ? 1 : 0)}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(flowId))
+            paras.Add($"flowId={flowId}");
+
+        return GetJsonAsSdoClient("/authen/v2/safePhoneSmsLogin/init", paras);
+    }
+
+    public Task<LoginResponse> VerifySafePhoneCaptchaAsync(string flowId, string captchaInfo) =>
+        GetJsonAsSdoClient("/authen/v2/safePhoneSmsLogin/verifyCaptcha", [$"captchaInfo={captchaInfo}", $"flowId={flowId}"]);
+
+    public Task<LoginResponse> ConfirmSafePhoneSendAsync(string flowId, bool isVoice = false) =>
+        GetJsonAsSdoClient("/authen/v2/safePhoneSmsLogin/confirmSend", [$"flowId={flowId}", $"isVoice={(isVoice ? 1 : 0)}"]);
+
+    public Task<LoginResponse> ConfirmSafePhoneLoginAsync(string account, string flowId, string verifyCode, bool keepLogin) =>
+        GetJsonAsSdoClient
+        (
+            "/authen/v2/safePhoneSmsLogin/confirmLogin",
+            [$"flowId={flowId}", $"inputUserId={account}", $"verifyCode={verifyCode}", $"keepLoginFlag={(keepLogin ? 1 : 0)}"]
+        );
+
+    public Task<LoginResponse> CheckCodeLoginAsync(string guid, string captchaCode, bool keepLogin)
+    {
+        var captchaInfo = JsonConvert.SerializeObject(new
+        {
+            picCode = captchaCode
+        });
+
+        return GetJsonAsSdoClient
+        (
+            "checkCodeLogin.json",
+            [
+                $"guid={guid}",
+                $"password={Uri.EscapeDataString(captchaCode)}",
+                "challenge=",
+                "validate=",
+                "seccode=",
+                "outInfo=",
+                $"captchaInfo={Uri.EscapeDataString(captchaInfo)}",
+                $"keepLoginFlag={(keepLogin ? 1 : 0)}"
+            ]
+        );
+    }
+
+    public async Task<byte[]> DownloadCaptchaImageAsync(string captchaUrl, CancellationToken cancellationToken = default)
+    {
+        var requestUri = BuildCaptchaUri(captchaUrl);
+        using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+        request.Headers.AddWithoutValidation("Cache-Control", "no-cache");
+        request.Headers.AddWithoutValidation
+        (
+            "User-Agent",
+            "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; InfoPath.2; .NET CLR 2.0.50727; MS-RTC LM 8; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET CLR 1.1.4322; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)"
+        );
+        request.Headers.AddWithoutValidation("Host", requestUri.Host);
+
+        using var response = await loginHttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<(string SID, string TGT, string AutoLoginSessionKey)> UpdateAutoLoginSessionKeyAsync
     (
         string guid,
@@ -302,8 +372,27 @@ public sealed class LoginChannelContext
             ]
         );
 
+        var casDomain     = Volatile.Read(ref casDomainMode) == 0 ? GLOBAL_CAS_DOMAIN : FALLBACK_CAS_DOMAIN;
+        var requestPath   = endPoint.StartsWith("/", StringComparison.Ordinal) ? endPoint : $"/authen/{endPoint}";
+        var queryPrefix   = requestPath.Contains('?') ? "&" : "?";
+        var queryString   = string.Join("&", allParas);
+
+        return new Uri($"https://{casDomain}{requestPath}{queryPrefix}{queryString}");
+    }
+
+    private Uri BuildCaptchaUri(string captchaUrl)
+    {
+        if (Uri.TryCreate(captchaUrl, UriKind.Absolute, out var absoluteUri))
+            return absoluteUri;
+
         var casDomain = Volatile.Read(ref casDomainMode) == 0 ? GLOBAL_CAS_DOMAIN : FALLBACK_CAS_DOMAIN;
-        return new Uri($"https://{casDomain}/authen/{endPoint}?{string.Join("&", allParas)}");
+        var requestPath = captchaUrl.StartsWith("/", StringComparison.Ordinal)
+                              ? captchaUrl
+                              : captchaUrl.StartsWith("authen/", StringComparison.Ordinal)
+                                  ? $"/{captchaUrl}"
+                                  : $"/authen/{captchaUrl}";
+
+        return new Uri($"https://{casDomain}{requestPath}");
     }
 
     private async Task<LoginResponse> GetJsonAsSdoClient

@@ -35,6 +35,20 @@ public partial class AccountDeviceProfileSettingsWindow : Window
         _dialogService = new DialogService(this);
         DataContext    = new AccountDeviceProfileSettingsWindowViewModel(accountManager);
         ViewModel.Load(account);
+        Title = ViewModel.WindowTitle;
+
+        Loaded += (_, _) => AttachOwnerWindow();
+        Closed += (_, _) => DetachOwnerWindow();
+    }
+
+    public AccountDeviceProfileSettingsWindow(AccountManager accountManager)
+    {
+        InitializeComponent();
+
+        _dialogService = new DialogService(this);
+        DataContext    = new AccountDeviceProfileSettingsWindowViewModel(accountManager);
+        ViewModel.LoadShared();
+        Title = ViewModel.WindowTitle;
 
         Loaded += (_, _) => AttachOwnerWindow();
         Closed += (_, _) => DetachOwnerWindow();
@@ -132,7 +146,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Title           = "导入账号设备信息",
+            Title           = $"导入{ViewModel.ProfileKindText}",
             CheckFileExists = true,
             Multiselect     = false,
             Filter          = "设备信息文件|*.json|所有文件|*.*"
@@ -164,11 +178,11 @@ public partial class AccountDeviceProfileSettingsWindow : Window
     {
         var dialog = new SaveFileDialog
         {
-            Title           = "导出账号设备信息",
+            Title           = $"导出{ViewModel.ProfileKindText}",
             AddExtension    = true,
             DefaultExt      = ".json",
             OverwritePrompt = true,
-            FileName        = $"{SanitizeFileName(ViewModel.AccountDisplayName)}-账号设备信息.json",
+            FileName        = $"{SanitizeFileName(ViewModel.AccountDisplayName)}-{ViewModel.ProfileKindText}.json",
             Filter          = "设备信息文件|*.json|所有文件|*.*"
         };
 

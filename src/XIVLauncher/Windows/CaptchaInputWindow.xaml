@@ -1,0 +1,72 @@
+<Window x:Class="XIVLauncher.Windows.CaptchaInputWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="验证码验证"
+        Width="420"
+        Height="Auto"
+        MinHeight="320"
+        Background="{DynamicResource MaterialDesignPaper}"
+        Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+        ResizeMode="NoResize"
+        SizeToContent="Height"
+        TextElement.FontWeight="Medium"
+        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        WindowStartupLocation="CenterOwner"
+        mc:Ignorable="d">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="PromptTextBlock"
+                   TextWrapping="Wrap"
+                   FontSize="14" />
+
+        <Border Grid.Row="1"
+                Margin="0,16,0,0"
+                Padding="12"
+                HorizontalAlignment="Center"
+                Background="#FFF7F2E8"
+                BorderBrush="#40FF9800"
+                BorderThickness="1"
+                CornerRadius="8">
+            <Image x:Name="CaptchaImage"
+                   Width="240"
+                   Height="100"
+                   Stretch="Uniform" />
+        </Border>
+
+        <TextBox x:Name="CaptchaTextBox"
+                 Grid.Row="2"
+                 Margin="0,16,0,0"
+                 Padding="10,8"
+                 materialDesign:HintAssist.Hint="输入验证码"
+                 VerticalContentAlignment="Center" />
+
+        <StackPanel Grid.Row="3"
+                    Margin="0,18,0,0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button x:Name="CancelButton"
+                    Width="96"
+                    Margin="0,0,10,0"
+                    Click="CancelButton_OnClick"
+                    Content="取消" />
+            <Button x:Name="RefreshButton"
+                    Width="96"
+                    Margin="0,0,10,0"
+                    Click="RefreshButton_OnClick"
+                    Content="刷新" />
+            <Button x:Name="ConfirmButton"
+                    Width="96"
+                    Click="ConfirmButton_OnClick"
+                    Content="确认" />
+        </StackPanel>
+    </Grid>
+</Window>

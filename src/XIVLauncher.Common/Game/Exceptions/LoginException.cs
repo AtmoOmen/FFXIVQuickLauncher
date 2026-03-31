@@ -60,7 +60,17 @@ public enum LoginExceptionCode
     /// <summary>
     ///     扫码超时或取消
     /// </summary>
-    ScanTimeoutOrCanceled = 4
+    ScanTimeoutOrCanceled = 4,
+
+    /// <summary>
+    ///     安全手机短信验证已取消
+    /// </summary>
+    SafePhoneVerificationCanceled = 5,
+
+    /// <summary>
+    ///     验证码输入已取消
+    /// </summary>
+    CaptchaVerificationCanceled = 6
 }
 
 [Serializable]

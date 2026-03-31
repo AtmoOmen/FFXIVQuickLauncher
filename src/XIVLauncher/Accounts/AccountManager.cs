@@ -324,6 +324,9 @@ public class AccountManager
     public long GetSharedDeviceProfileGeneratedUtcTicks() =>
         GetSharedDeviceProfileState().GeneratedUtcTicks;
 
+    public DeviceProfileSnapshot GetSharedDeviceProfileSnapshot() =>
+        GetSharedDeviceProfileState().ToSnapshot();
+
     public void UpdateDeviceProfileSettings(XIVAccount account, bool dynamicEnabled, bool isDeviceProfileRotation, int rotationDays)
     {
         var trackedAccount = GetTrackedAccount(account);
@@ -342,6 +345,17 @@ public class AccountManager
 
         ApplyDeviceProfileSnapshot(trackedAccount, snapshot, generatedAtUtc);
         Save(trackedAccount);
+    }
+
+    public void SaveSharedDeviceProfileSnapshot(DeviceProfileSnapshot snapshot, long generatedUtcTicks)
+    {
+        var state = new StoredDeviceProfileSnapshot(snapshot, generatedUtcTicks);
+
+        lock (SharedDeviceProfileSyncRoot)
+        {
+            sharedDeviceProfile = state;
+            PersistSharedDeviceProfileState(state);
+        }
     }
 
     public void ApplyResolvedDeviceProfile(XIVAccount account, ResolvedDeviceProfile resolvedDeviceProfile)

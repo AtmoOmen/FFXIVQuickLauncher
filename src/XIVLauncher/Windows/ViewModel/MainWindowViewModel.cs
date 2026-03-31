@@ -550,7 +550,22 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                                Log.Information("[MainWindow] 接收到叨鱼确认码: {Code}", code);
                                LoginMessage = $"确认码: {code}";
-                           }
+                           },
+                           message => Window.Dispatcher.Invoke(() => LoginMessage = message),
+                           (text, caption, initialText) =>
+                               Window.Dispatcher.Invoke(() => new DialogService(Window).ShowTextInput(text, caption, initialText, Window)),
+                           challenge => Window.Dispatcher.Invoke
+                           (() =>
+                               {
+                                   var dialog = new CaptchaInputWindow(challenge);
+                                   if (Window.IsVisible)
+                                   {
+                                       dialog.Owner         = Window;
+                                       dialog.ShowInTaskbar = false;
+                                   }
+
+                                   return dialog.ShowDialog() == true ? dialog.ResultText : null;
+                               })
                        ),
                        loginCts.Token
                    ).ConfigureAwait(false);
@@ -571,6 +586,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 if (LoginCancelSource?.IsCancellationRequested ?? false)
                 {
                     Log.Information("[MainWindow] 手动取消登录");
+                    return null;
+                }
+
+                if (sdoLoginEx.ErrorCode is (int)LoginExceptionCode.CaptchaVerificationCanceled or (int)LoginExceptionCode.SafePhoneVerificationCanceled)
+                {
+                    Log.Information("[MainWindow] 用户主动取消登录验证流程: {ErrorCode}", sdoLoginEx.ErrorCode);
                     return null;
                 }
 

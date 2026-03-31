@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace XIVLauncher.Common.Game.Login;
 
@@ -64,5 +65,59 @@ public class LoginResponse
         [JsonConverter(typeof(MaskMiddleConverter))]
         [JsonProperty("sndaIdArray")]
         public List<string> SndaIDArray = null!;
+
+        [JsonProperty("flowId")]
+        public string? FlowId;
+
+        [JsonProperty("mobileMask")]
+        public string? MobileMask;
+
+        [JsonProperty("safePhoneTip")]
+        public string? SafePhoneTip;
+
+        [JsonProperty("picUrl")]
+        public string? PicUrl;
+
+        [JsonProperty("checkCodeUrl")]
+        public string? CheckCodeUrl;
+
+        [JsonProperty("gt_url")]
+        public string? GtUrl;
+
+        [JsonProperty("sdg_height")]
+        public int? SdgHeight;
+
+        [JsonProperty("sdg_width")]
+        public int? SdgWidth;
+
+        [JsonProperty("width")]
+        public int? Width;
+
+        [JsonProperty("height")]
+        public int? Height;
+
+        [JsonProperty("captchaParams")]
+        public JToken? CaptchaParams;
+
+        [JsonProperty("smsSessionKey")]
+        public string? SmsSessionKey;
+
+        [JsonProperty("checkCodeSessionKey")]
+        public string? CheckCodeSessionKey;
+
+        [JsonProperty("recommendLoginType")]
+        public string? RecommendLoginType;
+
+        [JsonProperty("hasPwdLoginRecord")]
+        public string? HasPwdLoginRecord;
+
+        [JsonProperty("hasCheckCodeLoginRecord")]
+        public string? HasCheckCodeLoginRecord;
+
+        [JsonProperty("bindPhoneStatus")]
+        public string? BindPhoneStatus;
+
+        [JsonProperty("ueFlowId")]
+        public string? UeFlowId;
     }
 }

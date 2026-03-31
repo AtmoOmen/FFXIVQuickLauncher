@@ -25,9 +25,20 @@
     <Grid Margin="0,0,0,0">
         <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="390" Margin="0,0,10,0">
             <StackPanel Margin="16,16,10,0">
+                
+                <Button
+                    Margin="0,0,0,12"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Bottom"
+                    Command="{Binding ConfigureSharedDeviceProfileCommand}"
+                    Content="设备信息" />
+                
+                <Separator />
+                
                 <ListView
+                    Margin="0,12,0,0"
                     x:Name="AccountListView"
-                    MaxHeight="370"
+                    MaxHeight="330"
                     AllowDrop="True"
                     Drop="AccountListView_OnDrop"
                     ItemsSource="{Binding Entries}"
@@ -166,6 +177,7 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
+                
             </StackPanel>
         </materialDesign:Card>
     </Grid>
