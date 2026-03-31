@@ -1357,7 +1357,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                           .MonitorAsync
                           (
                               launched,
-                              () => StartGameAndAddon(loginResult, forceNoDalamud, noThird, noPlugins),
+                              new RestartMonitor.RestartOptions(forceNoDalamud, noThird, noPlugins),
+                              options => StartGameAndAddon(loginResult, options.ForceNoDalamud, options.NoThirdPlugins, options.NoPlugins),
                               LoginCancelSource?.Token ?? CancellationToken.None
                           )
                           .ConfigureAwait(false);
