@@ -311,21 +311,21 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
     public void RefreshDeviceId()
     {
-        DeviceId = TryNormalizeMacAddress(MacAddress, out var normalizedMacAddress, out _)
-                       ? FakeMachineInfo.CreateDeviceId(normalizedMacAddress, HostName)
-                       : FakeMachineInfo.CreateDeviceId();
+        RebuildDeviceIdFromCurrentFields();
         TouchGeneratedTime();
     }
 
     public void RefreshMacAddress()
     {
         MacAddress = FakeMachineInfo.CreateMacAddress();
+        RebuildDeviceIdFromCurrentFields();
         TouchGeneratedTime();
     }
 
     public void RefreshHostName()
     {
         HostName = FakeMachineInfo.CreateHostName();
+        RebuildDeviceIdFromCurrentFields();
         TouchGeneratedTime();
     }
 
@@ -346,6 +346,7 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
             return false;
 
         MacAddress = normalizedValue;
+        RebuildDeviceIdFromCurrentFields();
         TouchGeneratedTime();
         return true;
     }
@@ -356,6 +357,7 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
             return false;
 
         HostName = normalizedValue;
+        RebuildDeviceIdFromCurrentFields();
         TouchGeneratedTime();
         return true;
     }
@@ -475,6 +477,18 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         DeviceId   = snapshot.DeviceId;
         MacAddress = snapshot.MacAddress;
         HostName   = snapshot.HostName;
+    }
+
+    private void RebuildDeviceIdFromCurrentFields()
+    {
+        if (!TryNormalizeMacAddress(MacAddress, out var normalizedMacAddress, out _)
+            || !TryNormalizeHostName(HostName, out var normalizedHostName, out _))
+        {
+            DeviceId = FakeMachineInfo.CreateDeviceId();
+            return;
+        }
+
+        DeviceId = FakeMachineInfo.CreateDeviceId(normalizedMacAddress, normalizedHostName);
     }
 
     private DeviceProfileSnapshot CreateValidatedSnapshot()
