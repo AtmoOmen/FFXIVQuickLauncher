@@ -23,7 +23,7 @@ public class SettingsStep
     public string Name  => "设置初始化";
     public int    Order => 40;
 
-    public Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
+    public async Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -38,7 +38,20 @@ public class SettingsStep
 
         EnsureSettingsInitialized(context);
         context.AccountManager = new AccountManager(context.Settings);
-        return Task.CompletedTask;
+
+        var credTypeApplyResult = await context.AccountManager.InitializeCredProviderAsync(context.Settings.CredType);
+        context.CredTypeApplyResult = credTypeApplyResult;
+
+        if (!credTypeApplyResult.Succeeded)
+            throw new InvalidOperationException(credTypeApplyResult.UserMessage ?? "自动登录加密方式初始化失败");
+
+        if (credTypeApplyResult.WasFallbackApplied)
+        {
+            context.Settings.CredType = credTypeApplyResult.AppliedCredType;
+
+            if (credTypeApplyResult.ShouldDisableAutoLogin)
+                context.Settings.AutologinEnabled = false;
+        }
     }
 
     private static void EnsureSettingsInitialized(StartupContext context)

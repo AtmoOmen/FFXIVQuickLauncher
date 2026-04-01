@@ -1,5 +1,6 @@
 using System.Windows.Threading;
 using XIVLauncher.Accounts;
+using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Settings;
 
@@ -15,4 +16,5 @@ public class StartupContext
     public bool                IsRestartingForUpdate { get; set; }
     public bool                InjectMode            { get; set; }
     public bool                IsDisableAutologin    { get; set; }
+    public CredTypeApplyResult? CredTypeApplyResult  { get; set; }
 }

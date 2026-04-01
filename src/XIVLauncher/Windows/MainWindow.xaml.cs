@@ -107,6 +107,7 @@ public partial class MainWindow : Window
         Model.IsFastLogin = App.Settings.FastLogin;
 
         var savedAccount = _accountManager.CurrentAccount;
+        var hasUnavailableSecrets = _accountManager.HasUnavailableSecrets(savedAccount);
 
         if (App.GlobalIsDisableAutologin)
         {
@@ -114,7 +115,13 @@ public partial class MainWindow : Window
             App.Settings.AutologinEnabled = false;
         }
 
-        if (App.Settings.AutologinEnabled && savedAccount != null && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        if (hasUnavailableSecrets && App.Settings.AutologinEnabled)
+        {
+            Log.Information("当前账号存在本会话不可读的旧密文，已禁用自动登录");
+            App.Settings.AutologinEnabled = false;
+        }
+
+        if (App.Settings.AutologinEnabled && savedAccount != null && !hasUnavailableSecrets && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
         {
             Log.Information("Engaging Autologin...");
 
@@ -190,6 +197,8 @@ public partial class MainWindow : Window
 
         Show();
         Activate();
+
+        ShowCredTypeRecoveryMessage();
 
         _everShown = true;
     }
@@ -459,6 +468,8 @@ public partial class MainWindow : Window
         if (saveAsCurrent)
             _accountManager.CurrentAccount = account;
 
+        var hasUnavailableSecrets = _accountManager.HasUnavailableSecrets(account);
+
         Model.Username = account.UserName;
         //Model.IsOtp = account.UseOtp;
         Model.IsFastLogin      = account.AutoLogin;
@@ -468,12 +479,15 @@ public partial class MainWindow : Window
         switch (account.AccountType)
         {
             case XIVAccountType.Sdo:
-                if (account.Password is not null)
+                if (!string.IsNullOrWhiteSpace(account.Password))
                 {
                     LoginTypeSelection.SelectedValue = LoginType.Static;
 
-                    // Make users happy by not showing their password
-                    LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                    if (!hasUnavailableSecrets)
+                    {
+                        // Make users happy by not showing their password
+                        LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                    }
                 }
                 else
                     LoginTypeSelection.SelectedValue = LoginType.Slide;
@@ -482,7 +496,9 @@ public partial class MainWindow : Window
 
             case XIVAccountType.WeGame:
                 LoginTypeSelection.SelectedValue = LoginType.WeGameToken;
-                LoginPassword.Password           = MainWindowViewModel.PRESUDO_PASSWORD;
+
+                if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.AutoLoginSessionKey))
+                    LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
                 break;
 
             case XIVAccountType.WeGameSID:
@@ -495,6 +511,19 @@ public partial class MainWindow : Window
     {
         if (DataContext != null)
             ((MainWindowViewModel)DataContext).Password = ((PasswordBox)sender).Password;
+    }
+
+    private void ShowCredTypeRecoveryMessage()
+    {
+        var result = App.StartupContext.CredTypeApplyResult;
+        if (result is not { WasFallbackApplied: true } || string.IsNullOrWhiteSpace(result.UserMessage))
+            return;
+
+        CustomMessageBox.Builder
+                        .NewFrom(result.UserMessage)
+                        .WithCaption("自动登录加密方式已恢复")
+                        .WithParentWindow(this)
+                        .Show();
     }
 
     private void BannerDot_OnChecked(object sender, RoutedEventArgs e)

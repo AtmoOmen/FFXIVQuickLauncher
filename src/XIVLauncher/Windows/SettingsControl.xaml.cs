@@ -28,9 +28,9 @@ public partial class SettingsControl
     public void ReloadSettings() =>
         ViewModel.ReloadFromSettings();
 
-    private void AcceptButton_Click(object sender, RoutedEventArgs e)
+    private async void AcceptButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!ViewModel.SaveToSettings())
+        if (!await ViewModel.SaveToSettingsAsync())
             return;
 
         Transitioner.MoveNextCommand.Execute(null, null);

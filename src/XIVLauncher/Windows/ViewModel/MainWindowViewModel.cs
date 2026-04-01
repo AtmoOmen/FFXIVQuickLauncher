@@ -230,6 +230,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         var secret         = string.Empty;
         var savedAccount   = FindSavedAccount(loginType, username);
         var accountType    = ResolveAccountType(loginType, savedAccount);
+        var hasUnavailableSavedSecrets = AccountManager.HasUnavailableSecrets(savedAccount);
 
         try
         {
@@ -240,7 +241,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 case LoginType.Static:
                     if (!inputPassword.IsNullOrEmpty())
                         secret = inputPassword;
-                    else if (savedAccount?.Password is { Length: > 0 } savedPassword)
+                    else if (!hasUnavailableSavedSecrets && savedAccount?.Password is { Length: > 0 } savedPassword)
                         secret = await AccountManager.Decrypt(savedPassword);
 
                     ArgumentException.ThrowIfNullOrEmpty(username, "静态登录用户名");
@@ -250,7 +251,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 case LoginType.WeGameSID:
                     doingAutoLogin = true;
-                    if (!readWeGameInfo && savedAccount?.TestSID is { Length: > 0 } testSid)
+                    if (!readWeGameInfo && !hasUnavailableSavedSecrets && savedAccount?.TestSID is { Length: > 0 } testSid)
                         secret = await AccountManager.Decrypt(testSid);
 
                     readWeGameInfo = username.IsNullOrEmpty() || secret.IsNullOrEmpty();
@@ -275,7 +276,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     break;
 
                 case LoginType.WeGameToken:
-                    if (inputPassword.IsNullOrEmpty() && savedAccount?.AutoLoginSessionKey is { Length: > 0 } autoLoginSessionKey)
+                    if (!hasUnavailableSavedSecrets && inputPassword.IsNullOrEmpty() && savedAccount?.AutoLoginSessionKey is { Length: > 0 } autoLoginSessionKey)
                     {
                         secret         = await AccountManager.CredProvider.Decrypt(autoLoginSessionKey);
                         finalLoginType = LoginType.AutoLoginSession;
@@ -291,7 +292,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     break;
 
                 case LoginType.Slide:
-                    if (doingAutoLogin && savedAccount?.AutoLoginSessionKey is { Length: > 0 } slideAutoLoginSessionKey)
+                    if (!hasUnavailableSavedSecrets && doingAutoLogin && savedAccount?.AutoLoginSessionKey is { Length: > 0 } slideAutoLoginSessionKey)
                     {
                         secret         = await AccountManager.Decrypt(slideAutoLoginSessionKey);
                         finalLoginType = LoginType.AutoLoginSession;

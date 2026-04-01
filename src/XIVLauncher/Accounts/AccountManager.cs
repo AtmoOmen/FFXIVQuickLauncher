@@ -24,6 +24,7 @@ namespace XIVLauncher.Accounts;
 public class AccountManager
 {
     public const int DEFAULT_DEVICE_PROFILE_ROTATION_DAYS = 7;
+    private const CredType DEFAULT_CRED_TYPE = CredType.WindowsCredManager;
 
     public ObservableCollection<XIVAccount> Accounts;
 
@@ -33,7 +34,11 @@ public class AccountManager
         set => _setting.CurrentAccountId = value.Id;
     }
 
-    public ICredProvider CredProvider { get; private set; }
+    public ICredProvider CredProvider { get; private set; } = null!;
+
+    public CredType CurrentCredType { get; private set; } = DEFAULT_CRED_TYPE;
+
+    public bool HasUnavailableSavedSecrets => unavailableSavedSecretAccountIds.Count != 0;
 
     private static readonly string                SharedDeviceProfilePath        = Path.Combine(Paths.RoamingPath, "sharedDeviceProfile.json");
     private static readonly JsonSerializerOptions SharedDeviceProfileJsonOptions = new() { WriteIndented = true };
@@ -45,9 +50,9 @@ public class AccountManager
     private readonly CredData CredData;
 
     private static StoredDeviceProfileSnapshot? sharedDeviceProfile;
+    private readonly HashSet<string> unavailableSavedSecretAccountIds = [];
 
     private SQLiteConnection? db;
-    private CredType?         CurrentCredType;
 
     public AccountManager(ILauncherSettingsV3 setting)
     {
@@ -59,7 +64,6 @@ public class AccountManager
         CredData = new CredData("XIVLauncherCN", credPath);
 
         Accounts.CollectionChanged += Accounts_CollectionChanged;
-        ChangeCredType(setting.CredType.GetValueOrDefault(CredType.WindowsCredManager));
     }
 
     public static int NormalizeDeviceProfileRotationDays(int rotationDays) =>
@@ -117,81 +121,180 @@ public class AccountManager
         return null;
     }
 
-    public async void ChangeCredType(CredType? type)
+    public Task<CredTypeApplyResult> InitializeCredProviderAsync(CredType? requestedType) =>
+        ChangeCredTypeAsync(requestedType.GetValueOrDefault(DEFAULT_CRED_TYPE), true);
+
+    public async Task<bool> IsCredTypeSupportedAsync(CredType type) =>
+        await GetCredProvider(type).IsSupported();
+
+    public async Task<CredTypeApplyResult> ChangeCredTypeAsync(CredType requestedType, bool isStartup = false)
     {
-        if (type == CurrentCredType)
-            return;
-        var oldCred     = CredProvider;
-        var newCred     = GetCredProvider(type.Value);
-        var isSupported = await newCred.IsSupported();
+        if (CredProvider != null && requestedType == CurrentCredType)
+        {
+            return new CredTypeApplyResult
+            (
+                true,
+                requestedType,
+                CurrentCredType,
+                HasUnavailableSavedSecrets: HasUnavailableSavedSecrets
+            );
+        }
+
+        var previousCredType = CurrentCredType;
+        var oldCred          = CredProvider;
+        var newCred          = GetCredProvider(requestedType);
+        var isSupported      = await newCred.IsSupported();
+
         if (!isSupported)
-            throw new Exception($"Cred type: {type} not supported");
-
-        if (oldCred != null)
         {
-            var testText  = EncryptionHelper.GetRandomHexString(32);
-            var encrypted = await newCred.Encrypt(testText);
-            var decrypted = await newCred.Decrypt(encrypted);
-            if (testText != decrypted)
-                throw new Exception($"Cred type: {type} test failed");
+            if (isStartup && requestedType == CredType.WindowsHello)
+                return await ApplyStartupFallbackAsync(requestedType);
+
+            var unsupportedMessage = requestedType == CredType.WindowsHello
+                                         ? "当前设备不支持 Windows Hello，请改用系统凭据管理器。"
+                                         : $"当前设备不支持 {GetCredTypeDisplayName(requestedType)}。";
+
+            Log.Warning("凭据类型 {CredType} 当前设备不可用", GetCredTypeDisplayName(requestedType));
+
+            return new CredTypeApplyResult
+            (
+                false,
+                requestedType,
+                CurrentCredType,
+                HasUnavailableSavedSecrets: HasUnavailableSavedSecrets,
+                UserMessage: unsupportedMessage
+            );
         }
 
-        if (oldCred == null)
+        try
         {
-            CurrentCredType = type;
+            if (oldCred != null)
+            {
+                var testText  = EncryptionHelper.GetRandomHexString(32);
+                var encrypted = await newCred.Encrypt(testText);
+                var decrypted = await newCred.Decrypt(encrypted);
+                if (testText != decrypted)
+                    throw new Exception($"Cred type: {requestedType} test failed");
+            }
+
+            if (oldCred == null)
+            {
+                CurrentCredType = requestedType;
+                CredProvider    = newCred;
+
+                return new CredTypeApplyResult
+                (
+                    true,
+                    requestedType,
+                    requestedType,
+                    HasUnavailableSavedSecrets: HasUnavailableSavedSecrets
+                );
+            }
+
+            Log.Information
+            (
+                "开始切换自动登录加密方式：{OldCredType} -> {NewCredType}",
+                GetCredTypeDisplayName(previousCredType),
+                GetCredTypeDisplayName(requestedType)
+            );
+
+            foreach (var item in Accounts)
+            {
+                if (HasUnavailableSecrets(item))
+                {
+                    Log.Warning("账号 {AccountId} 存在当前会话不可读的旧密文，已跳过迁移", item.Id);
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.Password))
+                {
+                    try
+                    {
+                        var password = await oldCred.Decrypt(item.Password);
+                        item.Password = await newCred.Encrypt(password);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "迁移账号 {AccountId} 的登录密码失败", item.Id);
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.AutoLoginSessionKey))
+                {
+                    try
+                    {
+                        var sessionKey = await oldCred.Decrypt(item.AutoLoginSessionKey);
+                        item.AutoLoginSessionKey = await newCred.Encrypt(sessionKey);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "迁移账号 {AccountId} 的自动登录密钥失败", item.Id);
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.TestSID))
+                {
+                    try
+                    {
+                        var testSid = await oldCred.Decrypt(item.TestSID);
+                        item.TestSID = await newCred.Encrypt(testSid);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "迁移账号 {AccountId} 的 WeGame SID 失败", item.Id);
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.NSessionId))
+                {
+                    try
+                    {
+                        var nSessionId = await oldCred.Decrypt(item.NSessionId);
+                        item.NSessionId = await newCred.Encrypt(nSessionId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "迁移账号 {AccountId} 的 NSessionId 失败", item.Id);
+                    }
+                }
+            }
+
+            CurrentCredType = requestedType;
             CredProvider    = newCred;
-            return;
+            Save();
+
+            Log.Information
+            (
+                "自动登录加密方式切换完成：{OldCredType} -> {NewCredType}",
+                GetCredTypeDisplayName(previousCredType),
+                GetCredTypeDisplayName(requestedType)
+            );
+
+            return new CredTypeApplyResult
+            (
+                true,
+                requestedType,
+                requestedType,
+                HasUnavailableSavedSecrets: HasUnavailableSavedSecrets
+            );
         }
-
-        Log.Information($"Change cred type from {CurrentCredType} to {type}");
-
-        foreach (var item in Accounts)
+        catch (Exception ex)
         {
-            if (item.AutoLoginSessionKey != null)
-            {
-                try
-                {
-                    var sessionKey = await oldCred.Decrypt(item.AutoLoginSessionKey);
-                    item.AutoLoginSessionKey = await newCred.Encrypt(sessionKey);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"Failed to change {item.Id}.AutoLoginSessionKey");
-                }
-            }
+            Log.Error(ex, "切换自动登录加密方式失败：{CredType}", GetCredTypeDisplayName(requestedType));
 
-            if (item.TestSID != null)
-            {
-                try
-                {
-                    var testSid = await oldCred.Decrypt(item.TestSID);
-                    item.TestSID = await newCred.Encrypt(testSid);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"Failed to change {item.Id}.TestSID");
-                }
-            }
-
-            if (item.NSessionId != null)
-            {
-                try
-                {
-                    var nSessionId = await oldCred.Decrypt(item.NSessionId);
-                    item.NSessionId = await newCred.Encrypt(nSessionId);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"Failed to change {item.Id}.NSessionId");
-                }
-            }
+            return new CredTypeApplyResult
+            (
+                false,
+                requestedType,
+                CurrentCredType,
+                HasUnavailableSavedSecrets: HasUnavailableSavedSecrets,
+                UserMessage: $"切换到 {GetCredTypeDisplayName(requestedType)} 失败，请稍后重试。"
+            );
         }
-
-        CurrentCredType = type;
-        CredProvider    = newCred;
-        Log.Information($"Changed cred type from {CurrentCredType} to {type} successfully");
-        Save();
     }
+
+    public bool HasUnavailableSecrets(XIVAccount? account) =>
+        account != null && unavailableSavedSecretAccountIds.Contains(account.Id);
 
     public void AddAccount(XIVAccount account)
     {
@@ -222,6 +325,8 @@ public class AccountManager
         }
         else
             Accounts.Add(account);
+
+        ClearUnavailableSecrets(account.Id);
     }
 
     public XIVAccount? FindAccount(string? userName, XIVAccountType accountType)
@@ -376,6 +481,7 @@ public class AccountManager
     public void RemoveAccount(XIVAccount account)
     {
         account.Password = string.Empty;
+        ClearUnavailableSecrets(account.Id);
         Accounts.Remove(account);
 
         lock (syncRoot)
@@ -392,22 +498,79 @@ public class AccountManager
         }
     }
 
-    private ICredProvider GetCredProvider(CredType type)
-    {
-        switch (type)
+    public static string GetCredTypeDisplayName(CredType type) =>
+        type switch
         {
-            case CredType.WindowsCredManager:
-                return new CredentialManager(CredData);
+            CredType.NoEncryption       => "无加密",
+            CredType.WindowsCredManager => "系统凭据管理器",
+            CredType.WindowsHello       => "Windows Hello",
+            _                           => type.ToString()
+        };
 
-            case CredType.WindowsHello:
-                return new WindowsHello(CredData);
+    private async Task<CredTypeApplyResult> ApplyStartupFallbackAsync(CredType requestedType)
+    {
+        const CredType fallbackType = DEFAULT_CRED_TYPE;
 
-            case CredType.NoEncryption:
-                return new NoCred(CredData);
-        }
+        var fallbackCred       = GetCredProvider(fallbackType);
+        var fallbackSupported  = await fallbackCred.IsSupported();
+        if (!fallbackSupported)
+            throw new InvalidOperationException($"默认凭据类型 {fallbackType} 当前不可用");
 
-        return null;
+        CredProvider    = fallbackCred;
+        CurrentCredType = fallbackType;
+        MarkUnavailableSecretsFromExistingAccounts();
+
+        var userMessage = "当前设备不支持 Windows Hello，已自动切换为系统凭据管理器，并关闭自动登录。此前保存的密码或自动登录凭据需要重新输入后再保存。";
+
+        Log.Warning
+        (
+            "当前设备不支持 {RequestedCredType}，已自动切换为 {FallbackCredType}，并关闭自动登录",
+            GetCredTypeDisplayName(requestedType),
+            GetCredTypeDisplayName(fallbackType)
+        );
+
+        return new CredTypeApplyResult
+        (
+            true,
+            requestedType,
+            fallbackType,
+            WasFallbackApplied: true,
+            ShouldDisableAutoLogin: true,
+            HasUnavailableSavedSecrets: HasUnavailableSavedSecrets,
+            UserMessage: userMessage
+        );
     }
+
+    private void MarkUnavailableSecretsFromExistingAccounts()
+    {
+        unavailableSavedSecretAccountIds.Clear();
+
+        foreach (var account in Accounts.Where(HasStoredSecrets))
+            unavailableSavedSecretAccountIds.Add(account.Id);
+    }
+
+    private void ClearUnavailableSecrets(string? accountId)
+    {
+        if (string.IsNullOrWhiteSpace(accountId))
+            return;
+
+        unavailableSavedSecretAccountIds.Remove(accountId);
+    }
+
+    private static bool HasStoredSecrets(XIVAccount account) =>
+        !string.IsNullOrWhiteSpace(account.Password)
+        || !string.IsNullOrWhiteSpace(account.AutoLoginSessionKey)
+        || !string.IsNullOrWhiteSpace(account.TestSID)
+        || !string.IsNullOrWhiteSpace(account.NSessionId);
+
+    private ICredProvider GetCredProvider(CredType type) =>
+        type switch
+        {
+            CredType.WindowsCredManager => new CredentialManager(CredData),
+            CredType.WindowsHello       => new WindowsHello(CredData),
+            CredType.NoEncryption       => new NoCred(CredData),
+            _                           => throw new ArgumentOutOfRangeException(nameof(type), type, "未知的凭据类型")
+        };
 
     private void Accounts_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
         Save();

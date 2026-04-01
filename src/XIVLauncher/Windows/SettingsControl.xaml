@@ -111,15 +111,20 @@
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
                         Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="自动登录密码的加密方式" />
+                        Text="自动登录密码加密方式" />
                     <ComboBox
                         x:Name="AccountStorageEncryptCombox"
                         Margin="0,3,0,0"
                         Foreground="{DynamicResource MaterialDesignBody}"
-                        SelectedIndex="{Binding CredTypeIndex}">
-                        <ComboBoxItem Content="无加密（不推荐）" />
-                        <ComboBoxItem Content="系统凭据管理器" />
-                        <ComboBoxItem Content="Windows Hello" />
+                        DisplayMemberPath="Display"
+                        ItemsSource="{Binding CredTypeOptions}"
+                        SelectedValue="{Binding SelectedCredType}"
+                        SelectedValuePath="Value">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
                     </ComboBox>
                 </StackPanel>
             </TabItem>

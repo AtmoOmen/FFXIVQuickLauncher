@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json.Linq;
+using XIVLauncher.Accounts;
 using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
@@ -28,6 +29,8 @@ public sealed class SettingsControlViewModel : ViewModelBase
     public List<GenericCombinedData<LauncherLanguage>> LauncherLanguageList { get; }
 
     public ObservableCollection<AddonEntry> AddonEntries { get; } = [];
+
+    public ObservableCollection<CredTypeOptionItem> CredTypeOptions { get; } = [];
 
     public ICommand IdentifyTokenCommand { get; }
 
@@ -157,11 +160,11 @@ public sealed class SettingsControlViewModel : ViewModelBase
         set => SetProperty(ref field, value);
     }
 
-    public int CredTypeIndex
+    public CredType SelectedCredType
     {
         get;
         set => SetProperty(ref field, value);
-    }
+    } = CredType.WindowsCredManager;
 
     public bool UseEntryPointLoadMethod
     {
@@ -251,6 +254,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         OpenAdvancedSettingsCommand = new SyncCommand(_ => OpenAdvancedSettings());
         OpenChangelogCommand        = new SyncCommand(_ => OpenChangelog());
 
+        InitializeCredTypeOptions();
         ReloadFromSettings();
     }
 
@@ -277,14 +281,15 @@ public sealed class SettingsControlViewModel : ViewModelBase
         DpiAwarenessIndex             = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware);
         VersionLabelText              = $"XIVLauncher - v{AppUtil.GetAssemblyVersion()} - {AppUtil.GetGitHash()} - {Environment.Version}";
         SpeedLimitMb                  = (decimal)App.Settings.SpeedLimitBytes / BytesToMb;
-        CredTypeIndex                 = (int)App.Settings.CredType.GetValueOrDefault(CredType.WindowsCredManager);
+        SelectedCredType             = App.AccountManager.CurrentCredType;
         GitHubToken                   = App.Settings.GitHubToken ?? string.Empty;
 
         ReplaceAddonEntries(App.Settings.AddonList ?? []);
         RefreshGamePathWarning();
+        _ = RefreshCredTypeOptionsAsync();
     }
 
-    public bool SaveToSettings()
+    public async Task<bool> SaveToSettingsAsync()
     {
         if (string.Equals(GamePath, PatchPath, StringComparison.OrdinalIgnoreCase))
         {
@@ -312,8 +317,27 @@ public sealed class SettingsControlViewModel : ViewModelBase
         App.Settings.DpiAwareness            = (DpiAwareness)DpiAwarenessIndex;
         App.Settings.SpeedLimitBytes         = (long)((SpeedLimitMb ?? 0) * BytesToMb);
         App.Settings.GitHubToken             = GitHubToken;
-        App.Settings.CredType                = (CredType)CredTypeIndex;
-        App.AccountManager.ChangeCredType(App.Settings.CredType);
+
+        var requestedCredType   = SelectedCredType;
+        var credTypeApplyResult = await App.AccountManager.ChangeCredTypeAsync(requestedCredType);
+        if (!credTypeApplyResult.Succeeded)
+        {
+            SelectedCredType = App.AccountManager.CurrentCredType;
+            await RefreshCredTypeOptionsAsync();
+            _dialogService.ShowMessage
+            (
+                credTypeApplyResult.UserMessage ?? $"切换到 {AccountManager.GetCredTypeDisplayName(requestedCredType)} 失败，请稍后重试。",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                false,
+                false
+            );
+            return false;
+        }
+
+        App.Settings.CredType = credTypeApplyResult.AppliedCredType;
+        SelectedCredType      = credTypeApplyResult.AppliedCredType;
 
         SettingsSaved?.Invoke(this, EventArgs.Empty);
         return true;
@@ -532,6 +556,43 @@ public sealed class SettingsControlViewModel : ViewModelBase
         return gamePath;
     }
 
+    private void InitializeCredTypeOptions() =>
+        ReplaceCredTypeOptions(BuildCredTypeOptions(true));
+
+    private async Task RefreshCredTypeOptionsAsync()
+    {
+        var isWindowsHelloSupported = true;
+
+        try
+        {
+            isWindowsHelloSupported = await App.AccountManager.IsCredTypeSupportedAsync(CredType.WindowsHello);
+        }
+        catch
+        {
+            isWindowsHelloSupported = true;
+        }
+
+        ReplaceCredTypeOptions(BuildCredTypeOptions(isWindowsHelloSupported));
+
+        if (!CredTypeOptions.Any(option => option.Value == SelectedCredType && option.IsEnabled))
+            SelectedCredType = App.AccountManager.CurrentCredType;
+    }
+
+    private void ReplaceCredTypeOptions(IEnumerable<CredTypeOptionItem> options)
+    {
+        CredTypeOptions.Clear();
+
+        foreach (var option in options)
+            CredTypeOptions.Add(option);
+    }
+
+    private static IReadOnlyList<CredTypeOptionItem> BuildCredTypeOptions(bool isWindowsHelloSupported) =>
+    [
+        new(CredType.NoEncryption,       "无加密（不推荐）",                                             true),
+        new(CredType.WindowsCredManager, "系统凭据管理器",                                               true),
+        new(CredType.WindowsHello,       isWindowsHelloSupported ? "Windows Hello" : "Windows Hello（当前设备不可用）", isWindowsHelloSupported)
+    ];
+
     private void ReplaceAddonEntries(IEnumerable<AddonEntry> entries)
     {
         AddonEntries.Clear();
@@ -562,5 +623,12 @@ public sealed class SettingsControlViewModel : ViewModelBase
     (
         IntegrityCheck.CompareResult CompareResult,
         string                       ReportPath
+    );
+
+    public sealed record CredTypeOptionItem
+    (
+        CredType Value,
+        string   Display,
+        bool     IsEnabled
     );
 }
