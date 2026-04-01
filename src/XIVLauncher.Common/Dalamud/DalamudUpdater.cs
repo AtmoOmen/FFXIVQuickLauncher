@@ -20,9 +20,7 @@ namespace XIVLauncher.Common.Dalamud;
 public class DalamudUpdater
 {
     public DirectoryInfo Runtime { get; }
-
-    public static string RuntimeVersion = string.Empty;
-
+    
     public        DownloadState           State               { get; private set; } = DownloadState.Unknown;
     public        Exception?              EnsurementException { get; private set; }
     public        FileInfo?               RunnerOverride      { get; set; }
@@ -37,15 +35,27 @@ public class DalamudUpdater
         private set;
     }
 
+    // 运行时版本
+    private const string RUNTIME_INFO_URL = 
+        "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
+    
+    // 运行时下载源
+    private const string RUNTIME_SOURCE_NUGET_URL  = "https://api.nuget.org/v3-flatcontainer";
+    private const string RUNTIME_SOURCE_HUAWEI_URL = "https://repo.huaweicloud.com/artifactory/api/nuget/v3/nuget-remote";
+    
+    // Dalmaud 发布信息
+    private const string RELEASE_INFO_URL =
+        "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/Dalamud-DailyRoutines/Dalamud/releases/latest/data.json";
+    
+    private static string runtimeVersion = string.Empty;
+
     private readonly DirectoryInfo addonDirectory;
     private readonly DirectoryInfo assetDirectory;
     private readonly string?       githubToken;
 
     private readonly TimeSpan   defaultTimeout = TimeSpan.FromMinutes(1);
     private readonly HttpClient httpClient;
-
-    private bool forceProxy;
-
+    
     public DalamudUpdater
     (
         DirectoryInfo addonDirectory,
@@ -77,13 +87,11 @@ public class DalamudUpdater
             httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
     }
 
-    public void Run(bool overrideForceProxy = false)
+    public void Run()
     {
-        Log.Information("[DUPDATE] 启动中... (是否强制使用代理: {ForceProxy})", overrideForceProxy);
+        Log.Information("[DUPDATE] 启动 Dalamud 更新器中...");
         State = DownloadState.Unknown;
-
-        forceProxy = overrideForceProxy;
-
+        
         Task.Run
         (async () =>
             {
@@ -103,20 +111,12 @@ public class DalamudUpdater
                     {
                         Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries, MAX_TRIES);
                         EnsurementException = ex;
-                        forceProxy          = false;
                     }
                 }
 
                 State = isUpdated ? DownloadState.Done : DownloadState.NoIntegrity;
             }
         );
-    }
-
-    public enum DownloadState
-    {
-        Unknown,
-        Done,
-        NoIntegrity // fail with error message
     }
 
     #region Steps
@@ -174,9 +174,9 @@ public class DalamudUpdater
 
         var runtimePaths = new DirectoryInfo[]
         {
-            new(Path.Combine(Runtime.FullName, "host",   "fxr",                          RuntimeVersion)),
-            new(Path.Combine(Runtime.FullName, "shared", "Microsoft.NETCore.App",        RuntimeVersion)),
-            new(Path.Combine(Runtime.FullName, "shared", "Microsoft.WindowsDesktop.App", RuntimeVersion))
+            new(Path.Combine(Runtime.FullName, "host",   "fxr",                          runtimeVersion)),
+            new(Path.Combine(Runtime.FullName, "shared", "Microsoft.NETCore.App",        runtimeVersion)),
+            new(Path.Combine(Runtime.FullName, "shared", "Microsoft.WindowsDesktop.App", runtimeVersion))
         };
 
         Log.Verbose
@@ -221,7 +221,7 @@ public class DalamudUpdater
 
     private async Task UpdateRuntimeAsync(DirectoryInfo[] runtimePaths)
     {
-        Log.Information("[DUPDATE] 开始检查 .NET 运行时 {Version} 完整性", RuntimeVersion);
+        Log.Information("[DUPDATE] 开始检查 .NET 运行时 {Version} 完整性", runtimeVersion);
 
         if (!Runtime.Exists)
         {
@@ -231,23 +231,23 @@ public class DalamudUpdater
 
         var versionFile        = new FileInfo(Path.Combine(Runtime.FullName, "version"));
         var localVersion       = GetLocalRuntimeVersion(versionFile);
-        var runtimeNeedsUpdate = localVersion != RuntimeVersion;
+        var runtimeNeedsUpdate = localVersion != runtimeVersion;
 
         if (runtimePaths.All(p => p.Exists) && !runtimeNeedsUpdate)
         {
-            Log.Information("[DUPDATE] .NET 运行时已是最新版本: {Version}", RuntimeVersion);
+            Log.Information("[DUPDATE] .NET 运行时已是最新版本: {Version}", runtimeVersion);
             return;
         }
 
-        Log.Information("[DUPDATE] 需要更新 .NET 运行时: 本地={LocalVer}, 目标={RemoteVer}", localVersion, RuntimeVersion);
+        Log.Information("[DUPDATE] 需要更新 .NET 运行时: 本地={LocalVer}, 目标={RemoteVer}", localVersion, runtimeVersion);
         SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Runtime);
 
         try
         {
             Log.Information("[DUPDATE] 开始下载 .NET 运行时");
-            await DownloadRuntime(Runtime, RuntimeVersion).ConfigureAwait(false);
+            await DownloadRuntime(Runtime, runtimeVersion).ConfigureAwait(false);
 
-            File.WriteAllText(versionFile.FullName, RuntimeVersion);
+            File.WriteAllText(versionFile.FullName, runtimeVersion);
             Log.Information("[DUPDATE] .NET 运行时更新完成");
         }
         catch (Exception ex)
@@ -325,20 +325,14 @@ public class DalamudUpdater
     {
         try
         {
-            var runtimeResponse = await httpClient.GetAsync
-                                  (
-                                      "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/refs/heads/master/runtimeInfo"
-                                  );
+            var runtimeResponse = await httpClient.GetAsync(RUNTIME_INFO_URL);
             runtimeResponse.EnsureSuccessStatusCode();
-            RuntimeVersion = await runtimeResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-            RuntimeVersion = RuntimeVersion.Trim().Trim('\n');
+            runtimeVersion = await runtimeResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+            runtimeVersion = runtimeVersion.Trim().Trim('\n');
 
-            Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", RuntimeVersion);
+            Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
-            var response = await httpClient.GetAsync
-                           (
-                               "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json"
-                           );
+            var response = await httpClient.GetAsync(RELEASE_INFO_URL);
             response.EnsureSuccessStatusCode();
 
             var       json    = await response.Content.ReadAsStringAsync();
@@ -394,14 +388,12 @@ public class DalamudUpdater
 
     private async Task DownloadDalamud(DirectoryInfo addonPath)
     {
-        const string REPO_API = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/AtmoOmen/Dalamud/releases/latest/data.json";
-
         if (addonPath.Exists) addonPath.Delete(true);
         addonPath.Create();
 
         try
         {
-            var response = await httpClient.GetAsync(REPO_API);
+            var response = await httpClient.GetAsync(RELEASE_INFO_URL);
             response.EnsureSuccessStatusCode();
 
             var       json    = await response.Content.ReadAsStringAsync();
@@ -458,9 +450,7 @@ public class DalamudUpdater
         try
         {
             // 微软 .NET 运行时下载链接
-            var packageBaseAddress = await IsGoogleReachableAsync()
-                                         ? "https://api.nuget.org/v3-flatcontainer"
-                                         : "https://repo.huaweicloud.com/artifactory/api/nuget/v3/nuget-remote";
+            var packageBaseAddress = await IsGoogleReachableAsync() ? RUNTIME_SOURCE_NUGET_URL : RUNTIME_SOURCE_HUAWEI_URL;
 
             var dotnetUrl  = $"{packageBaseAddress}/microsoft.netcore.app.runtime.win-x64/{version}/microsoft.netcore.app.runtime.win-x64.{version}.nupkg";
             var desktopUrl = $"{packageBaseAddress}/microsoft.windowsdesktop.app.runtime.win-x64/{version}/microsoft.windowsdesktop.app.runtime.win-x64.{version}.nupkg";
@@ -604,9 +594,6 @@ public class DalamudUpdater
 
     public async Task DownloadFile(string url, string path, TimeSpan timeout)
     {
-        if (forceProxy && url.Contains("/File/Get/"))
-            url = url.Replace("/File/Get/", "/File/GetProxy/");
-
         using var downloader = new HttpClientDownloadWithProgress(url, path);
         downloader.ProgressChanged += ReportOverlayProgress;
 
@@ -729,6 +716,13 @@ public class DalamudUpdater
         Overlay!.ReportProgress(size, downloaded, progress);
 
     #endregion
+    
+    public enum DownloadState
+    {
+        Unknown,
+        Done,
+        NoIntegrity // fail with error message
+    }
 }
 
 public class DalamudIntegrityException
