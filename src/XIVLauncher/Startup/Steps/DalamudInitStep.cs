@@ -41,7 +41,7 @@ public class DalamudInitStep
             while (context.DalamudUpdater.Overlay == null)
                 Thread.Yield();
 
-            context.DalamudUpdater.Run(false);
+            context.DalamudUpdater.Run();
         }
         catch (Exception ex)
         {

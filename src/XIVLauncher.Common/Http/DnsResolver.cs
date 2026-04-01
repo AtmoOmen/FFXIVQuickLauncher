@@ -9,11 +9,11 @@ using Serilog;
 
 namespace XIVLauncher.Common.Http;
 
-public static class DnsResolver
+public static class DNSResolver
 {
-    private const string HijackCname = "cf.951886.xyz";
+    private const string HIJACK_CNAME = "cf.951886.xyz";
 
-    private const AddressFamily ForcedAddressFamily = AddressFamily.InterNetwork;
+    private const AddressFamily FORCED_ADDRESS_FAMILY = AddressFamily.InterNetwork;
 
     private static readonly List<CidrRange> CachedRanges;
 
@@ -36,7 +36,7 @@ public static class DnsResolver
     }
 
     // From https://www.cloudflare.com/ips/
-    static DnsResolver()
+    static DNSResolver()
     {
         var rawRanges = new List<(string Ip, int Prefix)>
         {
@@ -65,13 +65,13 @@ public static class DnsResolver
 
     public static async Task<List<IPAddress>> GetSortedAddressesAsync(string hostname, CancellationToken token)
     {
-        var dnsRecords = await Dns.GetHostAddressesAsync(hostname, ForcedAddressFamily, token);
+        var dnsRecords = await Dns.GetHostAddressesAsync(hostname, FORCED_ADDRESS_FAMILY, token);
 
-        if (dnsRecords.Length > 0 && !string.IsNullOrEmpty(HijackCname) && dnsRecords.All(IsCloudflareIp))
+        if (dnsRecords.Length > 0 && !string.IsNullOrEmpty(HIJACK_CNAME) && dnsRecords.All(IsCloudflareIp))
         {
             try
             {
-                var cnameRecords = await Dns.GetHostAddressesAsync(HijackCname, ForcedAddressFamily, token);
+                var cnameRecords = await Dns.GetHostAddressesAsync(HIJACK_CNAME, FORCED_ADDRESS_FAMILY, token);
                 var selectedCnameIps = cnameRecords
                                        .Where(IsCloudflareIp)
                                        .Take(3)
@@ -89,7 +89,7 @@ public static class DnsResolver
                     Log.Warning
                     (
                         "CNAME {_hijackCname} resolved to empty or invalid IPs for {Hostname}",
-                        HijackCname,
+                        HIJACK_CNAME,
                         hostname
                     );
                 }
@@ -100,7 +100,7 @@ public static class DnsResolver
                 (
                     ex,
                     "Failed to resolve CNAME {_hijackCname} for hijack of {Hostname}",
-                    HijackCname,
+                    HIJACK_CNAME,
                     hostname
                 );
             }

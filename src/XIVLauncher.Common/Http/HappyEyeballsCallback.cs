@@ -16,7 +16,7 @@ public static class HappyEyeballsCallback
 
     public static async ValueTask<Stream> ConnectCallback(SocketsHttpConnectionContext context, CancellationToken token)
     {
-        var sortedRecords = await DnsResolver.GetSortedAddressesAsync(context.DnsEndPoint.Host, token);
+        var sortedRecords = await DNSResolver.GetSortedAddressesAsync(context.DnsEndPoint.Host, token);
 
         var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(token);
         var tasks       = new List<Task<NetworkStream>>();
