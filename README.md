@@ -72,8 +72,8 @@ dotnet build .\src\XIVLauncher.sln -c Release
 
 - [FFXIVQuickLauncher](https://github.com/AtmoOmen/FFXIVQuickLauncher): 启动器本体。
 - [XLCNSoilAssets](https://github.com/Dalamud-DailyRoutines/XLCNSoilAssets): 启动器与补丁相关资源。
-- [Dalamud (Soil)](https://github.com/AtmoOmen/Dalamud): Dalamud 本体分支。
-- [DalamudAssets](https://github.com/AtmoOmen/DalamudAssets): Dalamud 相关静态资源。
+- [Dalamud (Soil)](https://github.com/Dalamud-DailyRoutines/Dalamud): Dalamud 本体分支。
+- [DalamudAssets](https://github.com/Dalamud-DailyRoutines/DalamudAssets): Dalamud 相关静态资源。
 - [PluginDistD17](https://github.com/Dalamud-DailyRoutines/PluginDistD17): 插件分发仓库。
 
 ## 免责声明
