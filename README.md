@@ -97,5 +97,5 @@ dotnet build .\src\XIVLauncher.sln -c Release
 ---
 
 <div align="center">
-  <sub>Final Fantasy XIV © SQUARE ENIX CO., LTD. 本项目仅为社区维护的第三方工具。</sub>
+  <sub>Final Fantasy XIV © SQUARE ENIX CO., LTD. / 盛趣游戏。<br />本项目仅为社区维护的第三方工具</sub>
 </div>
