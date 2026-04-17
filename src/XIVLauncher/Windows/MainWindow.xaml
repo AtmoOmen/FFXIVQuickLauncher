@@ -23,6 +23,18 @@
     <Window.Resources>
         <system:Double x:Key="BannerCardWidth">399</system:Double>
         <system:Double x:Key="BannerCardHeight">213</system:Double>
+        <Style x:Key="LoginActionContextMenuStyle"
+               TargetType="{x:Type ContextMenu}"
+               BasedOn="{StaticResource MaterialDesignContextMenu}" />
+        <Style x:Key="LoginActionMenuStyle"
+               TargetType="{x:Type Menu}"
+               BasedOn="{StaticResource MaterialDesignMenu}" />
+        <Style x:Key="LoginActionMenuItemStyle"
+               TargetType="{x:Type MenuItem}"
+               BasedOn="{StaticResource MaterialDesignMenuItem}" />
+        <Style x:Key="LoginActionSeparatorStyle"
+               TargetType="{x:Type Separator}"
+               BasedOn="{StaticResource MaterialDesignSeparator}" />
     </Window.Resources>
 
     <Grid>
@@ -455,7 +467,14 @@
                                                     Margin="0,0,0,0" Width="84">
 
                                                     <Button.ContextMenu>
-                                                        <ContextMenu Language="zh-CN">
+                                                        <ContextMenu Language="zh-CN"
+                                                                     Style="{StaticResource LoginActionContextMenuStyle}">
+                                                            <ContextMenu.Resources>
+                                                                <Style TargetType="{x:Type MenuItem}"
+                                                                       BasedOn="{StaticResource LoginActionMenuItemStyle}" />
+                                                                <Style TargetType="{x:Type Separator}"
+                                                                       BasedOn="{StaticResource LoginActionSeparatorStyle}" />
+                                                            </ContextMenu.Resources>
                                                             <MenuItem Header="修复"
                                                                       Command="{Binding Path=LoginRepairCommand}" />
                                                             <MenuItem Header="更新"
@@ -476,69 +495,10 @@
                                                     </Button.ContextMenu>
 
                                                 </Button>
-                                                <materialDesign:PopupBox PopupMode="Click"
-                                                                         x:Name="LaunchOptions"
-                                                                         PlacementMode="BottomAndAlignCentres"
-                                                                         StaysOpen="False"
-                                                                         HorizontalAlignment="Left"
-                                                                         VerticalAlignment="Center"
-                                                                         Margin="0,0,7,0"
-                                                                         ToolTip="更多选项">
-
-                                                    <materialDesign:PopupBox.ToggleContent>
-                                                        <Border Margin="0,0,0,0"
-                                                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
-                                                                BorderThickness="1"
-                                                                CornerRadius="2">
-                                                            <Border.Effect>
-                                                                <DropShadowEffect BlurRadius="2"
-                                                                        Opacity="0.4"
-                                                                        ShadowDepth="2"
-                                                                        Direction="315" />
-                                                            </Border.Effect>
-
-                                                            <StackPanel Orientation="Horizontal">
-                                                                <materialDesign:PackIcon Kind="ChevronDoubleDown"
-                                                                        Background="{DynamicResource PrimaryHueMidBrush}"
-                                                                        Foreground="White" Height="30" />
-                                                            </StackPanel>
-
-                                                        </Border>
-                                                    </materialDesign:PopupBox.ToggleContent>
-
-                                                    <materialDesign:PopupBox.PopupContent>
-                                                        <Menu Language="zh-CN">
-
-                                                            <Menu.ItemsPanel>
-                                                                <ItemsPanelTemplate>
-                                                                    <StackPanel />
-                                                                </ItemsPanelTemplate>
-                                                            </Menu.ItemsPanel>
-
-                                                            <MenuItem Header="修复"
-                                                                      Command="{Binding Path=LoginRepairCommand}" />
-                                                            <MenuItem Header="更新"
-                                                                      Command="{Binding Path=LoginNoStartCommand}" />
-                                                            <Separator />
-                                                            <MenuItem Header="其他启动方式">
-                                                                <MenuItem Header="无 Dalamud"
-                                                                          Command="{Binding Path=LoginNoDalamudCommand}" />
-                                                                <MenuItem Header="禁用插件"
-                                                                          Command="{Binding Path=LoginNoPluginsCommand}" />
-                                                                <MenuItem Header="禁用第三方插件"
-                                                                          Command="{Binding Path=LoginNoThirdCommand}" />
-                                                                <Separator />
-                                                                <MenuItem Header="调试用假启动"
-                                                                          Command="{Binding Path=FakeStartCommand}" />
-                                                            </MenuItem>
-
-                                                        </Menu>
-                                                    </materialDesign:PopupBox.PopupContent>
-                                                </materialDesign:PopupBox>
 
                                                 <Button HorizontalAlignment="Left"
                                                         Visibility="Visible"
-                                                        x:Name="AccountSwitcherButton" Margin="0 0 0 0"
+                                                        x:Name="AccountSwitcherButton" Margin="7 0 0 0"
                                                         ToolTip="账户管理器"
                                                         Click="AccountSwitcherButton_OnClick">
                                                     <StackPanel Orientation="Horizontal" Margin="0">
