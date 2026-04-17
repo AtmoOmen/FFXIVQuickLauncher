@@ -10,7 +10,7 @@
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         Background="{DynamicResource MaterialDesignPaper}"
-        TextElement.FontWeight="Medium">
+        TextElement.FontWeight="Bold">
     <Grid>
         <TextBlock HorizontalAlignment="Left"
                    VerticalAlignment="Top"

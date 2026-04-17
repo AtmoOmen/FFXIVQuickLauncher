@@ -11,7 +11,7 @@
     Background="{DynamicResource MaterialDesignPaper}"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
-    TextElement.FontWeight="Medium"
+    TextElement.FontWeight="Bold"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     WindowStartupLocation="CenterOwner"
     mc:Ignorable="d" d:DataContext="{d:DesignInstance viewModel:ProfilePictureInputWindowViewModel}">

@@ -15,7 +15,7 @@
     Deactivated="AccountSwitcher_OnDeactivated"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
-    TextElement.FontWeight="Medium"
+    TextElement.FontWeight="Bold"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     Topmost="True"
     WindowStartupLocation="CenterScreen"

@@ -17,7 +17,7 @@
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     Background="{DynamicResource MaterialDesignPaper}"
-    TextElement.FontWeight="Medium" Closing="MainWindow_OnClosing"
+    TextElement.FontWeight="Bold" Closing="MainWindow_OnClosing"
     d:DataContext="{d:DesignInstance viewModel:MainWindowViewModel}">
 
     <Window.Resources>
