@@ -163,8 +163,26 @@ public sealed class SettingsControlViewModel : ViewModelBase
     public CredType SelectedCredType
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            SyncSelectedCredTypeOption();
+        }
     } = CredType.WindowsCredManager;
+
+    public CredTypeOptionItem? SelectedCredTypeOption
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value) || value == null || SelectedCredType == value.Value)
+                return;
+
+            SelectedCredType = value.Value;
+        }
+    }
 
     public bool UseEntryPointLoadMethod
     {
@@ -584,6 +602,16 @@ public sealed class SettingsControlViewModel : ViewModelBase
 
         foreach (var option in options)
             CredTypeOptions.Add(option);
+
+        SyncSelectedCredTypeOption();
+    }
+
+    private void SyncSelectedCredTypeOption()
+    {
+        var selectedOption = CredTypeOptions.FirstOrDefault(option => option.Value == SelectedCredType);
+
+        if (!EqualityComparer<CredTypeOptionItem?>.Default.Equals(SelectedCredTypeOption, selectedOption))
+            SelectedCredTypeOption = selectedOption;
     }
 
     private static IReadOnlyList<CredTypeOptionItem> BuildCredTypeOptions(bool isWindowsHelloSupported) =>

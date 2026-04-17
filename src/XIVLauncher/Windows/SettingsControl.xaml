@@ -118,8 +118,7 @@
                         Foreground="{DynamicResource MaterialDesignBody}"
                         DisplayMemberPath="Display"
                         ItemsSource="{Binding CredTypeOptions}"
-                        SelectedValue="{Binding SelectedCredType}"
-                        SelectedValuePath="Value">
+                        SelectedItem="{Binding SelectedCredTypeOption}">
                         <ComboBox.ItemContainerStyle>
                             <Style TargetType="ComboBoxItem">
                                 <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
