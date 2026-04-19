@@ -140,12 +140,14 @@
                                 Grid.Column="0"
                                 Margin="0 12 0 4"
                                 VerticalAlignment="Stretch"
-                                HorizontalAlignment="Left" Width="{DynamicResource BannerCardWidth}">
+                                HorizontalAlignment="Left" 
+                                Width="{DynamicResource BannerCardWidth}"
+                                UniformCornerRadius="6">
                                 <ListBox x:Name="NewsListView"
                                          MouseUp="NewsListView_OnMouseUp"
                                          Background="Transparent"
                                          BorderThickness="0"
-                                         Padding="0"
+                                         Padding="4,2"
                                          ScrollViewer.CanContentScroll="True"
                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -176,10 +178,10 @@
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem"
                                                BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                                            <Setter Property="Height" Value="36" />
-                                            <Setter Property="Padding" Value="6,0,6,0" />
-                                            <Setter Property="MinHeight" Value="0" />
-                                            <Setter Property="Margin" Value="0" />
+                                            <Setter Property="MinHeight" Value="32" />
+                                            <Setter Property="Padding" Value="6,4,6,4" />
+                                            <Setter Property="Margin" Value="0,1" />
+                                            <Setter Property="Cursor" Value="Hand" />
                                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                         </Style>
                                     </ListBox.ItemContainerStyle>
@@ -188,10 +190,12 @@
                                                       DataType="site:News">
                                             <Grid Background="Transparent">
                                                 <Grid.ToolTip>
-                                                    <ToolTip>
+                                                    <ToolTip Placement="Right">
                                                         <TextBlock>
-                                                            <Run Text="{Binding Date, StringFormat={}{0:yyyy-MM-dd}}" />
-                                                            <Run Text=" " />
+                                                            <Run Text="{Binding Date, StringFormat={}{0:yyyy-MM-dd}}" 
+                                                                 Foreground="{DynamicResource PrimaryHueMidBrush}" 
+                                                                 FontWeight="SemiBold"/>
+                                                            <Run Text="  " />
                                                             <Run Text="{Binding Title}" />
                                                         </TextBlock>
                                                     </ToolTip>
@@ -199,18 +203,37 @@
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
+                                                
+                                                <Border Grid.Column="0" 
+                                                        Background="{DynamicResource PrimaryHueMidBrush}" 
+                                                        Opacity="0.12"
+                                                        CornerRadius="4" 
+                                                        VerticalAlignment="Center">
+                                                </Border>
                                                 <TextBlock Grid.Column="0"
                                                            VerticalAlignment="Center"
-                                                           Margin="0"
-                                                           Opacity="0.6"
+                                                           HorizontalAlignment="Center"
+                                                           Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                           FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           Padding="0 2 4 2"
                                                            Text="{Binding Date, StringFormat={}{0:yyyy-MM-dd}}" />
+
                                                 <TextBlock Grid.Column="1"
-                                                           Margin="12,0,0,0"
+                                                           Margin="4,0,4,0"
                                                            VerticalAlignment="Center"
+                                                           FontSize="12"
+                                                           LineHeight="16"
                                                            Text="{Binding Title}"
-                                                           TextWrapping="NoWrap"
-                                                           TextTrimming="CharacterEllipsis" />
+                                                           TextWrapping="Wrap" />
+                                                           
+                                                <materialDesign:PackIcon Grid.Column="2" 
+                                                                         Kind="ChevronRight" 
+                                                                         VerticalAlignment="Center" 
+                                                                         Width="14" Height="14" 
+                                                                         Opacity="0.4" />
                                             </Grid>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
