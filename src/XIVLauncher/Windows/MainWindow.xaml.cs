@@ -534,8 +534,13 @@ public partial class MainWindow : Window
         SwitchBanner(bannerDotInfo.Index);
     }
 
-    private void RadioButton_MouseEnter(object sender, MouseEventArgs e) =>
+    private void RadioButton_MouseEnter(object sender, MouseEventArgs e)
+    {
         _bannerChangeTimer?.Stop();
+
+        if (sender is RadioButton { DataContext: BannerDotInfo bannerDotInfo })
+            SwitchBanner(bannerDotInfo.Index);
+    }
 
     private void RadioButton_MouseLeave(object sender, MouseEventArgs e) =>
         _bannerChangeTimer?.Start();

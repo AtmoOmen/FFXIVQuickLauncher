@@ -88,38 +88,44 @@
                                 </Viewbox>
                             </materialDesign:Card>
 
-                            <Border Grid.Row="0" Grid.Column="0" CornerRadius="8" Background="#aa333333"
+                            <Border Grid.Row="0"
+                                    Grid.Column="0"
+                                    HorizontalAlignment="Right"
                                     VerticalAlignment="Bottom"
-                                    HorizontalAlignment="Right" Margin="0,0,8,8">
-                                <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}" Opacity="1">
-                                    <ItemsControl.LayoutTransform>
-                                        <TransformGroup>
-                                            <ScaleTransform />
-                                            <SkewTransform />
-                                            <RotateTransform Angle="-90" />
-                                            <TranslateTransform />
-                                        </TransformGroup>
-                                    </ItemsControl.LayoutTransform>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type viewModel:BannerDotInfo}">
-                                            <RadioButton GroupName="banner"
-                                                         IsChecked="{Binding Active, Mode=OneWay}"
-                                                         RenderTransformOrigin="0.5,0.5"
-                                                         Checked="BannerDot_OnChecked"
-                                                         MouseEnter="RadioButton_MouseEnter"
-                                                         MouseLeave="RadioButton_MouseLeave">
-                                                <RadioButton.RenderTransform>
-                                                    <TransformGroup>
-                                                        <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
-                                                        <SkewTransform />
-                                                        <RotateTransform />
-                                                        <TranslateTransform />
-                                                    </TransformGroup>
-                                                </RadioButton.RenderTransform>
-                                            </RadioButton>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                    Margin="0,0,2,2"
+                                    Padding="6"
+                                    Background="Transparent">
+                                <Border CornerRadius="8" Background="#aa333333">
+                                    <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}" Opacity="1">
+                                        <ItemsControl.LayoutTransform>
+                                            <TransformGroup>
+                                                <ScaleTransform />
+                                                <SkewTransform />
+                                                <RotateTransform Angle="-90" />
+                                                <TranslateTransform />
+                                            </TransformGroup>
+                                        </ItemsControl.LayoutTransform>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type viewModel:BannerDotInfo}">
+                                                <RadioButton GroupName="banner"
+                                                             IsChecked="{Binding Active, Mode=OneWay}"
+                                                             RenderTransformOrigin="0.5,0.5"
+                                                             Checked="BannerDot_OnChecked"
+                                                             MouseEnter="RadioButton_MouseEnter"
+                                                             MouseLeave="RadioButton_MouseLeave">
+                                                    <RadioButton.RenderTransform>
+                                                        <TransformGroup>
+                                                            <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
+                                                            <SkewTransform />
+                                                            <RotateTransform />
+                                                            <TranslateTransform />
+                                                        </TransformGroup>
+                                                    </RadioButton.RenderTransform>
+                                                </RadioButton>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Border>
                             </Border>
 
                             <materialDesign:Card
