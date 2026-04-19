@@ -2,7 +2,7 @@ using XIVLauncher.Common.Addon.Implementations;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal class GenericAddonSetupWindowViewModel : ViewModelBase
+public class GenericAddonSetupWindowViewModel : ViewModelBase
 {
     public bool CanKillAfterClose => !RunAsAdmin;
 
