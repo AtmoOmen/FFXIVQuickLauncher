@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
@@ -8,7 +7,6 @@ using Velopack;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
-using XIVLauncher.Support.Velopack;
 using XIVLauncher.Windows;
 
 namespace XIVLauncher;
@@ -58,12 +56,11 @@ internal class Updates
 
             var changelog = newRelease.TargetFullRelease.NotesMarkdown;
             await updateManager.DownloadUpdatesAsync(newRelease);
-            SaveRestartState();
 
             if (changelogWindow == null)
             {
                 Log.Error("更新日志窗口为空，直接进入更新安装流程。");
-                updateManager.WaitExitThenApplyUpdates(newRelease, false, false, []);
+                updateManager.ApplyUpdatesAndRestart(newRelease);
                 return false;
             }
 
@@ -79,13 +76,13 @@ internal class Updates
                     }
                 );
 
-                updateManager.WaitExitThenApplyUpdates(newRelease, false, false, []);
+                updateManager.ApplyUpdatesAndRestart(newRelease);
                 return false;
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "无法显示更新日志窗口，直接进入更新安装流程。");
-                updateManager.WaitExitThenApplyUpdates(newRelease, false, false, []);
+                updateManager.ApplyUpdatesAndRestart(newRelease);
                 return false;
             }
         }
@@ -145,14 +142,5 @@ internal class Updates
             return "更新请求已被取消。";
 
         return exception.Message;
-    }
-
-    private static void SaveRestartState()
-    {
-        var currentExecutablePath = XIVLauncher.Common.Constant.Paths.ResolveExecutablePath();
-        var executableRelativePath = Path.GetRelativePath(AppContext.BaseDirectory, currentExecutablePath);
-        var arguments = Environment.GetCommandLineArgs()[1..];
-
-        VelopackRestartStateStore.Save(new(executableRelativePath, arguments));
     }
 }

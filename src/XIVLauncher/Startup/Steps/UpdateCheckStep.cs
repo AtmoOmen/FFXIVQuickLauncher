@@ -66,7 +66,6 @@ public class UpdateCheckStep
             if (!shouldContinueStartup)
             {
                 context.IsRestartingForUpdate = true;
-                ExitForUpdate(context);
                 return;
             }
 
@@ -131,23 +130,5 @@ public class UpdateCheckStep
         }
 
         context.Dispatcher.Invoke(CloseCore);
-    }
-
-    private void ExitForUpdate(StartupContext context)
-    {
-        void ExitCore()
-        {
-            CloseUpdateWindow(context);
-            Application.Current.Shutdown();
-            Environment.Exit(0);
-        }
-
-        if (context.Dispatcher.CheckAccess())
-        {
-            ExitCore();
-            return;
-        }
-
-        context.Dispatcher.Invoke(ExitCore);
     }
 }

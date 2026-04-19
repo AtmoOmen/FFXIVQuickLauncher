@@ -6,6 +6,7 @@ using XIVLauncher.Accounts;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Startup;
+using XIVLauncher.Startup.Elevation;
 using XIVLauncher.Windows;
 
 namespace XIVLauncher;
@@ -80,6 +81,9 @@ public partial class App
     {
         try
         {
+            if (StartupElevationService.TryRestartElevatedAndExit())
+                return;
+
             orchestrator   = new(Dispatcher);
             StartupContext = orchestrator.GetContext();
 
