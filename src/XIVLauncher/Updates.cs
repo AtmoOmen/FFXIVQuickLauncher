@@ -1,5 +1,5 @@
-#nullable enable
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
@@ -8,17 +8,17 @@ using Velopack;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
+using XIVLauncher.Support.Velopack;
 using XIVLauncher.Windows;
 
 namespace XIVLauncher;
 
 internal class Updates
+(
+    ILauncherSettingsV3 settings
+)
 {
-    private const string UpdateUrl = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
-    private readonly ILauncherSettingsV3 settings;
-
-    public Updates(ILauncherSettingsV3 settings) =>
-        this.settings = settings;
+    private const string UPDATE_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
 
     public async Task<bool> Run(bool downloadPrerelease, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)
     {
@@ -37,13 +37,13 @@ internal class Updates
 
             var updateOptions = new UpdateOptions
             {
-                ExplicitChannel       = "win",
+                ExplicitChannel = "win",
                 AllowVersionDowngrade = true
             };
 
             var updateSource = new GitHubSource
             (
-                UpdateUrl,
+                UPDATE_URL,
                 settings.GitHubToken,
                 true,
                 "https://gh.atmoomen.top/",
@@ -51,18 +51,19 @@ internal class Updates
             );
 
             var updateManager = new UpdateManager(updateSource, updateOptions);
-            var newRelease    = await updateManager.CheckForUpdatesAsync();
+            var newRelease = await updateManager.CheckForUpdatesAsync();
 
             if (newRelease == null)
                 return true;
 
             var changelog = newRelease.TargetFullRelease.NotesMarkdown;
             await updateManager.DownloadUpdatesAsync(newRelease);
+            SaveRestartState();
 
             if (changelogWindow == null)
             {
                 Log.Error("更新日志窗口为空，直接进入更新安装流程。");
-                updateManager.ApplyUpdatesAndRestart(newRelease);
+                updateManager.WaitExitThenApplyUpdates(newRelease, false, false, []);
                 return false;
             }
 
@@ -78,13 +79,13 @@ internal class Updates
                     }
                 );
 
-                updateManager.ApplyUpdatesAndRestart(newRelease);
+                updateManager.WaitExitThenApplyUpdates(newRelease, false, false, []);
                 return false;
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "无法显示更新日志窗口，直接进入更新安装流程。");
-                updateManager.ApplyUpdatesAndRestart(newRelease);
+                updateManager.WaitExitThenApplyUpdates(newRelease, false, false, []);
                 return false;
             }
         }
@@ -92,12 +93,13 @@ internal class Updates
         {
             Log.Error(ex, "启动器更新失败");
 
-            var updateFailHint = "请检查网络、代理链路与安全软件设置。若问题持续，请稍后重试，并将 XIVLauncherCN 加入安全软件白名单。";
-            var detailMessage  = GetUpdateFailureMessage(ex);
+            const string UPDATE_FAIL_HINT = "请检查网络、代理链路与安全软件设置。若问题持续，请稍后重试，并将 XIVLauncherCN 加入安全软件白名单。";
+
+            var detailMessage = GetUpdateFailureMessage(ex);
 
             CustomMessageBox.Show
             (
-                $"错误：{detailMessage}{Environment.NewLine}{Environment.NewLine}{updateFailHint}",
+                $"错误：{detailMessage}{Environment.NewLine}{Environment.NewLine}{UPDATE_FAIL_HINT}",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -130,8 +132,7 @@ internal class Updates
         if (exception is TimeoutException timeoutException)
             return timeoutException.Message;
 
-        if (exception is HttpRequestException httpRequestException &&
-            httpRequestException.StatusCode.HasValue)
+        if (exception is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue)
         {
             return (int)httpRequestException.StatusCode switch
             {
@@ -144,5 +145,14 @@ internal class Updates
             return "更新请求已被取消。";
 
         return exception.Message;
+    }
+
+    private static void SaveRestartState()
+    {
+        var currentExecutablePath = XIVLauncher.Common.Constant.Paths.ResolveExecutablePath();
+        var executableRelativePath = Path.GetRelativePath(AppContext.BaseDirectory, currentExecutablePath);
+        var arguments = Environment.GetCommandLineArgs()[1..];
+
+        VelopackRestartStateStore.Save(new(executableRelativePath, arguments));
     }
 }
