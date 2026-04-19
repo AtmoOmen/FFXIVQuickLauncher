@@ -116,7 +116,8 @@
                         Foreground="{DynamicResource MaterialDesignBody}"
                         Text="自动登录密码加密方式" />
                     <ComboBox
-                        x:Name="AccountStorageEncryptCombox"
+                        Width="500"
+                        HorizontalAlignment="Left"
                         Margin="0,3,0,0"
                         Foreground="{DynamicResource MaterialDesignBody}"
                         DisplayMemberPath="Display"
@@ -128,6 +129,17 @@
                             </Style>
                         </ComboBox.ItemContainerStyle>
                     </ComboBox>
+                    
+                    <TextBlock
+                        Margin="0,16,0,0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Cursor="Hand"
+                        Foreground="{DynamicResource MaterialDesignBody}"
+                        MouseUp="SharedDeviceProfileText_OnMouseUp"
+                        Text="共享设备信息"
+                        FontSize="16"
+                        TextDecorations="Underline" />
                 </StackPanel>
             </TabItem>
 

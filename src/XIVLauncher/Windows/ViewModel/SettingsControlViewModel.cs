@@ -54,6 +54,8 @@ public sealed class SettingsControlViewModel : ViewModelBase
 
     public ICommand OpenChangelogCommand { get; }
 
+    public ICommand OpenSharedDeviceProfileCommand { get; }
+
     public bool IsRunIntegrityCheckPossible =>
         !string.IsNullOrWhiteSpace(GamePath) && Directory.Exists(GamePath);
 
@@ -271,6 +273,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         OpenLicenseCommand          = new SyncCommand(_ => OpenLicense());
         OpenAdvancedSettingsCommand = new SyncCommand(_ => OpenAdvancedSettings());
         OpenChangelogCommand        = new SyncCommand(_ => OpenChangelog());
+        OpenSharedDeviceProfileCommand = new SyncCommand(_ => OpenSharedDeviceProfile());
 
         InitializeCredTypeOptions();
         ReloadFromSettings();
@@ -490,6 +493,9 @@ public sealed class SettingsControlViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(version))
             _dialogService.ShowChangelog(version);
     }
+
+    public void OpenSharedDeviceProfile() =>
+        _dialogService.ShowSharedDeviceProfileSettings(App.AccountManager);
 
     public async Task<IntegrityCheckCompareOutcome?> RunIntegrityCheckAsync(IProgress<IntegrityCheck.IntegrityCheckProgress> progress)
     {

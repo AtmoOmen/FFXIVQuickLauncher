@@ -31,8 +31,6 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     public ICommand ConfigureDeviceProfileCommand { get; }
 
-    public ICommand ConfigureSharedDeviceProfileCommand { get; }
-
     public AccountSwitcherEntry? SelectedEntry
     {
         get;
@@ -82,8 +80,6 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         SetProfilePictureCommand     = new SyncCommand(_ => SetSelectedProfilePicture(), () => SelectedEntry != null);
         SetNoteCommand               = new SyncCommand(_ => SetSelectedNote(),           () => SelectedEntry != null);
         ConfigureDeviceProfileCommand = new SyncCommand(_ => ConfigureSelectedDeviceProfile(), () => SelectedEntry != null);
-        ConfigureSharedDeviceProfileCommand = new SyncCommand(_ => ConfigureSharedDeviceProfile());
-
         RefreshEntries();
     }
 
@@ -232,12 +228,6 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         var changed = _dialogService.ShowAccountDeviceProfileSettings(account, _accountManager);
         if (changed)
             RefreshEntries(account.Id);
-    }
-
-    public void ConfigureSharedDeviceProfile()
-    {
-        _requestClose?.Invoke();
-        _dialogService.ShowSharedDeviceProfileSettings(_accountManager);
     }
 
     private static Bitmap BitmapSourceToBitmap(BitmapSource bitmapSource)

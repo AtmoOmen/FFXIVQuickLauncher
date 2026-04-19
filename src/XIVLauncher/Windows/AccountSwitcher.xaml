@@ -27,7 +27,6 @@
             <Grid Margin="16,16,10,16">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <ListView
@@ -180,15 +179,6 @@
                     </ListView.ItemTemplate>
                 </ListView>
 
-                <StackPanel Grid.Row="1" Margin="0,12,0,0">
-                    <Separator />
-
-                    <Button
-                        Margin="0,12,0,0"
-                        HorizontalAlignment="Stretch"
-                        Command="{Binding ConfigureSharedDeviceProfileCommand}"
-                        Content="设备信息" />
-                </StackPanel>
             </Grid>
         </materialDesign:Card>
     </Grid>

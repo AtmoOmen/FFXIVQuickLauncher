@@ -99,6 +99,9 @@ public partial class SettingsControl
     private void VersionLabel_OnMouseUp(object sender, MouseButtonEventArgs e) =>
         ViewModel.OpenChangelog();
 
+    private void SharedDeviceProfileText_OnMouseUp(object sender, MouseButtonEventArgs e) =>
+        ViewModel.OpenSharedDeviceProfile();
+
     private void Logo_OnMouseUp(object sender, MouseButtonEventArgs e)
     {
 #if DEBUG
