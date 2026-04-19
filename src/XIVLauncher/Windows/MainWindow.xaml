@@ -79,53 +79,60 @@
                                 Grid.Column="0"
                                 Margin="0"
                                 HorizontalAlignment="Left"
+                                UniformCornerRadius="6"
                                 Width="{DynamicResource BannerCardWidth}" Height="{DynamicResource BannerCardHeight}"
                                 Cursor="Hand"
                                 MouseUp="BannerCard_MouseUp">
-                                <Viewbox>
+                                <Grid>
                                     <Image x:Name="BannerImage"
+                                           Stretch="UniformToFill"
                                            Source="pack://application:,,,/Resources/placeholder-news.png" />
-                                </Viewbox>
+                                </Grid>
                             </materialDesign:Card>
 
                             <Border Grid.Row="0"
                                     Grid.Column="0"
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Bottom"
-                                    Margin="0,0,2,2"
-                                    Padding="6"
+                                    Margin="0,0,10,10"
                                     Background="Transparent">
-                                <Border CornerRadius="8" Background="#aa333333">
-                                    <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}" Opacity="1">
-                                        <ItemsControl.LayoutTransform>
-                                            <TransformGroup>
-                                                <ScaleTransform />
-                                                <SkewTransform />
-                                                <RotateTransform Angle="-90" />
-                                                <TranslateTransform />
-                                            </TransformGroup>
-                                        </ItemsControl.LayoutTransform>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type viewModel:BannerDotInfo}">
-                                                <RadioButton GroupName="banner"
-                                                             IsChecked="{Binding Active, Mode=OneWay}"
-                                                             RenderTransformOrigin="0.5,0.5"
-                                                             Checked="BannerDot_OnChecked"
-                                                             MouseEnter="RadioButton_MouseEnter"
-                                                             MouseLeave="RadioButton_MouseLeave">
-                                                    <RadioButton.RenderTransform>
-                                                        <TransformGroup>
-                                                            <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
-                                                            <SkewTransform />
-                                                            <RotateTransform />
-                                                            <TranslateTransform />
-                                                        </TransformGroup>
-                                                    </RadioButton.RenderTransform>
-                                                </RadioButton>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </Border>
+                                <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type viewModel:BannerDotInfo}">
+                                            <RadioButton GroupName="banner"
+                                                         IsChecked="{Binding Active, Mode=OneWay}"
+                                                         Checked="BannerDot_OnChecked"
+                                                         MouseEnter="RadioButton_MouseEnter"
+                                                         MouseLeave="RadioButton_MouseLeave"
+                                                         Margin="3,0"
+                                                         Cursor="Hand"
+                                                         Style="{StaticResource {x:Type ToggleButton}}">
+                                                <RadioButton.Template>
+                                                    <ControlTemplate TargetType="RadioButton">
+                                                        <Border x:Name="DotBorder"
+                                                                Width="8" Height="8"
+                                                                CornerRadius="4"
+                                                                Background="#88FFFFFF" />
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsChecked" Value="True">
+                                                                <Setter TargetName="DotBorder" Property="Background" Value="#FFFFFFFF" />
+                                                                <Setter TargetName="DotBorder" Property="Width" Value="18" />
+                                                            </Trigger>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="DotBorder" Property="Background" Value="#CCFFFFFF" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </RadioButton.Template>
+                                            </RadioButton>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </Border>
 
                             <materialDesign:Card
@@ -143,7 +150,7 @@
                                          ScrollViewer.CanContentScroll="True"
                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                         VirtualizingPanel.ScrollUnit="Item"
+                                         VirtualizingPanel.ScrollUnit="Pixel"
                                          HorizontalContentAlignment="Stretch">
                                     <ListBox.Template>
                                         <ControlTemplate TargetType="ListBox">
@@ -180,43 +187,25 @@
                                     <ListBox.ItemTemplate>
                                         <DataTemplate x:Name="SingleLineDataTemplate"
                                                       DataType="site:News">
-                                            <Grid>
+                                            <Grid Background="Transparent">
+                                                <Grid.ToolTip>
+                                                    <ToolTip>
+                                                        <TextBlock>
+                                                            <Run Text="{Binding Date, StringFormat={}{0:yyyy-MM-dd}}" />
+                                                            <Run Text=" " />
+                                                            <Run Text="{Binding Title}" />
+                                                        </TextBlock>
+                                                    </ToolTip>
+                                                </Grid.ToolTip>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <materialDesign:PackIcon
-                                                    Grid.Column="0"
-                                                    VerticalAlignment="Center"
-                                                    Margin="0"
-                                                    Height="15" Width="15">
-                                                    <materialDesign:PackIcon.Style>
-                                                        <Style TargetType="materialDesign:PackIcon">
-                                                            <Setter Property="Kind" Value="Newspaper" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger
-                                                                    Binding="{Binding Tag}" Value="Important">
-                                                                    <Setter Property="Kind"
-                                                                            Value="AlertCircle" />
-                                                                    <Setter Property="Foreground"
-                                                                            Value="Red" />
-                                                                </DataTrigger>
-                                                                <DataTrigger
-                                                                    Binding="{Binding Tag}" Value="Follow-up">
-                                                                    <Setter Property="Kind"
-                                                                            Value="InformationOutline" />
-                                                                    <Setter Property="Foreground"
-                                                                            Value="#FFFFB900" />
-                                                                </DataTrigger>
-                                                                <DataTrigger
-                                                                    Binding="{Binding Tag}" Value="DlError">
-                                                                    <Setter Property="Kind"
-                                                                            Value="LanDisconnect" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </materialDesign:PackIcon.Style>
-                                                </materialDesign:PackIcon>
+                                                <TextBlock Grid.Column="0"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0"
+                                                           Opacity="0.6"
+                                                           Text="{Binding Date, StringFormat={}{0:yyyy-MM-dd}}" />
                                                 <TextBlock Grid.Column="1"
                                                            Margin="12,0,0,0"
                                                            VerticalAlignment="Center"

@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using MaterialDesignThemes.Wpf;
 using Serilog;
@@ -285,7 +286,7 @@ public partial class MainWindow : Window
             _bannerChangeTimer.AutoReset = true;
             _bannerChangeTimer.Start();
 
-            _ = Dispatcher.BeginInvoke(new Action(() => { NewsListView.ItemsSource = _headlines.News; }));
+            _ = Dispatcher.BeginInvoke(new Action(() => { NewsListView.ItemsSource = _headlines.News?.OrderByDescending(n => n.Date).ToList(); }));
         }
         catch (Exception ex)
         {
@@ -528,7 +529,17 @@ public partial class MainWindow : Window
 
         _currentBannerIndex = bannerIndex;
         SetBannerDotActiveState(bannerIndex);
-        BannerImage.Source = _bannerBitmaps[bannerIndex];
+        
+        var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
+        var fadeIn = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200));
+        
+        fadeOut.Completed += (s, e) =>
+        {
+            BannerImage.Source = _bannerBitmaps[bannerIndex];
+            BannerImage.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        };
+        
+        BannerImage.BeginAnimation(UIElement.OpacityProperty, fadeOut);
     }
 
     private void SetBannerDotActiveState(int activeIndex)
