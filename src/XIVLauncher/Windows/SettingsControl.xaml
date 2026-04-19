@@ -10,500 +10,363 @@
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
-    xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
     d:DataContext="{d:DesignInstance viewModel:SettingsControlViewModel}"
     Background="{DynamicResource MaterialDesignPaper}"
     TextElement.FontWeight="Bold"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     mc:Ignorable="d">
     <Grid SnapsToDevicePixels="True" ClipToBounds="True">
-        <Grid.CacheMode>
-            <BitmapCache />
-        </Grid.CacheMode>
         <dragablz:TabablzControl
             x:Name="SetupTabControl"
             FixedHeaderCount="7"
             IsEnabled="True"
             Style="{StaticResource MaterialDesignTabablzControlStyle}">
+
+            <!-- Tab: 游戏 (Game) -->
             <TabItem Header="游戏">
-                <StackPanel Margin="10,10,0,0">
-                    <TextBlock
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="请选择游戏目录" />
-                    <components:FolderEntry
-                        Width="500"
-                        Margin="0,5,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        Description="选择文件夹"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,24,24,80">
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="游戏位置" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
 
-                    <StackPanel Orientation="Horizontal">
-                        <Button
-                            Margin="10,5,0,0"
-                            HorizontalAlignment="Left"
-                            Click="RunIntegrityCheck_OnClick"
-                            Content="检查游戏完整性"
-                            IsEnabled="{Binding IsRunIntegrityCheckPossible}"
-                            ToolTip="对游戏文件执行完整性检查" />
-                        <Button
-                            Margin="10,5,0,0"
-                            HorizontalAlignment="Left"
-                            Click="GenerateIntegrityCheck_OnClick"
-                            Content="生成客户端 Hash 数据"
-                            IsEnabled="{Binding IsRunIntegrityCheckPossible}"
-                            ToolTip="遍历游戏文件并生成 Hash 数据" />
+                        <Grid Margin="0,0,0,16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="请选择游戏目录" Foreground="{DynamicResource MaterialDesignBody}" />
+                            <components:FolderEntry Grid.Row="1" Margin="0,8,0,0" Description="选择文件夹" Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />  
+                            <TextBlock Grid.Row="2" Margin="0,4,0,0" Foreground="Red" Text="{Binding GamePathWarningMessage}" Visibility="{Binding GamePathWarningVisibility}" />
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,32">
+                            <Button Content="检查游戏完整性" Style="{StaticResource MaterialDesignOutlinedButton}" ToolTip="对游戏文件执行完整性检查" Click="RunIntegrityCheck_OnClick" IsEnabled="{Binding IsRunIntegrityCheckPossible}" Margin="0,0,16,0" />
+                            <Button Content="生成游戏哈希" Style="{StaticResource MaterialDesignOutlinedButton}" ToolTip="遍历游戏文件并生成 Hash 数据" Click="GenerateIntegrityCheck_OnClick" IsEnabled="{Binding IsRunIntegrityCheckPossible}" />
+                        </StackPanel>
+
+                        <Separator Margin="0,0,0,24" />
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="启动选项" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
+
+                        <Grid Margin="0,0,0,24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" MinWidth="150" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Text="游戏 DPI 修正" FontSize="15" Foreground="{DynamicResource MaterialDesignBody}" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="若游戏界面缩放异常, 可尝试切换本项" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ComboBox Grid.Column="1" VerticalAlignment="Center" SelectedIndex="{Binding DpiAwarenessIndex}" Foreground="{DynamicResource MaterialDesignBody}">
+                                <ComboBoxItem Content="启用" />
+                                <ComboBoxItem Content="禁用" />
+                            </ComboBox>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" MinWidth="250" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Text="额外启动参数" FontSize="15" Foreground="{DynamicResource MaterialDesignBody}" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="附加到游戏进程的命令行参数" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <TextBox Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding LaunchArgs, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="参数" />
+                        </Grid>
                     </StackPanel>
-
-                    <TextBlock
-                        Margin="0,10,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Foreground="Red"
-                        Text="{Binding GamePathWarningMessage}"
-                        Visibility="{Binding GamePathWarningVisibility}" />
-
-                    <TextBox
-                        Width="500"
-                        Margin="0,10,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="{Binding LaunchArgs, UpdateSourceTrigger=PropertyChanged}"
-                        materialDesign:HintAssist.Hint="额外启动参数"
-                        materialDesign:HintAssist.IsFloating="True" />
-
-                    <TextBlock
-                        Margin="0,20,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="游戏 DPI 修正" />
-                    <ComboBox
-                        Width="500"
-                        Margin="0,5,0,0"
-                        HorizontalAlignment="Left"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        SelectedIndex="{Binding DpiAwarenessIndex}">
-                        <ComboBoxItem Content="启用" />
-                        <ComboBoxItem Content="禁用" />
-                    </ComboBox>
-                    <TextBlock
-                        Margin="0,10,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Foreground="DarkGray"
-                        Text="如果通过 XIVLauncher 启动后游戏缩放异常，可以尝试切换这项设置。" />
-                </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="启动器">
-                <StackPanel Margin="10,10,0,0">
-                    <TextBlock
-                        Margin="0,0,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Foreground="OrangeRed"
-                        Text="修改启动器语言后需要重新启动 XIVLauncher 才会生效"
-                        Visibility="{c:Binding LauncherLanguageNoticeVisible, FalseToVisibility=Hidden}" />
+            <!-- Tab: 启动 (Start - Combined Launcher & Auto-start) -->
+            <TabItem Header="启动">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,24,24,80">
+                        <materialDesign:Card Background="{DynamicResource MaterialDesignBackground}" Foreground="OrangeRed" Padding="16" Margin="0,0,0,24" Visibility="{c:Binding LauncherLanguageNoticeVisible, FalseToVisibility=Collapsed}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="AlertCircleOutline" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="修改启动器语言后需要重新启动 XIVLauncher 才会生效" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </materialDesign:Card>
 
-                    <TextBlock
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="自动登录密码加密方式" />
-                    <ComboBox
-                        Width="500"
-                        HorizontalAlignment="Left"
-                        Margin="0,3,0,0"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        DisplayMemberPath="Display"
-                        ItemsSource="{Binding CredTypeOptions}"
-                        SelectedItem="{Binding SelectedCredTypeOption}">
-                        <ComboBox.ItemContainerStyle>
-                            <Style TargetType="ComboBoxItem">
-                                <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
-                            </Style>
-                        </ComboBox.ItemContainerStyle>
-                    </ComboBox>
-                    
-                    <TextBlock
-                        Margin="0,16,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        Cursor="Hand"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        MouseUp="SharedDeviceProfileText_OnMouseUp"
-                        Text="共享设备信息"
-                        FontSize="16"
-                        TextDecorations="Underline" />
-                </StackPanel>
-            </TabItem>
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="安全" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
 
-            <TabItem Header="自动启动">
-                <Grid>
-                    <Grid Margin="10,10,10,0">
-                        <TextBlock
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Top"
-                            Foreground="{DynamicResource MaterialDesignBody}"
-                            Text="这些程序会在游戏启动时一并启动" />
+                        <Grid Margin="0,0,0,24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" MinWidth="200" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="凭据加密方式" FontSize="15" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="自动登录所用到的凭据在本地的加密方式" Opacity="0.7" FontSize="12" />
+                            </StackPanel>
+                            <ComboBox Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}" DisplayMemberPath="Display" ItemsSource="{Binding CredTypeOptions}" SelectedItem="{Binding SelectedCredTypeOption}">
+                                <ComboBox.ItemContainerStyle>
+                                    <Style TargetType="ComboBoxItem">
+                                        <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                                    </Style>
+                                </ComboBox.ItemContainerStyle>
+                            </ComboBox>
+                        </Grid>
 
-                        <materialDesign:Card Height="220" Margin="0,-25,0,0">
-                            <ListView
-                                x:Name="AddonListView"
-                                Height="220"
-                                ItemsSource="{Binding AddonEntries}"
-                                MouseUp="AddonListView_OnMouseUp"
-                                SelectedItem="{Binding SelectedAddonEntry}">
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="共享设备信息" FontSize="15" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="未设置独立设备信息的账号将使用此处设置的共享设备信息" Opacity="0.7" FontSize="12" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="管理" Style="{StaticResource MaterialDesignOutlinedButton}" Click="SharedDeviceProfileButton_Click" Width="100" />
+                        </Grid>
+
+                        <Separator Margin="0,8,0,24" />
+
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="附加程序" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,8" />
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="添加在此处的程序会在游戏启动时一并启动" Opacity="0.7" Margin="0,0,0,16" />
+
+                        <materialDesign:Card Padding="0" Margin="0,0,0,16">
+                            <ListView x:Name="AddonListView" ScrollViewer.VerticalScrollBarVisibility="Disabled" ItemsSource="{Binding AddonEntries}" MouseUp="AddonListView_OnMouseUp" SelectedItem="{Binding SelectedAddonEntry}">
                                 <ListView.ContextMenu>
-                                    <ContextMenu
-                                        DataContext="{Binding DataContext, ElementName=AddonListView}"
-                                        StaysOpen="True"
-                                        Style="{StaticResource MaterialDesignContextMenu}">
+                                    <ContextMenu DataContext="{Binding DataContext, ElementName=AddonListView}" StaysOpen="True" Style="{StaticResource MaterialDesignContextMenu}">
                                         <ContextMenu.Resources>
-                                            <Style TargetType="{x:Type MenuItem}"
-                                                   BasedOn="{StaticResource MaterialDesignMenuItem}" />
-                                            <Style TargetType="{x:Type Separator}"
-                                                   BasedOn="{StaticResource MaterialDesignSeparator}" />
+                                            <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource MaterialDesignMenuItem}" />
+                                            <Style TargetType="{x:Type Separator}" BasedOn="{StaticResource MaterialDesignSeparator}" />
                                         </ContextMenu.Resources>
-                                        <MenuItem
-                                            Command="{Binding RemoveSelectedAddonCommand}"
-                                            Foreground="{DynamicResource MaterialDesignBody}"
-                                            Header="移除" />
+                                        <MenuItem Command="{Binding RemoveSelectedAddonCommand}" Foreground="{DynamicResource MaterialDesignBody}" Header="移除" />
                                     </ContextMenu>
                                 </ListView.ContextMenu>
-
-                                <ListBox.ItemTemplate>
+                                <ListView.ItemTemplate>
                                     <DataTemplate DataType="{x:Type addon:AddonEntry}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <CheckBox
-                                                Foreground="{DynamicResource MaterialDesignBody}"
-                                                IsChecked="{Binding IsEnabled}" />
-                                            <TextBlock
-                                                Margin="10,0,0,0"
-                                                Foreground="{DynamicResource MaterialDesignBody}"
-                                                Text="{Binding Addon.Name}" />
+                                        <StackPanel Orientation="Horizontal" Margin="8">
+                                            <CheckBox Foreground="{DynamicResource MaterialDesignBody}" IsChecked="{Binding IsEnabled}" />
+                                            <TextBlock Margin="16,0,0,0" Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding Addon.Name}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </DataTemplate>
-                                </ListBox.ItemTemplate>
+                                </ListView.ItemTemplate>
                             </ListView>
                         </materialDesign:Card>
 
-                        <Button
-                            Margin="0,0,0,7"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Bottom"
-                            Command="{Binding AddAddonCommand}"
-                            Content="新增"
-                            ToolTip="添加一个新的自动启动项" />
-                    </Grid>
-                </Grid>
+                        <Button HorizontalAlignment="Right" Command="{Binding AddAddonCommand}" Content="新增" Style="{StaticResource MaterialDesignRaisedButton}" />
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
+            <!-- Tab: Dalamud -->
             <TabItem Header="Dalamud">
-                <Grid>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="10,5,10,0">
-                            <TextBlock
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                Text="这些选项会影响 Dalamud 提供的游戏内功能" />
-
-                            <Separator Margin="0,5,0,0" />
-
-                            <StackPanel Margin="0,5,0,5" Orientation="Horizontal">
-                                <CheckBox
-                                    x:Name="EnableHooksCheckBox"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Center"
-                                    Content="启用 Dalamud"
-                                    Foreground="{DynamicResource MaterialDesignBody}"
-                                    IsChecked="{Binding EnableHooks}" />
-
-                                <TextBlock
-                                    Margin="10,2,0,0"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Center"
-                                    Foreground="DarkGray"
-                                    Text="启用后，可以在游戏内使用 /xlhelp 查看可用命令。" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,24,24,80">
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="Dalamud 设置" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,8" />
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="启用 Dalamud" FontSize="15" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="启用后, 可在游戏内使用 /xlhelp 查看相关可用命令" Opacity="0.7" FontSize="12" />
                             </StackPanel>
+                            <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" x:Name="EnableHooksCheckBox" IsChecked="{Binding EnableHooks}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                        </Grid>
 
-                            <StackPanel
-                                Margin="22,0,0,0"
-                                IsEnabled="{Binding ElementName=EnableHooksCheckBox, Path=IsChecked}">
-                                <TextBlock
-                                    Margin="0,0,0,0"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Top"
-                                    Foreground="{DynamicResource MaterialDesignBody}"
-                                    Text="注入延迟" />
+                        <StackPanel IsEnabled="{Binding ElementName=EnableHooksCheckBox, Path=IsChecked}">      
+                            <Separator Margin="0,8,0,24" />
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="注入设置" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
 
-                                <StackPanel Margin="0,5,0,0" Orientation="Horizontal">
-                                    <xctk:DecimalUpDown
-                                        Width="60"
-                                        HorizontalAlignment="Left"
-                                        Value="{Binding DalamudInjectionDelayMs}" />
-                                    <Label
-                                        Content="ms"
-                                        Foreground="{DynamicResource MaterialDesignBody}" />
+                            <Grid Margin="0,0,0,24">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="注入延迟" FontSize="15" />
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="调整 Dalamud 挂载到游戏进程的时间" Opacity="0.7" FontSize="12" />
                                 </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                    <TextBox Width="70" Text="{Binding DalamudInjectionDelayMs}" Foreground="{DynamicResource MaterialDesignBody}" VerticalAlignment="Center" />
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="ms" Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
+                                </StackPanel>
+                            </Grid>
 
-                                <TextBlock
-                                    Margin="0,15,0,5"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Top"
-                                    Foreground="{DynamicResource MaterialDesignBody}"
-                                    Text="选择 Dalamud 的加载方式" />
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="加载方式" FontSize="15" Margin="0,0,0,8" />
+                            <RadioButton x:Name="EntryPointDalamudLoadMethodRadioButton" Content="新版：兼容部分需要更早加载的插件和辅助软件" GroupName="dalamudLoadMethod" IsChecked="{Binding UseEntryPointLoadMethod}" ToolTip="通过入口点重写方式加载 Dalamud, 通常兼容性更好。" Margin="0,0,0,8" Foreground="{DynamicResource MaterialDesignBody}" />
+                            <RadioButton x:Name="DllInjectDalamudLoadMethodRadioButton" Content="传统：旧版 DLL 注入方式, 部分环境下更稳定" GroupName="dalamudLoadMethod" IsChecked="{Binding UseDllInjectLoadMethod}" ToolTip="通过 DLL 注入方式加载 Dalamud, 兼容性取决于本机环境。" Margin="0,0,0,16" Foreground="{DynamicResource MaterialDesignBody}" />
 
-                                <RadioButton
-                                    x:Name="EntryPointDalamudLoadMethodRadioButton"
-                                    Content="新版：兼容部分需要更早加载的插件和辅助软件"
-                                    Foreground="{DynamicResource MaterialDesignBody}"
-                                    GroupName="dalamudLoadMethod"
-                                    IsChecked="{Binding UseEntryPointLoadMethod}"
-                                    ToolTip="通过入口点重写方式加载 Dalamud，通常兼容性更好。" />
-                                <RadioButton
-                                    x:Name="DllInjectDalamudLoadMethodRadioButton"
-                                    Content="传统：旧版 DLL 注入方式，部分环境下更稳定"
-                                    Foreground="{DynamicResource MaterialDesignBody}"
-                                    GroupName="dalamudLoadMethod"
-                                    IsChecked="{Binding UseDllInjectLoadMethod}"
-                                    ToolTip="通过 DLL 注入方式加载 Dalamud，兼容性取决于本机环境。" />
-                            </StackPanel>
+                            <Separator Margin="0,8,0,24" />
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="实验性功能" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
 
-                            <StackPanel Margin="0,5,0,5" Orientation="Horizontal">
-                                <CheckBox
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Center"
-                                    Content="支持游戏内超域传送"
-                                    Foreground="{DynamicResource MaterialDesignBody}"
-                                    IsChecked="{Binding EnableDcTravel}"
-                                    IsEnabled="False" />
-
-                                <TextBlock
-                                    Margin="10,2,0,0"
-                                    HorizontalAlignment="Left"
-                                    VerticalAlignment="Center"
-                                    Foreground="DarkGray">
-                                    <Run Text="为游戏内跨大区传送提供支持，可在登录界面右键移动角色所在大区。" />
-                                    <LineBreak />
-                                    <Run Text="需要同时启用 Dalamud，并安装 DCTravelX 插件。" />
-                                </TextBlock>
-                            </StackPanel>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="游戏内超域传送" FontSize="15" />
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Opacity="0.7" FontSize="12" TextWrapping="Wrap">
+                                        <Run Text="为游戏内跨大区传送提供支持, 可在登录界面右键对应角色, 快捷传送至目标大区" />
+                                        <LineBreak />
+                                        <Run Text="需要同时安装并启用 DCTravelerX 插件" />
+                                    </TextBlock>
+                                </StackPanel>
+                                <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding EnableDcTravel}" IsEnabled="False" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                            </Grid>
                         </StackPanel>
-                    </ScrollViewer>
-                </Grid>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
+            <!-- Tab: 更新 (Update) -->
             <TabItem Header="更新">
-                <StackPanel>
-                    <CheckBox
-                        Margin="10,10,0,15"
-                        HorizontalAlignment="Left"
-                        Content="安装更新前先进行确认"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        IsChecked="{Binding AskBeforePatching}" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,24,24,80">
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="常规设置" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
 
-                    <TextBlock
-                        Margin="10,0,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="补丁下载目录" />
-                    <components:FolderEntry
-                        Width="500"
-                        Margin="10,0,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        Description="选择文件夹"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" />
+                        <Grid Margin="0,0,0,24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="安装更新前先进行确认" FontSize="15" VerticalAlignment="Center" />
+                            <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding AskBeforePatching}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                        </Grid>
 
-                    <Label
-                        Margin="5,10,0,0"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Content="下载速度限制"
-                        Foreground="{DynamicResource MaterialDesignBody}" />
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="保留已下载的补丁包" FontSize="15" VerticalAlignment="Center" />
+                            <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding KeepPatches}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                        </Grid>
 
-                    <StackPanel Orientation="Horizontal">
-                        <xctk:DecimalUpDown
-                            Width="60"
-                            Margin="10,0,0,0"
-                            HorizontalAlignment="Left"
-                            Value="{Binding SpeedLimitMb}" />
-                        <Label
-                            Margin="0,0,0,0"
-                            Content="MB/s"
-                            Foreground="{DynamicResource MaterialDesignBody}" />
+                        <Separator Margin="0,8,0,24" />
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="下载选项" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
+
+                        <StackPanel Margin="0,0,0,24">
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="存储目录" FontSize="15" Margin="0,0,0,8" />
+                            <components:FolderEntry Description="选择文件夹" Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" Foreground="{DynamicResource MaterialDesignBody}" />
+                        </StackPanel>
+
+                        <Grid Margin="0,0,0,24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" MinWidth="150" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="速度限制" FontSize="15" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                <TextBox Width="80" Text="{Binding SpeedLimitMb}" Foreground="{DynamicResource MaterialDesignBody}" VerticalAlignment="Center" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="MB/s" Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" MinWidth="150" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="下载方式" FontSize="15" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="推荐选择 ARIA（HTTP）" Opacity="0.7" FontSize="12" />
+                            </StackPanel>
+                            <ComboBox Grid.Column="1" SelectedIndex="{Binding PatchAcquisitionIndex}" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}">
+                                <ComboBoxItem Content=".NET（HTTP）" />
+                                <ComboBoxItem Content="ARIA（HTTP）" />
+                            </ComboBox>
+                        </Grid>
+
+                        <Separator Margin="0,8,0,24" />
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="GitHub API" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="GitHub Access Token" FontSize="15" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="用于启动器更新用, 建议填入不包含任何权限的令牌" Opacity="0.7" FontSize="12" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBox Width="200" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding GitHubToken, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="Token" />
+                                <Button Content="查询额度" Style="{StaticResource MaterialDesignOutlinedButton}" Command="{Binding IdentifyTokenCommand}" Margin="16,0,0,0" />
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
-
-                    <CheckBox
-                        Margin="10,10,0,15"
-                        HorizontalAlignment="Left"
-                        Content="保留已下载的补丁包，便于后续重装游戏"
-                        Foreground="{DynamicResource MaterialDesignBody}"
-                        IsChecked="{Binding KeepPatches}" />
-
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock
-                            Margin="10,15,0,0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Top"
-                            Foreground="{DynamicResource MaterialDesignBody}"
-                            Text="补丁下载方式，推荐选择 ARIA（HTTP）" />
-                        <ComboBox
-                            Width="150"
-                            Margin="10,10,0,0"
-                            Foreground="{DynamicResource MaterialDesignBody}"
-                            SelectedIndex="{Binding PatchAcquisitionIndex}">
-                            <ComboBoxItem Content=".NET（HTTP）" />
-                            <ComboBoxItem Content="ARIA（HTTP）" />
-                        </ComboBox>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal">
-                        <TextBox
-                            Width="400"
-                            Margin="10,10,0,0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            Foreground="{DynamicResource MaterialDesignBody}"
-                            Text="{Binding GitHubToken, UpdateSourceTrigger=PropertyChanged}"
-                            ToolTip="建议填入不包含额外权限的 GitHub Token。"
-                            ToolTipService.InitialShowDelay="0"
-                            materialDesign:HintAssist.Hint="启动器更新使用的 GitHub Access Token"
-                            materialDesign:HintAssist.IsFloating="True" />
-                        <Button
-                            Margin="10,10,0,0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            Command="{Binding IdentifyTokenCommand}"
-                            Content="查询额度" />
-                    </StackPanel>
-                </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
+            <!-- Tab: 关于 (About) -->
             <TabItem Header="关于">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid>
-                        <StackPanel Margin="10,10,10,0">
-                            <TextBlock
-                                x:Name="VersionLabel"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                MouseUp="VersionLabel_OnMouseUp"
-                                Text="{Binding VersionLabelText}" />
-                            <TextBlock
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                Text="作者：goat&#xA;特别鸣谢：Mino、sky、LeonBlade、Wintermute、Zyian、Roy、Meli、Aida Enna、Aireil、kizer 与 the angry paissa artist" />
-                            <TextBlock
-                                Cursor="Hand"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                MouseUp="LicenseText_OnMouseUp"
-                                Text="本软件基于 GPLv3 协议发布"
-                                TextDecorations="Underline" />
+                    <Grid Margin="24,24,24,80">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                            <Button
-                                x:Name="DiscordButton"
-                                HorizontalAlignment="Left"
-                                Margin="0,10,0,0"
-                                Style="{DynamicResource MaterialDesignFlatButton}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Discord" />
-                                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Discord" />
-                                </StackPanel>
-                            </Button>
-                            <Button
-                                HorizontalAlignment="Left"
-                                Command="{Binding OpenGitHubCommand}"
-                                Style="{DynamicResource MaterialDesignFlatButton}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Github" />
-                                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="GitHub" />
-                                </StackPanel>
-                            </Button>
-                            <Button
-                                HorizontalAlignment="Left"
-                                Command="{Binding OpenBackupToolCommand}"
-                                Style="{DynamicResource MaterialDesignFlatButton}"
-                                Visibility="Collapsed">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Wrench" />
-                                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="打开备份工具" />
-                                </StackPanel>
-                            </Button>
+                        <StackPanel>
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" x:Name="VersionLabel" Text="{Binding VersionLabelText}" FontSize="24" FontWeight="Bold" Cursor="Hand" MouseUp="VersionLabel_OnMouseUp" Margin="0,0,0,4" />
+                            <TextBlock Text="本软件基于 GPLv3 协议发布" Cursor="Hand" MouseUp="LicenseText_OnMouseUp" Foreground="{DynamicResource PrimaryHueMidBrush}" Margin="0,0,0,24" TextDecorations="Underline" />        
 
-                            <Button
-                                HorizontalAlignment="Left"
-                                Command="{Binding OpenOriginalLauncherCommand}"
-                                Style="{DynamicResource MaterialDesignFlatButton}">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Launch" />
-                                    <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="官方启动器" />
-                                </StackPanel>
-                            </Button>
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="作者：goat" FontSize="14" Margin="0,0,0,4" />
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="特别鸣谢：Mino、sky、LeonBlade、Wintermute、Zyian、Roy、Meli、Aida Enna、Aireil、kizer 与 the angry paissa artist" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,24" />
 
-                            <Button
-                                Margin="10,10,0,0"
-                                HorizontalAlignment="Left"
-                                Command="{Binding OpenAdvancedSettingsCommand}"
-                                Style="{DynamicResource MaterialDesignFlatButton}">
+                            <WrapPanel Margin="0,0,0,24">
+                                <Button x:Name="DiscordButton" Style="{DynamicResource MaterialDesignOutlinedButton}" Margin="0,0,8,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Discord" VerticalAlignment="Center" />   
+                                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Margin="8,0,0,0" VerticalAlignment="Center" Text="Discord" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding OpenGitHubCommand}" Style="{DynamicResource MaterialDesignOutlinedButton}" Margin="0,0,8,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Github" VerticalAlignment="Center" />    
+                                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Margin="8,0,0,0" VerticalAlignment="Center" Text="GitHub" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding OpenOriginalLauncherCommand}" Style="{DynamicResource MaterialDesignOutlinedButton}" Margin="0,0,8,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Launch" VerticalAlignment="Center" />    
+                                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Margin="8,0,0,0" VerticalAlignment="Center" Text="官方启动器" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding OpenBackupToolCommand}" Style="{DynamicResource MaterialDesignOutlinedButton}" Visibility="Collapsed" Margin="0,0,8,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Wrench" VerticalAlignment="Center" />    
+                                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Margin="8,0,0,0" VerticalAlignment="Center" Text="打开备份工具" />
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+
+                            <Separator Margin="0,0,0,24" />
+
+                            <Button Command="{Binding OpenAdvancedSettingsCommand}" Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left" Opacity="0.7">
                                 <Button.ToolTip>
-                                    <TextBlock Text="这些设置仅适合高级用户。除非你清楚每项设置的含义，否则请不要随意修改。" />
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="这些设置仅适合高级用户。除非清楚每项设置的含义, 否则请勿随意修改。" />
                                 </Button.ToolTip>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock
-                                        Margin="0,0,0,0"
-                                        VerticalAlignment="Center"
-                                        FontSize="11"
-                                        Foreground="DarkGray"
-                                        Text="高级设置" />
+                                    <materialDesign:PackIcon Kind="Settings" VerticalAlignment="Center" />      
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Margin="8,0,0,0" VerticalAlignment="Center" Text="高级设置" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
 
-                        <Image
-                            Width="200"
-                            Margin="500,0,0,0"
-                            HorizontalAlignment="Left"
-                            MouseUp="Logo_OnMouseUp"
-                            Opacity="0.8"
-                            RenderOptions.BitmapScalingMode="HighQuality"
-                            Source="pack://application:,,,/Resources/logo.png" />
+                        <Image Grid.Column="1" Width="180" Height="180" Margin="32,0,0,0" VerticalAlignment="Top" MouseUp="Logo_OnMouseUp" Opacity="0.8" RenderOptions.BitmapScalingMode="HighQuality" Source="pack://application:,,,/Resources/logo.png" Cursor="Hand" />
                     </Grid>
                 </ScrollViewer>
             </TabItem>
         </dragablz:TabablzControl>
 
-        <Button
-            Margin="0,0,60,10"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Bottom"
-            Click="PluginsFolderButton_Click"
-            Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}"
-            ToolTip="打开插件文件夹">
-            <materialDesign:PackIcon Height="24" Width="24" Kind="FolderOpen" />
-        </Button>
-
-        <Button
-            Margin="0,0,10,10"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Bottom"
-            Click="AcceptButton_Click"
-            Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}"
-            ToolTip="保存设置">
-            <materialDesign:PackIcon Height="24" Width="24" Kind="Check" />
-        </Button>
+        <!-- Floating Action Buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,16">
+            <Button Click="PluginsFolderButton_Click" Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}" ToolTip="打开插件文件夹" Margin="0,0,16,0">
+                <materialDesign:PackIcon Height="24" Width="24" Kind="FolderOpen" />
+            </Button>
+            <Button Click="AcceptButton_Click" Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}" ToolTip="保存设置">
+                <materialDesign:PackIcon Height="24" Width="24" Kind="Check" />
+            </Button>
+        </StackPanel>
     </Grid>
 </UserControl>

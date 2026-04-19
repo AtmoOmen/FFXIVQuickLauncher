@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
@@ -99,7 +99,7 @@ public partial class SettingsControl
     private void VersionLabel_OnMouseUp(object sender, MouseButtonEventArgs e) =>
         ViewModel.OpenChangelog();
 
-    private void SharedDeviceProfileText_OnMouseUp(object sender, MouseButtonEventArgs e) =>
+    private void SharedDeviceProfileButton_Click(object sender, RoutedEventArgs e) =>
         ViewModel.OpenSharedDeviceProfile();
 
     private void Logo_OnMouseUp(object sender, MouseButtonEventArgs e)
