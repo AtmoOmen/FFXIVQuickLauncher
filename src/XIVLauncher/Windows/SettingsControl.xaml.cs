@@ -2,7 +2,9 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using MaterialDesignThemes.Wpf.Transitions;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Support;
@@ -22,7 +24,14 @@ public partial class SettingsControl
     {
         InitializeComponent();
 
+        AddonListView.ContextMenu.DataContext = DataContext;
         DiscordButton.Click += SupportLinks.OpenDiscordChannel;
+    }
+
+    private void SettingsControl_OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (AddonListView.ContextMenu != null)
+            AddonListView.ContextMenu.DataContext = e.NewValue;
     }
 
     public void ReloadSettings() =>
@@ -42,6 +51,15 @@ public partial class SettingsControl
             return;
 
         ViewModel.EditSelectedAddon();
+    }
+
+    private void AddonListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not { } listViewItem)
+            return;
+
+        AddonListView.SelectedItem = listViewItem.DataContext;
+        listViewItem.IsSelected    = true;
     }
 
     private async void RunIntegrityCheck_OnClick(object sender, RoutedEventArgs e) =>
@@ -98,6 +116,20 @@ public partial class SettingsControl
 
     private void SharedDeviceProfileButton_Click(object sender, RoutedEventArgs e) =>
         ViewModel.OpenSharedDeviceProfile();
+
+    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
+    {
+        do
+        {
+            if (current is T ancestor)
+                return ancestor;
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+        while (current != null);
+
+        return null;
+    }
 
     private void Logo_OnMouseUp(object sender, MouseButtonEventArgs e)
     {

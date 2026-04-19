@@ -12,6 +12,7 @@
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     d:DataContext="{d:DesignInstance viewModel:SettingsControlViewModel}"
     Background="{DynamicResource MaterialDesignPaper}"
+    DataContextChanged="SettingsControl_OnDataContextChanged"
     TextElement.FontWeight="Bold"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     mc:Ignorable="d">
@@ -199,12 +200,12 @@
                         <Separator Margin="0,8,0,24" />
 
                         <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="附加程序" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,8" />
-                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="添加在此处的程序会在游戏启动时一并启动" Opacity="0.7" Margin="0,0,0,16" />
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="添加在此处的程序会在游戏启动/结束时一并启动" Opacity="0.7" Margin="0,0,0,16" />
 
                         <materialDesign:Card Padding="0" Margin="0,0,0,16">
-                            <ListView x:Name="AddonListView" ScrollViewer.VerticalScrollBarVisibility="Disabled" ItemsSource="{Binding AddonEntries}" MouseUp="AddonListView_OnMouseUp" SelectedItem="{Binding SelectedAddonEntry}">
+                            <ListView x:Name="AddonListView" ScrollViewer.VerticalScrollBarVisibility="Disabled" ItemsSource="{Binding AddonEntries}" MouseUp="AddonListView_OnMouseUp" PreviewMouseRightButtonDown="AddonListView_OnPreviewMouseRightButtonDown" SelectedItem="{Binding SelectedAddonEntry}">
                                 <ListView.ContextMenu>
-                                    <ContextMenu DataContext="{Binding DataContext, ElementName=AddonListView}" StaysOpen="True" Style="{StaticResource MaterialDesignContextMenu}">
+                                    <ContextMenu StaysOpen="True" Style="{StaticResource MaterialDesignContextMenu}">
                                         <ContextMenu.Resources>
                                             <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource MaterialDesignMenuItem}" />
                                             <Style TargetType="{x:Type Separator}" BasedOn="{StaticResource MaterialDesignSeparator}" />
