@@ -147,7 +147,14 @@
                                 <ListView.ContextMenu>
                                     <ContextMenu
                                         DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
-                                        StaysOpen="True">
+                                        StaysOpen="True"
+                                        Style="{StaticResource MaterialDesignContextMenu}">
+                                        <ContextMenu.Resources>
+                                            <Style TargetType="{x:Type MenuItem}"
+                                                   BasedOn="{StaticResource MaterialDesignMenuItem}" />
+                                            <Style TargetType="{x:Type Separator}"
+                                                   BasedOn="{StaticResource MaterialDesignSeparator}" />
+                                        </ContextMenu.Resources>
                                         <MenuItem
                                             Command="{Binding RemoveSelectedAddonCommand}"
                                             Foreground="{DynamicResource MaterialDesignBody}"

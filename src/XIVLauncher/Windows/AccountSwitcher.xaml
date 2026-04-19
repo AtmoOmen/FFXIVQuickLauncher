@@ -49,7 +49,14 @@
                     SelectionMode="Single"
                     SelectedItem="{Binding SelectedEntry}">
                     <ListView.ContextMenu>
-                        <ContextMenu Language="zh-CN">
+                        <ContextMenu Language="zh-CN"
+                                     Style="{StaticResource MaterialDesignContextMenu}">
+                            <ContextMenu.Resources>
+                                <Style TargetType="{x:Type MenuItem}"
+                                       BasedOn="{StaticResource MaterialDesignMenuItem}" />
+                                <Style TargetType="{x:Type Separator}"
+                                       BasedOn="{StaticResource MaterialDesignSeparator}" />
+                            </ContextMenu.Resources>
                             <MenuItem
                                 Command="{Binding SetProfilePictureCommand}"
                                 Foreground="{DynamicResource MaterialDesignBody}"

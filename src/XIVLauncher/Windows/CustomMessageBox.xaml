@@ -50,7 +50,11 @@
                     Foreground="{DynamicResource MaterialDesignBody}" />
             </StackPanel>
             <StackPanel.ContextMenu>
-                <ContextMenu>
+                <ContextMenu Style="{StaticResource MaterialDesignContextMenu}">
+                    <ContextMenu.Resources>
+                        <Style TargetType="{x:Type MenuItem}"
+                               BasedOn="{StaticResource MaterialDesignMenuItem}" />
+                    </ContextMenu.Resources>
                     <MenuItem Header="复制 (_C)" Command="{Binding Path=CopyMessageTextCommand}" />
                 </ContextMenu>
             </StackPanel.ContextMenu>
