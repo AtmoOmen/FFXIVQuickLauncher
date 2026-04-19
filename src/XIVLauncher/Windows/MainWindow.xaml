@@ -138,9 +138,8 @@
                             <materialDesign:Card
                                 Grid.Row="1"
                                 Grid.Column="0"
-                                Margin="0 12 0 0"
-                                Height="128"
-                                VerticalAlignment="Top"
+                                Margin="0 12 0 4"
+                                VerticalAlignment="Stretch"
                                 HorizontalAlignment="Left" Width="{DynamicResource BannerCardWidth}">
                                 <ListBox x:Name="NewsListView"
                                          MouseUp="NewsListView_OnMouseUp"
@@ -218,76 +217,44 @@
                                 </ListBox>
                             </materialDesign:Card>
 
-                            <materialDesign:Card
-                                Grid.Row="1"
-                                Grid.Column="1"
-                                Width="255"
-                                Height="128"
-                                Margin="0 12 0 0"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Top">
-                                <StackPanel Orientation="Vertical"
-                                            Margin="12 12 12 12"
-                                            HorizontalAlignment="Stretch"
-                                            VerticalAlignment="Stretch">
-                                <Button
-                                    x:Name="InjectModeButton"
-                                    Style="{DynamicResource MaterialDesignFlatButton}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Left"
-                                    Focusable="False"
-                                    Margin="0 0 0 6" Height="50"
-                                    Padding="4 0 12 0"
-                                    Command="{Binding Path=InjectModeSwitchCommand}" Cursor="Hand">
-                                    <StackPanel Orientation="Horizontal"
-                                                HorizontalAlignment="Left"
-                                                VerticalAlignment="Center">
-                                        <materialDesign:PackIcon
-                                            Kind="{Binding ModeSwitchIcon}"
-                                            Height="32"
-                                            Width="32" />
-                                        <TextBlock Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Text="{Binding Path=ModeSwitchTitle}"
-                                                   FontSize="16"/>
-                                    </StackPanel>
-                                </Button>
 
-                                <Button
-                                    x:Name="SettingsButton"
-                                    Style="{DynamicResource MaterialDesignFlatButton}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Left"
-                                    Focusable="False"
-                                    Margin="0" Height="50"
-                                    Padding="4 0 18 0"
-                                    Command="{x:Static materialDesign:Transitioner.MovePreviousCommand}">
-                                    <StackPanel Orientation="Horizontal"
-                                                HorizontalAlignment="Left"
-                                                VerticalAlignment="Center">
-                                        <materialDesign:PackIcon Kind="Gear"
-                                                                 Height="32"
-                                                                 Width="32" />
-                                        <TextBlock Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Text="启动器设置"
-                                                   FontSize="16"/>
-                                    </StackPanel>
-                                </Button>
-                                </StackPanel>
-                            </materialDesign:Card>
 
                             <materialDesign:Card
                                 Grid.Row="0"
+                                Grid.RowSpan="2"
                                 Grid.Column="1"
-                                Width="255"
-                                Margin="0"
+                                Width="260"
+                                Margin="8 0 0 4"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Stretch"
                                 SnapsToDevicePixels="True"
                                 ClipToBounds="True"
                                 KeyDown="Card_KeyDown">
-                                <materialDesign:Transitioner SelectedIndex="{Binding LoginCardTransitionerIndex}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,8,8,0">
+                                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                ToolTip="{Binding Path=ModeSwitchTitle}"
+                                                Command="{Binding Path=InjectModeSwitchCommand}"
+                                                Width="32" Height="32" Padding="4"
+                                                Focusable="False" Cursor="Hand">
+                                            <materialDesign:PackIcon Kind="{Binding ModeSwitchIcon}" Width="20" Height="20" Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                                        </Button>
+                                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                ToolTip="启动器设置"
+                                                Command="{x:Static materialDesign:Transitioner.MovePreviousCommand}"
+                                                Width="32" Height="32" Padding="4"
+                                                Focusable="False" Cursor="Hand">
+                                            <materialDesign:PackIcon Kind="Gear" Width="20" Height="20" Foreground="{DynamicResource PrimaryHueMidBrush}" />
+                                        </Button>
+                                    </StackPanel>
+
+                                    <materialDesign:Transitioner Grid.Row="1" VerticalAlignment="Center" SelectedIndex="{Binding LoginCardTransitionerIndex}">
                                 <materialDesign:TransitionerSlide>
                                     <materialDesign:TransitionerSlide.ForwardWipe>
                                         <materialDesign:FadeWipe />
@@ -331,7 +298,7 @@
                                             <materialDesign:FadeWipe />
                                         </materialDesign:TransitionerSlide.BackwardWipe>
 
-                                        <DockPanel Height="204" Margin="20,0,20,0">
+                                        <DockPanel Height="204" Margin="20,-20,20,0">
                                             <ComboBox
                                                 DockPanel.Dock="Top"
                                                 x:Name="LoginTypeSelection"
@@ -457,7 +424,6 @@
                                                 Margin="0,8,0,0"
                                                 VerticalAlignment="Top"
                                                 x:Name="FastLoginCheckBox"
-                                                ToolTip="缓存登录信息,类PC叨鱼快速登录"
                                                 IsChecked="{Binding IsFastLogin}" />
 
                                             <CheckBox
@@ -614,6 +580,75 @@
                                     </materialDesign:TransitionerSlide>
                                 </materialDesign:Transitioner>
 
+                                    <!-- Quick Links (Bottom) -->
+                                    <Grid Grid.Row="2" Margin="16,0,16,16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="8" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+
+                                        <!-- 超域传送 -->
+                                        <Button Grid.Row="0" Grid.Column="0" 
+                                                Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                                Padding="4" 
+                                                Height="36" 
+                                                FontSize="12" 
+                                                Foreground="{DynamicResource MaterialDesignBody}"
+                                                Click="DCTravelPageButton_OnClick">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Rocket" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="超域传送" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        
+                                        <!-- 萌新招待 -->
+                                        <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                                Padding="4" 
+                                                Height="36" 
+                                                FontSize="12" 
+                                                Foreground="{DynamicResource MaterialDesignBody}"
+                                                Click="NoviceInviePageButton_OnClick">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="AccountPlus" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="萌新招待" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- 后勤补给站 -->
+                                        <Button Grid.Row="2" Grid.Column="0" 
+                                                Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                                Padding="4" 
+                                                Height="36"
+                                                FontSize="12"
+                                                Foreground="{DynamicResource MaterialDesignBody}"
+                                                Click="DepotPageButton_OnClick">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Gift" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="后勤补给站" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- 官方论坛 -->
+                                        <Button Grid.Row="2" Grid.Column="2" 
+                                                Style="{StaticResource MaterialDesignOutlinedButton}" 
+                                                Padding="4" 
+                                                Height="36" 
+                                                FontSize="12" 
+                                                Foreground="{DynamicResource MaterialDesignBody}"
+                                                Click="RisingStonePageButton_OnClick">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Forum" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="官方论坛" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </Grid>
                             </materialDesign:Card>
                         </Grid>
 
