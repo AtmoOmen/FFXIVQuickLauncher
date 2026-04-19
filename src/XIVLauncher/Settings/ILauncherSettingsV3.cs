@@ -29,7 +29,6 @@ public interface ILauncherSettingsV3
     long               SpeedLimitBytes               { get; set; }
     decimal            DalamudInjectionDelayMs       { get; set; }
     bool?              KeepPatches                   { get; set; }
-    bool?              HasComplainedAboutAdmin       { get; set; }
     bool?              HasComplainedAboutGShadeDxgi  { get; set; }
     AcquisitionMethod? PatchAcquisitionMethod        { get; set; }
     string             GitHubToken                   { get; set; }
