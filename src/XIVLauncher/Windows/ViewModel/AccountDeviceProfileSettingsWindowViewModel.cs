@@ -189,8 +189,8 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         snapshotTouched = false;
 
         AccountDisplayName     = account.DisplayName;
-        DescriptionText        = "账号登录时，盛趣会要求上传一系列设备标识。为进一步保护个人隐私，你可以选择单独配置当前账号使用的设备信息。";
-        DeviceDetailsHintText  = "你可以直接修改下方输入框，或随机生成一整套新的仿真设备信息。";
+        DescriptionText        = "账号登录时，盛趣会要求上传一系列设备标识。为进一步保护个人隐私，可以选择单独配置当前账号使用的设备信息。";
+        DeviceDetailsHintText  = "可以直接修改下方输入框，或随机生成一整套新的仿真设备信息。";
         DynamicEnabled         = account.DeviceProfileDynamicEnabled;
         PeriodicRefreshEnabled = account.IsDeviceProfileRotation;
         RotationDays           = AccountManager.NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays);
@@ -211,8 +211,8 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         GeneratedUtcTicks       = accountManager.GetSharedDeviceProfileGeneratedUtcTicks();
         snapshotTouched         = false;
         AccountDisplayName      = "共享设备信息";
-        DescriptionText         = "未启用账号独立设备信息的账号登录时，会统一使用这套共享设备信息。你可以在这里直接修改或刷新它。";
-        DeviceDetailsHintText   = "你可以直接修改下方输入框，或随机生成一整套新的共享设备信息。";
+        DescriptionText         = "未启用账号独立设备信息的账号登录时，会统一使用这套共享设备信息。可以在这里直接修改或刷新它。";
+        DeviceDetailsHintText   = "可以直接修改下方输入框，或随机生成一整套新的共享设备信息。";
         DynamicEnabled          = false;
         PeriodicRefreshEnabled  = false;
         RotationDays            = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS;
@@ -556,7 +556,7 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         {
             NextRotationTimeText      = "自动轮换：共享设备信息不会自动轮换";
             RemainingRotationTimeText = "当前状态：未启用账号独立设备信息的账号会共用这套设备信息";
-            RotationSummaryText       = "当前正在使用这套共享设备信息。你可以直接修改，或手动刷新生成一套新的共享设备信息。";
+            RotationSummaryText       = "当前正在使用这套共享设备信息。可以直接修改，或手动刷新生成一套新的共享设备信息。";
             return;
         }
 

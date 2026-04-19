@@ -24,22 +24,17 @@
     d:DataContext="{d:DesignInstance viewModel:AccountSwitcherViewModel}">
     <Grid Margin="0,0,0,0">
         <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="390" Margin="0,0,10,0">
-            <StackPanel Margin="16,16,10,0">
-                
-                <Button
-                    Margin="0,0,0,12"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Bottom"
-                    Command="{Binding ConfigureSharedDeviceProfileCommand}"
-                    Content="设备信息" />
-                
-                <Separator />
-                
+            <Grid Margin="16,16,10,16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
                 <ListView
-                    Margin="0,12,0,0"
                     x:Name="AccountListView"
-                    MaxHeight="330"
+                    Grid.Row="0"
                     AllowDrop="True"
+                    BorderThickness="0"
                     Drop="AccountListView_OnDrop"
                     ItemsSource="{Binding Entries}"
                     MouseUp="AccountListView_OnMouseUp"
@@ -184,8 +179,17 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-                
-            </StackPanel>
+
+                <StackPanel Grid.Row="1" Margin="0,12,0,0">
+                    <Separator />
+
+                    <Button
+                        Margin="0,12,0,0"
+                        HorizontalAlignment="Stretch"
+                        Command="{Binding ConfigureSharedDeviceProfileCommand}"
+                        Content="设备信息" />
+                </StackPanel>
+            </Grid>
         </materialDesign:Card>
     </Grid>
 </Window>
