@@ -4,19 +4,6 @@
         <LangVersion>latest</LangVersion>
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     </PropertyGroup>
-    <!--
-    <PropertyGroup>
-      <ApplicationManifest>$(MSBuildThisFileDirectory)app.manifest</ApplicationManifest>
-    </PropertyGroup>
-    <ItemGroup Label="License">
-      <None Include="$(MSBuildThisFileDirectory)xl.licenseheader">
-        <Link>xl.licenseheader</Link>
-      </None>
-    </ItemGroup>
-    <ItemGroup Label="Resources">
-      <EmbeddedResource Include="Resources\**\*.*" />
-    </ItemGroup>
-    -->
     <PropertyGroup Label="Documentation">
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);CS1591</NoWarn>

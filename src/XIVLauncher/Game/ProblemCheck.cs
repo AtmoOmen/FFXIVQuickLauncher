@@ -17,60 +17,6 @@ internal static class ProblemCheck
 {
     public static void RunCheck(Window parentWindow)
     {
-        var compatFlagKey = Registry.CurrentUser.OpenSubKey
-        (
-            "Software\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers",
-            true
-        );
-
-        if (compatFlagKey != null && !App.Settings.HasComplainedAboutAdmin.GetValueOrDefault(false))
-        {
-            var compatEntries = compatFlagKey.GetValueNames();
-
-            var entriesToFix = new Stack<string>();
-
-            foreach (var compatEntry in compatEntries)
-            {
-                if ((compatEntry.Contains("ffxiv_dx11") || compatEntry.Contains("XIVLauncherCN")) && ((string)compatFlagKey.GetValue(compatEntry, string.Empty)).Contains("RUNASADMIN"))
-                    entriesToFix.Push(compatEntry);
-            }
-
-            if (entriesToFix.Count > 0)
-            {
-                var result = CustomMessageBox.Show
-                (
-                    "XIVLauncher 和/或游戏被设置为以管理员身份运行\n这可能导致各种问题, 包括插件无法启动和热键应用程序无响应\n\n是否自动修复此问题?",
-                    "XIVLauncherCN (Soil)",
-                    MessageBoxButton.OKCancel,
-                    MessageBoxImage.Exclamation,
-                    parentWindow: parentWindow
-                );
-
-                if (result != MessageBoxResult.OK)
-                    return;
-
-                while (entriesToFix.Count > 0)
-                    compatFlagKey.DeleteValue(entriesToFix.Pop());
-
-                return;
-            }
-
-            App.Settings.HasComplainedAboutAdmin = true;
-        }
-
-        if (PlatformHelpers.IsElevated() && !App.Settings.HasComplainedAboutAdmin.GetValueOrDefault(false))
-        {
-            CustomMessageBox.Show
-            (
-                "XIVLauncher 正在以管理员身份运行\n这可能导致各种问题, 包括插件无法启动和热键应用程序无响应\n\n请避免以管理员身份运行 XIVLauncher",
-                "XIVLauncher Problem",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: parentWindow
-            );
-            App.Settings.HasComplainedAboutAdmin = true;
-        }
-
         var procModules = Process.GetCurrentProcess().Modules.Cast<ProcessModule>();
 
         if (procModules.Any(x => x.ModuleName == "MacType.dll" || x.ModuleName == "MacType64.dll"))
