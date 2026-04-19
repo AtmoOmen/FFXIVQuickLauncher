@@ -88,7 +88,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         var worldStatusBrushOk = new SolidColorBrush(Color.FromRgb(0x21, 0x96, 0xf3));
         WorldStatusIconColor = worldStatusBrushOk;
         WorldStatusIconColor = new SolidColorBrush(Color.FromRgb(38, 38, 38));
-        
+
         FFXIVProcesses.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasAvailableProcesses));
@@ -105,10 +105,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 CancelLogin();
                 LoginCardTransitionerIndex = (int)i;
-                
+
                 ModeSwitchIcon  = i == LoginCardType.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
                 ModeSwitchTitle = i == LoginCardType.InjectMode ? "正常模式" : "手动注入模式";
-                
+
                 if (LoginCardTransitionerIndex == (int)LoginCardType.InjectMode)
                     StartRefreshFFXIVProcess();
                 else
@@ -228,10 +228,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
             App.Settings.AutologinEnabled = IsAutoLogin;
         App.Settings.FastLogin = IsFastLogin;
 
-        var finalLoginType = loginType;
-        var secret         = string.Empty;
-        var savedAccount   = FindSavedAccount(loginType, username);
-        var accountType    = ResolveAccountType(loginType, savedAccount);
+        var finalLoginType             = loginType;
+        var secret                     = string.Empty;
+        var savedAccount               = FindSavedAccount(loginType, username);
+        var accountType                = ResolveAccountType(loginType, savedAccount);
         var hasUnavailableSavedSecrets = AccountManager.HasUnavailableSecrets(savedAccount);
 
         try
@@ -369,17 +369,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 var accountToSave = new XIVAccount
                 {
-                    AutoLogin                         = loginType == LoginType.WeGameSID || doingAutoLogin,
-                    LoginAccount                      = oAuthLogin?.InputUserID!,
-                    SndaId                            = oAuthLogin?.SndaID!,
-                    AccountType                       = accountType,
-                    AreaName                          = Area.AreaName,
-                    DeviceProfileDeviceId             = savedAccount?.DeviceProfileDeviceId ?? string.Empty,
-                    DeviceProfileMacAddress           = savedAccount?.DeviceProfileMacAddress ?? string.Empty,
-                    DeviceProfileHostName             = savedAccount?.DeviceProfileHostName ?? string.Empty,
-                    DeviceProfileDynamicEnabled       = savedAccount?.DeviceProfileDynamicEnabled ?? false,
-                    IsDeviceProfileRotation           = savedAccount?.IsDeviceProfileRotation ?? true,
-                    DeviceProfileRotationDays         = savedAccount?.DeviceProfileRotationDays ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
+                    AutoLogin                          = loginType == LoginType.WeGameSID || doingAutoLogin,
+                    LoginAccount                       = oAuthLogin?.InputUserID!,
+                    SndaId                             = oAuthLogin?.SndaID!,
+                    AccountType                        = accountType,
+                    AreaName                           = Area.AreaName,
+                    DeviceProfileDeviceId              = savedAccount?.DeviceProfileDeviceId              ?? string.Empty,
+                    DeviceProfileMacAddress            = savedAccount?.DeviceProfileMacAddress            ?? string.Empty,
+                    DeviceProfileHostName              = savedAccount?.DeviceProfileHostName              ?? string.Empty,
+                    DeviceProfileDynamicEnabled        = savedAccount?.DeviceProfileDynamicEnabled        ?? false,
+                    IsDeviceProfileRotation            = savedAccount?.IsDeviceProfileRotation            ?? true,
+                    DeviceProfileRotationDays          = savedAccount?.DeviceProfileRotationDays          ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
                     DeviceProfileLastGeneratedUtcTicks = savedAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0
                 };
 
@@ -496,14 +496,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private async Task<LoginResult?> LoginToGameAsync
     (
-        LoginType        type,
-        LoginType        fallbackLoginType,
-        string           username,
-        string           secret,
-        bool             autoLogin,
+        LoginType             type,
+        LoginType             fallbackLoginType,
+        string                username,
+        string                secret,
+        bool                  autoLogin,
         DeviceProfileSnapshot deviceProfile,
-        DCTravelClient   dcTravelClient,
-        LoginAfterAction action
+        DCTravelClient        dcTravelClient,
+        LoginAfterAction      action
     )
     {
         if (Area == null || Area.AreaID == "-1")
@@ -561,6 +561,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                            (() =>
                                {
                                    var dialog = new CaptchaInputWindow(challenge);
+
                                    if (Window.IsVisible)
                                    {
                                        dialog.Owner         = Window;
@@ -568,7 +569,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                    }
 
                                    return dialog.ShowDialog() == true ? dialog.ResultText : null;
-                               })
+                               }
+                           )
                        ),
                        loginCts.Token
                    ).ConfigureAwait(false);
@@ -886,11 +888,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             continue;
 
                         case MessageBoxResult.No:
-                            return true;
+                            break;
 
                         case MessageBoxResult.Cancel:
                             App.Settings.TreatNonZeroExitCodeAsFailure = false;
-                            return true;
+                            break;
                     }
                 }
 
@@ -1952,7 +1954,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         if (loginType == LoginType.AutoLoginSession)
         {
             return AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.LoginAccount, username, StringComparison.Ordinal))
-                   ?? AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.UserName, username, StringComparison.Ordinal));
+                   ?? AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.UserName,  username, StringComparison.Ordinal));
         }
 
         return AccountManager.FindAccount(username, loginType.ToAccountType());
