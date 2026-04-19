@@ -13,23 +13,9 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
     AccountManager accountManager
 ) : ViewModelBase
 {
-    private XIVAccount?             account;
-    private DeviceProfileSnapshot?  savedSnapshot;
-    private bool                    snapshotTouched;
-    private bool                    isSharedMode;
-    private string                  accountDisplayName = string.Empty;
-    private string                  descriptionText = string.Empty;
-    private string                  deviceDetailsHintText = string.Empty;
-    private bool                    dynamicEnabled;
-    private bool                    periodicRefreshEnabled;
-    private int                     rotationDays = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS;
-    private string                  deviceId = string.Empty;
-    private string                  macAddress = string.Empty;
-    private string                  hostName = string.Empty;
-    private string                  lastGeneratedText = string.Empty;
-    private string                  nextRotationTimeText = string.Empty;
-    private string                  remainingRotationTimeText = string.Empty;
-    private string                  rotationSummaryText = string.Empty;
+    private XIVAccount?            account;
+    private DeviceProfileSnapshot? savedSnapshot;
+    private bool                   snapshotTouched;
 
     public string MacHash =>
         TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _)
@@ -41,9 +27,9 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
             ? FakeMachineInfo.GetCasCid(normalizedValue)
             : string.Empty;
 
-    public bool IsSharedMode => isSharedMode;
+    public bool IsSharedMode { get; private set; }
 
-    public bool IsAccountMode => !isSharedMode;
+    public bool IsAccountMode => !IsSharedMode;
 
     public string WindowTitle =>
         IsSharedMode ? "共享设备信息设置" : "账号设备信息设置";
@@ -54,9 +40,10 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
     public Visibility AccountModeOptionsVisibility =>
         IsSharedMode ? Visibility.Collapsed : Visibility.Visible;
 
-    public bool CanEditRotationDays => DynamicEnabled && PeriodicRefreshEnabled;
+    public Visibility AccountModeSectionVisibility =>
+        IsSharedMode ? Visibility.Collapsed : Visibility.Visible;
 
-    public bool CanShowPeriodicRefreshInfo => DynamicEnabled && PeriodicRefreshEnabled;
+    public bool CanEditRotationDays => DynamicEnabled && PeriodicRefreshEnabled;
 
     public bool CanEditDeviceDetails => IsSharedMode || DynamicEnabled;
 
@@ -64,112 +51,70 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
     public string AccountDisplayName
     {
-        get => accountDisplayName;
-        private set => SetProperty(ref accountDisplayName, value);
-    }
-
-    public string DescriptionText
-    {
-        get => descriptionText;
-        private set => SetProperty(ref descriptionText, value);
-    }
-
-    public string DeviceDetailsHintText
-    {
-        get => deviceDetailsHintText;
-        private set => SetProperty(ref deviceDetailsHintText, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public bool DynamicEnabled
     {
-        get => dynamicEnabled;
+        get;
         set
         {
-            if (!SetProperty(ref dynamicEnabled, value))
+            if (!SetProperty(ref field, value))
                 return;
 
             OnPropertyChanged(nameof(CanEditRotationDays));
-            OnPropertyChanged(nameof(CanShowPeriodicRefreshInfo));
             OnPropertyChanged(nameof(CanEditDeviceDetails));
-            UpdateRotationSummary();
         }
     }
 
     public bool PeriodicRefreshEnabled
     {
-        get => periodicRefreshEnabled;
+        get;
         set
         {
-            if (!SetProperty(ref periodicRefreshEnabled, value))
+            if (!SetProperty(ref field, value))
                 return;
 
             OnPropertyChanged(nameof(CanEditRotationDays));
-            OnPropertyChanged(nameof(CanShowPeriodicRefreshInfo));
-            UpdateRotationSummary();
         }
     }
 
     public int RotationDays
     {
-        get => rotationDays;
+        get;
         set
         {
             var normalizedValue = AccountManager.NormalizeDeviceProfileRotationDays(value);
-            if (!SetProperty(ref rotationDays, normalizedValue))
+            if (!SetProperty(ref field, normalizedValue))
                 return;
-
-            UpdateRotationSummary();
         }
-    }
+    } = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS;
 
     public string DeviceId
     {
-        get => deviceId;
-        set => SetProperty(ref deviceId, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public string MacAddress
     {
-        get => macAddress;
+        get;
         set
         {
-            if (!SetProperty(ref macAddress, value))
+            if (!SetProperty(ref field, value))
                 return;
 
             OnPropertyChanged(nameof(MacHash));
             OnPropertyChanged(nameof(CasCid));
         }
-    }
+    } = string.Empty;
 
     public string HostName
     {
-        get => hostName;
-        set => SetProperty(ref hostName, value);
-    }
-
-    public string LastGeneratedText
-    {
-        get => lastGeneratedText;
-        private set => SetProperty(ref lastGeneratedText, value);
-    }
-
-    public string NextRotationTimeText
-    {
-        get => nextRotationTimeText;
-        private set => SetProperty(ref nextRotationTimeText, value);
-    }
-
-    public string RemainingRotationTimeText
-    {
-        get => remainingRotationTimeText;
-        private set => SetProperty(ref remainingRotationTimeText, value);
-    }
-
-    public string RotationSummaryText
-    {
-        get => rotationSummaryText;
-        private set => SetProperty(ref rotationSummaryText, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public void Load(XIVAccount targetAccount)
     {
@@ -182,21 +127,18 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
         ApplyMode(false);
 
-        savedSnapshot     = persistedSnapshot;
+        savedSnapshot = persistedSnapshot;
         GeneratedUtcTicks = account.DeviceProfileDynamicEnabled
                                 ? account.DeviceProfileLastGeneratedUtcTicks
                                 : accountManager.GetSharedDeviceProfileGeneratedUtcTicks();
         snapshotTouched = false;
 
         AccountDisplayName     = account.DisplayName;
-        DescriptionText        = "账号登录时，盛趣会要求上传一系列设备标识。为进一步保护个人隐私，可以选择单独配置当前账号使用的设备信息。";
-        DeviceDetailsHintText  = "可以直接修改下方输入框，或随机生成一整套新的仿真设备信息。";
         DynamicEnabled         = account.DeviceProfileDynamicEnabled;
         PeriodicRefreshEnabled = account.IsDeviceProfileRotation;
         RotationDays           = AccountManager.NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays);
 
         ApplySnapshot(snapshot);
-        UpdateRotationSummary();
     }
 
     public void LoadShared()
@@ -207,18 +149,15 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
         var snapshot = accountManager.GetSharedDeviceProfileSnapshot();
 
-        savedSnapshot           = snapshot;
-        GeneratedUtcTicks       = accountManager.GetSharedDeviceProfileGeneratedUtcTicks();
-        snapshotTouched         = false;
-        AccountDisplayName      = "共享设备信息";
-        DescriptionText         = "未启用账号独立设备信息的账号登录时，会统一使用这套共享设备信息。可以在这里直接修改或刷新它。";
-        DeviceDetailsHintText   = "可以直接修改下方输入框，或随机生成一整套新的共享设备信息。";
-        DynamicEnabled          = false;
-        PeriodicRefreshEnabled  = false;
-        RotationDays            = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS;
+        savedSnapshot          = snapshot;
+        GeneratedUtcTicks      = accountManager.GetSharedDeviceProfileGeneratedUtcTicks();
+        snapshotTouched        = false;
+        AccountDisplayName     = "共享设备信息";
+        DynamicEnabled         = false;
+        PeriodicRefreshEnabled = false;
+        RotationDays           = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS;
 
         ApplySnapshot(snapshot);
-        UpdateRotationSummary();
     }
 
     public void Save()
@@ -235,7 +174,6 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
             snapshotTouched = false;
 
             ApplySnapshot(snapshot);
-            UpdateRotationSummary();
             return;
         }
 
@@ -265,7 +203,6 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
         ApplySnapshot(snapshot);
         snapshotTouched = false;
-        UpdateRotationSummary();
     }
 
     public void Import
@@ -295,12 +232,11 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
             RotationDays           = AccountManager.NormalizeDeviceProfileRotationDays(rotationDays);
         }
 
-        DeviceId         = normalizedDeviceId;
-        MacAddress       = normalizedMacAddress;
-        HostName         = normalizedHostName;
+        DeviceId          = normalizedDeviceId;
+        MacAddress        = normalizedMacAddress;
+        HostName          = normalizedHostName;
         GeneratedUtcTicks = generatedUtcTicks > 0 ? generatedUtcTicks : DateTimeOffset.UtcNow.UtcTicks;
         snapshotTouched   = true;
-        UpdateRotationSummary();
     }
 
     public void RefreshAll()
@@ -360,25 +296,6 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         RebuildDeviceIdFromCurrentFields();
         TouchGeneratedTime();
         return true;
-    }
-
-    private static string FormatRemainingTime(TimeSpan remaining)
-    {
-        if (remaining <= TimeSpan.Zero)
-            return "已到达更换时间";
-
-        var totalHours = Math.Max(remaining.TotalHours, 0);
-        var days       = remaining.Days;
-        var hours      = remaining.Hours;
-        var minutes    = remaining.Minutes;
-
-        if (days > 0)
-            return $"{days} 天 {hours} 小时 {minutes} 分钟";
-
-        if (totalHours >= 1)
-            return $"{hours} 小时 {minutes} 分钟";
-
-        return $"{Math.Max(minutes, 1)} 分钟";
     }
 
     private static bool TryNormalizeDeviceId(string input, out string normalizedValue, out string errorMessage)
@@ -459,16 +376,17 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
     private void ApplyMode(bool sharedMode)
     {
-        if (isSharedMode == sharedMode)
+        if (IsSharedMode == sharedMode)
             return;
 
-        isSharedMode = sharedMode;
+        IsSharedMode = sharedMode;
 
         OnPropertyChanged(nameof(IsSharedMode));
         OnPropertyChanged(nameof(IsAccountMode));
         OnPropertyChanged(nameof(WindowTitle));
         OnPropertyChanged(nameof(ProfileKindText));
         OnPropertyChanged(nameof(AccountModeOptionsVisibility));
+        OnPropertyChanged(nameof(AccountModeSectionVisibility));
         OnPropertyChanged(nameof(CanEditDeviceDetails));
     }
 
@@ -515,74 +433,14 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         if (savedSnapshot == null)
             return true;
 
-        return !string.Equals(savedSnapshot.DeviceId, snapshot.DeviceId, StringComparison.Ordinal)
+        return !string.Equals(savedSnapshot.DeviceId,      snapshot.DeviceId,   StringComparison.Ordinal)
                || !string.Equals(savedSnapshot.MacAddress, snapshot.MacAddress, StringComparison.Ordinal)
-               || !string.Equals(savedSnapshot.HostName, snapshot.HostName, StringComparison.Ordinal);
+               || !string.Equals(savedSnapshot.HostName,   snapshot.HostName,   StringComparison.Ordinal);
     }
 
     private void TouchGeneratedTime()
     {
         GeneratedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
         snapshotTouched   = true;
-        UpdateRotationSummary();
-    }
-
-    private void UpdateRotationSummary()
-    {
-        if (GeneratedUtcTicks <= 0)
-        {
-            LastGeneratedText = "最近生成时间：尚未生成";
-
-            if (IsSharedMode)
-            {
-                NextRotationTimeText      = "自动轮换：共享设备信息尚未生成";
-                RemainingRotationTimeText = "当前状态：尚未生成";
-                RotationSummaryText       = "当前共享设备信息尚未生成，保存后会开始供未启用账号独立设备信息的账号共用。";
-                return;
-            }
-
-            NextRotationTimeText      = "下次自动更换：尚未生成";
-            RemainingRotationTimeText = "当前状态：尚未生成";
-            RotationSummaryText = DynamicEnabled
-                                      ? "当前账号尚未生成独立设备信息，保存后将开始使用当前这套仿真设备信息。"
-                                      : "当前未启用账号独立设备信息，登录时将使用共享设备信息。";
-            return;
-        }
-
-        var generatedAtLocal = new DateTimeOffset(GeneratedUtcTicks, TimeSpan.Zero).ToLocalTime();
-        LastGeneratedText = $"最近生成时间：{generatedAtLocal:yyyy-MM-dd HH:mm:ss}";
-
-        if (IsSharedMode)
-        {
-            NextRotationTimeText      = "自动轮换：共享设备信息不会自动轮换";
-            RemainingRotationTimeText = "当前状态：未启用账号独立设备信息的账号会共用这套设备信息";
-            RotationSummaryText       = "当前正在使用这套共享设备信息。可以直接修改，或手动刷新生成一套新的共享设备信息。";
-            return;
-        }
-
-        if (!DynamicEnabled)
-        {
-            NextRotationTimeText      = "下次自动更换：未启用账号独立设备信息";
-            RemainingRotationTimeText = "当前状态：正在使用共享设备信息";
-            RotationSummaryText       = "当前未启用账号独立设备信息，登录时将使用共享设备信息。";
-            return;
-        }
-
-        if (!PeriodicRefreshEnabled)
-        {
-            NextRotationTimeText      = "下次自动更换：未启用定期自动更换";
-            RemainingRotationTimeText = "当前状态：需要手动刷新";
-            RotationSummaryText       = "已启用账号独立设备信息，当前会固定使用这套仿真设备信息。";
-            return;
-        }
-
-        var nextRotationLocal = generatedAtLocal.AddDays(RotationDays);
-        var remaining         = nextRotationLocal - DateTimeOffset.Now;
-        if (remaining < TimeSpan.Zero)
-            remaining = TimeSpan.Zero;
-
-        NextRotationTimeText      = $"下次自动更换：{nextRotationLocal:yyyy-MM-dd HH:mm:ss}";
-        RemainingRotationTimeText = $"剩余时间：{FormatRemainingTime(remaining)}";
-        RotationSummaryText       = $"已启用账号独立设备信息，并将每隔 {RotationDays} 天自动更换一次。";
     }
 }

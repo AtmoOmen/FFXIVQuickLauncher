@@ -26,13 +26,8 @@
 
         <StackPanel>
             <TextBlock FontSize="24" FontWeight="Bold" Text="{Binding AccountDisplayName}" />
-            <TextBlock
-                Margin="0,10,0,0"
-                Foreground="DarkGray"
-                Text="{Binding DescriptionText}"
-                TextWrapping="Wrap" />
 
-            <materialDesign:Card Margin="0,20,0,0" Padding="20">
+            <materialDesign:Card Margin="0,20,0,0" Padding="20" Visibility="{Binding AccountModeSectionVisibility}">
                 <StackPanel>
                     <CheckBox
                         Visibility="{Binding AccountModeOptionsVisibility}"
@@ -58,57 +53,24 @@
                         <TextBlock VerticalAlignment="Center" Text="天自动更换一次" />
                     </StackPanel>
 
-                    <TextBlock
-                        Margin="0,14,0,0"
-                        Foreground="DarkGray"
-                        Text="{Binding RotationSummaryText}"
-                        TextWrapping="Wrap" />
-
-                    <Grid Margin="0,16,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="{Binding LastGeneratedText}" TextWrapping="Wrap" />
-                            <TextBlock
-                                Margin="0,8,0,0"
-                                Text="{Binding NextRotationTimeText}"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
-
-                        <TextBlock
-                            Grid.Column="2"
-                            VerticalAlignment="Center"
-                            Text="{Binding RemainingRotationTimeText}"
-                            TextWrapping="Wrap" />
-                    </Grid>
                 </StackPanel>
             </materialDesign:Card>
 
-            <materialDesign:Card Margin="0,18,0,0" Padding="20">
+            <materialDesign:Card Margin="0,16,0,0" Padding="20">
                 <StackPanel IsEnabled="{Binding CanEditDeviceDetails}">
                     <TextBlock FontSize="18" FontWeight="Bold" Text="设备信息详情" />
 
                     <StackPanel
-                        Margin="0,18,0,0"
+                        Margin="0,12,0,0"
                         Orientation="Horizontal"
                         IsEnabled="{Binding CanEditDeviceDetails}">
                         <Button
                             MinWidth="132"
-                            Margin="0,0,12,0"
                             Click="RefreshAllButton_OnClick"
                             Content="刷新全部设备信息" />
-                        <TextBlock
-                            VerticalAlignment="Center"
-                            Foreground="DarkGray"
-                            Text="{Binding DeviceDetailsHintText}"
-                            TextWrapping="Wrap" />
                     </StackPanel>
 
-                    <Grid Margin="0,18,0,0">
+                    <Grid Margin="0,12,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="140" />
                             <ColumnDefinition Width="*" />
@@ -139,12 +101,12 @@
                         <TextBox
                             Grid.Row="1"
                             Grid.Column="1"
-                            Margin="0,14,12,0"
+                            Margin="0,12,12,0"
                             Text="{Binding MacAddress, UpdateSourceTrigger=LostFocus}" />
                         <Button
                             Grid.Row="1"
                             Grid.Column="2"
-                            Margin="0,14,0,0"
+                            Margin="0,12,0,0"
                             MinWidth="72"
                             Click="RefreshMacAddressButton_OnClick"
                             Content="刷新" />
@@ -154,7 +116,7 @@
                             Grid.Row="2"
                             Grid.Column="1"
                             Grid.ColumnSpan="2"
-                            Margin="0,14,0,0"
+                            Margin="0,12,0,0"
                             IsReadOnly="True"
                             Text="{Binding MacHash, Mode=OneWay}" />
 
@@ -163,7 +125,7 @@
                             Grid.Row="3"
                             Grid.Column="1"
                             Grid.ColumnSpan="2"
-                            Margin="0,14,0,0"
+                            Margin="0,12,0,0"
                             IsReadOnly="True"
                             Text="{Binding CasCid, Mode=OneWay}" />
 
@@ -171,12 +133,12 @@
                         <TextBox
                             Grid.Row="4"
                             Grid.Column="1"
-                            Margin="0,14,12,0"
+                            Margin="0,12,12,0"
                             Text="{Binding HostName, UpdateSourceTrigger=LostFocus}" />
                         <Button
                             Grid.Row="4"
                             Grid.Column="2"
-                            Margin="0,14,0,0"
+                            Margin="0,12,0,0"
                             MinWidth="72"
                             Click="RefreshHostNameButton_OnClick"
                             Content="刷新" />
@@ -185,7 +147,7 @@
             </materialDesign:Card>
         </StackPanel>
 
-        <Grid Grid.Row="1" Margin="0,18,0,0">
+        <Grid Grid.Row="1" Margin="0,14,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
