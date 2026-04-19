@@ -149,7 +149,7 @@
                                 SelectedItem="{Binding SelectedAddonEntry}">
                                 <ListView.ContextMenu>
                                     <ContextMenu
-                                        DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                        DataContext="{Binding DataContext, ElementName=AddonListView}"
                                         StaysOpen="True"
                                         Style="{StaticResource MaterialDesignContextMenu}">
                                         <ContextMenu.Resources>
