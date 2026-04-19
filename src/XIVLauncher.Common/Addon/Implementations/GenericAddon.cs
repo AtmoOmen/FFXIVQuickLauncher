@@ -11,8 +11,8 @@ public class GenericAddon : IRunnableAddon, INotifyAddonAfterClose
 {
     public string Name =>
         string.IsNullOrEmpty(Path)
-            ? "Invalid addon"
-            : $"Launch{(IsApp ? " EXE" : string.Empty)} : {System.IO.Path.GetFileNameWithoutExtension(Path)}";
+            ? "无效程序"
+            : $"{(IsApp ? "程序" : string.Empty)}: {System.IO.Path.GetFileNameWithoutExtension(Path)}";
 
     public string Path;
     public string CommandLine;

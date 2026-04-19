@@ -90,9 +90,6 @@ public partial class SettingsControl
         }
     }
 
-    private void PluginsFolderButton_Click(object sender, RoutedEventArgs e) =>
-        ViewModel.OpenPluginsFolder();
-
     private void LicenseText_OnMouseUp(object sender, MouseButtonEventArgs e) =>
         ViewModel.OpenLicense();
 

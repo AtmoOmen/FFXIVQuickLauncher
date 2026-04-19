@@ -18,7 +18,7 @@
     <Grid SnapsToDevicePixels="True" ClipToBounds="True">
         <dragablz:TabablzControl
             x:Name="SetupTabControl"
-            FixedHeaderCount="7"
+            FixedHeaderCount="6"
             IsEnabled="True"
             Style="{StaticResource MaterialDesignTabablzControlStyle}">
 
@@ -45,7 +45,88 @@
                         </StackPanel>
 
                         <Separator Margin="0,0,0,24" />
-                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="启动选项" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="更新设置" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
+
+                        <Grid Margin="0,0,0,24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="安装更新前先进行确认" FontSize="15" VerticalAlignment="Center" />
+                            <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding AskBeforePatching}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="保留已下载的补丁包" FontSize="15" VerticalAlignment="Center" />
+                            <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding KeepPatches}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                        </Grid>
+
+                        <Separator Margin="0,8,0,24" />
+
+                        <StackPanel Margin="0,0,0,24">
+                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="存储目录" FontSize="15" Margin="0,0,0,8" />
+                            <components:FolderEntry Description="选择文件夹" Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" Foreground="{DynamicResource MaterialDesignBody}" />
+                        </StackPanel>
+
+                        <Grid Margin="0,0,0,24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" MinWidth="150" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="速度限制" FontSize="15" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                <TextBox Width="80" Text="{Binding SpeedLimitMb}" Foreground="{DynamicResource MaterialDesignBody}" VerticalAlignment="Center" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="MB/s" Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" MinWidth="150" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="下载方式" FontSize="15" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="推荐选择 ARIA（HTTP）" Opacity="0.7" FontSize="12" />
+                            </StackPanel>
+                            <ComboBox Grid.Column="1" SelectedIndex="{Binding PatchAcquisitionIndex}" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}">
+                                <ComboBoxItem Content=".NET（HTTP）" />
+                                <ComboBoxItem Content="ARIA（HTTP）" />
+                            </ComboBox>
+                        </Grid>
+
+                        <Separator Margin="0,8,0,24" />
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="GitHub Access Token" FontSize="15" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="用于启动器更新用, 建议填入不包含任何权限的令牌" Opacity="0.7" FontSize="12" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBox Width="200" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding GitHubToken, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="Token" />
+                                <Button Content="查询额度" Style="{StaticResource MaterialDesignOutlinedButton}" Command="{Binding IdentifyTokenCommand}" Margin="16,0,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Tab: 启动 (Start - Combined Launcher & Auto-start) -->
+            <TabItem Header="启动">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24,24,24,80">
+                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="一般" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
 
                         <Grid Margin="0,0,0,24">
                             <Grid.ColumnDefinitions>
@@ -73,14 +154,9 @@
                             </StackPanel>
                             <TextBox Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding LaunchArgs, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="参数" />
                         </Grid>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
 
-            <!-- Tab: 启动 (Start - Combined Launcher & Auto-start) -->
-            <TabItem Header="启动">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24,24,24,80">
+                        <Separator Margin="0,0,0,24" />
+
                         <materialDesign:Card Background="{DynamicResource MaterialDesignBackground}" Foreground="OrangeRed" Padding="16" Margin="0,0,0,24" Visibility="{c:Binding LauncherLanguageNoticeVisible, FalseToVisibility=Collapsed}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="AlertCircleOutline" Margin="0,0,8,0" VerticalAlignment="Center" />
@@ -215,88 +291,6 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- Tab: 更新 (Update) -->
-            <TabItem Header="更新">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24,24,24,80">
-                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="常规设置" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
-
-                        <Grid Margin="0,0,0,24">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="安装更新前先进行确认" FontSize="15" VerticalAlignment="Center" />
-                            <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding AskBeforePatching}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
-                        </Grid>
-
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="保留已下载的补丁包" FontSize="15" VerticalAlignment="Center" />
-                            <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding KeepPatches}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
-                        </Grid>
-
-                        <Separator Margin="0,8,0,24" />
-                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="下载选项" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
-
-                        <StackPanel Margin="0,0,0,24">
-                            <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="存储目录" FontSize="15" Margin="0,0,0,8" />
-                            <components:FolderEntry Description="选择文件夹" Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" Foreground="{DynamicResource MaterialDesignBody}" />
-                        </StackPanel>
-
-                        <Grid Margin="0,0,0,24">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" MinWidth="150" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="速度限制" FontSize="15" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                <TextBox Width="80" Text="{Binding SpeedLimitMb}" Foreground="{DynamicResource MaterialDesignBody}" VerticalAlignment="Center" />
-                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="MB/s" Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
-                            </StackPanel>
-                        </Grid>
-
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" MinWidth="150" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="下载方式" FontSize="15" />
-                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="推荐选择 ARIA（HTTP）" Opacity="0.7" FontSize="12" />
-                            </StackPanel>
-                            <ComboBox Grid.Column="1" SelectedIndex="{Binding PatchAcquisitionIndex}" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}">
-                                <ComboBoxItem Content=".NET（HTTP）" />
-                                <ComboBoxItem Content="ARIA（HTTP）" />
-                            </ComboBox>
-                        </Grid>
-
-                        <Separator Margin="0,8,0,24" />
-                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="GitHub API" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
-
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="GitHub Access Token" FontSize="15" />
-                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="用于启动器更新用, 建议填入不包含任何权限的令牌" Opacity="0.7" FontSize="12" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <TextBox Width="200" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding GitHubToken, UpdateSourceTrigger=PropertyChanged}" materialDesign:HintAssist.Hint="Token" />
-                                <Button Content="查询额度" Style="{StaticResource MaterialDesignOutlinedButton}" Command="{Binding IdentifyTokenCommand}" Margin="16,0,0,0" />
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
             <!-- Tab: 关于 (About) -->
             <TabItem Header="关于">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -361,9 +355,6 @@
 
         <!-- Floating Action Buttons -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,16">
-            <Button Click="PluginsFolderButton_Click" Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}" ToolTip="打开插件文件夹" Margin="0,0,16,0">
-                <materialDesign:PackIcon Height="24" Width="24" Kind="FolderOpen" />
-            </Button>
             <Button Click="AcceptButton_Click" Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}" ToolTip="保存设置">
                 <materialDesign:PackIcon Height="24" Width="24" Kind="Check" />
             </Button>

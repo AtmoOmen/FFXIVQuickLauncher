@@ -45,9 +45,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
     public ICommand OpenBackupToolCommand { get; }
 
     public ICommand OpenOriginalLauncherCommand { get; }
-
-    public ICommand OpenPluginsFolderCommand { get; }
-
+    
     public ICommand OpenLicenseCommand { get; }
 
     public ICommand OpenAdvancedSettingsCommand { get; }
@@ -269,7 +267,6 @@ public sealed class SettingsControlViewModel : ViewModelBase
         OpenGitHubCommand           = new SyncCommand(_ => OpenGitHub());
         OpenBackupToolCommand       = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
         OpenOriginalLauncherCommand = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
-        OpenPluginsFolderCommand    = new SyncCommand(_ => OpenPluginsFolder());
         OpenLicenseCommand          = new SyncCommand(_ => OpenLicense());
         OpenAdvancedSettingsCommand = new SyncCommand(_ => OpenAdvancedSettings());
         OpenChangelogCommand        = new SyncCommand(_ => OpenChangelog());
@@ -472,13 +469,6 @@ public sealed class SettingsControlViewModel : ViewModelBase
     {
         var gamePath = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : App.Settings.GamePath;
         GameHelpers.StartOfficialLauncher(gamePath);
-    }
-
-    public void OpenPluginsFolder()
-    {
-        var pluginsPath = Path.Combine(Paths.RoamingPath, "installedPlugins");
-        Directory.CreateDirectory(pluginsPath);
-        _externalLaunchService.OpenPath(pluginsPath);
     }
 
     public void OpenLicense() =>
