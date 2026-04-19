@@ -8,30 +8,45 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     Title="账户切换"
-    Width="269.186"
-    Height="400"
+    Width="280"
+    SizeToContent="Height"
     AllowsTransparency="True"
     Background="Transparent"
     Deactivated="AccountSwitcher_OnDeactivated"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
-    TextElement.FontWeight="Bold"
+    TextElement.FontWeight="Medium"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     Topmost="True"
-    WindowStartupLocation="CenterScreen"
+    WindowStartupLocation="Manual"
     WindowStyle="None"
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance viewModel:AccountSwitcherViewModel}">
-    <Grid Margin="0,0,0,0">
-        <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="390" Margin="0,0,10,0">
-            <Grid Margin="16,16,10,16">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.15">
+                        <DoubleAnimation.EasingFunction>
+                            <CubicEase EasingMode="EaseOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <ThicknessAnimation Storyboard.TargetProperty="Margin" From="0,15,0,-15" To="0,0,0,0" Duration="0:0:0.25">
+                        <ThicknessAnimation.EasingFunction>
+                            <CubicEase EasingMode="EaseOut" />
+                        </ThicknessAnimation.EasingFunction>
+                    </ThicknessAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
+    <Grid Margin="10,10,10,10">
+        <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" 
+                             UniformCornerRadius="8" 
+                             Margin="0">
+            <Grid Margin="12,12,12,12">
                 <ListView
                     x:Name="AccountListView"
-                    Grid.Row="0"
                     AllowDrop="True"
                     BorderThickness="0"
                     Drop="AccountListView_OnDrop"
@@ -41,6 +56,9 @@
                     PreviewMouseRightButtonDown="AccountListView_OnPreviewMouseRightButtonDown"
                     PreviewMouseMove="AccountListView_OnPreviewMouseMove"
                     SelectionMode="Single"
+                    MaxHeight="450"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     SelectedItem="{Binding SelectedEntry}">
                     <ListView.ContextMenu>
                         <ContextMenu Language="zh-CN"
@@ -89,8 +107,9 @@
                             <Setter Property="Background" Value="Transparent" />
                             <Setter Property="BorderBrush" Value="Transparent" />
                             <Setter Property="BorderThickness" Value="1" />
-                            <Setter Property="Margin" Value="0,0,0,6" />
-                            <Setter Property="Padding" Value="6" />
+                            <Setter Property="Margin" Value="0,0,0,4" />
+                            <Setter Property="Padding" Value="8,6" />
+                            <Setter Property="Cursor" Value="Hand" />
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="ListBoxItem">
@@ -100,17 +119,17 @@
                                             Background="{TemplateBinding Background}"
                                             BorderBrush="{TemplateBinding BorderBrush}"
                                             BorderThickness="{TemplateBinding BorderThickness}"
-                                            CornerRadius="4">
+                                            CornerRadius="6">
                                             <ContentPresenter
                                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                 VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="ItemBorder" Property="Background" Value="#12000000" />
+                                                <Setter TargetName="ItemBorder" Property="Background" Value="#1A000000" />
                                             </Trigger>
                                             <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="ItemBorder" Property="Background" Value="#16FFFFFF" />
+                                                <Setter TargetName="ItemBorder" Property="Background" Value="#26000000" />
                                                 <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}" />
                                             </Trigger>
                                         </ControlTemplate.Triggers>
@@ -129,21 +148,19 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <StackPanel Height="42" Orientation="Horizontal">
-                                    <Border Width="42" Height="42" ClipToBounds="True" CornerRadius="4">
-                                        <Image
-                                            Width="42"
-                                            Height="42"
-                                            Source="{Binding ProfileImage}"
-                                            Stretch="UniformToFill" />
-                                    </Border>
-                                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
-                                               Text="{Binding Account.DisplayName}" />
-                                </StackPanel>
+                                <Border Width="38" Height="38" ClipToBounds="True" CornerRadius="6" Grid.Column="0">
+                                    <Image
+                                        Width="38"
+                                        Height="38"
+                                        Source="{Binding ProfileImage}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                                
+                                <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center"
+                                           Text="{Binding Account.DisplayName}" FontSize="14" TextTrimming="CharacterEllipsis" />
 
-                                <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                    <materialDesign:PackIcon Height="20" Width="20" HorizontalAlignment="Right"
-                                                             VerticalAlignment="Center">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <materialDesign:PackIcon Height="18" Width="18" Margin="4,0,0,0" Opacity="0.7">
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
                                                 <Style.Triggers>
@@ -158,8 +175,7 @@
                                         </materialDesign:PackIcon.Style>
                                     </materialDesign:PackIcon>
 
-                                    <materialDesign:PackIcon Height="20" Width="20" HorizontalAlignment="Right"
-                                                             VerticalAlignment="Center">
+                                    <materialDesign:PackIcon Height="18" Width="18" Margin="4,0,0,0" Opacity="0.7">
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
                                                 <Style.Triggers>
@@ -178,7 +194,6 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-
             </Grid>
         </materialDesign:Card>
     </Grid>

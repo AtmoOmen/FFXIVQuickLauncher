@@ -414,7 +414,7 @@ public partial class MainWindow : Window
             switcher.Top                   = targetPoints.Y - 15;
         }
 
-        switcher.OnAccountSwitchedEventHandler += OnAccountSwitchedEventHandler;
+        switcher.AccountSwitched += OnAccountSwitchedEventHandler;
 
         switcher.Show();
     }

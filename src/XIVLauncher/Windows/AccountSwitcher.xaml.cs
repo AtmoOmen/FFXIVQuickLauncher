@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using XIVLauncher.Accounts;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel;
@@ -13,45 +14,44 @@ namespace XIVLauncher.Windows;
 /// <summary>
 ///     Interaction logic for AccountSwitcher.xaml
 /// </summary>
-public partial class AccountSwitcher : Window
+public partial class AccountSwitcher
 {
-    public EventHandler<XIVAccount>? OnAccountSwitchedEventHandler;
+    public event EventHandler<XIVAccount>? AccountSwitched;
 
     private AccountSwitcherViewModel ViewModel => (AccountSwitcherViewModel)DataContext;
 
-    private Point         _startPoint;
-    private ListViewItem? _draggedItem;
-    private bool          _closing;
-    private Window?       _ownerWindow;
+    private Point         dragStartPoint;
+    private ListViewItem? draggedItem;
+    private bool          closing;
+    private Window?       trackedParentWindow;
 
-    public AccountSwitcher(AccountManager accountManager, Window? ownerWindow = null)
+    public AccountSwitcher(AccountManager accountManager, Window? parentWindow = null)
     {
         InitializeComponent();
-        _ownerWindow = ownerWindow;
+        trackedParentWindow = parentWindow;
 
         DataContext = new AccountSwitcherViewModel
         (
             accountManager,
-            new DialogService(ownerWindow ?? this),
+            new DialogService(parentWindow),
             new ShortcutService(),
-            CloseFromMenuAction
+            () => CloseWindow(animate: false)
         );
 
-        if (AccountListView.ContextMenu != null)
-            AccountListView.ContextMenu.DataContext = DataContext;
+        AccountListView.ContextMenu?.DataContext = DataContext;
 
-        Loaded += (_, _) => AttachOwnerWindow();
-        Closed += (_, _) => DetachOwnerWindow();
+        Loaded += (_, _) => ToggleParentWindowTracking(track: true);
+        Closed += (_, _) => ToggleParentWindowTracking(track: false);
     }
 
-    private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
+    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
     {
         do
         {
             if (current is T ancestor)
                 return ancestor;
 
-            current = VisualTreeHelper.GetParent(current);
+            current = VisualTreeHelper.GetParent(current!);
         }
         while (current != null);
 
@@ -67,79 +67,95 @@ public partial class AccountSwitcher : Window
         if (selectedAccount == null)
             return;
 
-        OnAccountSwitchedEventHandler?.Invoke(this, selectedAccount);
-        _closing = true;
-        Close();
+        AccountSwitched?.Invoke(this, selectedAccount);
+        CloseWindow(animate: true);
     }
 
     private void AccountSwitcher_OnDeactivated(object sender, EventArgs e)
     {
-        if (_closing || AccountListView.ContextMenu?.IsOpen == true)
+        if (closing || AccountListView.ContextMenu?.IsOpen == true)
             return;
 
-        Close();
+        CloseWindow(animate: true);
     }
 
-    private void AttachOwnerWindow()
+    private void ToggleParentWindowTracking(bool track)
     {
-        if (_ownerWindow == null)
+        if (trackedParentWindow == null)
             return;
 
-        _ownerWindow.StateChanged     += OwnerWindow_OnStateChanged;
-        _ownerWindow.IsVisibleChanged += OwnerWindow_OnIsVisibleChanged;
+        if (track)
+        {
+            trackedParentWindow.StateChanged     += ParentWindow_OnStateChanged;
+            trackedParentWindow.IsVisibleChanged += ParentWindow_OnIsVisibleChanged;
+            return;
+        }
+
+        trackedParentWindow.StateChanged     -= ParentWindow_OnStateChanged;
+        trackedParentWindow.IsVisibleChanged -= ParentWindow_OnIsVisibleChanged;
+        trackedParentWindow                  =  null;
     }
 
-    private void DetachOwnerWindow()
+    private void ParentWindow_OnStateChanged(object? sender, EventArgs e)
     {
-        if (_ownerWindow == null)
+        if (trackedParentWindow?.WindowState != WindowState.Minimized)
             return;
 
-        _ownerWindow.StateChanged     -= OwnerWindow_OnStateChanged;
-        _ownerWindow.IsVisibleChanged -= OwnerWindow_OnIsVisibleChanged;
-        _ownerWindow = null;
+        CloseWindow(animate: true);
     }
 
-    private void OwnerWindow_OnStateChanged(object? sender, EventArgs e)
-    {
-        if (_ownerWindow?.WindowState != WindowState.Minimized)
-            return;
-
-        CloseFromOwner();
-    }
-
-    private void OwnerWindow_OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private void ParentWindow_OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (e.NewValue is not false)
             return;
 
-        CloseFromOwner();
+        CloseWindow(animate: true);
     }
 
-    private void CloseFromOwner()
+    private void CloseWindow(bool animate)
     {
-        if (_closing)
+        if (closing)
             return;
 
-        _closing = true;
-        Close();
-    }
+        closing = true;
 
-    private void CloseFromMenuAction()
-    {
-        if (_closing)
+        if (!animate)
+        {
+            Close();
             return;
+        }
 
-        _closing = true;
-        Close();
+        var storyboard = new Storyboard();
+        var opacityAnimation = new DoubleAnimation
+        {
+            To             = 0,
+            Duration       = TimeSpan.FromSeconds(0.15),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(opacityAnimation, this);
+        Storyboard.SetTargetProperty(opacityAnimation, new PropertyPath("Opacity"));
+
+        var marginAnimation = new ThicknessAnimation
+        {
+            To             = new Thickness(0, 10, 0, -10),
+            Duration       = TimeSpan.FromSeconds(0.15),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        Storyboard.SetTarget(marginAnimation, this);
+        Storyboard.SetTargetProperty(marginAnimation, new PropertyPath("Margin"));
+
+        storyboard.Children.Add(opacityAnimation);
+        storyboard.Children.Add(marginAnimation);
+        storyboard.Completed += (_, _) => Close();
+        storyboard.Begin();
     }
 
     private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        _startPoint  = e.GetPosition(null);
-        _draggedItem = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
+        dragStartPoint = e.GetPosition(null);
+        draggedItem    = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
 
-        if (_draggedItem != null)
-            _draggedItem.IsSelected = true;
+        draggedItem?.IsSelected = true;
     }
 
     private void AccountListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
@@ -147,20 +163,20 @@ public partial class AccountSwitcher : Window
         if (FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is { } listViewItem)
         {
             AccountListView.SelectedItem = listViewItem.DataContext;
-            listViewItem.IsSelected = true;
+            listViewItem.IsSelected      = true;
         }
     }
 
     private void AccountListView_OnPreviewMouseMove(object sender, MouseEventArgs e)
     {
         var mousePosition = e.GetPosition(null);
-        var difference    = _startPoint - mousePosition;
+        var difference    = dragStartPoint - mousePosition;
 
         if (sender is not ListView listView
             || FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not ListViewItem listViewItem
             || listView.ItemContainerGenerator.ItemFromContainer(listViewItem) is not AccountSwitcherEntry accountEntry
             || e.LeftButton != MouseButtonState.Pressed
-            || _draggedItem == null)
+            || draggedItem == null)
             return;
 
         if (Math.Abs(difference.X) <= SystemParameters.MinimumHorizontalDragDistance && Math.Abs(difference.Y) <= SystemParameters.MinimumVerticalDragDistance)
@@ -172,7 +188,7 @@ public partial class AccountSwitcher : Window
 
     private void AccountListView_OnDrop(object sender, DragEventArgs e)
     {
-        if (_draggedItem == null)
+        if (draggedItem == null)
             return;
 
         var targetItem = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
@@ -180,7 +196,7 @@ public partial class AccountSwitcher : Window
             return;
 
         var targetIndex  = AccountListView.ItemContainerGenerator.IndexFromContainer(targetItem);
-        var draggedIndex = AccountListView.ItemContainerGenerator.IndexFromContainer(_draggedItem);
+        var draggedIndex = AccountListView.ItemContainerGenerator.IndexFromContainer(draggedItem);
         ViewModel.MoveEntry(draggedIndex, targetIndex);
     }
 }
