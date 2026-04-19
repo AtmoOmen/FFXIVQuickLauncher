@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:media="clr-namespace:System.Windows.Media;assembly=PresentationCore"
     xmlns:system="clr-namespace:System;assembly=mscorlib"
     xmlns:windows="clr-namespace:XIVLauncher.Windows"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
@@ -13,6 +14,7 @@
     Title="XIVLauncherCN (Soil)"
     Width="700"
     Height="376"
+    UseLayoutRounding="True"
     ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
@@ -26,9 +28,6 @@
         <Style x:Key="LoginActionContextMenuStyle"
                TargetType="{x:Type ContextMenu}"
                BasedOn="{StaticResource MaterialDesignContextMenu}" />
-        <Style x:Key="LoginActionMenuStyle"
-               TargetType="{x:Type Menu}"
-               BasedOn="{StaticResource MaterialDesignMenu}" />
         <Style x:Key="LoginActionMenuItemStyle"
                TargetType="{x:Type MenuItem}"
                BasedOn="{StaticResource MaterialDesignMenuItem}" />
@@ -37,15 +36,22 @@
                BasedOn="{StaticResource MaterialDesignSeparator}" />
     </Window.Resources>
 
-    <Grid>
+    <Grid SnapsToDevicePixels="True" ClipToBounds="True">
         <materialDesign:Transitioner SelectedIndex="1">
+            <materialDesign:Transitioner.CacheMode>
+                <media:BitmapCache />
+            </materialDesign:Transitioner.CacheMode>
 
             <materialDesign:TransitionerSlide>
                 <materialDesign:TransitionerSlide.ForwardWipe>
                     <materialDesign:FadeWipe />
                 </materialDesign:TransitionerSlide.ForwardWipe>
                 <windows:SettingsControl x:Name="SettingsControl"
-                                         DataContext="{Binding Settings}" />
+                                         DataContext="{Binding Settings}">
+                    <windows:SettingsControl.CacheMode>
+                        <media:BitmapCache />
+                    </windows:SettingsControl.CacheMode>
+                </windows:SettingsControl>
             </materialDesign:TransitionerSlide>
 
             <materialDesign:TransitionerSlide>
@@ -53,6 +59,9 @@
                     <materialDesign:FadeWipe />
                 </materialDesign:TransitionerSlide.BackwardWipe>
                 <Grid>
+                    <Grid.CacheMode>
+                        <media:BitmapCache />
+                    </Grid.CacheMode>
                     <Grid Margin="10">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -271,12 +280,14 @@
                                 Margin="0"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Stretch"
+                                SnapsToDevicePixels="True"
+                                ClipToBounds="True"
                                 KeyDown="Card_KeyDown">
                                 <materialDesign:Transitioner SelectedIndex="{Binding LoginCardTransitionerIndex}">
-                                    <materialDesign:TransitionerSlide>
-                                        <materialDesign:TransitionerSlide.ForwardWipe>
-                                            <materialDesign:FadeWipe />
-                                        </materialDesign:TransitionerSlide.ForwardWipe>
+                                <materialDesign:TransitionerSlide>
+                                    <materialDesign:TransitionerSlide.ForwardWipe>
+                                        <materialDesign:FadeWipe />
+                                    </materialDesign:TransitionerSlide.ForwardWipe>
 
                                         <DockPanel
                                             Margin="30,18,30,18">

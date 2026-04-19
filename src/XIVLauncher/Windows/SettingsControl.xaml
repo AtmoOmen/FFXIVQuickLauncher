@@ -16,7 +16,10 @@
     TextElement.FontWeight="Bold"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     mc:Ignorable="d">
-    <Grid>
+    <Grid SnapsToDevicePixels="True" ClipToBounds="True">
+        <Grid.CacheMode>
+            <BitmapCache />
+        </Grid.CacheMode>
         <dragablz:TabablzControl
             x:Name="SetupTabControl"
             FixedHeaderCount="7"
