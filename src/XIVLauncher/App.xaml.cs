@@ -113,8 +113,6 @@ public partial class App
         mainWindow = new MainWindow();
         mainWindow.Initialize();
 
-        if (StartupContext.InjectMode)
-            mainWindow.Model.InjectModeSwitchCommand.Execute(null);
     }
 
     #endregion

@@ -18,33 +18,6 @@ public static class PlatformHelpers
 {
     private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, 0);
     
-    public static bool EnsureElevated()
-    {
-        if (IsElevated())
-            return true;
-
-        var currentProcessPath = Environment.ProcessPath;
-        if (string.IsNullOrEmpty(currentProcessPath))
-            return false;
-
-        Log.Error("[PlatformHelper] 尚未获取管理员权限, 尝试以管理员模式重启程序");
-        
-        Process.Start
-        (
-            new ProcessStartInfo
-            {
-                UseShellExecute  = true,
-                WorkingDirectory = Environment.CurrentDirectory,
-                FileName         = currentProcessPath,
-                Verb             = "runas",
-                Arguments        = "--inject"
-            }
-        );
-        
-        Environment.Exit(0);
-        return false;
-    }
-
     public static void BringProcessForeground(int pid)
     {
         const int SW_RESTORE = 9;

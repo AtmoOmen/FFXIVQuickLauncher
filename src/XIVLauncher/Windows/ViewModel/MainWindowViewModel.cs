@@ -87,9 +87,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         var worldStatusBrushOk = new SolidColorBrush(Color.FromRgb(0x21, 0x96, 0xf3));
         WorldStatusIconColor = worldStatusBrushOk;
-
         WorldStatusIconColor = new SolidColorBrush(Color.FromRgb(38, 38, 38));
-        ModeSwitchIcon       = PackIconKind.Injection;
+        
+        ModeSwitchIcon  = PackIconKind.Injection;
+        ModeSwitchTitle = "手动注入模式";
+        
         FFXIVProcesses.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasAvailableProcesses));
@@ -106,7 +108,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 CancelLogin();
                 LoginCardTransitionerIndex = (int)i;
-                ModeSwitchIcon             = i == LoginCardType.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
+                
+                ModeSwitchIcon  = i == LoginCardType.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
+                ModeSwitchTitle = i == LoginCardType.InjectMode ? "正常模式" : "手动注入模式";
+                
                 if (LoginCardTransitionerIndex == (int)LoginCardType.InjectMode)
                     StartRefreshFFXIVProcess();
                 else
@@ -1089,9 +1094,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 try
                 {
-                    if (!PlatformHelpers.EnsureElevated())
-                        return;
-
                     var gamePid = SelectedProcess.ProcessID;
 
                     if (SelectedProcess.HasInjected)
@@ -1190,9 +1192,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public void StartRefreshFFXIVProcess()
     {
-        if (!PlatformHelpers.EnsureElevated())
-            return;
-
         if (ProcessRefreshTask is { IsCompleted: false })
             return;
 
@@ -2190,6 +2189,16 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             field = value;
             OnPropertyChanged(nameof(ModeSwitchIcon));
+        }
+    }
+    
+    public string ModeSwitchTitle
+    {
+        get;
+        set
+        {
+            field = value;
+            OnPropertyChanged(nameof(ModeSwitchTitle));
         }
     }
 

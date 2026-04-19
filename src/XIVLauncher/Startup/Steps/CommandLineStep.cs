@@ -53,9 +53,6 @@ public class CommandLineStep : IStartupStep
             if (cmdLine.DoGenerateLocalizables)
                 GenerateLocalizables();
 
-            if (cmdLine.InjectMode)
-                context.InjectMode = true;
-
             options = cmdLine;
         }
         catch (Exception ex)

@@ -13,7 +13,7 @@
     mc:Ignorable="d"
     Title="XIVLauncherCN (Soil)"
     Width="700"
-    Height="376"
+    Height="420"
     UseLayoutRounding="True"
     ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
@@ -131,8 +131,9 @@
                             <materialDesign:Card
                                 Grid.Row="1"
                                 Grid.Column="0"
-                                Margin="0 10 0 0"
-                                Height="94"
+                                Margin="0 12 0 0"
+                                Height="128"
+                                VerticalAlignment="Top"
                                 HorizontalAlignment="Left" Width="{DynamicResource BannerCardWidth}">
                                 <ListBox x:Name="NewsListView"
                                          MouseUp="NewsListView_OnMouseUp"
@@ -228,56 +229,82 @@
                                 </ListBox>
                             </materialDesign:Card>
 
-                            <StackPanel
+                            <materialDesign:Card
                                 Grid.Row="1"
                                 Grid.Column="1"
-                                Orientation="Horizontal"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Margin="0 0 -10 -10">
+                                Width="255"
+                                Height="128"
+                                Margin="0 12 0 0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top">
+                                <StackPanel Orientation="Vertical"
+                                            Margin="18 12 18 12"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch">
                                 <Button
                                     x:Name="QueueButton"
-                                    Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
+                                    Style="{DynamicResource MaterialDesignFlatButton}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
                                     Focusable="False"
-                                    ToolTip="注入器模式切换"
-                                    Margin="0" Height="77" Width="77"
+                                    Margin="0 0 0 6" Height="30"
+                                    Padding="12 0 12 0"
                                     Command="{Binding Path=InjectModeSwitchCommand}" Cursor="Hand">
-                                    <StackPanel Orientation="Vertical"
-                                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center">
                                         <materialDesign:PackIcon
                                             Kind="{Binding ModeSwitchIcon}"
-                                            Height="Auto" Width="Auto" />
+                                            Height="18"
+                                            Width="18" />
+                                        <TextBlock Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Text="{Binding Path=ModeSwitchTitle}" />
                                     </StackPanel>
                                 </Button>
 
                                 <Button
                                     Style="{DynamicResource MaterialDesignFlatButton}"
-                                    HorizontalAlignment="Left"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
                                     Focusable="False"
-                                    ToolTip="服务器状态"
-                                    Margin="0" Height="77" Width="77"
+                                    Margin="0 0 0 6" Height="30"
+                                    Padding="12 0 12 0"
                                     Click="WorldStatusButton_Click">
-                                    <StackPanel Orientation="Vertical"
-                                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                                        <materialDesign:PackIcon Kind="Earth" Height="Auto"
-                                                                 Width="Auto" />
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="Earth"
+                                                                 Height="18"
+                                                                 Width="18" />
+                                        <TextBlock Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Text="服务器状态" />
                                     </StackPanel>
                                 </Button>
 
                                 <Button
                                     x:Name="SettingsButton"
-                                    Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
+                                    Style="{DynamicResource MaterialDesignFlatButton}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
                                     Focusable="False"
-                                    ToolTip="设置"
-                                    Margin="0" Height="77" Width="77"
+                                    Margin="0" Height="30"
+                                    Padding="12 0 12 0"
                                     Command="{x:Static materialDesign:Transitioner.MovePreviousCommand}">
-                                    <StackPanel Orientation="Vertical"
-                                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center">
                                         <materialDesign:PackIcon Kind="Gear"
-                                                                 Height="Auto" Width="Auto" />
+                                                                 Height="18"
+                                                                 Width="18" />
+                                        <TextBlock Margin="10,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Text="设置" />
                                     </StackPanel>
                                 </Button>
-                            </StackPanel>
+                                </StackPanel>
+                            </materialDesign:Card>
 
                             <materialDesign:Card
                                 Grid.Row="0"

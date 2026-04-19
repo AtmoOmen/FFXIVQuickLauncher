@@ -14,7 +14,6 @@ public class StartupContext
     public Dispatcher          Dispatcher            { get; set; } = null!;
     public bool                IsUpdateFinished      { get; set; }
     public bool                IsRestartingForUpdate { get; set; }
-    public bool                InjectMode            { get; set; }
     public bool                IsDisableAutologin    { get; set; }
     public CredTypeApplyResult? CredTypeApplyResult  { get; set; }
 }

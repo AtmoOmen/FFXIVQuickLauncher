@@ -40,6 +40,4 @@ public class CommandLineOptions
 
     [Option("squirrel-firstrun", Hidden = true)]
     public bool SquirrelFirstRun { get; set; }
-
-    [Option("inject", Hidden = true)] public bool InjectMode { get; set; }
 }

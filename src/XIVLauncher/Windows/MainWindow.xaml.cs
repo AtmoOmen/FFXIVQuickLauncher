@@ -212,7 +212,7 @@ public partial class MainWindow : Window
             // Restore the size of the window to what we expect it to be
             // There's no better way to do it that doesn't make me wanna off myself
             Width  = 700;
-            Height = 376;
+            Height = 420;
         }
         catch (Exception ex)
         {
