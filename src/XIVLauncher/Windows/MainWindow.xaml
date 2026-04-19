@@ -607,30 +607,30 @@
                                             </StackPanel>
                                         </Button>
                                         
-                                        <!-- 萌新招待 -->
+                                        <!-- 购卡充值 -->
                                         <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource MaterialDesignOutlinedButton}" 
                                                 Padding="4" 
                                                 Height="36" 
                                                 FontSize="12" 
                                                 Foreground="{DynamicResource MaterialDesignBody}"
-                                                Click="NoviceInviePageButton_OnClick">
+                                                Click="PayPageButton_OnClick">
                                             <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="AccountPlus" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="萌新招待" VerticalAlignment="Center"/>
+                                                <materialDesign:PackIcon Kind="ClockPlus" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="购卡充值" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
 
-                                        <!-- 后勤补给站 -->
+                                        <!-- 商城中心 -->
                                         <Button Grid.Row="2" Grid.Column="0" 
                                                 Style="{StaticResource MaterialDesignOutlinedButton}" 
                                                 Padding="4" 
                                                 Height="36"
                                                 FontSize="12"
                                                 Foreground="{DynamicResource MaterialDesignBody}"
-                                                Click="DepotPageButton_OnClick">
+                                                Click="ShoppingPageButton_OnClick">
                                             <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="Gift" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="后勤补给站" VerticalAlignment="Center"/>
+                                                <materialDesign:PackIcon Kind="Cart" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="商城中心" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
 

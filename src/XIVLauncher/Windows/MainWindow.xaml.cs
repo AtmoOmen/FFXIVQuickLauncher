@@ -637,11 +637,11 @@ public partial class MainWindow : Window
     private void DCTravelPageButton_OnClick(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo("https://ff14bjz.sdo.com/RegionKanTelepo") { UseShellExecute = true });
 
-    private void NoviceInviePageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo("https://actff1.web.sdo.com/20250713_ZhaoDaiNew/") { UseShellExecute = true });
+    private void PayPageButton_OnClick(object sender, RoutedEventArgs e) =>
+        Process.Start(new ProcessStartInfo("https://pay.sdo.com/item/GWPAY-100001900/") { UseShellExecute = true });
     
-    private void DepotPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo("https://actff1.web.sdo.com/project/141028dgf/index.html") { UseShellExecute = true });
+    private void ShoppingPageButton_OnClick(object sender, RoutedEventArgs e) =>
+        Process.Start(new ProcessStartInfo("https://qu.sdo.com/game/1") { UseShellExecute = true });
 
     private void RisingStonePageButton_OnClick(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo("https://ff14risingstones.web.sdo.com/pc/#/post") { UseShellExecute = true });
