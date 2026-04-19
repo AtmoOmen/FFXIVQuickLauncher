@@ -229,7 +229,7 @@
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Top"
                                     Foreground="{DynamicResource MaterialDesignBody}"
-                                    Text="组件注入延迟" />
+                                    Text="注入延迟" />
 
                                 <StackPanel Margin="0,5,0,0" Orientation="Horizontal">
                                     <xctk:DecimalUpDown
@@ -238,8 +238,7 @@
                                         Value="{Binding DalamudInjectionDelayMs}" />
                                     <Label
                                         Content="ms"
-                                        Foreground="{DynamicResource MaterialDesignBody}"
-                                        ToolTip="延迟游戏内组件注入，可用于在 OBS 或 Discord 中隐藏相关组件。" />
+                                        Foreground="{DynamicResource MaterialDesignBody}" />
                                 </StackPanel>
 
                                 <TextBlock
