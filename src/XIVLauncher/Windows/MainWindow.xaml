@@ -141,8 +141,7 @@
                                 Margin="0 12 0 4"
                                 VerticalAlignment="Stretch"
                                 HorizontalAlignment="Left" 
-                                Width="{DynamicResource BannerCardWidth}"
-                                UniformCornerRadius="6">
+                                Width="{DynamicResource BannerCardWidth}">
                                 <ListBox x:Name="NewsListView"
                                          MouseUp="NewsListView_OnMouseUp"
                                          Background="Transparent"
