@@ -370,60 +370,18 @@ public partial class MainWindow : Window
         if (e.ChangedButton != MouseButton.Left)
             return;
 
-        if (_headlines == null)
-            return;
-
-        if (!(NewsListView.SelectedItem is News item))
+        if (NewsListView.SelectedItem is not News item)
             return;
 
         if (!string.IsNullOrEmpty(item.Url))
             Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
         else if (!string.IsNullOrEmpty(item.Id))
             Process.Start(new ProcessStartInfo($"https://ff.web.sdo.com/web8/index.html#/newstab/newscont/{item.Id}") { UseShellExecute = true });
-        //else
-        //{
-        //    string url;
-
-        //    switch (App.Settings.Language)
-        //    {
-        //        case ClientLanguage.Japanese:
-        //            url = "https://jp.finalfantasyxiv.com/lodestone/news/detail/";
-        //            break;
-
-        //        case ClientLanguage.English when GameHelpers.IsRegionNorthAmerica():
-        //            url = "https://na.finalfantasyxiv.com/lodestone/news/detail/";
-        //            break;
-
-        //        case ClientLanguage.English:
-        //            url = "https://eu.finalfantasyxiv.com/lodestone/news/detail/";
-        //            break;
-
-        //        case ClientLanguage.German:
-        //            url = "https://de.finalfantasyxiv.com/lodestone/news/detail/";
-        //            break;
-
-        //        case ClientLanguage.French:
-        //            url = "https://fr.finalfantasyxiv.com/lodestone/news/detail/";
-        //            break;
-
-        //        case ClientLanguage.ChineseSimplified:
-        //            url = "https://na.finalfantasyxiv.com/lodestone/news/detail/";
-        //            break;
-
-        //        default:
-        //            url = "https://eu.finalfantasyxiv.com/lodestone/news/detail/";
-        //            break;
-        //    }
-
-        //    Process.Start(url + item.Id);
-        //}
+        
     }
 
     private void WorldStatusButton_Click(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo("https://ff.web.sdo.com/web8/index.html#/servers") { UseShellExecute = true });
-
-    private void QuitMaintenanceQueueButton_OnClick(object sender, RoutedEventArgs e) =>
-        Model.IsLoadingDialogOpen = false;
 
     private void Card_KeyDown(object sender, KeyEventArgs e)
     {
@@ -460,7 +418,7 @@ public partial class MainWindow : Window
         switcher.Show();
     }
 
-    private void OnAccountSwitchedEventHandler(object sender, XIVAccount e) =>
+    private void OnAccountSwitchedEventHandler(object? sender, XIVAccount e) =>
         SwitchAccount(e, true);
 
     private void SwitchAccount(XIVAccount account, bool saveAsCurrent)

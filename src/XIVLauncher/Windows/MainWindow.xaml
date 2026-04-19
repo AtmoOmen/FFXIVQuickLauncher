@@ -170,7 +170,7 @@
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem"
                                                BasedOn="{StaticResource {x:Type ListBoxItem}}">
-                                            <Setter Property="Height" Value="23.5" />
+                                            <Setter Property="Height" Value="36" />
                                             <Setter Property="Padding" Value="6,0,6,0" />
                                             <Setter Property="MinHeight" Value="0" />
                                             <Setter Property="Margin" Value="0" />
@@ -238,48 +238,29 @@
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Top">
                                 <StackPanel Orientation="Vertical"
-                                            Margin="18 12 18 12"
+                                            Margin="12 12 12 12"
                                             HorizontalAlignment="Stretch"
                                             VerticalAlignment="Stretch">
                                 <Button
-                                    x:Name="QueueButton"
+                                    x:Name="InjectModeButton"
                                     Style="{DynamicResource MaterialDesignFlatButton}"
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Left"
                                     Focusable="False"
-                                    Margin="0 0 0 6" Height="30"
-                                    Padding="12 0 12 0"
+                                    Margin="0 0 0 6" Height="50"
+                                    Padding="4 0 12 0"
                                     Command="{Binding Path=InjectModeSwitchCommand}" Cursor="Hand">
                                     <StackPanel Orientation="Horizontal"
                                                 HorizontalAlignment="Left"
                                                 VerticalAlignment="Center">
                                         <materialDesign:PackIcon
                                             Kind="{Binding ModeSwitchIcon}"
-                                            Height="18"
-                                            Width="18" />
+                                            Height="32"
+                                            Width="32" />
                                         <TextBlock Margin="10,0,0,0"
                                                    VerticalAlignment="Center"
-                                                   Text="{Binding Path=ModeSwitchTitle}" />
-                                    </StackPanel>
-                                </Button>
-
-                                <Button
-                                    Style="{DynamicResource MaterialDesignFlatButton}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Left"
-                                    Focusable="False"
-                                    Margin="0 0 0 6" Height="30"
-                                    Padding="12 0 12 0"
-                                    Click="WorldStatusButton_Click">
-                                    <StackPanel Orientation="Horizontal"
-                                                HorizontalAlignment="Left"
-                                                VerticalAlignment="Center">
-                                        <materialDesign:PackIcon Kind="Earth"
-                                                                 Height="18"
-                                                                 Width="18" />
-                                        <TextBlock Margin="10,0,0,0"
-                                                   VerticalAlignment="Center"
-                                                   Text="服务器状态" />
+                                                   Text="{Binding Path=ModeSwitchTitle}"
+                                                   FontSize="16"/>
                                     </StackPanel>
                                 </Button>
 
@@ -289,18 +270,19 @@
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Left"
                                     Focusable="False"
-                                    Margin="0" Height="30"
-                                    Padding="12 0 12 0"
+                                    Margin="0" Height="50"
+                                    Padding="4 0 18 0"
                                     Command="{x:Static materialDesign:Transitioner.MovePreviousCommand}">
                                     <StackPanel Orientation="Horizontal"
                                                 HorizontalAlignment="Left"
                                                 VerticalAlignment="Center">
                                         <materialDesign:PackIcon Kind="Gear"
-                                                                 Height="18"
-                                                                 Width="18" />
+                                                                 Height="32"
+                                                                 Width="32" />
                                         <TextBlock Margin="10,0,0,0"
                                                    VerticalAlignment="Center"
-                                                   Text="设置" />
+                                                   Text="启动器设置"
+                                                   FontSize="16"/>
                                     </StackPanel>
                                 </Button>
                                 </StackPanel>

@@ -89,9 +89,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         WorldStatusIconColor = worldStatusBrushOk;
         WorldStatusIconColor = new SolidColorBrush(Color.FromRgb(38, 38, 38));
         
-        ModeSwitchIcon  = PackIconKind.Injection;
-        ModeSwitchTitle = "手动注入模式";
-        
         FFXIVProcesses.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasAvailableProcesses));
@@ -2190,8 +2187,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
             field = value;
             OnPropertyChanged(nameof(ModeSwitchIcon));
         }
-    }
-    
+    } = PackIconKind.Injection;
+
     public string ModeSwitchTitle
     {
         get;
@@ -2200,7 +2197,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             field = value;
             OnPropertyChanged(nameof(ModeSwitchTitle));
         }
-    }
+    } = "手动注入模式";
 
     public ObservableCollection<FFXIVProcess> FFXIVProcesses { get; } = [];
 
