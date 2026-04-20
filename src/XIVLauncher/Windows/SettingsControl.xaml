@@ -22,11 +22,24 @@
             FixedHeaderCount="6"
             IsEnabled="True"
             Style="{StaticResource MaterialDesignTabablzControlStyle}">
+            <dragablz:TabablzControl.HeaderSuffixContent>
+                    <Button
+                        Click="AcceptButton_Click"
+                        Margin="6 0 10 0"
+                        Padding="10 6 10 6"
+                        HorizontalAlignment="Right"
+                        HorizontalContentAlignment="Center"
+                        Style="{StaticResource MaterialDesignRaisedButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Width="12" Height="12" Kind="KeyboardBackspace" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+            </dragablz:TabablzControl.HeaderSuffixContent>
 
             <!-- Tab: 游戏 (Game) -->
             <TabItem Header="游戏">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24,24,24,80">
+                    <StackPanel Margin="24">
                         <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="游戏位置" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
 
                         <Grid Margin="0,0,0,16">
@@ -35,14 +48,14 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="请选择游戏目录" Foreground="{DynamicResource MaterialDesignBody}" />
+                            <TextBlock Text="游戏目录" Foreground="{DynamicResource MaterialDesignBody}" />
                             <components:FolderEntry Grid.Row="1" Margin="0,8,0,0" Description="选择文件夹" Foreground="{DynamicResource MaterialDesignBody}" Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />  
                             <TextBlock Grid.Row="2" Margin="0,4,0,0" Foreground="Red" Text="{Binding GamePathWarningMessage}" Visibility="{Binding GamePathWarningVisibility}" />
                         </Grid>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,32">
-                            <Button Content="检查游戏完整性" Style="{StaticResource MaterialDesignOutlinedButton}" ToolTip="对游戏文件执行完整性检查" Click="RunIntegrityCheck_OnClick" IsEnabled="{Binding IsRunIntegrityCheckPossible}" Margin="0,0,16,0" />
-                            <Button Content="生成游戏哈希" Style="{StaticResource MaterialDesignOutlinedButton}" ToolTip="遍历游戏文件并生成 Hash 数据" Click="GenerateIntegrityCheck_OnClick" IsEnabled="{Binding IsRunIntegrityCheckPossible}" />
+                            <Button Content="检查完整性" Style="{StaticResource MaterialDesignOutlinedButton}" ToolTip="对游戏文件执行完整性检查" Click="RunIntegrityCheck_OnClick" IsEnabled="{Binding IsRunIntegrityCheckPossible}" Margin="0,0,16,0" />
+                            <Button Content="生成哈希数据" Style="{StaticResource MaterialDesignOutlinedButton}" ToolTip="遍历游戏文件并生成 Hash 数据" Click="GenerateIntegrityCheck_OnClick" IsEnabled="{Binding IsRunIntegrityCheckPossible}" />
                         </StackPanel>
 
                         <Separator Margin="0,0,0,24" />
@@ -126,7 +139,7 @@
             <!-- Tab: 启动 (Start - Combined Launcher & Auto-start) -->
             <TabItem Header="启动">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24,24,24,80">
+                    <StackPanel Margin="24">
                         <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="一般" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,16" />
 
                         <Grid Margin="0,0,0,24">
@@ -232,8 +245,7 @@
             <!-- Tab: Dalamud -->
             <TabItem Header="Dalamud">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24,24,24,80">
-                        <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="Dalamud 设置" Style="{StaticResource MaterialDesignHeadline6TextBlock}" Margin="0,0,0,8" />
+                    <StackPanel Margin="24">
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -280,12 +292,10 @@
                                 <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="游戏内超域传送" FontSize="15" />
                                     <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Opacity="0.7" FontSize="12" TextWrapping="Wrap">
-                                        <Run Text="为游戏内跨大区传送提供支持, 可在登录界面右键对应角色, 快捷传送至目标大区" />
-                                        <LineBreak />
-                                        <Run Text="需要同时安装并启用 DCTravelerX 插件" />
+                                        <Run Text="额外支持游戏内超域传送, 需要同时安装并启用 DCTravelerX 插件" />
                                     </TextBlock>
                                 </StackPanel>
-                                <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding EnableDcTravel}" IsEnabled="False" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding EnableDcTravel}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
                             </Grid>
                         </StackPanel>
                     </StackPanel>
@@ -295,7 +305,7 @@
             <!-- Tab: 关于 (About) -->
             <TabItem Header="关于">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid Margin="24,24,24,80">
+                    <Grid Margin="24">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -353,12 +363,5 @@
                 </ScrollViewer>
             </TabItem>
         </dragablz:TabablzControl>
-
-        <!-- Floating Action Buttons -->
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,16">
-            <Button Click="AcceptButton_Click" Style="{StaticResource MaterialDesignFloatingActionMiniLightButton}" ToolTip="保存设置">
-                <materialDesign:PackIcon Height="24" Width="24" Kind="Check" />
-            </Button>
-        </StackPanel>
     </Grid>
 </UserControl>

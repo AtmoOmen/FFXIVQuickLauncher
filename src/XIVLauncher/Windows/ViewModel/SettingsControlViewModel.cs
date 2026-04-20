@@ -133,7 +133,11 @@ public sealed class SettingsControlViewModel : ViewModelBase
     public bool EnableDcTravel
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            _     = value;
+            field = true;
+        }
     } = true;
 
     public string LaunchArgs
