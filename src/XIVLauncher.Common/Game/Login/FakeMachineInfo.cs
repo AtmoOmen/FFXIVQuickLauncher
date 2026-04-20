@@ -1,5 +1,6 @@
 using System;
 using System.Buffers.Binary;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -10,8 +11,8 @@ namespace XIVLauncher.Common.Game.Login;
 /// </summary>
 public static class FakeMachineInfo
 {
-    private const string HostNameAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    private const byte LocallyAdministeredUnicastOctet = 0x02;
+    private const string HostNameAlphabet                = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private const byte   LocallyAdministeredUnicastOctet = 0x02;
 
     private static readonly SyntheticNicFamily[] SyntheticNicFamilies =
     [
@@ -133,7 +134,7 @@ public static class FakeMachineInfo
     {
         var macHash  = GetMacHash(macAddress);
         var payload  = $"v2|{profileKey}|{macAddress}|{hostName}";
-        var cpuHash  = GetProfileHash("CPU", payload);
+        var cpuHash  = GetProfileHash("CPU",  payload);
         var diskHash = GetProfileHash("DISK", payload);
         return string.Join(":", macHash, cpuHash, diskHash);
     }
@@ -161,12 +162,13 @@ public static class FakeMachineInfo
             return rawValue.ToUpperInvariant();
 
         var normalizedSegments = new string[6];
+
         for (var i = 0; i < segments.Length; i++)
         {
-            if (segments[i].Length != 2 || !byte.TryParse(segments[i], System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out var parsedByte))
+            if (segments[i].Length != 2 || !byte.TryParse(segments[i], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var parsedByte))
                 return rawValue.ToUpperInvariant();
 
-            normalizedSegments[i] = parsedByte.ToString("X2", System.Globalization.CultureInfo.InvariantCulture);
+            normalizedSegments[i] = parsedByte.ToString("X2", CultureInfo.InvariantCulture);
         }
 
         return string.Join("-", normalizedSegments);
@@ -183,7 +185,11 @@ public static class FakeMachineInfo
         int    Weight
     );
 
-    private readonly record struct SyntheticNicFamily(byte SecondByte, byte ThirdByte);
+    private readonly record struct SyntheticNicFamily
+    (
+        byte SecondByte,
+        byte ThirdByte
+    );
 
     private readonly record struct SyntheticDeviceContext
     (
@@ -192,7 +198,10 @@ public static class FakeMachineInfo
         string MacAddress
     );
 
-    private struct DeterministicSequence(ReadOnlySpan<byte> seed)
+    private struct DeterministicSequence
+    (
+        ReadOnlySpan<byte> seed
+    )
     {
         private ulong state = CreateInitialState(seed);
 
@@ -210,16 +219,16 @@ public static class FakeMachineInfo
             state += 0x9E3779B97F4A7C15UL;
 
             var value = state;
-            value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9UL;
-            value = (value ^ (value >> 27)) * 0x94D049BB133111EBUL;
-            return value ^ (value >> 31);
+            value = (value ^ value >> 30) * 0xBF58476D1CE4E5B9UL;
+            value = (value ^ value >> 27) * 0x94D049BB133111EBUL;
+            return value ^ value >> 31;
         }
 
         private static ulong CreateInitialState(ReadOnlySpan<byte> seed)
         {
             var firstHalf  = BinaryPrimitives.ReadUInt64LittleEndian(seed);
             var secondHalf = BinaryPrimitives.ReadUInt64LittleEndian(seed[8..]);
-            var mixedState = firstHalf ^ (secondHalf * 0x9E3779B97F4A7C15UL);
+            var mixedState = firstHalf ^ secondHalf * 0x9E3779B97F4A7C15UL;
             return mixedState != 0 ? mixedState : 0xA5A5A5A5A5A5A5A5UL;
         }
     }

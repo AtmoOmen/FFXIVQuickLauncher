@@ -21,7 +21,7 @@ public partial class IntegrityCheckProgressWindow : Window
         MouseMove += IntegrityCheckProgressWindow_OnMouseMove;
     }
 
-    public void UpdateProgress(IntegrityCheck.IntegrityCheckProgress progress) =>
+    public void UpdateProgress(IntegrityCheckProgress progress) =>
         ViewModel.CurrentFile = progress.CurrentFile;
 
     private void IntegrityCheckProgressWindow_OnMouseMove(object sender, MouseEventArgs e)

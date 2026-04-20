@@ -85,11 +85,14 @@ public partial class GameRepairProgressWindow : Window
     private void UpdateStatusDisplay()
     {
         _timer.Interval = _verify.ProgressUpdateInterval == TimeSpan.Zero ? 100 : _verify.ProgressUpdateInterval.TotalMilliseconds;
+        var listLabel   = _verify.Mode == PatchVerifierMode.Update ? "更新清单" : "修复清单";
+        var verifyLabel = _verify.Mode == PatchVerifierMode.Update ? "校验" : "验证";
+        var applyLabel  = _verify.Mode == PatchVerifierMode.Update ? "更新" : "修复";
 
         switch (_verify.State)
         {
             case PatchVerifier.VerifyState.DownloadMeta:
-                CurrentStepText.Text = "正在下载元文件…";
+                CurrentStepText.Text = $"正在获取{listLabel}…";
                 InfoTextBlock.Text   = $"{_verify.CurrentFile}";
                 StatusTextBlock.Text =
                     $"{Math.Min(_verify.PatchSetIndex + 1, _verify.PatchSetCount)}/{_verify.PatchSetCount} - {APIHelper.BytesToString(_verify.Progress)}/{APIHelper.BytesToString(_verify.Total)}";
@@ -102,8 +105,8 @@ public partial class GameRepairProgressWindow : Window
             case PatchVerifier.VerifyState.VerifyAndRepair:
                 CurrentStepText.Text = _verify.CurrentMetaInstallState switch
                 {
-                    IndexedZiPatchInstaller.InstallTaskState.NotStarted => "正在验证游戏文件…",
-                    _                                                   => "正在修复游戏文件…"
+                    IndexedZiPatchInstaller.InstallTaskState.NotStarted => $"正在{verifyLabel}游戏文件…",
+                    _                                                   => $"正在{applyLabel}游戏文件…"
                 };
 
                 InfoTextBlock.Text = $"{_verify.CurrentFile}";

@@ -19,10 +19,10 @@ public sealed class LoginChannelContext
     private const string GLOBAL_CAS_DOMAIN   = "cas.sdo.com";
     private const string FALLBACK_CAS_DOMAIN = "n1.cas.sdo.com";
 
-    private readonly HttpClient      loginHttpClient;
-    private readonly CookieContainer loginCookies;
+    private readonly HttpClient            loginHttpClient;
+    private readonly CookieContainer       loginCookies;
     private readonly DeviceProfileSnapshot deviceProfile;
-    private readonly string          casCID;
+    private readonly string                casCID;
 
     private int casDomainMode;
 
@@ -31,7 +31,7 @@ public sealed class LoginChannelContext
         ArgumentNullException.ThrowIfNull(deviceProfile);
 
         this.deviceProfile = deviceProfile;
-        loginCookies = new CookieContainer();
+        loginCookies       = new CookieContainer();
         var loginHandler = new HttpClientHandler
         {
             UseCookies      = true,
@@ -120,10 +120,13 @@ public sealed class LoginChannelContext
 
     public Task<LoginResponse> CheckCodeLoginAsync(string guid, string captchaCode, bool keepLogin)
     {
-        var captchaInfo = JsonConvert.SerializeObject(new
-        {
-            picCode = captchaCode
-        });
+        var captchaInfo = JsonConvert.SerializeObject
+        (
+            new
+            {
+                picCode = captchaCode
+            }
+        );
 
         return GetJsonAsSdoClient
         (
@@ -143,8 +146,8 @@ public sealed class LoginChannelContext
 
     public async Task<byte[]> DownloadCaptchaImageAsync(string captchaUrl, CancellationToken cancellationToken = default)
     {
-        var requestUri = BuildCaptchaUri(captchaUrl);
-        using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+        var       requestUri = BuildCaptchaUri(captchaUrl);
+        using var request    = new HttpRequestMessage(HttpMethod.Get, requestUri);
         request.Headers.AddWithoutValidation("Cache-Control", "no-cache");
         request.Headers.AddWithoutValidation
         (
@@ -372,10 +375,10 @@ public sealed class LoginChannelContext
             ]
         );
 
-        var casDomain     = Volatile.Read(ref casDomainMode) == 0 ? GLOBAL_CAS_DOMAIN : FALLBACK_CAS_DOMAIN;
-        var requestPath   = endPoint.StartsWith("/", StringComparison.Ordinal) ? endPoint : $"/authen/{endPoint}";
-        var queryPrefix   = requestPath.Contains('?') ? "&" : "?";
-        var queryString   = string.Join("&", allParas);
+        var casDomain   = Volatile.Read(ref casDomainMode) == 0 ? GLOBAL_CAS_DOMAIN : FALLBACK_CAS_DOMAIN;
+        var requestPath = endPoint.StartsWith("/", StringComparison.Ordinal) ? endPoint : $"/authen/{endPoint}";
+        var queryPrefix = requestPath.Contains('?') ? "&" : "?";
+        var queryString = string.Join("&", allParas);
 
         return new Uri($"https://{casDomain}{requestPath}{queryPrefix}{queryString}");
     }

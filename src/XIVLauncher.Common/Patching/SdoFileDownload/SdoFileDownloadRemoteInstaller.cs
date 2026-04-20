@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -81,7 +82,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 
     #endregion
 
-    public async Task ConstructFromRemoteIntegrity(IntegrityCheck.IntegrityCheckResult remoteIntegrity, TimeSpan progressReportInterval = default)
+    public async Task ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity, TimeSpan progressReportInterval = default)
     {
         var writer = GetRequestCreator(WorkerInboundOpcode.Construct);
         WriteIntegrityCheckResult(writer, remoteIntegrity);
@@ -119,6 +120,14 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         return ReadStringList(reader);
     }
 
+    public async Task WriteAllText(string filePath, string content, CancellationToken cancellationToken = default)
+    {
+        var writer = GetRequestCreator(WorkerInboundOpcode.WriteAllText, cancellationToken);
+        writer.Write(filePath);
+        writer.Write(content);
+        await WaitForResult(writer, cancellationToken);
+    }
+
     public async Task MoveFile(string sourceFile, string targetFile, CancellationToken cancellationToken = default)
     {
         var writer = GetRequestCreator(WorkerInboundOpcode.MoveFile, cancellationToken);
@@ -142,12 +151,12 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         await WaitForResult(writer, cancellationToken);
     }
 
-    private static void WriteIntegrityCheckResult(BinaryWriter writer, IntegrityCheck.IntegrityCheckResult remoteIntegrity) =>
+    private static void WriteIntegrityCheckResult(BinaryWriter writer, IntegrityCheckResult remoteIntegrity) =>
         writer.Write(JsonSerializer.Serialize(remoteIntegrity));
 
-    private static IntegrityCheck.IntegrityCheckResult ReadIntegrityCheckResult(BinaryReader reader)
+    private static IntegrityCheckResult ReadIntegrityCheckResult(BinaryReader reader)
     {
-        return JsonSerializer.Deserialize<IntegrityCheck.IntegrityCheckResult>(reader.ReadString())
+        return JsonSerializer.Deserialize<IntegrityCheckResult>(reader.ReadString())
                ?? throw new InvalidDataException("Failed to deserialize integrity check result.");
     }
 
@@ -393,7 +402,10 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
                                     );
 
                                 targetParentDir.Create();
-                                Directory.Move(sourceFileName, targetFileName);
+                                if (File.Exists(sourceFileName))
+                                    File.Move(sourceFileName, targetFileName);
+                                else
+                                    Directory.Move(sourceFileName, targetFileName);
 
                                 if (!sourceParentDir.GetFileSystemInfos().Any())
                                     sourceParentDir.Delete(false);
@@ -403,6 +415,16 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
                             case WorkerInboundOpcode.CreateDirectory:
                                 new DirectoryInfo(reader.ReadString()).Create();
                                 break;
+
+                            case WorkerInboundOpcode.WriteAllText:
+                            {
+                                var filePath      = reader.ReadString();
+                                var content       = reader.ReadString();
+                                var directoryPath = Path.GetDirectoryName(filePath) ?? throw new InvalidOperationException();
+                                Directory.CreateDirectory(directoryPath);
+                                File.WriteAllText(filePath, content, new UTF8Encoding(false));
+                                break;
+                            }
 
                             case WorkerInboundOpcode.RemoveDirectory:
                             {
@@ -533,6 +555,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         GetBrokenFiles,
         MoveFile,
         CreateDirectory,
+        WriteAllText,
         RemoveDirectory
     }
 }

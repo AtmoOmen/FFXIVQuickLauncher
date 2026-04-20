@@ -36,7 +36,7 @@ public class SdoFileDownloadInstaller : IDisposable
 
     #endregion
 
-    public void ConstructFromRemoteIntegrity(IntegrityCheck.IntegrityCheckResult remoteIntegrity)
+    public void ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity)
     {
         targets.Clear();
         queuedDownloads.Clear();

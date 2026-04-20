@@ -82,10 +82,10 @@ public partial class SettingsControl
             }
         );
 
-    private async Task ExecuteIntegrityCheckAsync(Func<IProgress<IntegrityCheck.IntegrityCheckProgress>, Task> action)
+    private async Task ExecuteIntegrityCheckAsync(Func<IProgress<IntegrityCheckProgress>, Task> action)
     {
         var window   = new IntegrityCheckProgressWindow();
-        var progress = new Progress<IntegrityCheck.IntegrityCheckProgress>();
+        var progress = new Progress<IntegrityCheckProgress>();
 
         progress.ProgressChanged += (_, checkProgress) => window.UpdateProgress(checkProgress);
 

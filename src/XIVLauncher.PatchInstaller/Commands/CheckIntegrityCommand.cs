@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Patch.V3;
 
 namespace XIVLauncher.PatchInstaller.Commands;
 
@@ -29,14 +30,14 @@ public class CheckIntegrityCommand
     private static readonly Option<string> IntegrityFilePathOption = new
     (
         ["-f", "--integrity-file"],
-        $"Path to integrity check file. Leave it empty to download from: {new Uri(IntegrityCheck.INTEGRITY_CHECK_BASE_URL).Host}"
+        $"Path to integrity check file. Leave it empty to download from: {new Uri(V3GamePatchConstants.REMOTE_VERSION_URL).Host}"
     );
 
     private static readonly Option<bool> IndexOnlyOption = new
     (
         ["-i", "--index-only"],
         () => false,
-        $"Path to integrity check file. Leave it empty to download from: {new Uri(IntegrityCheck.INTEGRITY_CHECK_BASE_URL).Host}"
+        $"Path to integrity check file. Leave it empty to download from: {new Uri(V3GamePatchConstants.REMOTE_VERSION_URL).Host}"
     );
 
     private static readonly Option<int> ThreadCountOption = new
@@ -129,7 +130,7 @@ public class CheckIntegrityCommand
 
     private async Task<int> Handle(CancellationToken cancellationToken)
     {
-        IntegrityCheck.IntegrityCheckResult icr;
+        IntegrityCheckResult icr;
 
         if (string.IsNullOrWhiteSpace(integrityFilePath))
         {
@@ -138,7 +139,8 @@ public class CheckIntegrityCommand
             icr = IntegrityCheck.DownloadIntegrityCheckForVersion().Result;
         }
         else
-            icr = JsonConvert.DeserializeObject<IntegrityCheck.IntegrityCheckResult>(integrityFilePath);
+            icr = JsonConvert.DeserializeObject<IntegrityCheckResult>(File.ReadAllText(integrityFilePath))
+                  ?? throw new InvalidDataException("Failed to deserialize integrity check file.");
 
         var fileCounter  = 0;
         var matchCounter = 0;
@@ -147,13 +149,14 @@ public class CheckIntegrityCommand
                            ? icr.Hashes.Where(x => Path.GetExtension(x.Key).ToLowerInvariant() == ".index").ToDictionary(x => x.Key, x => x.Value)
                            : icr.Hashes;
 
-        await foreach (var (path, calculatedHash, exception) in RunThreadLimited
+        await foreach (var validationResult in RunThreadLimited<(string Path, string? Hash, Exception? Exception)>
                        (
                            hashList.Keys.Select(CreateValidateFileTask),
                            threadCount,
                            cancellationToken
                        ))
         {
+            var (path, calculatedHash, exception) = validationResult;
             var expectedHash = hashList[path];
 
             fileCounter++;

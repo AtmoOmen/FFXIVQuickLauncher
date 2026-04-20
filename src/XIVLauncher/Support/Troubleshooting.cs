@@ -65,10 +65,10 @@ public static class Troubleshooting
 
                 integrity = result.compareResult switch
                 {
-                    IntegrityCheck.CompareResult.ReferenceFetchFailure => TroubleshootingPayload.IndexIntegrityResult.ReferenceFetchFailure,
-                    IntegrityCheck.CompareResult.ReferenceNotFound     => TroubleshootingPayload.IndexIntegrityResult.ReferenceNotFound,
-                    IntegrityCheck.CompareResult.Invalid               => TroubleshootingPayload.IndexIntegrityResult.Failed,
-                    _                                                  => integrity
+                    IntegrityCheckCompareResult.ReferenceFetchFailure => TroubleshootingPayload.IndexIntegrityResult.ReferenceFetchFailure,
+                    IntegrityCheckCompareResult.ReferenceNotFound     => TroubleshootingPayload.IndexIntegrityResult.ReferenceNotFound,
+                    IntegrityCheckCompareResult.Invalid               => TroubleshootingPayload.IndexIntegrityResult.Failed,
+                    _                                                 => integrity
                 };
             }
         }

@@ -23,7 +23,7 @@ public static class RealMachineInfo
 
     private static string GetMacAddress()
     {
-        var bestPriority = int.MaxValue;
+        var     bestPriority   = int.MaxValue;
         byte[]? bestMacAddress = null;
 
         foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
@@ -75,28 +75,26 @@ public static class RealMachineInfo
 
         priority += networkInterface.NetworkInterfaceType switch
         {
-            NetworkInterfaceType.Ethernet       => 0,
+            NetworkInterfaceType.Ethernet        => 0,
             NetworkInterfaceType.GigabitEthernet => 0,
-            NetworkInterfaceType.FastEthernetFx => 0,
-            NetworkInterfaceType.FastEthernetT  => 0,
-            NetworkInterfaceType.Wireless80211  => 10,
-            NetworkInterfaceType.Loopback       => 1000,
-            NetworkInterfaceType.Tunnel         => 1000,
-            NetworkInterfaceType.Unknown        => 1000,
-            _                                   => 50
+            NetworkInterfaceType.FastEthernetFx  => 0,
+            NetworkInterfaceType.FastEthernetT   => 0,
+            NetworkInterfaceType.Wireless80211   => 10,
+            NetworkInterfaceType.Loopback        => 1000,
+            NetworkInterfaceType.Tunnel          => 1000,
+            NetworkInterfaceType.Unknown         => 1000,
+            _                                    => 50
         };
 
         var descriptor = $"{networkInterface.Name}|{networkInterface.Description}".ToUpperInvariant();
-        if (descriptor.Contains("VIRTUAL", StringComparison.Ordinal)
-            || descriptor.Contains("VMWARE", StringComparison.Ordinal)
-            || descriptor.Contains("VBOX", StringComparison.Ordinal)
+        if (descriptor.Contains("VIRTUAL",    StringComparison.Ordinal)
+            || descriptor.Contains("VMWARE",  StringComparison.Ordinal)
+            || descriptor.Contains("VBOX",    StringComparison.Ordinal)
             || descriptor.Contains("HYPER-V", StringComparison.Ordinal)
-            || descriptor.Contains("TAP", StringComparison.Ordinal)
-            || descriptor.Contains("TUN", StringComparison.Ordinal)
-            || descriptor.Contains("VPN", StringComparison.Ordinal))
-        {
+            || descriptor.Contains("TAP",     StringComparison.Ordinal)
+            || descriptor.Contains("TUN",     StringComparison.Ordinal)
+            || descriptor.Contains("VPN",     StringComparison.Ordinal))
             priority += 500;
-        }
 
         return priority;
     }

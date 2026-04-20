@@ -38,9 +38,10 @@ public class PatchVerifier : IDisposable
     }
 
     public TimeSpan                                 ProgressUpdateInterval        { get; }
+    public PatchVerifierMode                        Mode                          { get; }
     public List<string>                             MovedFiles                    { get; } = new();
     public int                                      NumBrokenFiles                { get; private set; }
-    public string                                   MovedFileToDir                { get; private set; }
+    public string                                   MovedFileToDir                { get; private set; } = string.Empty;
     public int                                      PatchSetIndex                 { get; private set; }
     public int                                      PatchSetCount                 { get; private set; }
     public int                                      TaskIndex                     { get; private set; }
@@ -95,10 +96,11 @@ public class PatchVerifier : IDisposable
 
     private Task _verificationTask;
 
-    public PatchVerifier(ISettings settings, LoginResult loginResult, TimeSpan progressUpdateInterval, int maxExpansion, bool external = true)
+    public PatchVerifier(ISettings settings, LoginResult loginResult, PatchVerifierMode mode, TimeSpan progressUpdateInterval, int maxExpansion, bool external = true)
     {
         _settings              = settings;
         _client                = new HttpClient();
+        Mode                   = mode;
         ProgressUpdateInterval = progressUpdateInterval;
         _maxExpansionToCheck   = maxExpansion;
         _external              = external;
@@ -173,12 +175,13 @@ public class PatchVerifier : IDisposable
 
     public void Start()
     {
-        Debug.Assert(_patchSources.Count != 0);
         Debug.Assert(_verificationTask == null || _verificationTask.IsCompleted);
 
         _cancellationTokenSource = new();
         _reportedProgresses.Clear();
+        MovedFiles.Clear();
         NumBrokenFiles                = 0;
+        MovedFileToDir                = string.Empty;
         PatchSetIndex                 = 0;
         PatchSetCount                 = 0;
         TaskIndex                     = 0;
@@ -287,6 +290,9 @@ public class PatchVerifier : IDisposable
     {
         _patchSources.Clear();
 
+        if (result.PendingPatches == null)
+            return;
+
         foreach (var patch in result.PendingPatches)
         {
             var repoName = patch.GetRepoName();
@@ -323,6 +329,16 @@ public class PatchVerifier : IDisposable
         }
 
         return false;
+    }
+
+    private async Task RefreshLatestLocalVersionFileAsync(ISdoFileDownloadInstaller installer, IntegrityCheckResult remoteIntegrity)
+    {
+        if (string.IsNullOrWhiteSpace(remoteIntegrity.LatestLocalVersionUrl))
+            throw new InvalidDataException("远端完整性清单缺少 latest_local_version_file_url");
+
+        var xmlContent       = await _client.GetStringAsync(remoteIntegrity.LatestLocalVersionUrl, _cancellationTokenSource.Token).ConfigureAwait(false);
+        var localVersionPath = Path.Combine(_settings.GamePath.FullName, "LocalVersion3.xml");
+        await installer.WriteAllText(localVersionPath, xmlContent, _cancellationTokenSource.Token).ConfigureAwait(false);
     }
 
     private void RecordProgressForEstimation()
@@ -485,6 +501,7 @@ public class PatchVerifier : IDisposable
 
                             NumBrokenFiles += fileBroken.Count(x => x);
                             PatchSetIndex  =  PatchSetCount;
+                            await RefreshLatestLocalVersionFileAsync(sdoFileInstaller, remoteIntegrity).ConfigureAwait(false);
                         }
                         finally
                         {
@@ -492,8 +509,12 @@ public class PatchVerifier : IDisposable
                             sdoFileInstaller.OnInstallProgress -= UpdateInstallProgress;
                         }
 
-                        var gamePath = Path.Combine(_settings.GamePath.FullName, "game");
-                        await MoveUnnecessaryFiles(sdoFileInstaller, gamePath, [..targetRelativePaths]);
+                        if (Mode == PatchVerifierMode.Repair)
+                        {
+                            var gamePath = Path.Combine(_settings.GamePath.FullName, "game");
+                            await MoveUnnecessaryFiles(sdoFileInstaller, gamePath, [..targetRelativePaths]).ConfigureAwait(false);
+                        }
+
                         State = VerifyState.Done;
                         break;
                     }

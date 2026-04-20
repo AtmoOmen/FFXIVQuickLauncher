@@ -361,14 +361,38 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
         };
 
-        var loginResult = await LoginToGameAsync(finalLoginType, loginType, username, secret, doingAutoLogin, deviceProfileSnapshot, dcTraveler, action).ConfigureAwait(false);
-        if (loginResult == null)
-            return;
+        var attemptedV3AutoUpdate = false;
+        LoginResult loginResult;
+
+        while (true)
+        {
+            var nextLoginResult = await LoginToGameAsync(finalLoginType, loginType, username, secret, doingAutoLogin, deviceProfileSnapshot, dcTraveler, action).ConfigureAwait(false);
+            if (nextLoginResult == null)
+                return;
+
+            loginResult = nextLoginResult;
+            loginResult.Area  = Area;
+            loginResult.Areas = LoginAreas;
+
+            if (!attemptedV3AutoUpdate
+                && action is not (LoginAfterAction.UpdateOnly or LoginAfterAction.Repair)
+                && loginResult.State == LoginState.NeedsPatchGame
+                && loginResult.V3GameUpdatePlan != null)
+            {
+                if (!ConfirmGamePatchInstall())
+                    return;
+
+                if (!await InstallGamePatch(loginResult).ConfigureAwait(false))
+                    return;
+
+                attemptedV3AutoUpdate = true;
+                continue;
+            }
+
+            break;
+        }
 
         var oAuthLogin = loginResult.OAuthLogin;
-
-        loginResult.Area  = Area;
-        loginResult.Areas = LoginAreas;
 
         if (loginResult.State == LoginState.NeedsPatchGame && action != LoginAfterAction.Repair)
             action = LoginAfterAction.UpdateOnly;
@@ -735,6 +759,22 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    private bool ConfirmGamePatchInstall()
+    {
+        if (!(App.Settings.AskBeforePatchInstall ?? true))
+            return true;
+
+        var selfPatchAsk = CustomMessageBox.Show
+        (
+            "需要更新游戏才能继续游玩\n是否要下载更新文件并安装?",
+            "XIVLauncherCN (Soil)",
+            MessageBoxButton.YesNo,
+            parentWindow: Window
+        );
+
+        return selfPatchAsk != MessageBoxResult.No;
+    }
+
     private async Task<bool> ProcessLoginResultAsync(LoginResult loginResult, LoginAfterAction action)
     {
         switch (loginResult.State)
@@ -814,19 +854,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (loginResult.State == LoginState.NeedsPatchGame)
         {
-            if (App.Settings.AskBeforePatchInstall ?? true)
-            {
-                var selfPatchAsk = CustomMessageBox.Show
-                (
-                    "需要更新游戏才能继续游玩\n是否要下载更新文件并安装?",
-                    "XIVLauncherCN (Soil)",
-                    MessageBoxButton.YesNo,
-                    parentWindow: Window
-                );
-
-                if (selfPatchAsk == MessageBoxResult.No)
-                    return false;
-            }
+            if (!ConfirmGamePatchInstall())
+                return false;
 
             if (!await InstallGamePatch(loginResult).ConfigureAwait(false))
             {
@@ -1576,166 +1605,15 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<bool> RepairGame(LoginResult loginResult)
+    private Task<bool> RepairGame(LoginResult loginResult) =>
+        HandleV3GamePatchAsync(loginResult, PatchVerifierMode.Repair);
+
+    private async Task<bool> HandleV3GamePatchAsync(LoginResult loginResult, PatchVerifierMode mode)
     {
         var doLogin = false;
-        var mutex   = new Mutex(false, "XivLauncherIsPatching");
+        using var mutex = new Mutex(false, "XivLauncherIsPatching");
 
-        if (mutex.WaitOne(0, false))
-        {
-            Debug.Assert(loginResult.PendingPatches        != null);
-            Debug.Assert(loginResult.PendingPatches.Length != 0);
-
-            Log.Information("[MainWindow] 开始修复游戏");
-
-            if (!AppUtil.TryYellOnGameFilesBeingOpen
-                (
-                    Window,
-                    _ => "关闭以下进程以修复游戏"
-                ))
-                return false;
-
-            using var verify = new PatchVerifier(CommonSettings.Instance, loginResult, TimeSpan.FromMilliseconds(100), Constants.MaxExpansion);
-
-            Hide();
-            IsEnabled = false;
-
-            var progressDialog = (GameRepairProgressWindow)Window.Dispatcher.Invoke
-            (
-                new Func<PatchVerifier, GameRepairProgressWindow>(CreateGameRepairProgressWindow),
-                verify
-            );
-
-            for (var doVerify = true; doVerify;)
-            {
-                progressDialog.Dispatcher.Invoke(progressDialog.Show);
-
-                verify.Start();
-                await verify.WaitForCompletion().ConfigureAwait(false);
-
-                progressDialog.Dispatcher.Invoke(progressDialog.Hide);
-
-                var windowResult =
-                    CustomMessageBox.Builder
-                                    .NewFrom
-                                    (
-                                        verify.NumBrokenFiles switch
-                                        {
-                                            0 => "未检测到任何损坏的游戏文件",
-                                            _ => $"已成功修复 {verify.NumBrokenFiles} 个游戏文件"
-                                        }
-                                    )
-                                    .WithAppendText
-                                    (
-                                        verify.MovedFiles.Count switch
-                                        {
-                                            0 => string.Empty,
-                                            _ => $"\n已将对应的 {verify.MovedFiles.Count} 个非原始游戏文件移动至 {verify.MovedFileToDir}"
-                                        }
-                                    )
-                                    .WithDescription(verify.MovedFiles.Count != 0 ? string.Join("\n", verify.MovedFiles.Select(x => $"* {x}")) : string.Empty)
-                                    .WithImage(MessageBoxImage.Information)
-                                    .WithButtons(MessageBoxButton.YesNoCancel)
-                                    .WithYesButtonText("启动游戏")
-                                    .WithNoButtonText("再次验证")
-                                    .WithCancelButtonText("关闭")
-                                    .WithParentWindow(Window)
-                                    .Show();
-
-                switch (verify.State)
-                {
-                    case PatchVerifier.VerifyState.Done:
-                        switch (windowResult)
-                        {
-                            case MessageBoxResult.Yes:
-                                doLogin  = true;
-                                doVerify = false;
-                                break;
-
-                            case MessageBoxResult.No:
-                                doLogin  = false;
-                                doVerify = true;
-                                break;
-
-                            case MessageBoxResult.Cancel:
-                                doLogin = doVerify = false;
-                                break;
-                        }
-
-                        break;
-
-                    case PatchVerifier.VerifyState.Error:
-                        doLogin = false;
-
-                        if (verify.LastException is NoVersionReferenceException)
-                        {
-                            doVerify =
-                                CustomMessageBox.Builder
-                                                .NewFrom("当前游戏版本无对应可用的版本参考信息, 暂时无法通过 XIVLauncher 修复")
-                                                .WithImage(MessageBoxImage.Exclamation)
-                                                .WithButtons(MessageBoxButton.OKCancel)
-                                                .WithOkButtonText("重试")
-                                                .WithParentWindow(Window)
-                                                .Show()
-                                == MessageBoxResult.OK;
-                        }
-                        // Seemingly no better way to detect this, probably brittle if this is localized
-                        else if (verify.LastException != null && verify.LastException.ToString().Contains("Data error"))
-                        {
-                            doVerify = new CustomMessageBox.Builder()
-                                       .WithText("修复失败: 检查游戏文件过程中硬盘报错，可能表明其存在物理故障\n请检查硬盘健康状态, 或尝试更新硬盘固件\n将游戏重新安装至其他路径, 或可暂时解决该问题")
-                                       .WithExitOnClose(CustomMessageBox.ExitOnCloseModes.DontExitOnClose)
-                                       .WithImage(MessageBoxImage.Error)
-                                       .WithShowHelpLinks()
-                                       .WithShowDiscordLink()
-                                       .WithShowNewGitHubIssue(false)
-                                       .WithButtons(MessageBoxButton.OKCancel)
-                                       .WithOkButtonText("重试")
-                                       .WithParentWindow(Window)
-                                       .Show()
-                                       == MessageBoxResult.OK;
-                        }
-                        else
-                        {
-                            if (verify.LastException == null)
-                            {
-                                doVerify = new CustomMessageBox.Builder()
-                                           .WithText("修复失败: 未知错误, 可能需要重新安装游戏")
-                                           .WithImage(MessageBoxImage.Exclamation)
-                                           .WithButtons(MessageBoxButton.OKCancel)
-                                           .WithOkButtonText("重试")
-                                           .WithParentWindow(Window)
-                                           .Show()
-                                           == MessageBoxResult.OK;
-                            }
-                            else
-                            {
-                                doVerify = CustomMessageBox.Builder
-                                                           .NewFrom(verify.LastException, "PatchVerifier")
-                                                           .WithAppendText("\n\n")
-                                                           .WithAppendText("修复失败: 可能需要重新安装游戏")
-                                                           .WithImage(MessageBoxImage.Exclamation)
-                                                           .WithButtons(MessageBoxButton.OKCancel)
-                                                           .WithOkButtonText("重试")
-                                                           .WithParentWindow(Window)
-                                                           .Show()
-                                           == MessageBoxResult.OK;
-                            }
-                        }
-
-                        break;
-
-                    case PatchVerifier.VerifyState.Cancelled:
-                        doLogin = doVerify = false;
-                        break;
-                }
-            }
-
-            progressDialog.Dispatcher.Invoke(progressDialog.Close);
-            mutex.Close();
-            mutex = null;
-        }
-        else
+        if (!mutex.WaitOne(0, false))
         {
             CustomMessageBox.Show
             (
@@ -1745,13 +1623,168 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 MessageBoxImage.Error,
                 parentWindow: Window
             );
+
+            return false;
         }
 
+        var actionText = mode == PatchVerifierMode.Update ? "更新" : "修复";
+        Log.Information("[MainWindow] 开始{Action}游戏", actionText);
+
+        if (!AppUtil.TryYellOnGameFilesBeingOpen(Window, _ => $"关闭以下进程以{actionText}游戏"))
+            return false;
+
+        using var verify = new PatchVerifier(CommonSettings.Instance, loginResult, mode, TimeSpan.FromMilliseconds(100), Constants.MaxExpansion);
+
+        Hide();
+        IsEnabled = false;
+
+        var progressDialog = (GameRepairProgressWindow)Window.Dispatcher.Invoke
+        (
+            new Func<PatchVerifier, GameRepairProgressWindow>(CreateGameRepairProgressWindow),
+            verify
+        );
+
+        for (var doVerify = true; doVerify;)
+        {
+            progressDialog.Dispatcher.Invoke(progressDialog.Show);
+
+            verify.Start();
+            await verify.WaitForCompletion().ConfigureAwait(false);
+
+            progressDialog.Dispatcher.Invoke(progressDialog.Hide);
+
+            switch (verify.State)
+            {
+                case PatchVerifier.VerifyState.Done:
+                    if (mode == PatchVerifierMode.Update)
+                    {
+                        doLogin  = true;
+                        doVerify = false;
+                        break;
+                    }
+
+                    var windowResult =
+                        CustomMessageBox.Builder
+                                        .NewFrom
+                                        (
+                                            verify.NumBrokenFiles switch
+                                            {
+                                                0 => "未检测到任何损坏的游戏文件",
+                                                _ => $"已成功修复 {verify.NumBrokenFiles} 个游戏文件"
+                                            }
+                                        )
+                                        .WithAppendText
+                                        (
+                                            verify.MovedFiles.Count switch
+                                            {
+                                                0 => string.Empty,
+                                                _ => $"\n已将对应的 {verify.MovedFiles.Count} 个非原始游戏文件移动至 {verify.MovedFileToDir}"
+                                            }
+                                        )
+                                        .WithDescription(verify.MovedFiles.Count != 0 ? string.Join("\n", verify.MovedFiles.Select(x => $"* {x}")) : string.Empty)
+                                        .WithImage(MessageBoxImage.Information)
+                                        .WithButtons(MessageBoxButton.YesNoCancel)
+                                        .WithYesButtonText("启动游戏")
+                                        .WithNoButtonText("再次验证")
+                                        .WithCancelButtonText("关闭")
+                                        .WithParentWindow(Window)
+                                        .Show();
+
+                    switch (windowResult)
+                    {
+                        case MessageBoxResult.Yes:
+                            doLogin  = true;
+                            doVerify = false;
+                            break;
+
+                        case MessageBoxResult.No:
+                            doLogin  = false;
+                            doVerify = true;
+                            break;
+
+                        case MessageBoxResult.Cancel:
+                            doLogin = doVerify = false;
+                            break;
+                    }
+
+                    break;
+
+                case PatchVerifier.VerifyState.Error:
+                    doLogin  = false;
+                    doVerify = ShowPatchVerifierRetryDialog(verify, mode);
+                    break;
+
+                case PatchVerifier.VerifyState.Cancelled:
+                    doLogin = doVerify = false;
+                    break;
+            }
+        }
+
+        progressDialog.Dispatcher.Invoke(progressDialog.Close);
         return doLogin;
+    }
+
+    private bool ShowPatchVerifierRetryDialog(PatchVerifier verify, PatchVerifierMode mode)
+    {
+        var actionText = mode == PatchVerifierMode.Update ? "更新" : "修复";
+
+        if (verify.LastException is NoVersionReferenceException)
+        {
+            return CustomMessageBox.Builder
+                                   .NewFrom($"当前游戏版本无对应可用的版本参考信息, 暂时无法通过 XIVLauncher {actionText}游戏")
+                                   .WithImage(MessageBoxImage.Exclamation)
+                                   .WithButtons(MessageBoxButton.OKCancel)
+                                   .WithOkButtonText("重试")
+                                   .WithParentWindow(Window)
+                                   .Show()
+                   == MessageBoxResult.OK;
+        }
+
+        if (verify.LastException != null && verify.LastException.ToString().Contains("Data error"))
+        {
+            return new CustomMessageBox.Builder()
+                   .WithText($"{actionText}失败: 检查游戏文件过程中硬盘报错，可能表明其存在物理故障\n请检查硬盘健康状态, 或尝试更新硬盘固件\n将游戏重新安装至其他路径, 或可暂时解决该问题")
+                   .WithExitOnClose(CustomMessageBox.ExitOnCloseModes.DontExitOnClose)
+                   .WithImage(MessageBoxImage.Error)
+                   .WithShowHelpLinks()
+                   .WithShowDiscordLink()
+                   .WithShowNewGitHubIssue(false)
+                   .WithButtons(MessageBoxButton.OKCancel)
+                   .WithOkButtonText("重试")
+                   .WithParentWindow(Window)
+                   .Show()
+                   == MessageBoxResult.OK;
+        }
+
+        if (verify.LastException == null)
+        {
+            return new CustomMessageBox.Builder()
+                   .WithText($"{actionText}失败: 未知错误, 可能需要重新安装游戏")
+                   .WithImage(MessageBoxImage.Exclamation)
+                   .WithButtons(MessageBoxButton.OKCancel)
+                   .WithOkButtonText("重试")
+                   .WithParentWindow(Window)
+                   .Show()
+                   == MessageBoxResult.OK;
+        }
+
+        return CustomMessageBox.Builder
+                               .NewFrom(verify.LastException, "PatchVerifier")
+                               .WithAppendText("\n\n")
+                               .WithAppendText($"{actionText}失败: 可能需要重新安装游戏")
+                               .WithImage(MessageBoxImage.Exclamation)
+                               .WithButtons(MessageBoxButton.OKCancel)
+                               .WithOkButtonText("重试")
+                               .WithParentWindow(Window)
+                               .Show()
+               == MessageBoxResult.OK;
     }
 
     private Task<bool> InstallGamePatch(LoginResult loginResult)
     {
+        if (loginResult.V3GameUpdatePlan != null)
+            return HandleV3GamePatchAsync(loginResult, PatchVerifierMode.Update);
+
         var pendingPatches = PatchExecutionCoordinator.GetPendingPatchesForInstall(loginResult);
         return HandlePatchAsync(Repository.Ffxiv, pendingPatches, loginResult.UniqueID ?? string.Empty);
     }
@@ -1981,7 +2014,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             if (action == LoginAfterAction.Repair)
             {
                 var res = CustomMessageBox.Builder
-                                          .NewFrom("XIVLauncher 将会搜寻任何与原版不一致的游戏文件并替换修复\n这可能导致使用 TexTools 安装的模组被还原\n请确认")
+                                          .NewFrom("XIVLauncher 将会搜寻任何与原版不一致的游戏文件并替换修复\n这可能导致使用 TexTools 安装的模组被还原\n持续时间可能较长, 请确认是否要继续?")
                                           .WithButtons(MessageBoxButton.YesNo)
                                           .WithImage(MessageBoxImage.Question)
                                           .WithParentWindow(Window)

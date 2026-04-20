@@ -51,7 +51,7 @@ public sealed class StaticLoginChannel
 
         while (NeedsStaticCaptcha(result))
         {
-            var prompt = await BuildStaticCaptchaPromptAsync(result).ConfigureAwait(false);
+            var prompt      = await BuildStaticCaptchaPromptAsync(result).ConfigureAwait(false);
             var captchaText = request.PromptCaptchaInput?.Invoke(prompt);
             if (string.IsNullOrWhiteSpace(captchaText))
                 throw new LoginException((int)LoginExceptionCode.CaptchaVerificationCanceled, "已取消登录验证码输入。");

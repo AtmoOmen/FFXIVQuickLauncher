@@ -3,51 +3,51 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Game.Patch.V3;
 
 namespace XIVLauncher.Common.Game;
 
 public static class IntegrityCheck
 {
-    public const string INTEGRITY_CHECK_BASE_URL = "https://v3launcher.jijiagames.com/v3launcher/build/100001900/8847";
-
     private static readonly JsonSerializerOptions DefaultOption = new() { WriteIndented = true };
 
     public static async Task<string> GenerateIntegrityAsync(IProgress<IntegrityCheckProgress> progress, DirectoryInfo gamePath)
     {
         var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress).ConfigureAwait(false);
         SaveToJson(localIntegrity, out var path);
-
         return path;
     }
 
-    public static async Task<(CompareResult compareResult, string report, IntegrityCheckResult remoteIntegrity)>
-        CompareIntegrityAsync(IProgress<IntegrityCheckProgress> progress, DirectoryInfo gamePath, bool onlyIndex = false)
+    public static async Task<(IntegrityCheckCompareResult compareResult, string report, IntegrityCheckResult? remoteIntegrity)> CompareIntegrityAsync
+    (
+        IProgress<IntegrityCheckProgress> progress,
+        DirectoryInfo                     gamePath,
+        bool                              onlyIndex = false
+    )
     {
         IntegrityCheckResult remoteIntegrity;
 
         try
         {
-            remoteIntegrity = await DownloadIntegrityCheckForVersion();
+            remoteIntegrity = await DownloadIntegrityCheckForVersion().ConfigureAwait(false);
             var localVersion = Repository.Ffxiv.GetVer(gamePath);
-            if (localVersion != remoteIntegrity.GameVersion)
-                return (CompareResult.ReferenceNotFound, null, null);
+            if (!string.Equals(localVersion, remoteIntegrity.GameVersion, StringComparison.Ordinal))
+                return (IntegrityCheckCompareResult.ReferenceNotFound, string.Empty, null);
         }
-        catch (WebException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            return (CompareResult.ReferenceFetchFailure, null, null);
+            return (IntegrityCheckCompareResult.ReferenceFetchFailure, string.Empty, null);
         }
 
         var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex).ConfigureAwait(false);
-
-        var report = "";
-        var failed = false;
+        var report         = string.Empty;
+        var failed         = false;
 
         foreach (var hashEntry in remoteIntegrity.Hashes
                                                  .Where
@@ -58,9 +58,7 @@ public static class IntegrityCheck
         {
             if (localIntegrity.Hashes.TryGetValue(hashEntry.Key, out var localHash))
             {
-                if (remoteIntegrity.Sizes is not null
-                    && localIntegrity.Sizes is not null
-                    && remoteIntegrity.Sizes.TryGetValue(hashEntry.Key, out var remoteSize)
+                if (remoteIntegrity.Sizes.TryGetValue(hashEntry.Key, out var remoteSize)
                     && localIntegrity.Sizes.TryGetValue(hashEntry.Key, out var localSize)
                     && localSize != remoteSize)
                 {
@@ -69,7 +67,7 @@ public static class IntegrityCheck
                     continue;
                 }
 
-                if (localHash != hashEntry.Value)
+                if (!string.Equals(localHash, hashEntry.Value, StringComparison.OrdinalIgnoreCase))
                 {
                     report += $"Mismatch: {hashEntry.Key}\n";
                     failed =  true;
@@ -82,102 +80,52 @@ public static class IntegrityCheck
             }
         }
 
-        return (failed ? CompareResult.Invalid : CompareResult.Valid, report, remoteIntegrity);
+        return (failed ? IntegrityCheckCompareResult.Invalid : IntegrityCheckCompareResult.Valid, report, remoteIntegrity);
     }
 
-    public static async Task<Dictionary<string, VersionInfo>> GetVersionMapping()
+    public static async Task<Dictionary<string, V3VersionMappingEntry>> GetVersionMapping(CancellationToken cancellationToken = default)
     {
-        using (var client = new HttpClient())
-        {
-            // Use the URL provided in the context to fetch version mapping
-            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var url       = $"https://ff.autopatch.sdo.com/v3launcher/mapping/v2v3Check.json?time={timestamp}";
-
-            var response = await client.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-
-            var responseText = await response.Content.ReadAsStringAsync();
-
-            // Parse the JSON response into a dictionary
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            var versionMapping = JsonSerializer.Deserialize<Dictionary<string, VersionInfo>>(responseText, options);
-
-            return versionMapping;
-        }
+        using var metadataClient = new V3GamePatchMetadataClient();
+        return await metadataClient.DownloadVersionMapping(cancellationToken).ConfigureAwait(false);
     }
 
     public static async Task<string> GetFileMd5Hash(string filePath, CancellationToken cancellationToken = default)
     {
         await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var       md5    = MD5.Create();
-        var             hash   = await md5.ComputeHashAsync(stream, cancellationToken);
+        var             hash   = await md5.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
         return Convert.ToHexString(hash);
     }
 
-    public static async Task<IntegrityCheckResult> DownloadIntegrityCheckForVersion()
+    public static async Task<IntegrityCheckResult> DownloadIntegrityCheckForVersion(CancellationToken cancellationToken = default)
     {
-        const string URL = $"{INTEGRITY_CHECK_BASE_URL}/client-all-files-list/client_all_files_list.dat";
-
-        using (var client = new HttpClient())
-        {
-            client.DefaultRequestHeaders.Add("Host", "v3launcher.jijiagames.com");
-            var response = await client.GetAsync(URL);
-            response.EnsureSuccessStatusCode();
-            var reponseText    = await response.Content.ReadAsStringAsync();
-            var integrityLines = reponseText.Trim().Split();
-            var result = new IntegrityCheckResult
-            {
-                Hashes = new Dictionary<string, string>(),
-                Sizes  = new Dictionary<string, ulong>()
-            };
-            var lineParts   = integrityLines[0].Split('|');
-            var dataVersion = lineParts[2];
-            result.DataVersion = dataVersion;
-            result.AppId       = lineParts[1];
-            result.BaseUrl     = lineParts[0];
-            var versionMapping = await GetVersionMapping();
-            var gameVersion    = versionMapping.FirstOrDefault(x => x.Value.V == dataVersion);
-            result.GameVersion = gameVersion.Key;
-
-            for (var i = 1; i < integrityLines.Length; i++)
-            {
-                lineParts = integrityLines[i].Split('|');
-                var filePath = lineParts[0];
-                if (!filePath.StartsWith('\\'))
-                    filePath = "\\" + filePath;
-                if (!filePath.StartsWith(@"\game\", StringComparison.Ordinal))
-                    continue;
-                var size = ulong.Parse(lineParts[1]);
-                var md5  = lineParts[2];
-                result.Hashes.Add(filePath, md5);
-                result.Sizes.Add(filePath, size);
-            }
-
-            return result;
-        }
+        using var metadataClient = new V3GamePatchMetadataClient();
+        return await metadataClient.DownloadIntegrityCheck(cancellationToken).ConfigureAwait(false);
     }
 
-    public static async Task<IntegrityCheckResult> RunIntegrityCheckAsync
+    public static async Task<string> DownloadLatestLocalVersionFile(CancellationToken cancellationToken = default)
+    {
+        using var metadataClient = new V3GamePatchMetadataClient();
+        return await metadataClient.DownloadLatestLocalVersionFile(cancellationToken).ConfigureAwait(false);
+    }
+
+    public static Task<IntegrityCheckResult> RunIntegrityCheckAsync
     (
         DirectoryInfo                      gamePath,
         IProgress<IntegrityCheckProgress>? progress,
         bool                               onlyIndex = false
     )
     {
-        //var hashes = new Dictionary<string, string>();
-
         var files = CheckDirectory(gamePath, gamePath.FullName, progress, onlyIndex);
-
-        return new IntegrityCheckResult
-        {
-            GameVersion = Repository.Ffxiv.GetVer(gamePath),
-            Hashes      = files.ToDictionary(x => x.Key, x => x.Value.Hash),
-            Sizes       = files.ToDictionary(x => x.Key, x => x.Value.Size)
-        };
+        return Task.FromResult
+        (
+            new IntegrityCheckResult
+            {
+                GameVersion = Repository.Ffxiv.GetVer(gamePath),
+                Hashes      = files.ToDictionary(x => x.Key, x => x.Value.Hash),
+                Sizes       = files.ToDictionary(x => x.Key, x => x.Value.Size)
+            }
+        );
     }
 
     private static ConcurrentDictionary<string, (string Hash, ulong Size)> CheckDirectory
@@ -218,22 +166,15 @@ public static class IntegrityCheck
                     var hashString = Convert.ToHexString(hash);
 
                     results.TryAdd(relativePath, (hashString, (ulong)file.Length));
-
-                    // UI只有一个显示文件的位置，先不改，反正看着UI在动就行，省的以为卡住了
-                    progress?.Report
-                    (
-                        new IntegrityCheckProgress
-                        {
-                            CurrentFile = relativePath
-                        }
-                    );
+                    progress?.Report(new() { CurrentFile = relativePath });
                 }
                 catch (IOException)
                 {
-                    // Ignore
+                    // Ignore.
                 }
             }
         );
+
         return results;
     }
 
@@ -263,14 +204,14 @@ public static class IntegrityCheck
 
         foreach (var dir in directory.GetDirectories())
         {
-            if (!dir.FullName.ToLower().Contains("shade"))
+            if (!dir.FullName.ToLowerInvariant().Contains("shade", StringComparison.Ordinal))
                 CollectFiles(dir, rootDirectory, onlyIndex, filesToProcess);
         }
     }
 
     private static string GetRelativePath(string fullPath, string rootDirectory)
     {
-        var relative = fullPath.Substring(rootDirectory.Length);
+        var relative = fullPath[rootDirectory.Length..];
         relative = relative.Replace("/", "\\");
         if (!relative.StartsWith("\\", StringComparison.Ordinal))
             relative = "\\" + relative;
@@ -286,46 +227,14 @@ public static class IntegrityCheck
             LastGameVersion = string.Empty
         };
 
-        var json     = JsonSerializer.Serialize(jsonObject, DefaultOption);
-        var fileName = $"{result.GameVersion}.json";
-
+        var json          = JsonSerializer.Serialize(jsonObject, DefaultOption);
+        var fileName      = $"{result.GameVersion}.json";
         var directoryName = Path.Combine(Paths.RoamingPath, "gameHashes");
         if (!Directory.Exists(directoryName))
             Directory.CreateDirectory(directoryName);
 
         var filePath = Path.Combine(directoryName, fileName);
         File.WriteAllText(filePath, json);
-
         savedPath = filePath;
     }
-
-    public class IntegrityCheckResult
-    {
-        public Dictionary<string, string> Hashes          { get; set; }
-        public Dictionary<string, ulong>  Sizes           { get; set; }
-        public string                     GameVersion     { get; set; }
-        public string                     LastGameVersion { get; set; }
-        public string                     BaseUrl         { get; set; }
-        public string                     DataVersion     { get; set; }
-        public string                     AppId           { get; set; }
-    }
-
-    public class IntegrityCheckProgress
-    {
-        public string CurrentFile { get; set; }
-    }
-
-    public enum CompareResult
-    {
-        Valid,
-        Invalid,
-        ReferenceNotFound,
-        ReferenceFetchFailure
-    }
-
-    public record VersionInfo
-    (
-        string V,
-        string View
-    );
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using XIVLauncher.Common.Game;
@@ -28,7 +29,7 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
 
     #endregion
 
-    public Task ConstructFromRemoteIntegrity(IntegrityCheck.IntegrityCheckResult remoteIntegrity, TimeSpan progressReportInterval = default)
+    public Task ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity, TimeSpan progressReportInterval = default)
     {
         instance?.Dispose();
         instance = new()
@@ -84,11 +85,22 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
         var targetParentDir = new DirectoryInfo
             (Path.GetDirectoryName(targetFile.EndsWith("/", StringComparison.Ordinal) ? targetFile.Substring(0, targetFile.Length - 1) : targetFile) ?? throw new InvalidOperationException());
         targetParentDir.Create();
-        Directory.Move(sourceFile, targetFile);
+        if (File.Exists(sourceFile))
+            File.Move(sourceFile, targetFile);
+        else
+            Directory.Move(sourceFile, targetFile);
 
         if (!sourceParentDir.GetFileSystemInfos().Any())
             sourceParentDir.Delete(false);
 
+        return Task.CompletedTask;
+    }
+
+    public Task WriteAllText(string filePath, string content, CancellationToken cancellationToken = default)
+    {
+        var directoryPath = Path.GetDirectoryName(filePath) ?? throw new InvalidOperationException();
+        Directory.CreateDirectory(directoryPath);
+        File.WriteAllText(filePath, content, new UTF8Encoding(false));
         return Task.CompletedTask;
     }
 

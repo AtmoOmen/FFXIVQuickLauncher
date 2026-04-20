@@ -491,7 +491,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
     public void OpenSharedDeviceProfile() =>
         _dialogService.ShowSharedDeviceProfileSettings(App.AccountManager);
 
-    public async Task<IntegrityCheckCompareOutcome?> RunIntegrityCheckAsync(IProgress<IntegrityCheck.IntegrityCheckProgress> progress)
+    public async Task<IntegrityCheckCompareOutcome?> RunIntegrityCheckAsync(IProgress<IntegrityCheckProgress> progress)
     {
         var gamePath = ValidateGamePathForIntegrityCheck();
         if (gamePath == null)
@@ -504,7 +504,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         return new IntegrityCheckCompareOutcome(result.compareResult, reportPath);
     }
 
-    public async Task<string?> GenerateIntegrityCheckAsync(IProgress<IntegrityCheck.IntegrityCheckProgress> progress)
+    public async Task<string?> GenerateIntegrityCheckAsync(IProgress<IntegrityCheckProgress> progress)
     {
         var gamePath = ValidateGamePathForIntegrityCheck();
         if (gamePath == null)
@@ -517,11 +517,11 @@ public sealed class SettingsControlViewModel : ViewModelBase
     {
         switch (outcome.CompareResult)
         {
-            case IntegrityCheck.CompareResult.ReferenceNotFound:
+            case IntegrityCheckCompareResult.ReferenceNotFound:
                 _dialogService.ShowMessage("当前游戏版本还没有可用的参考报告，请稍后再试。", "XIVLauncherCN (Soil)");
                 return;
 
-            case IntegrityCheck.CompareResult.ReferenceFetchFailure:
+            case IntegrityCheckCompareResult.ReferenceFetchFailure:
                 _dialogService.ShowMessage
                 (
                     "下载完整性检查参考文件失败，请检查网络连接后重试。",
@@ -531,7 +531,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
                 );
                 return;
 
-            case IntegrityCheck.CompareResult.Invalid:
+            case IntegrityCheckCompareResult.Invalid:
                 _dialogService.ShowMessage
                 (
                     "检测到部分游戏文件可能已被修改或损坏。\n\n如果你使用了 TexTools 等模组工具，这通常是预期结果。\n\n如果没有使用模组，可以在登录按钮的右键菜单中选择“修复游戏”。",
@@ -542,7 +542,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
                 );
                 return;
 
-            case IntegrityCheck.CompareResult.Valid:
+            case IntegrityCheckCompareResult.Valid:
                 _dialogService.ShowMessage("游戏安装完整。", "XIVLauncherCN (Soil)");
                 return;
         }
@@ -649,8 +649,8 @@ public sealed class SettingsControlViewModel : ViewModelBase
 
     public sealed record IntegrityCheckCompareOutcome
     (
-        IntegrityCheck.CompareResult CompareResult,
-        string                       ReportPath
+        IntegrityCheckCompareResult CompareResult,
+        string                      ReportPath
     );
 
     public sealed record CredTypeOptionItem

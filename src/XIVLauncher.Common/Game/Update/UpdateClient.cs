@@ -8,6 +8,7 @@ using Serilog;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.PatchList;
+using XIVLauncher.Common.Game.Patch.V3;
 using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Game.Update;
@@ -23,6 +24,19 @@ public class UpdateClient
     ///     检查游戏更新
     /// </summary>
     public async Task<LoginResult> Check(LoginArea area, DirectoryInfo gamePath, bool forceBaseVersion)
+    {
+        _ = area;
+        var currentGameVersion = Repository.Ffxiv.GetVer(gamePath);
+
+        using var metadataClient = new V3GamePatchMetadataClient();
+        var       updatePlan     = await metadataClient.BuildUpdatePlan(currentGameVersion, forceBaseVersion).ConfigureAwait(false);
+
+        return updatePlan == null
+                   ? new LoginResult { PendingPatches = null, V3GameUpdatePlan = null, State       = LoginState.Ok, OAuthLogin             = null }
+                   : new LoginResult { PendingPatches = null, V3GameUpdatePlan = updatePlan, State = LoginState.NeedsPatchGame, OAuthLogin = new OAuthLoginResult() };
+    }
+
+    public async Task<LoginResult> CheckLegacy(LoginArea area, DirectoryInfo gamePath, bool forceBaseVersion)
     {
         var request = new HttpRequestMessage
         (
@@ -59,7 +73,7 @@ public class UpdateClient
         Log.Verbose("需要更新游戏\n补丁一览:\n{PatchList}", text);
 
         var pendingPatches = PatchListParser.Parse(text);
-        return new LoginResult { PendingPatches = pendingPatches, State = LoginState.NeedsPatchGame, OAuthLogin = new OAuthLoginResult() };
+        return new LoginResult { PendingPatches = pendingPatches, V3GameUpdatePlan = null, State = LoginState.NeedsPatchGame, OAuthLogin = new OAuthLoginResult() };
     }
 
     private static void EnsureVersionSanity(DirectoryInfo gamePath, int exLevel)
