@@ -3,8 +3,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using FfxivArgLauncher;
 using Serilog;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Common.PatcherIpc;
 using XIVLauncher.Common.Patching.Rpc;
 using XIVLauncher.Common.Patching.Rpc.Implementations;
@@ -16,7 +16,7 @@ public class RemoteArgReader : IDisposable
     public  ReaderState State { get; private set; } = ReaderState.NotStarted;
     private IRpc        rpc;
 
-    private LoginData Data;
+    private GameArgumentInterop.LoginData Data;
 
     private Process process;
 
@@ -137,7 +137,7 @@ public class RemoteArgReader : IDisposable
         Log.Information($"[ArgReaderIPC] OpenProcess: {pid}");
     }
 
-    public async Task<LoginData> ReadArgs()
+    public async Task<GameArgumentInterop.LoginData> ReadArgs()
     {
         Log.Information("[ArgReaderIPC] Reading arguments");
         State = ReaderState.Busy;
@@ -167,7 +167,7 @@ public class RemoteArgReader : IDisposable
 
             case PatcherIpcOpCode.ArgReadOk:
                 Log.Information($"[ArgReaderIPC] GOT ARGS: {envelope.Data}");
-                Data  = (LoginData)envelope.Data;
+                Data  = (GameArgumentInterop.LoginData)envelope.Data;
                 State = ReaderState.Finish;
                 break;
 

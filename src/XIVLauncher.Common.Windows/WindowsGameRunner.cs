@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using FfxivArgLauncher;
 using Serilog;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
@@ -56,7 +55,7 @@ public class WindowsGameRunner
             dpiAwareness,
             process =>
             {
-                var argFix = new ArgFixer(process);
+                var argFix = new GameArgumentInterop.Fixer(process);
                 argFix.Fix();
             }
         );

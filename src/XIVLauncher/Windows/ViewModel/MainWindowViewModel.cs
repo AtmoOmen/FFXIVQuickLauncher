@@ -17,7 +17,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Castle.Core.Internal;
-using FfxivArgLauncher;
 using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Accounts;
@@ -494,7 +493,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<LoginData?> ReadWeGameAccountInfoAsync()
+    private async Task<GameArgumentInterop.LoginData?> ReadWeGameAccountInfoAsync()
     {
         try
         {

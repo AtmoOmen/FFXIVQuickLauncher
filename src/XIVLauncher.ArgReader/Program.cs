@@ -1,11 +1,11 @@
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Globalization;
-using FfxivArgLauncher;
 using Serilog;
 using Serilog.Events;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Common.PatcherIpc;
 using XIVLauncher.Common.Patching.Rpc.Implementations;
 
@@ -57,7 +57,7 @@ internal sealed class ArgReaderApp : IAsyncDisposable
     private readonly TaskCompletionSource                                           exitSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly FrozenDictionary<PatcherIpcOpCode, Action<PatcherIpcEnvelope>> handlers;
     private          int                                                            isStopping;
-    private          FfxivArgLauncher.ArgReader?                                    argReader;
+    private          GameArgumentInterop.Reader?                                    argReader;
 
     public ArgReaderApp(string channelName)
     {
@@ -136,14 +136,14 @@ internal sealed class ArgReaderApp : IAsyncDisposable
         
         var processID = ConvertToProcessID(envelope.Data);
         var process   = Process.GetProcessById(processID);
-        argReader = new FfxivArgLauncher.ArgReader(process);
+        argReader = new GameArgumentInterop.Reader(process);
         
         Send
         (
             new PatcherIpcEnvelope
             {
                 OpCode = PatcherIpcOpCode.ArgReadOk,
-                Data   = new LoginData()
+                Data   = new GameArgumentInterop.LoginData()
             }
         );
         
@@ -157,7 +157,7 @@ internal sealed class ArgReaderApp : IAsyncDisposable
 
         Log.Information("[ArgReader] 读取参数");
         
-        var data = argReader.GetLoginData();
+        var data = argReader.ReadLoginData();
         Send
         (
             new PatcherIpcEnvelope

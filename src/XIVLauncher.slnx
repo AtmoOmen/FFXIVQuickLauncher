@@ -7,11 +7,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="FfxivArgLauncher/FfxivArgLauncher.csproj">
-    <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
-    <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
-    <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
-  </Project>
   <Project Path="XIVLauncher.ArgReader/XIVLauncher.ArgReader.csproj">
     <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
     <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
