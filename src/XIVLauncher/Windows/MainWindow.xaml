@@ -540,37 +540,59 @@
                                                                 <MouseBinding MouseAction="LeftClick"
                                                                               Command="{Binding RefreshQrCodeCommand}" />
                                                             </Grid.InputBindings>
-                                                            <Border CornerRadius="8">
-                                                                <Border.Style>
-                                                                    <Style TargetType="Border">
-                                                                        <Setter Property="Background" Value="#88000000" />
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
-                                                                                <Setter Property="Background" Value="#AA000000" />
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </Border.Style>
+                                                            <Border x:Name="OverlayBorder" CornerRadius="8">
+                                                                <Border.Background>
+                                                                    <SolidColorBrush Color="#99000000" />
+                                                                </Border.Background>
                                                             </Border>
-                                                            <materialDesign:PackIcon Kind="Refresh"
-                                                                                     Foreground="White"
-                                                                                     HorizontalAlignment="Center"
-                                                                                     VerticalAlignment="Center">
-                                                                <materialDesign:PackIcon.Style>
-                                                                    <Style TargetType="materialDesign:PackIcon">
-                                                                        <Setter Property="Width" Value="28" />
-                                                                        <Setter Property="Height" Value="28" />
-                                                                        <Setter Property="Opacity" Value="0.92" />
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
-                                                                                <Setter Property="Width" Value="32" />
-                                                                                <Setter Property="Height" Value="32" />
-                                                                                <Setter Property="Opacity" Value="1" />
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </materialDesign:PackIcon.Style>
-                                                            </materialDesign:PackIcon>
+                                                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                <materialDesign:PackIcon x:Name="RefreshIcon"
+                                                                                         Kind="Refresh"
+                                                                                         Foreground="White"
+                                                                                         HorizontalAlignment="Center"
+                                                                                         Width="32" Height="32" Opacity="0.9"
+                                                                                         RenderTransformOrigin="0.5,0.5">
+                                                                    <materialDesign:PackIcon.RenderTransform>
+                                                                        <TransformGroup>
+                                                                            <ScaleTransform ScaleX="0.85" ScaleY="0.85" />
+                                                                            <RotateTransform Angle="0" />
+                                                                        </TransformGroup>
+                                                                    </materialDesign:PackIcon.RenderTransform>
+                                                                </materialDesign:PackIcon>
+                                                                <TextBlock x:Name="RefreshText" 
+                                                                           Text="点击刷新"
+                                                                           Foreground="White"
+                                                                           FontSize="12"
+                                                                           FontWeight="SemiBold"
+                                                                           Margin="0,4,0,0"
+                                                                           Opacity="0.9"
+                                                                           HorizontalAlignment="Center" />
+                                                            </StackPanel>
+                                                            <Grid.Triggers>
+                                                                <EventTrigger RoutedEvent="MouseEnter">
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <ColorAnimation Storyboard.TargetName="OverlayBorder" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#B3000000" Duration="0:0:0.15" />
+                                                                            <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.15" />
+                                                                            <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.15" />
+                                                                            <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
+                                                                            <DoubleAnimation Storyboard.TargetName="RefreshText" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
+                                                                            <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(RotateTransform.Angle)" By="90" Duration="0:0:0.15" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </EventTrigger>
+                                                                <EventTrigger RoutedEvent="MouseLeave">
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard>
+                                                                            <ColorAnimation Storyboard.TargetName="OverlayBorder" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#99000000" Duration="0:0:0.15" />
+                                                                            <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="0.85" Duration="0:0:0.15" />
+                                                                            <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="0.85" Duration="0:0:0.15" />
+                                                                            <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.15" />
+                                                                            <DoubleAnimation Storyboard.TargetName="RefreshText" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.15" />
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </EventTrigger>
+                                                            </Grid.Triggers>
                                                         </Grid>
                                                     </Grid>
                                                 </Border>
