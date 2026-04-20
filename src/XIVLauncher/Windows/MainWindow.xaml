@@ -261,13 +261,6 @@
 
                                     <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,8,8,0">
                                         <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                ToolTip="{Binding Path=ModeSwitchTitle}"
-                                                Command="{Binding Path=InjectModeSwitchCommand}"
-                                                Width="32" Height="32" Padding="4"
-                                                Focusable="False" Cursor="Hand">
-                                            <materialDesign:PackIcon Kind="{Binding ModeSwitchIcon}" Width="20" Height="20" Foreground="{DynamicResource PrimaryHueMidBrush}" />
-                                        </Button>
-                                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
                                                 ToolTip="启动器设置"
                                                 Command="{x:Static materialDesign:Transitioner.MovePreviousCommand}"
                                                 Width="32" Height="32" Padding="4"
@@ -276,334 +269,377 @@
                                         </Button>
                                     </StackPanel>
 
-                                    <materialDesign:Transitioner Grid.Row="1" VerticalAlignment="Center" SelectedIndex="{Binding LoginCardTransitionerIndex}">
-                                <materialDesign:TransitionerSlide>
-                                    <materialDesign:TransitionerSlide.ForwardWipe>
-                                        <materialDesign:FadeWipe />
-                                    </materialDesign:TransitionerSlide.ForwardWipe>
+                                    <materialDesign:Transitioner x:Name="LoginCardTransitioner" Grid.Row="1" VerticalAlignment="Stretch" SelectedIndex="{Binding LoginCardTransitionerIndex}">
+                                        <materialDesign:TransitionerSlide>
+                                            <materialDesign:TransitionerSlide.ForwardWipe>
+                                                <materialDesign:FadeWipe />
+                                            </materialDesign:TransitionerSlide.ForwardWipe>
 
-                                        <DockPanel
-                                            Margin="30,18,30,18">
-                                            <TextBlock Text="正在登录…"
-                                                       DockPanel.Dock="Top"
-                                                       HorizontalAlignment="Stretch"
-                                                       VerticalAlignment="Top"
-                                                       TextAlignment="Center"
-                                                       Margin="0,20,0,0" />
-                                            <ProgressBar
-                                                x:Name="ProgressBar"
-                                                DockPanel.Dock="Top"
-                                                HorizontalAlignment="Stretch"
-                                                VerticalAlignment="Top"
-                                                Style="{StaticResource MaterialDesignCircularProgressBar}"
-                                                Value="0"
-                                                IsIndeterminate="True" Height="30" Width="30" Margin="0 18 0 0" />
-                                            <TextBlock Text="{Binding LoginMessage}"
-                                                       DockPanel.Dock="Top"
-                                                       HorizontalAlignment="Stretch"
-                                                       VerticalAlignment="Top"
-                                                       TextAlignment="Center"
-                                                       Margin="0,18,0,0" />
-                                            <Button
-                                                Content="取消登录"
-                                                Command="{Binding Path=LoginCancelCommand}"
-                                                Margin="0,0,7,0" Width="142"
-                                                HorizontalAlignment="Center"
-                                                ToolTip="取消登录" />
+                                            <Grid Margin="24,0,24,0" VerticalAlignment="Center">
+                                                <StackPanel>
+                                                    <ProgressBar x:Name="ProgressBar"
+                                                                 Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                                                 Value="0"
+                                                                 IsIndeterminate="True" 
+                                                                 Height="48" Width="48" 
+                                                                 Margin="0,0,0,16" 
+                                                                 HorizontalAlignment="Center" />
+                                                    <TextBlock Text="正在登录…"
+                                                               HorizontalAlignment="Center"
+                                                               FontSize="16"
+                                                               FontWeight="SemiBold"
+                                                               Margin="0,0,0,8" />
+                                                    <TextBlock Text="{Binding LoginMessage}"
+                                                               HorizontalAlignment="Center"
+                                                               TextAlignment="Center"
+                                                               TextWrapping="Wrap"
+                                                               Opacity="0.7"
+                                                               Margin="0,0,0,24" />
+                                                    <Button Content="取消登录"
+                                                            Command="{Binding Path=LoginCancelCommand}"
+                                                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                            materialDesign:ButtonAssist.CornerRadius="16"
+                                                            HorizontalAlignment="Center"
+                                                            Width="120"
+                                                            ToolTip="取消登录" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </materialDesign:TransitionerSlide>
 
-                                        </DockPanel>
+                                        <materialDesign:TransitionerSlide>
+                                            <materialDesign:TransitionerSlide.BackwardWipe>
+                                                <materialDesign:FadeWipe />
+                                            </materialDesign:TransitionerSlide.BackwardWipe>
 
-                                    </materialDesign:TransitionerSlide>
+                                            <Grid Margin="20,0,20,0" VerticalAlignment="Center">
+                                                <StackPanel>
+                                                    <!--  Login Type & Area  -->
+                                                    <ComboBox x:Name="LoginTypeSelection"
+                                                              materialDesign:HintAssist.Hint="登录方式"
+                                                              materialDesign:HintAssist.IsFloating="False"
+                                                              SelectedItem="{Binding Path=LoginTypeOption}"
+                                                              SelectedValuePath="LoginType"
+                                                              DisplayMemberPath="DisplayName"
+                                                              SelectionChanged="LoginTypeSelection_OnSelectionChanged"
+                                                              Margin="0,0,0,6" />
+                                                              
+                                                    <ListBox x:Name="ServerSelection"
+                                                             ItemsSource="{Binding Path=LoginAreas}"
+                                                             SelectedIndex="{Binding Path=AreaIndex, Mode=OneWayToSource}"
+                                                             SelectedItem="{Binding Path=Area}"
+                                                             SelectedValuePath="AreaID"
+                                                             Margin="0,0,0,6">
+                                                        <ListBox.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <UniformGrid Rows="1" />
+                                                            </ItemsPanelTemplate>
+                                                        </ListBox.ItemsPanel>
+                                                        <ListBox.ItemContainerStyle>
+                                                            <Style TargetType="ListBoxItem">
+                                                                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                                                <Setter Property="Cursor" Value="Hand" />
+                                                                <Setter Property="Padding" Value="0" />
+                                                                <Setter Property="Margin" Value="2,0" />
+                                                                <Setter Property="Template">
+                                                                    <Setter.Value>
+                                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                                            <Grid>
+                                                                                <Border x:Name="Bg" Background="Transparent" CornerRadius="4" BorderThickness="1" BorderBrush="{DynamicResource MaterialDesignDivider}" />
+                                                                                <Border x:Name="ActiveBg" Background="{DynamicResource PrimaryHueMidBrush}" CornerRadius="4" Opacity="0" />
+                                                                                <TextBlock x:Name="Txt" Text="{Binding AreaName}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" Padding="0,4" Foreground="{DynamicResource MaterialDesignBody}" />
+                                                                            </Grid>
+                                                                            <ControlTemplate.Triggers>
+                                                                                <Trigger Property="IsSelected" Value="True">
+                                                                                    <Trigger.EnterActions>
+                                                                                        <BeginStoryboard>
+                                                                                            <Storyboard>
+                                                                                                <DoubleAnimation Storyboard.TargetName="ActiveBg" Storyboard.TargetProperty="Opacity" To="0.15" Duration="0:0:0.15" />
+                                                                                            </Storyboard>
+                                                                                        </BeginStoryboard>
+                                                                                    </Trigger.EnterActions>
+                                                                                    <Trigger.ExitActions>
+                                                                                        <BeginStoryboard>
+                                                                                            <Storyboard>
+                                                                                                <DoubleAnimation Storyboard.TargetName="ActiveBg" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15" />
+                                                                                            </Storyboard>
+                                                                                        </BeginStoryboard>
+                                                                                    </Trigger.ExitActions>
+                                                                                    <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}" />
+                                                                                    <Setter TargetName="Txt" Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
+                                                                                    <Setter TargetName="Txt" Property="FontWeight" Value="Bold" />
+                                                                                </Trigger>
+                                                                                <MultiTrigger>
+                                                                                    <MultiTrigger.Conditions>
+                                                                                        <Condition Property="IsMouseOver" Value="True" />
+                                                                                        <Condition Property="IsSelected" Value="False" />
+                                                                                    </MultiTrigger.Conditions>
+                                                                                    <MultiTrigger.EnterActions>
+                                                                                        <BeginStoryboard>
+                                                                                            <Storyboard>
+                                                                                                <DoubleAnimation Storyboard.TargetName="Bg" Storyboard.TargetProperty="Opacity" To="0.5" Duration="0:0:0.15" />
+                                                                                            </Storyboard>
+                                                                                        </BeginStoryboard>
+                                                                                    </MultiTrigger.EnterActions>
+                                                                                    <MultiTrigger.ExitActions>
+                                                                                        <BeginStoryboard>
+                                                                                            <Storyboard>
+                                                                                                <DoubleAnimation Storyboard.TargetName="Bg" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
+                                                                                            </Storyboard>
+                                                                                        </BeginStoryboard>
+                                                                                    </MultiTrigger.ExitActions>
+                                                                                </MultiTrigger>
+                                                                            </ControlTemplate.Triggers>
+                                                                        </ControlTemplate>
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </Style>
+                                                        </ListBox.ItemContainerStyle>
+                                                    </ListBox>
 
-                                    <materialDesign:TransitionerSlide>
-                                        <materialDesign:TransitionerSlide.BackwardWipe>
-                                            <materialDesign:FadeWipe />
-                                        </materialDesign:TransitionerSlide.BackwardWipe>
+                                                    <!--  Credentials  -->
+                                                    <TextBox x:Name="LoginUsername"
+                                                             materialDesign:HintAssist.Hint="账号"
+                                                             materialDesign:HintAssist.IsFloating="False"
+                                                             TextWrapping="Wrap"
+                                                             TextChanged="LoginUsername_OnTextChanged"
+                                                             Text="{Binding Username}" 
+                                                             Cursor="IBeam"
+                                                             Margin="0,0,0,6" />
 
-                                        <DockPanel Height="204" Margin="20,-20,20,0">
-                                            <ComboBox
-                                                DockPanel.Dock="Top"
-                                                x:Name="LoginTypeSelection"
-                                                HorizontalAlignment="Stretch"
-                                                Margin="0,10,0,0"
-                                                Height="24"
-                                                VerticalAlignment="Top"
-                                                SelectedItem="{Binding Path=LoginTypeOption}"
-                                                SelectedValuePath="LoginType"
-                                                DisplayMemberPath="DisplayName"
-                                                SelectionChanged="LoginTypeSelection_OnSelectionChanged"
-                                                materialDesign:HintAssist.Hint="选择登录方式" />
-                                            <ListBox
-                                                x:Name="ServerSelection"
-                                                Margin="0,8,0,0"
-                                                HorizontalAlignment="Stretch"
-                                                VerticalAlignment="Top"
-                                                materialDesign:HintAssist.Hint="选择服务器"
-                                                DockPanel.Dock="Top"
-                                                ItemsSource="{Binding Path=LoginAreas}"
-                                                SelectedIndex="{Binding Path=AreaIndex, Mode=OneWayToSource}"
-                                                SelectedItem="{Binding Path=Area}"
-                                                SelectedValuePath="AreaID">
-                                                <!--  完全移除ScrollViewer  -->
-                                                <ListBox.Template>
-                                                    <ControlTemplate TargetType="ListBox">
-                                                        <Border>
-                                                            <ItemsPresenter />
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </ListBox.Template>
-                                                <ListBox.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Horizontal"
-                                                                    ScrollViewer.VerticalScrollBarVisibility="Disabled" />
-                                                        <!--  横向排列并自动换行  -->
-                                                    </ItemsPanelTemplate>
-                                                </ListBox.ItemsPanel>
-                                                <ListBox.ItemContainerStyle>
-                                                    <Style TargetType="ListBoxItem">
-                                                        <Setter Property="Template">
-                                                            <Setter.Value>
-                                                                <ControlTemplate TargetType="ListBoxItem">
-                                                                    <Border Background="{TemplateBinding Background}">
-                                                                        <Grid>
-                                                                            <!--  内容区域  -->
-                                                                            <ContentPresenter />
-                                                                            <!--  选中状态的亮线  -->
-                                                                            <Border
-                                                                                Name="SelectionIndicator"
-                                                                                Height="2"
-                                                                                VerticalAlignment="Bottom"
-                                                                                Background="{DynamicResource PrimaryHueMidBrush}"
-                                                                                Opacity="0" />
-                                                                        </Grid>
-                                                                        <VisualStateManager.VisualStateGroups>
-                                                                            <VisualStateGroup Name="SelectionStates">
-                                                                                <VisualState Name="Unselected">
-                                                                                    <Storyboard>
-                                                                                        <DoubleAnimation
-                                                                                            Storyboard.TargetName="SelectionIndicator"
-                                                                                            Storyboard.TargetProperty="Opacity"
-                                                                                            To="0"
-                                                                                            Duration="0:0:0.2" />
-                                                                                    </Storyboard>
-                                                                                </VisualState>
-                                                                                <VisualState Name="Selected">
-                                                                                    <Storyboard>
-                                                                                        <DoubleAnimation
-                                                                                            Storyboard.TargetName="SelectionIndicator"
-                                                                                            Storyboard.TargetProperty="Opacity"
-                                                                                            To="1"
-                                                                                            Duration="0:0:0.2" />
-                                                                                    </Storyboard>
-                                                                                </VisualState>
-                                                                            </VisualStateGroup>
-                                                                        </VisualStateManager.VisualStateGroups>
-                                                                    </Border>
-                                                                </ControlTemplate>
-                                                            </Setter.Value>
-                                                        </Setter>
-                                                    </Style>
-                                                </ListBox.ItemContainerStyle>
-                                                <!--  自定义项模板  -->
-                                                <ListBox.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <TextBlock
-                                                            Margin="5.8"
-                                                            VerticalAlignment="Center"
-                                                            FontSize="14"
-                                                            Text="{Binding AreaName}" />
-                                                    </DataTemplate>
-                                                </ListBox.ItemTemplate>
-                                            </ListBox>
-                                            <TextBox
-                                                DockPanel.Dock="Top"
-                                                x:Name="LoginUsername"
-                                                HorizontalAlignment="Stretch"
-                                                Margin="0,5,0,0"
-                                                Height="24"
-                                                TextWrapping="Wrap"
-                                                VerticalAlignment="Top"
-                                                materialDesign:HintAssist.Hint="盛趣账号"
-                                                TextChanged="LoginUsername_OnTextChanged"
-                                                Text="{Binding Username}" Cursor="IBeam" />
-                                            <PasswordBox
-                                                IsEnabled="True"
-                                                DockPanel.Dock="Top"
-                                                x:Name="LoginPassword"
-                                                HorizontalAlignment="Stretch"
-                                                Height="24"
-                                                Margin="0,8,0,0"
-                                                VerticalAlignment="Top"
-                                                PasswordChanged="LoginPassword_OnPasswordChanged"
-                                                materialDesign:HintAssist.Hint="密码"
-                                                Cursor="IBeam" />
+                                                    <PasswordBox x:Name="LoginPassword"
+                                                                 materialDesign:HintAssist.Hint="密码"
+                                                                 materialDesign:HintAssist.IsFloating="False"
+                                                                 PasswordChanged="LoginPassword_OnPasswordChanged"
+                                                                 Cursor="IBeam"
+                                                                 Margin="0,0,0,8" />
 
-                                            <CheckBox
-                                                Visibility="Visible"
-                                                DockPanel.Dock="Top"
-                                                Content="快速登录"
-                                                HorizontalAlignment="Stretch"
-                                                Margin="0,8,0,0"
-                                                VerticalAlignment="Top"
-                                                x:Name="FastLoginCheckBox"
-                                                IsChecked="{Binding IsFastLogin}" />
+                                                    <!--  Options  -->
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Center">
+                                                        <CheckBox x:Name="FastLoginCheckBox"
+                                                                  Content="快速登录"
+                                                                  IsChecked="{Binding IsFastLogin}"
+                                                                  Margin="0,0,16,0" />
+                                                        <CheckBox x:Name="ReadWeGameInfoCheckBox"
+                                                                  Content="读取登录信息"
+                                                                  Visibility="Collapsed"
+                                                                  ToolTip="从 WeGame 版游戏中读取登录信息"
+                                                                  IsChecked="{Binding IsReadWegameInfo}" />
+                                                    </StackPanel>
 
-                                            <CheckBox
-                                                Visibility="Hidden"
-                                                DockPanel.Dock="Top"
-                                                Content="读取登录信息"
-                                                HorizontalAlignment="Stretch"
-                                                Margin="0,8,0,0"
-                                                VerticalAlignment="Top"
-                                                x:Name="ReadWeGameInfoCheckBox"
-                                                ToolTip="从WeGame版FFXIV中读取登录信息"
-                                                IsChecked="{Binding IsReadWegameInfo}" />
+                                                    <!--  Actions  -->
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="8" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        
+                                                        <Button x:Name="LoginButton"
+                                                                Grid.Column="0"
+                                                                Content="登  录"
+                                                                Command="{Binding Path=StartLoginCommand}"
+                                                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                                                materialDesign:ButtonAssist.CornerRadius="16"
+                                                                Height="32"
+                                                                FontSize="13">
+                                                            <Button.ContextMenu>
+                                                                <ContextMenu Language="zh-CN"
+                                                                             Style="{StaticResource LoginActionContextMenuStyle}">
+                                                                    <ContextMenu.Resources>
+                                                                        <Style TargetType="{x:Type MenuItem}"
+                                                                               BasedOn="{StaticResource LoginActionMenuItemStyle}" />
+                                                                        <Style TargetType="{x:Type Separator}"
+                                                                               BasedOn="{StaticResource LoginActionSeparatorStyle}" />
+                                                                    </ContextMenu.Resources>
+                                                                    <MenuItem Header="修复" Command="{Binding Path=LoginRepairCommand}" />
+                                                                    <MenuItem Header="更新" Command="{Binding Path=LoginNoStartCommand}" />
+                                                                    <Separator />
+                                                                    <MenuItem Header="其他启动方式">
+                                                                        <MenuItem Header="无 Dalamud" Command="{Binding Path=LoginNoDalamudCommand}" />
+                                                                        <MenuItem Header="禁用插件" Command="{Binding Path=LoginNoPluginsCommand}" />
+                                                                        <MenuItem Header="禁用第三方插件" Command="{Binding Path=LoginNoThirdCommand}" />
+                                                                        <Separator />
+                                                                        <MenuItem Header="调试用假启动" Command="{Binding Path=FakeStartCommand}" />
+                                                                    </MenuItem>
+                                                                </ContextMenu>
+                                                            </Button.ContextMenu>
+                                                        </Button>
 
-                                            <StackPanel Orientation="Horizontal"
+                                                        <Button x:Name="AccountSwitcherButton"
+                                                                Grid.Column="2"
+                                                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                                materialDesign:ButtonAssist.CornerRadius="16"
+                                                                Width="32" Height="32" Padding="0"
+                                                                ToolTip="账户管理器"
+                                                                Click="AccountSwitcherButton_OnClick">
+                                                            <materialDesign:PackIcon Kind="AccountGroup" Width="16" Height="16" />
+                                                        </Button>
+                                                    </Grid>
+                                                    
+                                                    <!-- Inject Mode Toggle -->
+                                                    <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                                            Command="{Binding Path=InjectModeSwitchCommand}"
+                                                            Margin="0,4,0,0" Height="24" Padding="8,0"
+                                                            Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                            ToolTip="手动注入至已启动的游戏进程">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <materialDesign:PackIcon Kind="Injection" Width="12" Height="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="附加到现有游戏进程" FontSize="11" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </materialDesign:TransitionerSlide>
+
+                                        <materialDesign:TransitionerSlide>
+                                            <materialDesign:TransitionerSlide.BackwardWipe>
+                                                <materialDesign:FadeWipe />
+                                            </materialDesign:TransitionerSlide.BackwardWipe>
+
+                                            <Grid Margin="24,12,24,8" VerticalAlignment="Stretch">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="*" />
+                                                </Grid.RowDefinitions>
+
+                                                <TextBlock Grid.Row="0"
+                                                           Text="扫码登录" 
+                                                           HorizontalAlignment="Center" 
+                                                           FontSize="16" 
+                                                           FontWeight="Bold" 
+                                                           Margin="0,0,0,8" />
+                                                <TextBlock Grid.Row="1"
+                                                           Text="请打开手机叨鱼应用程序扫码登录" 
+                                                           HorizontalAlignment="Center"
+                                                           TextAlignment="Center"
+                                                           FontSize="12" 
+                                                           Opacity="0.7" 
+                                                           Margin="0,0,0,12" />
+
+                                                <Border Grid.Row="2"
+                                                        Background="White" 
+                                                        CornerRadius="8" 
                                                         HorizontalAlignment="Center"
-                                                        VerticalAlignment="Bottom"
-                                                        Margin="0,0,0,10" DockPanel.Dock="Bottom">
-                                                <Button
-                                                    x:Name="LoginButton"
-                                                    Content="登录"
-                                                    Command="{Binding Path=StartLoginCommand}"
-                                                    Margin="0,0,0,0" Width="84">
+                                                        Margin="0,0,0,16">
+                                                    <Border.Effect>
+                                                        <DropShadowEffect BlurRadius="10" Opacity="0.1" ShadowDepth="2" />
+                                                    </Border.Effect>
+                                                    <Grid Width="136" Height="136">
+                                                        <Image x:Name="QrImage"
+                                                               Margin="8"
+                                                               Stretch="Uniform"
+                                                               Source="{Binding QRCodeBitmapImage}" />
+                                                        <Button Command="{Binding RefreshQrCodeCommand}"
+                                                                Visibility="{Binding IsQrCodeExpired, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                                Background="#88000000"
+                                                                BorderThickness="0"
+                                                                materialDesign:ButtonAssist.CornerRadius="8"
+                                                                Cursor="Hand">
+                                                            <materialDesign:PackIcon Kind="Refresh"
+                                                                                     Width="28"
+                                                                                     Height="28"
+                                                                                     Foreground="White" />
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
 
-                                                    <Button.ContextMenu>
-                                                        <ContextMenu Language="zh-CN"
-                                                                     Style="{StaticResource LoginActionContextMenuStyle}">
-                                                            <ContextMenu.Resources>
-                                                                <Style TargetType="{x:Type MenuItem}"
-                                                                       BasedOn="{StaticResource LoginActionMenuItemStyle}" />
-                                                                <Style TargetType="{x:Type Separator}"
-                                                                       BasedOn="{StaticResource LoginActionSeparatorStyle}" />
-                                                            </ContextMenu.Resources>
-                                                            <MenuItem Header="修复"
-                                                                      Command="{Binding Path=LoginRepairCommand}" />
-                                                            <MenuItem Header="更新"
-                                                                      Command="{Binding Path=LoginNoStartCommand}" />
-                                                            <Separator />
-                                                            <MenuItem Header="其他启动方式">
-                                                                <MenuItem Header="无 Dalamud"
-                                                                          Command="{Binding Path=LoginNoDalamudCommand}" />
-                                                                <MenuItem Header="禁用插件"
-                                                                          Command="{Binding Path=LoginNoPluginsCommand}" />
-                                                                <MenuItem Header="禁用第三方插件"
-                                                                          Command="{Binding Path=LoginNoThirdCommand}" />
-                                                                <Separator />
-                                                                <MenuItem Header="调试用假启动"
-                                                                          Command="{Binding Path=FakeStartCommand}" />
-                                                            </MenuItem>
-                                                        </ContextMenu>
-                                                    </Button.ContextMenu>
-
-                                                </Button>
-
-                                                <Button HorizontalAlignment="Left"
-                                                        Visibility="Visible"
-                                                        x:Name="AccountSwitcherButton" Margin="7 0 0 0"
-                                                        ToolTip="账户管理器"
-                                                        Click="AccountSwitcherButton_OnClick">
-                                                    <StackPanel Orientation="Horizontal" Margin="0">
-                                                        <materialDesign:PackIcon
-                                                            Kind="AccountGroup" />
+                                                <Button x:Name="BackToMain"
+                                                        Grid.Row="3"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                        materialDesign:ButtonAssist.CornerRadius="16"
+                                                        HorizontalAlignment="Center"
+                                                        Width="130"
+                                                        Height="32"
+                                                        ToolTip="返回主页面"
+                                                        Click="BackToLoginPageButton_OnClick">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="ArrowLeft" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                                        <TextBlock Text="返回" VerticalAlignment="Center" />
                                                     </StackPanel>
                                                 </Button>
-                                            </StackPanel>
-                                        </DockPanel>
+                                            </Grid>
+                                        </materialDesign:TransitionerSlide>
 
-                                    </materialDesign:TransitionerSlide>
+                                        <materialDesign:TransitionerSlide>
+                                            <materialDesign:TransitionerSlide.BackwardWipe>
+                                                <materialDesign:SlideWipe />
+                                            </materialDesign:TransitionerSlide.BackwardWipe>
+                                            <Grid Margin="24,0,24,0" VerticalAlignment="Center">
+                                                <StackPanel>
+                                                    <ComboBox x:Name="ProcessSelection"
+                                                              materialDesign:HintAssist.Hint="{Binding ProcessSelectionHint}"
+                                                              materialDesign:HintAssist.IsFloating="False"
+                                                              ItemsSource="{Binding FFXIVProcesses}"
+                                                              SelectedItem="{Binding SelectedProcess}"
+                                                              Margin="0,0,0,20">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal" Margin="0,4">
+                                                                    <materialDesign:PackIcon Kind="Forbid"
+                                                                                             Height="16" Width="16"
+                                                                                             Foreground="{DynamicResource SecondaryHueMidBrush}"
+                                                                                             Margin="0,0,8,0"
+                                                                                             Visibility="{Binding HasInjected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                    <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
 
-                                    <materialDesign:TransitionerSlide>
-                                        <materialDesign:TransitionerSlide.BackwardWipe>
-                                            <materialDesign:FadeWipe />
-                                        </materialDesign:TransitionerSlide.BackwardWipe>
-
-                                        <DockPanel
-                                            Margin="30,18,30,18">
-                                            <Image
-                                                Width="130" Height="130"
-                                                DockPanel.Dock="Top"
-                                                x:Name="QrImage"
-                                                Stretch="Uniform"
-                                                Source="{Binding QRCodeBitmapImage}" />
-
-                                            <Button HorizontalAlignment="Center"
-                                                    Visibility="Visible"
-                                                    x:Name="BackToMain" Margin="0 0 0 0"
-                                                    ToolTip="返回登录页面"
-                                                    Click="BackToLoginPageButton_OnClick">
-                                                <StackPanel Orientation="Horizontal" Margin="0">
-                                                    <materialDesign:PackIcon
-                                                        Kind="RedoVariant" RenderTransformOrigin="0.5,0.5" Cursor="">
-                                                        <materialDesign:PackIcon.RenderTransform>
-                                                            <TransformGroup>
-                                                                <ScaleTransform />
-                                                                <SkewTransform />
-                                                                <RotateTransform Angle="180" />
-                                                                <TranslateTransform />
-                                                            </TransformGroup>
-                                                        </materialDesign:PackIcon.RenderTransform>
-                                                    </materialDesign:PackIcon>
-                                                </StackPanel>
-                                            </Button>
-                                        </DockPanel>
-
-                                    </materialDesign:TransitionerSlide>
-
-                                    <materialDesign:TransitionerSlide>
-                                        <materialDesign:TransitionerSlide.BackwardWipe>
-                                            <materialDesign:SlideWipe />
-                                        </materialDesign:TransitionerSlide.BackwardWipe>
-                                        <DockPanel
-                                            Margin="30,18,30,18">
-                                            <ComboBox
-                                                DockPanel.Dock="Top"
-                                                x:Name="ProcessSelection"
-                                                HorizontalAlignment="Stretch"
-                                                Margin="0,10,0,0"
-                                                Height="24"
-                                                VerticalAlignment="Top"
-                                                ItemsSource="{Binding FFXIVProcesses}"
-                                                SelectedItem="{Binding SelectedProcess}"
-                                                materialDesign:HintAssist.Hint="{Binding ProcessSelectionHint}">
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate>
+                                                    <Grid Margin="0,0,0,12">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="8" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Button x:Name="InjectButton"
+                                                                Grid.Column="0"
+                                                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                                materialDesign:ButtonAssist.CornerRadius="16"
+                                                                Height="32"
+                                                                Content="带回前台"
+                                                                Click="InjectButton_Click"
+                                                                IsEnabled="{Binding CanOperateOnSelectedProcess}" />
+                                                        <Button x:Name="BringUp"
+                                                                Grid.Column="2"
+                                                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                                                materialDesign:ButtonAssist.CornerRadius="16"
+                                                                Height="32"
+                                                                Content="注  入"
+                                                                Command="{Binding Path=InjectGameCommand}"
+                                                                IsEnabled="{Binding CanOperateOnSelectedProcess}" />
+                                                    </Grid>
+                                                    
+                                                    <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                                            Command="{Binding Path=InjectModeSwitchCommand}"
+                                                            Margin="0,0,0,0" Height="24" Padding="8,0"
+                                                            HorizontalAlignment="Center"
+                                                            Foreground="{DynamicResource MaterialDesignBodyLight}">
                                                         <StackPanel Orientation="Horizontal">
-                                                            <materialDesign:PackIcon
-                                                                Kind="Forbid"
-                                                                Height="16" Width="16"
-                                                                Visibility="{Binding HasInjected, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                            <TextBlock Text="{Binding DisplayName}" Margin="0,0,5,0" />
+                                                            <materialDesign:PackIcon Kind="ArrowLeft" Width="12" Height="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="返回账号登录" FontSize="11" VerticalAlignment="Center" />
                                                         </StackPanel>
-                                                    </DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
-
-                                            <StackPanel Orientation="Horizontal"
-                                                        HorizontalAlignment="Center"
-                                                        VerticalAlignment="Bottom"
-                                                        Margin="0,0,0,10" DockPanel.Dock="Bottom">
-                                                <Button
-                                                    x:Name="InjectButton"
-                                                    Content="带回前台"
-                                                    Click="InjectButton_Click"
-                                                    IsEnabled="{Binding CanOperateOnSelectedProcess}"
-                                                    Margin="0,0,10,0" Width="90" />
-                                                <Button
-                                                    x:Name="BringUp"
-                                                    Content="注入"
-                                                    Command="{Binding Path=InjectGameCommand}"
-                                                    IsEnabled="{Binding CanOperateOnSelectedProcess}"
-                                                    Margin="0,0,0,0" Width="90" />
-                                            </StackPanel>
-                                        </DockPanel>
-
-                                    </materialDesign:TransitionerSlide>
-                                </materialDesign:Transitioner>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                        </materialDesign:TransitionerSlide>
+                                    </materialDesign:Transitioner>
 
                                     <!-- Quick Links (Bottom) -->
-                                    <Grid Grid.Row="2" Margin="16,0,16,16">
+                                    <Grid Grid.Row="2" Margin="16,0,16,12">
+                                        <Grid.Style>
+                                            <Style TargetType="Grid">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}" Value="1">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Grid.Style>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="8" />
@@ -611,33 +647,33 @@
                                         </Grid.ColumnDefinitions>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="8" />
+                                            <RowDefinition Height="6" />
                                             <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
 
                                         <!-- 超域传送 -->
                                         <Button Grid.Row="0" Grid.Column="0" 
                                                 Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                                Padding="4" 
-                                                Height="36" 
-                                                FontSize="12" 
+                                                Padding="0" 
+                                                Height="32" 
+                                                FontSize="11" 
                                                 Foreground="{DynamicResource MaterialDesignBody}"
                                                 Click="DCTravelPageButton_OnClick">
                                             <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="Rocket" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <materialDesign:PackIcon Kind="Rocket" Width="14" Height="14" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="超域传送" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
                                         
                                         <!-- 购卡充值 -->
                                         <Button Grid.Row="0" Grid.Column="2" Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                                Padding="4" 
-                                                Height="36" 
-                                                FontSize="12" 
+                                                Padding="0" 
+                                                Height="32" 
+                                                FontSize="11" 
                                                 Foreground="{DynamicResource MaterialDesignBody}"
                                                 Click="PayPageButton_OnClick">
                                             <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="ClockPlus" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <materialDesign:PackIcon Kind="ClockPlus" Width="14" Height="14" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="购卡充值" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
@@ -645,13 +681,13 @@
                                         <!-- 商城中心 -->
                                         <Button Grid.Row="2" Grid.Column="0" 
                                                 Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                                Padding="4" 
-                                                Height="36"
-                                                FontSize="12"
+                                                Padding="0" 
+                                                Height="32"
+                                                FontSize="11"
                                                 Foreground="{DynamicResource MaterialDesignBody}"
                                                 Click="ShoppingPageButton_OnClick">
                                             <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="Cart" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <materialDesign:PackIcon Kind="Cart" Width="14" Height="14" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="商城中心" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
@@ -659,13 +695,13 @@
                                         <!-- 官方论坛 -->
                                         <Button Grid.Row="2" Grid.Column="2" 
                                                 Style="{StaticResource MaterialDesignOutlinedButton}" 
-                                                Padding="4" 
-                                                Height="36" 
-                                                FontSize="12" 
+                                                Padding="0" 
+                                                Height="32" 
+                                                FontSize="11" 
                                                 Foreground="{DynamicResource MaterialDesignBody}"
                                                 Click="RisingStonePageButton_OnClick">
                                             <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="Forum" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <materialDesign:PackIcon Kind="Forum" Width="14" Height="14" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="官方论坛" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>

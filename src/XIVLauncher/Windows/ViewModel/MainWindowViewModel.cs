@@ -65,6 +65,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private CancellationTokenSource? ProcessRefreshCancelSource { get; set; }
     private Task?                    ProcessRefreshTask         { get; set; }
     private bool                     IsInjecting                { get; set; }
+    private bool                     IsLoginCanceledByUser      { get; set; }
+    private LoginCardType?           LoginCardAfterCompletion   { get; set; }
 
     public MainWindowViewModel(Window window)
     {
@@ -78,6 +80,15 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoginNoThirdCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.StartWithoutThird),   () => !IsLoggingIn);
         LoginRepairCommand      = new SyncCommand(CreateLoginHandler(LoginAfterAction.Repair),              () => !IsLoggingIn);
         LoginForceQRCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.ForceQR),             () => !IsLoggingIn);
+        RefreshQrCodeCommand    = new SyncCommand
+        (
+            _ =>
+            {
+                LoginCardAfterCompletion = LoginCardType.MainPage;
+                StartLogin(LoginType.QRCode, Username, Password, IsFastLogin, IsReadWegameInfo, LoginAfterAction.Start);
+            },
+            () => !IsLoggingIn && IsQrCodeExpired
+        );
         InjectModeSwitchCommand = new SyncCommand(_ => { SwitchMode(); },                                   () => !IsLoggingIn);
         InjectGameCommand       = new SyncCommand(_ => { StartInject(); },                                  () => !IsLoggingIn && SelectedProcess != null);
         FakeStartCommand        = new SyncCommand(_ => { FakeStartGame(); },                                () => !IsLoggingIn);
@@ -99,11 +110,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     #region 界面控制
 
-    public void SwitchCard(LoginCardType i) =>
+    public void SwitchCard(LoginCardType i, bool shouldCancelLogin = true) =>
         Window.Dispatcher.Invoke
         (() =>
             {
-                CancelLogin();
+                if (shouldCancelLogin)
+                    CancelLogin();
                 LoginCardTransitionerIndex = (int)i;
 
                 ModeSwitchIcon  = i == LoginCardType.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
@@ -144,13 +156,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         Log.Information("[MainWindow] 尝试开始登录");
 
-        IsLoggingIn       = true;
-        IsEnabled         = false;
-        LoginCancelSource = new();
+        IsLoggingIn           = true;
+        IsEnabled             = false;
+        IsLoginCanceledByUser = false;
+        IsQrCodeExpired       = false;
+        LoginCancelSource?.Dispose();
+        LoginCancelSource     = new();
         CommandManager.InvalidateRequerySuggested();
 
-        var currentCard = (LoginCardType)LoginCardTransitionerIndex;
-        SwitchCard(loginType == LoginType.QRCode ? LoginCardType.ScanQRCode : LoginCardType.Logining);
+        var currentCard = LoginCardAfterCompletion ?? (LoginCardType)LoginCardTransitionerIndex;
+        LoginCardAfterCompletion = null;
+        SwitchCard(loginType == LoginType.QRCode ? LoginCardType.ScanQRCode : LoginCardType.Logining, false);
 
         Task.Run
         (() =>
@@ -168,7 +184,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 }
                 finally
                 {
-                    SwitchCard(currentCard);
+                    var nextCard = LoginCardAfterCompletion ?? currentCard;
+                    LoginCardAfterCompletion = null;
+                    SwitchCard(nextCard, false);
 
                     IsLoggingIn = false;
                     IsEnabled   = true;
@@ -186,6 +204,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         if (LoginCancelSource != null)
         {
             Log.Information("[MainWindow] 取消登录");
+            IsLoginCanceledByUser = true;
 
             if (!LoginCancelSource.IsCancellationRequested)
                 LoginCancelSource.Cancel();
@@ -205,6 +224,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoginAfterAction action
     )
     {
+        if (IsLoginCanceledByUser)
+            return;
+
         ProblemCheck.RunCheck(Window);
 
         if (!TryResolvePatchPath())
@@ -506,6 +528,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoginAfterAction      action
     )
     {
+        if (IsLoginCanceledByUser)
+            return null;
+
         if (Area == null || Area.AreaID == "-1")
         {
             CustomMessageBox.Show
@@ -522,6 +547,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
+            LoginCancelSource?.Dispose();
             LoginCancelSource = new();
             var loginCts = LoginCancelSource;
             var gamePath = App.Settings.GamePath;
@@ -544,7 +570,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                if (requestLoginType != LoginType.QRCode)
                                    return;
 
-                               QRCodeBitmapImage = qrBytes.ToBitmapImage();
+                               Window.Dispatcher.Invoke
+                               (() =>
+                                   {
+                                       QRCodeBitmapImage = qrBytes.ToBitmapImage();
+                                       IsQrCodeExpired  = false;
+                                   }
+                               );
                            },
                            code =>
                            {
@@ -588,9 +620,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             if (ex is LoginException sdoLoginEx)
             {
-                if (LoginCancelSource?.IsCancellationRequested ?? false)
+                if (IsLoginCanceledByUser || LoginCancelSource?.IsCancellationRequested == true)
                 {
                     Log.Information("[MainWindow] 手动取消登录");
+                    return null;
+                }
+
+                if ((type == LoginType.QRCode || fallbackLoginType == LoginType.QRCode) && sdoLoginEx.Message == "二维码不存在或已过期，请重试")
+                {
+                    Log.Information("[MainWindow] 二维码已过期，等待手动刷新");
+                    Window.Dispatcher.Invoke(() => IsQrCodeExpired = true);
+                    LoginCardAfterCompletion = LoginCardType.ScanQRCode;
                     return null;
                 }
 
@@ -636,6 +676,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 case OAuthLoginException oauthLoginException:
                 {
+                    if ((type == LoginType.QRCode || fallbackLoginType == LoginType.QRCode) && oauthLoginException.OAuthErrorMessage == "二维码不存在或已过期，请重试")
+                    {
+                        Log.Information("[MainWindow] 二维码已过期，等待手动刷新");
+                        Window.Dispatcher.Invoke(() => IsQrCodeExpired = true);
+                        LoginCardAfterCompletion = LoginCardType.ScanQRCode;
+                        return null;
+                    }
+
                     disableAutoLogin = true;
                     LoginMessage     = string.Empty;
                     QRDialog.CloseQRWindow(Window);
@@ -1985,14 +2033,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
         handler?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    public void OnWindowClosed(object sender, object args)
+    public void OnWindowClosed(object? sender, object args)
     {
         StopRefreshFFXIVProcess(true);
         CancelLogin();
         Application.Current.Shutdown();
     }
 
-    public void OnWindowClosing(object sender, CancelEventArgs args)
+    public void OnWindowClosing(object? sender, CancelEventArgs args)
     {
         if (!IsLoggingIn) return;
         args.Cancel = true;
@@ -2036,6 +2084,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public ICommand LoginRepairCommand      { get; set; }
     public ICommand LoginCancelCommand      { get; set; }
     public ICommand LoginForceQRCommand     { get; set; }
+    public ICommand RefreshQrCodeCommand    { get; set; }
     public ICommand InjectModeSwitchCommand { get; set; }
     public ICommand InjectGameCommand       { get; set; }
     public ICommand FakeStartCommand        { get; set; }
@@ -2178,6 +2227,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             field = value;
             OnPropertyChanged(nameof(QRCodeBitmapImage));
+        }
+    }
+
+    public bool IsQrCodeExpired
+    {
+        get;
+        set
+        {
+            field = value;
+            OnPropertyChanged(nameof(IsQrCodeExpired));
+            CommandManager.InvalidateRequerySuggested();
         }
     }
 

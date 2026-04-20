@@ -16,7 +16,7 @@ public sealed class QRCodeLoginChannel
     public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         if (request.LoginCancellationTokenSource == null)
-            throw new LoginException((int)LoginExceptionCode.SlideTimeoutOrCanceled, "登录取消令牌不能为空");
+            throw new LoginException((int)LoginExceptionCode.ScanTimeoutOrCanceled, "登录取消令牌不能为空");
 
         var     guid    = await context.GetGuidAsync().ConfigureAwait(false);
         string? sndaId  = null;
@@ -62,9 +62,15 @@ public sealed class QRCodeLoginChannel
                 continue;
             }
 
+            if (result.Data.FailReason == "二维码不存在或已过期，请重试")
+                throw new LoginException((int)LoginExceptionCode.ScanTimeoutOrCanceled, result.Data.FailReason);
+
             throw new OAuthLoginException(result.Data.FailReason);
         }
 
-        throw new LoginException((int)LoginExceptionCode.SlideTimeoutOrCanceled, "登录超时或被取消");
+        if (userCancel.IsCancellationRequested)
+            throw new LoginException((int)LoginExceptionCode.ScanTimeoutOrCanceled, "登录超时或被取消");
+
+        throw new LoginException((int)LoginExceptionCode.ScanTimeoutOrCanceled, "二维码不存在或已过期，请重试");
     }
 }

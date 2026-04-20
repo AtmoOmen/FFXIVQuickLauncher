@@ -34,18 +34,19 @@ namespace XIVLauncher.Windows;
 /// </summary>
 public partial class MainWindow : Window
 {
-    public MainWindowViewModel Model => DataContext as MainWindowViewModel;
+    public MainWindowViewModel Model => (DataContext as MainWindowViewModel)!;
 
+    private const int           CURRENT_VERSION_LEVEL = 2;
+    
     private readonly AccountManager _accountManager;
     private readonly Launcher       _launcher;
 
-    private const int                   CURRENT_VERSION_LEVEL = 2;
-    private       Timer                 _bannerChangeTimer;
-    private       Headlines             _headlines;
-    private       IReadOnlyList<Banner> _banners;
-    private       BitmapImage[]         _bannerBitmaps;
-    private       int                   _currentBannerIndex;
-    private       bool                  _everShown;
+    private Timer         _bannerChangeTimer;
+    private Headlines     _headlines;
+    private Banner[]      _banners;
+    private BitmapImage[] _bannerBitmaps;
+    private int           _currentBannerIndex;
+    private bool          _everShown;
 
     private ObservableCollection<BannerDotInfo> _bannerDotList;
 
@@ -72,7 +73,7 @@ public partial class MainWindow : Window
             }
         );
 
-        Model.Hide += () => Dispatcher.Invoke(() => { Hide(); });
+        Model.Hide += () => Dispatcher.Invoke(Hide);
 
         Model.ReloadHeadlines += () => Task.Run(SetupHeadlines);
 
@@ -95,10 +96,9 @@ public partial class MainWindow : Window
 
 #if !XL_NOAUTOUPDATE
         if (EnvironmentSettings.IsDisableUpdates)
-#endif
         {
         }
-
+#endif
     }
 
     public void Initialize()
@@ -245,10 +245,10 @@ public partial class MainWindow : Window
                                         .ConfigureAwait(false);
             _banners = _headlines.Banner;
 
-            _bannerBitmaps = new BitmapImage[_banners.Count];
+            _bannerBitmaps = new BitmapImage[_banners.Length];
             _bannerDotList = [];
 
-            for (var i = 0; i < _banners.Count; i++)
+            for (var i = 0; i < _banners.Length; i++)
             {
                 var imageBytes = await _launcher.DownloadAsLauncher(_banners[i].LsbBanner.ToString());
 
@@ -296,7 +296,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SetDefaults()
+    private static void SetDefaults()
     {
         // Set the default patch acquisition method
         App.Settings.PatchAcquisitionMethod ??= AcquisitionMethod.Aria;
@@ -380,10 +380,7 @@ public partial class MainWindow : Window
             Process.Start(new ProcessStartInfo($"https://ff.web.sdo.com/web8/index.html#/newstab/newscont/{item.Id}") { UseShellExecute = true });
         
     }
-
-    private void WorldStatusButton_Click(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo("https://ff.web.sdo.com/web8/index.html#/servers") { UseShellExecute = true });
-
+    
     private void Card_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter && e.Key != Key.Return)
@@ -506,10 +503,10 @@ public partial class MainWindow : Window
 
     private void ShowNextBanner()
     {
-        if (_banners == null || _banners.Count == 0)
+        if (_banners is not { Length: > 0 })
             return;
 
-        var nextBannerIndex = _currentBannerIndex + 1 > _banners.Count - 1
+        var nextBannerIndex = _currentBannerIndex + 1 > _banners.Length - 1
                                   ? 0
                                   : _currentBannerIndex + 1;
 
@@ -590,7 +587,7 @@ public partial class MainWindow : Window
                 break;
 
             case LoginType.QRCode:
-                LoginUsername.Visibility = Visibility.Hidden;
+                LoginUsername.Visibility = Visibility.Collapsed;
                 break;
 
             case LoginType.Static:
@@ -614,11 +611,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private void LoginUsername_OnTextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (DataContext != null)
-            ((MainWindowViewModel)DataContext).Username = ((TextBox)sender).Text;
-    }
+    private void LoginUsername_OnTextChanged(object sender, TextChangedEventArgs e) =>
+        ((MainWindowViewModel)DataContext)?.Username = ((TextBox)sender).Text;
 
     private void BackToLoginPageButton_OnClick(object sender, RoutedEventArgs e) =>
         Dispatcher.Invoke(() => { Model.SwitchCard(MainWindowViewModel.LoginCardType.MainPage); });
