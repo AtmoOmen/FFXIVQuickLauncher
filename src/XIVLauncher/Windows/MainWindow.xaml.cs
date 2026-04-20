@@ -631,6 +631,12 @@ public partial class MainWindow : Window
     private void DCTravelPageButton_OnClick(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo("https://ff14bjz.sdo.com/RegionKanTelepo") { UseShellExecute = true });
 
+    private void OpenExternalSiteButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string url })
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+    }
+
     private void PayPageButton_OnClick(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo("https://pay.sdo.com/item/GWPAY-100001900/") { UseShellExecute = true });
     
