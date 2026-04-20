@@ -44,7 +44,7 @@ jobs:
       - name: Build Release
         run: |
           cd .\src\
-          dotnet build XIVLauncher.sln -c Release
+          dotnet build XIVLauncher.slnx -c Release
 
       - name: Generate Hashes File
         run: .\scripts\CreateHashList.ps1 .\src\bin\win-x64
@@ -102,7 +102,7 @@ jobs:
       - name: Build Release
         run: |
           cd .\src\
-          dotnet build XIVLauncher.sln -c ReleaseNoUpdate
+          dotnet build XIVLauncher.slnx -c ReleaseNoUpdate
 
       - name: Generate Hashes File
         run: .\scripts\CreateHashList.ps1 .\src\bin
