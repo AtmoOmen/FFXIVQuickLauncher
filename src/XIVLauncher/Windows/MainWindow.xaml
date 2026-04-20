@@ -522,6 +522,7 @@
                                                 <Border Grid.Row="2"
                                                         Background="White" 
                                                         CornerRadius="8" 
+                                                        ClipToBounds="True"
                                                         HorizontalAlignment="Center"
                                                         Margin="0,0,0,16">
                                                     <Border.Effect>
@@ -532,17 +533,45 @@
                                                                Margin="8"
                                                                Stretch="Uniform"
                                                                Source="{Binding QRCodeBitmapImage}" />
-                                                        <Button Command="{Binding RefreshQrCodeCommand}"
-                                                                Visibility="{Binding IsQrCodeExpired, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                                Background="#88000000"
-                                                                BorderThickness="0"
-                                                                materialDesign:ButtonAssist.CornerRadius="8"
-                                                                Cursor="Hand">
+                                                        <Grid Visibility="{Binding IsQrCodeExpired, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                              Background="Transparent"
+                                                              Cursor="Hand">
+                                                            <Grid.InputBindings>
+                                                                <MouseBinding MouseAction="LeftClick"
+                                                                              Command="{Binding RefreshQrCodeCommand}" />
+                                                            </Grid.InputBindings>
+                                                            <Border CornerRadius="8">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="#88000000" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                                                                                <Setter Property="Background" Value="#AA000000" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                            </Border>
                                                             <materialDesign:PackIcon Kind="Refresh"
-                                                                                     Width="28"
-                                                                                     Height="28"
-                                                                                     Foreground="White" />
-                                                        </Button>
+                                                                                     Foreground="White"
+                                                                                     HorizontalAlignment="Center"
+                                                                                     VerticalAlignment="Center">
+                                                                <materialDesign:PackIcon.Style>
+                                                                    <Style TargetType="materialDesign:PackIcon">
+                                                                        <Setter Property="Width" Value="28" />
+                                                                        <Setter Property="Height" Value="28" />
+                                                                        <Setter Property="Opacity" Value="0.92" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                                                                                <Setter Property="Width" Value="32" />
+                                                                                <Setter Property="Height" Value="32" />
+                                                                                <Setter Property="Opacity" Value="1" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </materialDesign:PackIcon.Style>
+                                                            </materialDesign:PackIcon>
+                                                        </Grid>
                                                     </Grid>
                                                 </Border>
 
