@@ -57,7 +57,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
     public bool IsRunIntegrityCheckPossible =>
         !string.IsNullOrWhiteSpace(GamePath) && Directory.Exists(GamePath);
 
-    public bool CanEditSelectedAddon => SelectedAddonEntry?.Addon is GenericAddon;
+    public bool CanEditSelectedAddon => SelectedAddonEntry?.Addon != null;
 
     public Visibility GamePathWarningVisibility =>
         string.IsNullOrWhiteSpace(GamePathWarningMessage) ? Visibility.Collapsed : Visibility.Visible;
@@ -285,7 +285,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         GamePath = App.Settings.GamePath?.FullName ?? string.Empty;
 
         if (App.Settings.PatchPath is { Exists: false })
-            App.Settings.PatchPath = null;
+            App.Settings.PatchPath = null!;
 
         App.Settings.PatchPath ??= new DirectoryInfo(Path.Combine(Paths.RoamingPath, "patches"));
         PatchPath              =   App.Settings.PatchPath?.FullName ?? string.Empty;
@@ -325,8 +325,8 @@ public sealed class SettingsControlViewModel : ViewModelBase
             return false;
         }
 
-        App.Settings.GamePath                = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null;
-        App.Settings.PatchPath               = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null;
+        App.Settings.GamePath                = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
+        App.Settings.PatchPath               = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
         App.Settings.LauncherLanguage        = LauncherLanguage.SimplifiedChinese;
         App.Settings.AddonList               = AddonEntries.ToList();
         App.Settings.AskBeforePatchInstall   = AskBeforePatching;
