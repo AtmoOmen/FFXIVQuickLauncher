@@ -1,0 +1,38 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <BuildType Name="ReleaseNoUpdate" />
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="FfxivArgLauncher/FfxivArgLauncher.csproj">
+    <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
+    <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
+    <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
+  </Project>
+  <Project Path="XIVLauncher.ArgReader/XIVLauncher.ArgReader.csproj">
+    <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
+    <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
+    <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
+  </Project>
+  <Project Path="XIVLauncher.Common.Windows/XIVLauncher.Common.Windows.csproj">
+    <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
+    <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
+    <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
+  </Project>
+  <Project Path="XIVLauncher.Common/XIVLauncher.Common.csproj">
+    <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
+    <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
+    <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
+  </Project>
+  <Project Path="XIVLauncher.PatchInstaller/XIVLauncher.PatchInstaller.csproj">
+    <BuildType Solution="ReleaseNoUpdate|*" Project="Release" />
+  </Project>
+  <Project Path="XIVLauncher/XIVLauncher.csproj">
+    <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
+    <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
+    <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
+  </Project>
+</Solution>
