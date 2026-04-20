@@ -25,14 +25,14 @@
         <ApplicationIcon>Resources/icon.ico</ApplicationIcon>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
-        <PackageReference Include="Serilog" Version="4.3.1"/>
-        <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0"/>
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1"/>
-        <PackageReference Include="Serilog.Sinks.File" Version="7.0.0"/>
-        <PackageReference Include="SharedMemory" Version="2.3.2"/>
-        <PackageReference Include="System.CommandLine" Version="2.0.6"/>
-        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0"/>
+        <PackageReference Include="Newtonsoft.Json"/>
+        <PackageReference Include="Serilog"/>
+        <PackageReference Include="Serilog.Sinks.Async"/>
+        <PackageReference Include="Serilog.Sinks.Console"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="SharedMemory"/>
+        <PackageReference Include="System.CommandLine"/>
+        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers"/>
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>

@@ -26,8 +26,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="PInvoke.Kernel32" Version="0.7.124"/>
-        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0"/>
+        <PackageReference Include="PInvoke.Kernel32"/>
+        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers"/>
     </ItemGroup>
 
 </Project>
