@@ -15,20 +15,21 @@ public class IndexVerifyCommand
 {
     public static readonly Command Command = new("index-verify", "Verify and optionally repair a game installation.");
 
-    private static readonly Argument<string> GameRootPathArgument = new
-    (
-        "game-path",
-        "Root folder of a game installation, such as \"C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\""
-    );
+    private static readonly Argument<string> GameRootPathArgument = new("game-path")
+    {
+        Description = "Root folder of a game installation, such as \"C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\""
+    };
 
-    private static readonly Argument<string[]> PatchIndexFilesArgument = new("patch-index-files", "Path to a patch index file. (*.patch.index)");
+    private static readonly Argument<string[]> PatchIndexFilesArgument = new("patch-index-files")
+    {
+        Description = "Path to a patch index file. (*.patch.index)"
+    };
 
-    private static readonly Option<int> ThreadCountOption = new
-    (
-        ["-t", "--threads"],
-        () => Math.Min(Environment.ProcessorCount, 8),
-        "Number of threads. Specifying 0 will use all available cores."
-    );
+    private static readonly Option<int?> ThreadCountOption = new("--threads")
+    {
+        Description = "Number of threads. Specifying 0 will use all available cores.",
+        Aliases = { "-t" }
+    };
 
     private readonly string   gameRootPath;
     private readonly string[] patchIndexFiles;
@@ -36,18 +37,19 @@ public class IndexVerifyCommand
 
     static IndexVerifyCommand()
     {
-        Command.AddArgument(GameRootPathArgument);
-        Command.AddArgument(PatchIndexFilesArgument);
-        ThreadCountOption.AddValidator(x => x.ErrorMessage = x.GetValueOrDefault<int>() >= 0 ? null : "Must be 0 or more");
-        Command.AddOption(ThreadCountOption);
-        Command.SetHandler(x => new IndexVerifyCommand(x.ParseResult).Handle(x.GetCancellationToken()));
+        Command.Arguments.Add(GameRootPathArgument);
+        Command.Arguments.Add(PatchIndexFilesArgument);
+        Command.Options.Add(ThreadCountOption);
+        Command.SetAction((parseResult, cancellationToken) => new IndexVerifyCommand(parseResult).Handle(cancellationToken));
     }
 
     private IndexVerifyCommand(ParseResult parseResult)
     {
-        gameRootPath    = parseResult.GetValueForArgument(GameRootPathArgument);
-        patchIndexFiles = parseResult.GetValueForArgument(PatchIndexFilesArgument);
-        threadCount     = parseResult.GetValueForOption(ThreadCountOption);
+        gameRootPath    = parseResult.GetValue(GameRootPathArgument)!;
+        patchIndexFiles = parseResult.GetValue(PatchIndexFilesArgument)!;
+        threadCount     = parseResult.GetValue(ThreadCountOption) ?? Math.Min(Environment.ProcessorCount, 8);
+        if (threadCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(threadCount), "Must be 0 or more");
         if (threadCount == 0)
             threadCount = Environment.ProcessorCount;
         Debug.Assert(threadCount > 0);

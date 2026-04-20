@@ -8,19 +8,14 @@ namespace XIVLauncher.Common.Game.Patch.Acquisition;
 
 internal class NetDownloaderPatchAcquisition : PatchAcquisition
 {
-    private readonly DirectoryInfo _patchStore;
-
-    private string DownloadTempPath => Path.Combine(_patchStore.FullName, "temp");
-
     private readonly DownloadConfiguration _downloadOpt = new()
     {
-        ParallelDownload      = true,               // download parts of file as parallel or not
-        BufferBlockSize       = 8000,               // usually, hosts support max to 8000 bytes
-        ChunkCount            = 8,                  // file parts to download
-        MaxTryAgainOnFailover = int.MaxValue,       // the maximum number of times to fail.
-        OnTheFlyDownload      = false,              // caching in-memory mode
-        Timeout               = 10000,              // timeout (millisecond) per stream block reader
-        TempDirectory         = Path.GetTempPath(), // this is the library default
+        ParallelDownload = true,          // download parts of file as parallel or not
+        BufferBlockSize  = 8000,          // usually, hosts support max to 8000 bytes
+        ChunkCount       = 8,             // file parts to download
+        MaxTryAgainOnFailure = int.MaxValue,
+        BlockTimeout         = 10000,
+        HttpClientTimeout    = 10000,
         RequestConfiguration = new RequestConfiguration
         {
             UserAgent = Constants.PatcherUserAgent,
@@ -33,9 +28,7 @@ internal class NetDownloaderPatchAcquisition : PatchAcquisition
 
     public NetDownloaderPatchAcquisition(DirectoryInfo patchStore, long maxBytesPerSecond)
     {
-        _patchStore = patchStore;
-
-        _downloadOpt.TempDirectory = DownloadTempPath;
+        ArgumentNullException.ThrowIfNull(patchStore);
     }
 
     public override async Task StartDownloadAsync(string url, FileInfo outFile)

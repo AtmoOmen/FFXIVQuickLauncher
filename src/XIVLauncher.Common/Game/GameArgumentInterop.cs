@@ -1,14 +1,18 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Iced.Intel;
+using Reloaded.Memory;
 using Reloaded.Memory.Buffers;
-using Reloaded.Memory.Kernel32;
+using Reloaded.Memory.Buffers.Structs;
+using Reloaded.Memory.Buffers.Structs.Params;
+using Reloaded.Memory.Enums;
+using Reloaded.Memory.Interfaces;
 using Reloaded.Memory.Sigscan;
-using Reloaded.Memory.Sources;
 using Serilog;
 using static Iced.Intel.AssemblerRegisters;
 using Decoder = Iced.Intel.Decoder;
@@ -60,7 +64,7 @@ public static class GameArgumentInterop
 
             var mainModule = this.targetProcess.MainModule ?? throw new InvalidOperationException("无法获取游戏主模块");
             externalMemory = new ExternalMemory(this.targetProcess.Handle);
-            externalMemory.ReadRaw((nuint)mainModule.BaseAddress, out var executableData, mainModule.ModuleMemorySize);
+            var executableData = externalMemory.ReadRaw((nuint)mainModule.BaseAddress, mainModule.ModuleMemorySize);
             scanner           = new Scanner(executableData);
             gameWindowPointer = GetGameWindowPointer(mainModule.BaseAddress);
         }
@@ -103,7 +107,7 @@ public static class GameArgumentInterop
 
             for (var index = 0; index < 20; index++)
             {
-                externalMemory.Read(gameWindowPointer + 0xA0, out nuint sessionIdPointer, false);
+                externalMemory.Read(gameWindowPointer + 0xA0, out nuint sessionIdPointer);
                 externalMemory.Read(gameWindowPointer + 0xA8, out nuint sndaIdPointer);
                 externalMemory.Read(gameWindowPointer + 0xB8, out nuint commandLinePointer);
 
@@ -143,7 +147,7 @@ public static class GameArgumentInterop
 
         private string ReadString(nuint pointer, Encoding encoding, int maxLength = 256)
         {
-            externalMemory.SafeReadRaw(pointer, out var bytes, maxLength);
+            var bytes       = externalMemory.ReadRaw(pointer, maxLength);
             var data        = encoding.GetString(bytes);
             var endOfString = data.IndexOf('\0');
             return endOfString < 0 ? data : data[..endOfString];
@@ -158,7 +162,7 @@ public static class GameArgumentInterop
                 throw new InvalidOperationException($"无法定位 GameWindow: {SIGNATURE}");
 
             var address = (nuint)baseAddress + (nuint)scan.Offset;
-            externalMemory.ReadRaw(address, out var originalBytes, 20);
+            var originalBytes = externalMemory.ReadRaw(address, 20);
 
             var codeReader = new ByteArrayCodeReader(originalBytes);
             var decoder    = Decoder.Create(64, codeReader);
@@ -182,10 +186,10 @@ public static class GameArgumentInterop
 
     public sealed class Fixer
     {
-        private readonly ExternalMemory      externalMemory;
-        private readonly PrivateMemoryBuffer memoryBuffer;
-        private readonly Scanner             scanner;
-        private readonly Process             targetProcess;
+        private readonly ExternalMemory         externalMemory;
+        private readonly List<PrivateAllocation> privateAllocations = [];
+        private readonly Scanner                scanner;
+        private readonly Process                targetProcess;
 
         private nint  mainModuleRegionSize;
         private nuint mainModuleBaseAddress;
@@ -196,9 +200,8 @@ public static class GameArgumentInterop
             this.targetProcess = targetProcess ?? throw new ArgumentNullException(nameof(targetProcess));
 
             externalMemory = new ExternalMemory(this.targetProcess);
-            memoryBuffer   = new MemoryBufferHelper(this.targetProcess).CreatePrivateMemoryBuffer(0x4000);
             GetMainModuleAddress();
-            externalMemory.ReadRaw(mainModuleBaseAddress, out var executableData, (int)mainModuleRegionSize);
+            var executableData = externalMemory.ReadRaw(mainModuleBaseAddress, (int)mainModuleRegionSize);
             scanner = new Scanner(executableData);
         }
 
@@ -231,8 +234,33 @@ public static class GameArgumentInterop
             const string TEST_SID_PREFIX = "DEV.TestSID=";
             const string SNDA_ID_PREFIX  = "XL.SndaId=";
 
-            var testSidPrefixAddress = memoryBuffer.Add(Encoding.ASCII.GetBytes(TEST_SID_PREFIX + '\0'));
-            var sndaIdPrefixAddress  = memoryBuffer.Add(Encoding.ASCII.GetBytes(SNDA_ID_PREFIX  + '\0'));
+            var testSidPrefixBytes = Encoding.ASCII.GetBytes(TEST_SID_PREFIX + '\0');
+            var testSidPrefixAllocation = Buffers.AllocatePrivateMemory
+            (
+                new BufferAllocatorSettings
+                {
+                    MinAddress = 0,
+                    MaxAddress = nuint.MaxValue,
+                    Size = (uint)testSidPrefixBytes.Length,
+                    TargetProcess = targetProcess,
+                }
+            );
+            privateAllocations.Add(testSidPrefixAllocation);
+            externalMemory.WriteRaw(testSidPrefixAllocation.BaseAddress, testSidPrefixBytes);
+
+            var sndaIdPrefixBytes = Encoding.ASCII.GetBytes(SNDA_ID_PREFIX + '\0');
+            var sndaIdPrefixAllocation = Buffers.AllocatePrivateMemory
+            (
+                new BufferAllocatorSettings
+                {
+                    MinAddress = 0,
+                    MaxAddress = nuint.MaxValue,
+                    Size = (uint)sndaIdPrefixBytes.Length,
+                    TargetProcess = targetProcess,
+                }
+            );
+            privateAllocations.Add(sndaIdPrefixAllocation);
+            externalMemory.WriteRaw(sndaIdPrefixAllocation.BaseAddress, sndaIdPrefixBytes);
 
             var assembler = new Assembler(64);
             var exit      = assembler.CreateLabel();
@@ -260,7 +288,7 @@ public static class GameArgumentInterop
 
             assembler.Label(ref testSid);
             assembler.mov(rcx, __[rbx]);
-            assembler.lea(rdx, __[testSidPrefixAddress]);
+            assembler.lea(rdx, __[testSidPrefixAllocation.BaseAddress]);
             assembler.mov(r8d, TEST_SID_PREFIX.Length);
             assembler.call(strncmp);
             assembler.test(eax, eax);
@@ -273,7 +301,7 @@ public static class GameArgumentInterop
 
             assembler.Label(ref sndaId);
             assembler.mov(rcx, __[rbx]);
-            assembler.lea(rdx, __qword_ptr[sndaIdPrefixAddress]);
+            assembler.lea(rdx, __qword_ptr[sndaIdPrefixAllocation.BaseAddress]);
             assembler.mov(r8d, SNDA_ID_PREFIX.Length);
             assembler.call(strncmp);
             assembler.test(eax, eax);
@@ -331,13 +359,25 @@ public static class GameArgumentInterop
             assembler.ret();
 
             var bytes = Assemble(assembler);
-            argFixFunctionAddress = memoryBuffer.Add(bytes);
+            var argFixFunctionAllocation = Buffers.AllocatePrivateMemory
+            (
+                new BufferAllocatorSettings
+                {
+                    MinAddress = 0,
+                    MaxAddress = nuint.MaxValue,
+                    Size = (uint)bytes.Length,
+                    TargetProcess = targetProcess,
+                }
+            );
+            privateAllocations.Add(argFixFunctionAllocation);
+            argFixFunctionAddress = argFixFunctionAllocation.BaseAddress;
+            externalMemory.WriteRaw(argFixFunctionAddress, bytes);
             Log.Information("ArgFixFunctionAddress: 0x{ArgFixFunctionAddress:X}", argFixFunctionAddress);
 
             if (argFixFunctionAddress == 0)
                 throw new InvalidOperationException("无法分配 ArgFixFunction");
 
-            externalMemory.ChangePermission(argFixFunctionAddress, bytes.Length, Kernel32.MEM_PROTECTION.PAGE_EXECUTE_READWRITE);
+            externalMemory.ChangeProtection(argFixFunctionAddress, bytes.Length, MemoryProtection.ReadWriteExecute);
         }
 
         private void SetupHook(nuint sdoLoginAddress)
@@ -347,7 +387,7 @@ public static class GameArgumentInterop
             assembler.jmp(rax);
 
             var bytes = Assemble(assembler);
-            externalMemory.ReadRaw(sdoLoginAddress, out var originalBytes, bytes.Length + 0x20);
+            var originalBytes = externalMemory.ReadRaw(sdoLoginAddress, bytes.Length + 0x20);
 
             var codeReader = new ByteArrayCodeReader(originalBytes);
             var decoder    = Decoder.Create(64, codeReader);

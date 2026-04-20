@@ -21,31 +21,28 @@ public class CheckIntegrityCommand
 {
     public static readonly Command Command = new("check-integrity");
 
-    private static readonly Argument<string> GameRootPathArgument = new
-    (
-        "game-path",
-        "Root folder of a game installation, such as \"C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\""
-    );
+    private static readonly Argument<string> GameRootPathArgument = new("game-path")
+    {
+        Description = "Root folder of a game installation, such as \"C:\\Program Files (x86)\\SquareEnix\\FINAL FANTASY XIV - A Realm Reborn\""
+    };
 
-    private static readonly Option<string> IntegrityFilePathOption = new
-    (
-        ["-f", "--integrity-file"],
-        $"Path to integrity check file. Leave it empty to download from: {new Uri(V3GamePatchConstants.REMOTE_VERSION_URL).Host}"
-    );
+    private static readonly Option<string?> IntegrityFilePathOption = new("--integrity-file")
+    {
+        Description = $"Path to integrity check file. Leave it empty to download from: {new Uri(V3GamePatchConstants.REMOTE_VERSION_URL).Host}",
+        Aliases = { "-f" }
+    };
 
-    private static readonly Option<bool> IndexOnlyOption = new
-    (
-        ["-i", "--index-only"],
-        () => false,
-        $"Path to integrity check file. Leave it empty to download from: {new Uri(V3GamePatchConstants.REMOTE_VERSION_URL).Host}"
-    );
+    private static readonly Option<bool> IndexOnlyOption = new("--index-only")
+    {
+        Description = $"Path to integrity check file. Leave it empty to download from: {new Uri(V3GamePatchConstants.REMOTE_VERSION_URL).Host}",
+        Aliases = { "-i" }
+    };
 
-    private static readonly Option<int> ThreadCountOption = new
-    (
-        ["-t", "--threads"],
-        () => Math.Min(Environment.ProcessorCount, 8),
-        "Number of threads. Specifying 0 will use all available cores."
-    );
+    private static readonly Option<int?> ThreadCountOption = new("--threads")
+    {
+        Description = "Number of threads. Specifying 0 will use all available cores.",
+        Aliases = { "-t" }
+    };
 
     private readonly string  gameRootPath;
     private readonly string? integrityFilePath;
@@ -54,21 +51,22 @@ public class CheckIntegrityCommand
 
     static CheckIntegrityCommand()
     {
-        Command.AddAlias("check-integrity");
-        Command.AddArgument(GameRootPathArgument);
-        Command.AddOption(IntegrityFilePathOption);
-        Command.AddOption(IndexOnlyOption);
-        ThreadCountOption.AddValidator(x => x.ErrorMessage = x.GetValueOrDefault<int>() >= 0 ? null : "Must be 0 or more");
-        Command.AddOption(ThreadCountOption);
-        Command.SetHandler(x => new CheckIntegrityCommand(x.ParseResult).Handle(x.GetCancellationToken()));
+        Command.Aliases.Add("check-integrity");
+        Command.Arguments.Add(GameRootPathArgument);
+        Command.Options.Add(IntegrityFilePathOption);
+        Command.Options.Add(IndexOnlyOption);
+        Command.Options.Add(ThreadCountOption);
+        Command.SetAction((parseResult, cancellationToken) => new CheckIntegrityCommand(parseResult).Handle(cancellationToken));
     }
 
     private CheckIntegrityCommand(ParseResult parseResult)
     {
-        gameRootPath      = parseResult.GetValueForArgument(GameRootPathArgument);
-        integrityFilePath = parseResult.GetValueForOption(IntegrityFilePathOption);
-        indexOnly         = parseResult.GetValueForOption(IndexOnlyOption);
-        threadCount       = parseResult.GetValueForOption(ThreadCountOption);
+        gameRootPath      = parseResult.GetValue(GameRootPathArgument)!;
+        integrityFilePath = parseResult.GetValue(IntegrityFilePathOption);
+        indexOnly         = parseResult.GetValue(IndexOnlyOption);
+        threadCount       = parseResult.GetValue(ThreadCountOption) ?? Math.Min(Environment.ProcessorCount, 8);
+        if (threadCount < 0)
+            throw new ArgumentOutOfRangeException(nameof(threadCount), "Must be 0 or more");
         if (threadCount == 0)
             threadCount = Environment.ProcessorCount;
         Debug.Assert(threadCount > 0);

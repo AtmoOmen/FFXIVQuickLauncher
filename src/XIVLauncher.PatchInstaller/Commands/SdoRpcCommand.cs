@@ -12,7 +12,7 @@ namespace XIVLauncher.PatchInstaller.Commands;
 
 public class SdoRpcCommand
 {
-    public static readonly Command Command = new("sdo-rpc") { IsHidden = true };
+    public static readonly Command Command = new("sdo-rpc") { Hidden = true };
 
     private static readonly Argument<int> MonitorProcessIDArgument = new("process-id");
 
@@ -23,15 +23,15 @@ public class SdoRpcCommand
 
     static SdoRpcCommand()
     {
-        Command.AddArgument(MonitorProcessIDArgument);
-        Command.AddArgument(ChannelNameArgument);
-        Command.SetHandler(x => new SdoRpcCommand(x.ParseResult).Handle());
+        Command.Arguments.Add(MonitorProcessIDArgument);
+        Command.Arguments.Add(ChannelNameArgument);
+        Command.SetAction(parseResult => new SdoRpcCommand(parseResult).Handle());
     }
 
     private SdoRpcCommand(ParseResult parseResult)
     {
-        monitorProcessId = parseResult.GetValueForArgument(MonitorProcessIDArgument);
-        channelName      = parseResult.GetValueForArgument(ChannelNameArgument);
+        monitorProcessId = parseResult.GetValue(MonitorProcessIDArgument);
+        channelName      = parseResult.GetValue(ChannelNameArgument)!;
     }
 
     private Task<int> Handle()

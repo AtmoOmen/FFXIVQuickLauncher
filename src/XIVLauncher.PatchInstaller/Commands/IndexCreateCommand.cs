@@ -9,10 +9,14 @@ public class IndexCreateCommand
 {
     public static readonly Command Command = new("index-create", "Create patch index files according to a patch chain specified from arguments.");
 
-    private static readonly Argument<int> ExpacVersionArgument = new("expac-version", "Expansion pack version in an integer. -1 = boot, 0 = base game, 1 = Heavensward, etc.");
-
-    private static readonly Argument<string[]> PatchFilesArgument = new("patch-file", "Path to patch file(s).")
+    private static readonly Argument<int> ExpacVersionArgument = new("expac-version")
     {
+        Description = "Expansion pack version in an integer. -1 = boot, 0 = base game, 1 = Heavensward, etc."
+    };
+
+    private static readonly Argument<string[]> PatchFilesArgument = new("patch-file")
+    {
+        Description = "Path to patch file(s).",
         Arity = ArgumentArity.OneOrMore
     };
 
@@ -21,15 +25,15 @@ public class IndexCreateCommand
 
     static IndexCreateCommand()
     {
-        Command.AddArgument(ExpacVersionArgument);
-        Command.AddArgument(PatchFilesArgument);
-        Command.SetHandler(x => new IndexCreateCommand(x.ParseResult).Handle());
+        Command.Arguments.Add(ExpacVersionArgument);
+        Command.Arguments.Add(PatchFilesArgument);
+        Command.SetAction(parseResult => new IndexCreateCommand(parseResult).Handle());
     }
 
     private IndexCreateCommand(ParseResult parseResult)
     {
-        expacVersion = parseResult.GetValueForArgument(ExpacVersionArgument);
-        patchFiles   = parseResult.GetValueForArgument(PatchFilesArgument);
+        expacVersion = parseResult.GetValue(ExpacVersionArgument);
+        patchFiles   = parseResult.GetValue(PatchFilesArgument)!;
     }
 
     private async Task<int> Handle()

@@ -1,5 +1,6 @@
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -45,13 +46,12 @@ public class XLHttpClientFileDownloader : IFileDownloader
 
     public async Task DownloadFile
     (
-        string            url,
-        string            targetFile,
-        Action<int>       progress,
-        string?           authorization = null,
-        string?           accept        = null,
-        double            timeout       = 30,
-        CancellationToken cancelToken   = default
+        string                       url,
+        string                       targetFile,
+        Action<int>                  progress,
+        IDictionary<string, string>? headers     = null,
+        double                       timeout     = 30,
+        CancellationToken            cancelToken = default
     )
     {
         var totalTimeout = GetFileDownloadTimeout(timeout);
@@ -65,7 +65,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
 
         try
         {
-            using var request = CreateRequest(HttpMethod.Get, url, authorization, accept);
+            using var request = CreateRequest(HttpMethod.Get, url, headers);
             using var response = await httpClient.SendAsync
                                  (
                                      request,
@@ -160,10 +160,9 @@ public class XLHttpClientFileDownloader : IFileDownloader
 
     public async Task<byte[]> DownloadBytes
     (
-        string  url,
-        string? authorization = null,
-        string? accept        = null,
-        double  timeout       = 30
+        string                       url,
+        IDictionary<string, string>? headers = null,
+        double                       timeout = 30
     )
     {
         var       requestTimeout = GetMetadataRequestTimeout(timeout);
@@ -171,7 +170,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
 
         try
         {
-            using var request  = CreateRequest(HttpMethod.Get, url, authorization, accept);
+            using var request  = CreateRequest(HttpMethod.Get, url, headers);
             using var response = await httpClient.SendAsync(request, cts.Token);
 
             response.EnsureSuccessStatusCode();
@@ -191,10 +190,9 @@ public class XLHttpClientFileDownloader : IFileDownloader
 
     public async Task<string> DownloadString
     (
-        string  url,
-        string? authorization = null,
-        string? accept        = null,
-        double  timeout       = 30
+        string                       url,
+        IDictionary<string, string>? headers = null,
+        double                       timeout = 30
     )
     {
         var       requestTimeout = GetMetadataRequestTimeout(timeout);
@@ -202,7 +200,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
 
         try
         {
-            using var request  = CreateRequest(HttpMethod.Get, url, authorization, accept);
+            using var request  = CreateRequest(HttpMethod.Get, url, headers);
             using var response = await httpClient.SendAsync(request, cts.Token);
 
             response.EnsureSuccessStatusCode();
@@ -269,24 +267,47 @@ public class XLHttpClientFileDownloader : IFileDownloader
         return exception;
     }
 
-    private static HttpRequestMessage CreateRequest(HttpMethod method, string url, string? authorization, string? accept)
+    private static HttpRequestMessage CreateRequest(HttpMethod method, string url, IDictionary<string, string>? headers)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.UserAgent.ParseAdd("XIVLauncherCN");
 
-        if (!string.IsNullOrWhiteSpace(accept))
-            request.Headers.Accept.ParseAdd(accept);
+        if (headers == null || headers.Count == 0)
+            return request;
 
-        if (!string.IsNullOrWhiteSpace(authorization))
+        foreach (var (key, value) in headers)
         {
-            try
+            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
+                continue;
+
+            if (key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
             {
-                request.Headers.Authorization = AuthenticationHeaderValue.Parse(authorization);
+                try
+                {
+                    request.Headers.Authorization = AuthenticationHeaderValue.Parse(value);
+                }
+                catch (FormatException)
+                {
+                    Log.Warning("授权头格式无效：{Auth}", value);
+                }
+
+                continue;
             }
-            catch (FormatException)
+
+            if (key.Equals("Accept", StringComparison.OrdinalIgnoreCase))
             {
-                Log.Warning("授权头格式无效：{Auth}", authorization);
+                request.Headers.Accept.ParseAdd(value);
+                continue;
             }
+
+            if (key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+            {
+                request.Headers.UserAgent.ParseAdd(value);
+                continue;
+            }
+
+            if (!request.Headers.TryAddWithoutValidation(key, value) && request.Content != null)
+                request.Content.Headers.TryAddWithoutValidation(key, value);
         }
 
         return request;

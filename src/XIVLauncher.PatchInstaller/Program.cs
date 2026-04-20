@@ -18,23 +18,23 @@ public static class Program
                      .CreateLogger();
 
         var rc = new RootCommand();
-        rc.AddCommand(CheckIntegrityCommand.Command);
-        rc.AddCommand(InstallCommand.Command);
-        rc.AddCommand(IndexCreateCommand.Command);
-        rc.AddCommand(IndexCreateIntegrityCommand.Command);
-        rc.AddCommand(IndexVerifyCommand.Command);
-        rc.AddCommand(IndexRepairCommand.Command);
-        rc.AddCommand(IndexUpdateCommand.Command);
-        rc.AddCommand(IndexRpcCommand.Command);
-        rc.AddCommand(IndexRpcTestCommand.Command);
-        rc.AddCommand(RpcCommand.Command);
-        rc.AddCommand(SdoRpcCommand.Command);
+        rc.Subcommands.Add(CheckIntegrityCommand.Command);
+        rc.Subcommands.Add(InstallCommand.Command);
+        rc.Subcommands.Add(IndexCreateCommand.Command);
+        rc.Subcommands.Add(IndexCreateIntegrityCommand.Command);
+        rc.Subcommands.Add(IndexVerifyCommand.Command);
+        rc.Subcommands.Add(IndexRepairCommand.Command);
+        rc.Subcommands.Add(IndexUpdateCommand.Command);
+        rc.Subcommands.Add(IndexRpcCommand.Command);
+        rc.Subcommands.Add(IndexRpcTestCommand.Command);
+        rc.Subcommands.Add(RpcCommand.Command);
+        rc.Subcommands.Add(SdoRpcCommand.Command);
 
         var ret = -1;
 
         try
         {
-            ret = await rc.InvokeAsync(args);
+            ret = await rc.Parse(args).InvokeAsync();
             Log.Information("Operation complete.");
         }
         catch (Exception ex)

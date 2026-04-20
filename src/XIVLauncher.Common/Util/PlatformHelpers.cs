@@ -110,7 +110,7 @@ public static class PlatformHelpers
             Log.Warning(ex, "[DUPDATE] 系统 7z 不可用，回退到托管解压。");
         }
 
-        using (var archive = ArchiveFactory.Open(path))
+        using (var archive = ArchiveFactory.OpenArchive(path))
             archive.WriteToDirectory(output, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
         Log.Information("[DUPDATE] 托管解压完成。");
     }

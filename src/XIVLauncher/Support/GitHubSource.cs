@@ -1,14 +1,13 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using NuGet.Versioning;
 using Velopack;
+using Velopack.Logging;
 using Velopack.Sources;
 
 namespace XIVLauncher.Support;
@@ -68,7 +67,7 @@ public class GitHubSource
         return Encoding.UTF8.GetString(output);
     }
 
-    public override async Task<VelopackAssetFeed> GetReleaseFeed(ILogger logger, string channel, Guid? stagingId = null, VelopackAsset? latestLocalRelease = null)
+    public override async Task<VelopackAssetFeed> GetReleaseFeed(IVelopackLogger logger, string? appId, string channel, Guid? stagingId = null, VelopackAsset? latestLocalRelease = null)
     {
         var releases = await GetReleases(Prerelease).ConfigureAwait(false);
 
@@ -127,14 +126,20 @@ public class GitHubSource
                     return (r.Item2, null);
                 }
 
-                var releaseBytes = await Downloader.DownloadBytes(assetUrl, Authorization, "application/octet-stream").ConfigureAwait(false);
+                var releaseBytes = await Downloader.DownloadBytes
+                                   (
+                                       assetUrl,
+                                       CreateHeaders(Authorization, "application/octet-stream")
+                                   ).ConfigureAwait(false);
                 return (r.Item2, RemoveByteOrderMarkerIfPresent(releaseBytes));
             }
         ).ToList();
 
         foreach (var j in jsonList)
         {
-            var (r, txt) = await j.ConfigureAwait(false);
+            var result = await j.ConfigureAwait(false);
+            var r      = result.Item1;
+            var txt    = result.Item2;
             if (txt is null)
                 continue;
 
@@ -171,67 +176,26 @@ public class GitHubSource
 
         // 3. 发起请求
         // 如果走了代理，Worker 会返回修改后的 JSON（里面的 browser_download_url 都会变成代理链接）
-        var response = await Downloader.DownloadString(requestUrl, Authorization, "application/vnd.github.v3+json").ConfigureAwait(false);
+        var response = await Downloader.DownloadString
+                       (
+                           requestUrl,
+                           CreateHeaders(Authorization, "application/vnd.github.v3+json")
+                       ).ConfigureAwait(false);
 
         var releases = JsonConvert.DeserializeObject<List<GithubRelease>>(response);
         return releases == null ? [] : releases.OrderByDescending(d => d.PublishedAt).Where(x => includePrereleases || !x.Prerelease).ToArray();
     }
-}
 
-// copy from Velopack
-internal static class LoggerExtensions
-{
-    public static void Trace(this ILogger logger, string message) =>
-        logger.LogTrace(message);
+    private static Dictionary<string, string> CreateHeaders((string Name, string Value)? authorization, string accept)
+    {
+        var headers = new Dictionary<string, string>
+        {
+            ["Accept"] = accept
+        };
 
-    public static void Trace(this ILogger logger, Exception ex, string message) =>
-        logger.LogTrace(ex, message);
+        if (authorization is { } header && !string.IsNullOrWhiteSpace(header.Name) && !string.IsNullOrWhiteSpace(header.Value))
+            headers[header.Name] = header.Value;
 
-    public static void Trace(this ILogger logger, Exception ex) =>
-        logger.LogTrace(ex, ex.Message);
-
-    public static void Debug(this ILogger logger, string message) =>
-        logger.LogDebug(message);
-
-    public static void Debug(this ILogger logger, Exception ex, string message) =>
-        logger.LogDebug(ex, message);
-
-    public static void Debug(this ILogger logger, Exception ex) =>
-        logger.LogDebug(ex, ex.Message);
-
-    public static void Info(this ILogger logger, string message) =>
-        logger.LogInformation(message);
-
-    public static void Info(this ILogger logger, Exception ex, string message) =>
-        logger.LogInformation(ex, message);
-
-    public static void Info(this ILogger logger, Exception ex) =>
-        logger.LogInformation(ex, ex.Message);
-
-    public static void Warn(this ILogger logger, string message) =>
-        logger.LogWarning(message);
-
-    public static void Warn(this ILogger logger, Exception ex, string message) =>
-        logger.LogWarning(ex, message);
-
-    public static void Warn(this ILogger logger, Exception ex) =>
-        logger.LogWarning(ex, ex.Message);
-
-    public static void Error(this ILogger logger, string message) =>
-        logger.LogError(message);
-
-    public static void Error(this ILogger logger, Exception ex, string message) =>
-        logger.LogError(ex, message);
-
-    public static void Error(this ILogger logger, Exception ex) =>
-        logger.LogError(ex, ex.Message);
-
-    public static void Fatal(this ILogger logger, string message) =>
-        logger.LogCritical(message);
-
-    public static void Fatal(this ILogger logger, Exception ex, string message) =>
-        logger.LogCritical(ex, message);
-
-    public static void Fatal(this ILogger logger, Exception ex) =>
-        logger.LogCritical(ex, ex.Message);
+        return headers;
+    }
 }
