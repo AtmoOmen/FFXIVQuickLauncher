@@ -37,6 +37,8 @@ public class XIVAccount : IEquatable<XIVAccount>
 
     public string DeviceProfileHostName { get; set; } = string.Empty;
 
+    public string DeviceProfilePresetId { get; set; } = string.Empty;
+
     public bool DeviceProfileDynamicEnabled { get; set; }
 
     public bool IsDeviceProfileRotation { get; set; }

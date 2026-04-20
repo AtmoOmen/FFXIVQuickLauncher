@@ -57,6 +57,25 @@
             </materialDesign:Card>
 
             <materialDesign:Card Margin="0,16,0,0" Padding="20">
+                <StackPanel>
+                    <TextBlock FontSize="18" FontWeight="Bold" Text="设备信息预设" />
+                    <ComboBox
+                        Margin="0,12,0,0"
+                        DisplayMemberPath="DisplayName"
+                        IsEnabled="{Binding CanSelectPreset}"
+                        ItemsSource="{Binding Presets}"
+                        SelectedValue="{Binding SelectedPresetId, UpdateSourceTrigger=PropertyChanged}"
+                        SelectedValuePath="Id" />
+                    <TextBox
+                        Margin="0,12,0,0"
+                        materialDesign:HintAssist.Hint="显示名称"
+                        materialDesign:HintAssist.IsFloating="False"
+                        IsEnabled="{Binding CanSelectPreset}"
+                        Text="{Binding PresetRemark, UpdateSourceTrigger=LostFocus}" />
+                </StackPanel>
+            </materialDesign:Card>
+
+            <materialDesign:Card Margin="0,16,0,0" Padding="20">
                 <StackPanel IsEnabled="{Binding CanEditDeviceDetails}">
                     <TextBlock FontSize="18" FontWeight="Bold" Text="设备信息详情" />
 

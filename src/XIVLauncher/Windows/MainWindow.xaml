@@ -494,6 +494,7 @@
                                                         <CheckBox x:Name="FastLoginCheckBox"
                                                                   Content="快速登录"
                                                                   IsChecked="{Binding IsFastLogin}"
+                                                                  ToolTip="勾选后, 在登录时会自动保存账号信息, 以供下次快速登录"
                                                                   Margin="0,0,16,0" />
                                                         <CheckBox x:Name="ReadWeGameInfoCheckBox"
                                                                   Content="读取登录信息"
@@ -560,7 +561,7 @@
                                                             ToolTip="手动注入至已启动的游戏进程">
                                                         <StackPanel Orientation="Horizontal">
                                                             <materialDesign:PackIcon Kind="Injection" Width="12" Height="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                            <TextBlock Text="附加到现有游戏进程" FontSize="11" VerticalAlignment="Center" />
+                                                            <TextBlock Text="手动注入" FontSize="11" VerticalAlignment="Center" />
                                                         </StackPanel>
                                                     </Button>
                                                 </StackPanel>

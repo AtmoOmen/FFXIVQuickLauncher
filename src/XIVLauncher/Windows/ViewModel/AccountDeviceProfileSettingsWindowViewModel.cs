@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -8,14 +9,25 @@ using XIVLauncher.Common.Game.Login;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
+internal sealed class AccountDeviceProfileSettingsWindowViewModel
 (
     AccountManager accountManager
 ) : ViewModelBase
 {
+    private static readonly Regex DeviceIdPattern = new
+    (
+        "^[0-9A-F]{32}:[0-9A-F]{32}:[0-9A-F]{32}$",
+        RegexOptions.Compiled
+    );
+
     private XIVAccount?            account;
-    private DeviceProfileSnapshot? savedSnapshot;
+    private DeviceProfilePreset?   savedIndependentPreset;
+    private DeviceProfileSnapshot? selectedPresetSnapshot;
+    private bool                   isApplyingPresetSelection;
+    private bool                   isApplyingSnapshot;
     private bool                   snapshotTouched;
+
+    public ObservableCollection<DeviceProfilePreset> Presets { get; } = [];
 
     public string MacHash =>
         TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _)
@@ -47,12 +59,36 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
     public bool CanEditDeviceDetails => IsSharedMode || DynamicEnabled;
 
+    public bool CanSelectPreset => IsSharedMode || DynamicEnabled;
+
     public long GeneratedUtcTicks { get; private set; }
 
     public string AccountDisplayName
     {
         get;
         private set => SetProperty(ref field, value);
+    } = string.Empty;
+
+    public string PresetRemark
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
+
+    public string SelectedPresetId
+    {
+        get;
+        set
+        {
+            var normalizedValue = value ?? string.Empty;
+            if (!SetProperty(ref field, normalizedValue))
+                return;
+
+            if (isApplyingPresetSelection)
+                return;
+
+            ApplySelectedPreset(normalizedValue);
+        }
     } = string.Empty;
 
     public bool DynamicEnabled
@@ -65,6 +101,7 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
             OnPropertyChanged(nameof(CanEditRotationDays));
             OnPropertyChanged(nameof(CanEditDeviceDetails));
+            OnPropertyChanged(nameof(CanSelectPreset));
         }
     }
 
@@ -94,7 +131,13 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
     public string DeviceId
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            OnSnapshotFieldsChanged();
+        }
     } = string.Empty;
 
     public string MacAddress
@@ -107,30 +150,41 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
 
             OnPropertyChanged(nameof(MacHash));
             OnPropertyChanged(nameof(CasCid));
+            OnSnapshotFieldsChanged();
         }
     } = string.Empty;
 
     public string HostName
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            OnSnapshotFieldsChanged();
+        }
     } = string.Empty;
 
     public void Load(XIVAccount targetAccount)
     {
         account = accountManager.Accounts.First(existing => existing.Id == targetAccount.Id);
 
-        var persistedSnapshot = accountManager.TryGetSavedDeviceProfileSnapshot(account);
-        var snapshot = account.DeviceProfileDynamicEnabled
-                           ? persistedSnapshot ?? accountManager.GetEditableDeviceProfileSnapshot(account)
-                           : accountManager.GetEditableDeviceProfileSnapshot(account);
-
         ApplyMode(false);
+        LoadPresets();
 
-        savedSnapshot = persistedSnapshot;
+        var sharedPreset = GetRequiredSharedPreset();
+        savedIndependentPreset = accountManager.FindDeviceProfilePreset(account.DeviceProfilePresetId);
+
+        var currentPreset = account.DeviceProfileDynamicEnabled
+                                ? savedIndependentPreset ?? sharedPreset
+                                : sharedPreset;
+
         GeneratedUtcTicks = account.DeviceProfileDynamicEnabled
-                                ? account.DeviceProfileLastGeneratedUtcTicks
-                                : accountManager.GetSharedDeviceProfileGeneratedUtcTicks();
+                                ? account.DeviceProfileLastGeneratedUtcTicks > 0
+                                      ? account.DeviceProfileLastGeneratedUtcTicks
+                                      : currentPreset.GeneratedUtcTicks
+                                : sharedPreset.GeneratedUtcTicks;
         snapshotTouched = false;
 
         AccountDisplayName     = account.DisplayName;
@@ -138,7 +192,7 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         PeriodicRefreshEnabled = account.IsDeviceProfileRotation;
         RotationDays           = AccountManager.NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays);
 
-        ApplySnapshot(snapshot);
+        ApplyPreset(currentPreset);
     }
 
     public void LoadShared()
@@ -146,46 +200,42 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         account = null;
 
         ApplyMode(true);
+        LoadPresets();
 
-        var snapshot = accountManager.GetSharedDeviceProfileSnapshot();
+        var sharedPreset = GetRequiredSharedPreset();
 
-        savedSnapshot          = snapshot;
-        GeneratedUtcTicks      = accountManager.GetSharedDeviceProfileGeneratedUtcTicks();
+        savedIndependentPreset = null;
+        GeneratedUtcTicks      = sharedPreset.GeneratedUtcTicks;
         snapshotTouched        = false;
         AccountDisplayName     = "共享设备信息";
         DynamicEnabled         = false;
         PeriodicRefreshEnabled = false;
         RotationDays           = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS;
 
-        ApplySnapshot(snapshot);
+        ApplyPreset(sharedPreset);
     }
 
     public void Save()
     {
         var snapshot = CreateValidatedSnapshot();
+        if (!snapshotTouched && HasSnapshotChanged(snapshot))
+            GeneratedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
 
         if (IsSharedMode)
         {
-            if (HasSnapshotChanged(snapshot))
-                GeneratedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
-
-            accountManager.SaveSharedDeviceProfileSnapshot(snapshot, GeneratedUtcTicks);
-            savedSnapshot   = snapshot;
-            snapshotTouched = false;
-
-            ApplySnapshot(snapshot);
+            var sharedPreset = accountManager.SaveSharedDeviceProfileSelection(snapshot, GeneratedUtcTicks, PresetRemark);
+            LoadPresets();
+            ApplyPreset(sharedPreset);
+            GeneratedUtcTicks = sharedPreset.GeneratedUtcTicks;
+            snapshotTouched   = false;
             return;
         }
 
         var targetAccount = account ?? throw new InvalidOperationException("当前未加载账号设备信息。");
-
-        if (DynamicEnabled && !targetAccount.DeviceProfileDynamicEnabled && !snapshotTouched && savedSnapshot != null)
-            snapshot = savedSnapshot;
-
-        var shouldPersistSnapshot = DynamicEnabled || snapshotTouched;
-
-        if (shouldPersistSnapshot && HasSnapshotChanged(snapshot))
-            GeneratedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
+        var shouldRestoreSavedPreset = DynamicEnabled
+                                       && !targetAccount.DeviceProfileDynamicEnabled
+                                       && !snapshotTouched
+                                       && savedIndependentPreset != null;
 
         accountManager.UpdateDeviceProfileSettings
         (
@@ -195,14 +245,36 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
             RotationDays
         );
 
-        if (shouldPersistSnapshot)
+        if (!DynamicEnabled)
         {
-            accountManager.SaveDeviceProfileSnapshot(targetAccount, snapshot, GeneratedUtcTicks);
-            savedSnapshot = snapshot;
+            if (snapshotTouched)
+            {
+                var preservedPreset = accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
+                savedIndependentPreset = preservedPreset;
+            }
+
+            snapshotTouched = false;
+            return;
         }
 
-        ApplySnapshot(snapshot);
-        snapshotTouched = false;
+        var assignedPreset = shouldRestoreSavedPreset
+                                 ? accountManager.SaveDeviceProfileSelection
+                                   (
+                                        targetAccount,
+                                        savedIndependentPreset!.ToSnapshot(),
+                                        targetAccount.DeviceProfileLastGeneratedUtcTicks > 0
+                                            ? targetAccount.DeviceProfileLastGeneratedUtcTicks
+                                            : savedIndependentPreset.GeneratedUtcTicks,
+                                        PresetRemark
+                                    )
+                                 : accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
+
+        savedIndependentPreset = assignedPreset;
+        GeneratedUtcTicks      = targetAccount.DeviceProfileLastGeneratedUtcTicks;
+        snapshotTouched        = false;
+
+        LoadPresets();
+        ApplyPreset(assignedPreset);
     }
 
     public void Import
@@ -213,7 +285,8 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         string deviceId,
         string macAddress,
         string hostName,
-        long   generatedUtcTicks
+        long   generatedUtcTicks,
+        string presetRemark
     )
     {
         if (!TryNormalizeDeviceId(deviceId, out var normalizedDeviceId, out var deviceIdError))
@@ -232,10 +305,18 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
             RotationDays           = AccountManager.NormalizeDeviceProfileRotationDays(rotationDays);
         }
 
-        DeviceId          = normalizedDeviceId;
-        MacAddress        = normalizedMacAddress;
-        HostName          = normalizedHostName;
+        ApplySnapshot
+        (
+            new DeviceProfileSnapshot
+            {
+                DeviceId   = normalizedDeviceId,
+                MacAddress = normalizedMacAddress,
+                HostName   = normalizedHostName
+            }
+        );
+
         GeneratedUtcTicks = generatedUtcTicks > 0 ? generatedUtcTicks : DateTimeOffset.UtcNow.UtcTicks;
+        PresetRemark      = presetRemark;
         snapshotTouched   = true;
     }
 
@@ -271,44 +352,11 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         TouchGeneratedTime();
     }
 
-    public bool TrySetDeviceId(string input, out string errorMessage)
-    {
-        if (!TryNormalizeDeviceId(input, out var normalizedValue, out errorMessage))
-            return false;
-
-        DeviceId = normalizedValue;
-        TouchGeneratedTime();
-        errorMessage = string.Empty;
-        return true;
-    }
-
-    public bool TrySetMacAddress(string input, out string errorMessage)
-    {
-        if (!TryNormalizeMacAddress(input, out var normalizedValue, out errorMessage))
-            return false;
-
-        MacAddress = normalizedValue;
-        RebuildDeviceIdFromCurrentFields();
-        TouchGeneratedTime();
-        return true;
-    }
-
-    public bool TrySetHostName(string input, out string errorMessage)
-    {
-        if (!TryNormalizeHostName(input, out var normalizedValue, out errorMessage))
-            return false;
-
-        HostName = normalizedValue;
-        RebuildDeviceIdFromCurrentFields();
-        TouchGeneratedTime();
-        return true;
-    }
-
     private static bool TryNormalizeDeviceId(string input, out string normalizedValue, out string errorMessage)
     {
         normalizedValue = input.Trim().ToUpperInvariant();
 
-        if (!DeviceIdRegex().IsMatch(normalizedValue))
+        if (!DeviceIdPattern.IsMatch(normalizedValue))
         {
             errorMessage = "设备 ID 必须是 “32 位十六进制:32 位十六进制:32 位十六进制” 的格式。";
             return false;
@@ -377,9 +425,6 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         return true;
     }
 
-    [GeneratedRegex("^[0-9A-F]{32}:[0-9A-F]{32}:[0-9A-F]{32}$", RegexOptions.Compiled)]
-    private static partial Regex DeviceIdRegex();
-
     private void ApplyMode(bool sharedMode)
     {
         if (IsSharedMode == sharedMode)
@@ -394,13 +439,119 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         OnPropertyChanged(nameof(AccountModeOptionsVisibility));
         OnPropertyChanged(nameof(AccountModeSectionVisibility));
         OnPropertyChanged(nameof(CanEditDeviceDetails));
+        OnPropertyChanged(nameof(CanSelectPreset));
+    }
+
+    private void LoadPresets()
+    {
+        Presets.Clear();
+
+        foreach (var preset in accountManager.GetDeviceProfilePresets())
+            Presets.Add(preset);
+    }
+
+    private DeviceProfilePreset GetRequiredSharedPreset() =>
+        accountManager.GetSharedDeviceProfilePreset();
+
+    private DeviceProfilePreset? GetPreset(string presetId) =>
+        Presets.FirstOrDefault(preset => string.Equals(preset.Id, presetId, StringComparison.Ordinal))
+        ?? accountManager.FindDeviceProfilePreset(presetId);
+
+    private void ApplyPreset(DeviceProfilePreset preset)
+    {
+        selectedPresetSnapshot = preset.ToSnapshot();
+        PresetRemark           = preset.Remark;
+        SetSelectedPresetId(preset.Id);
+        ApplySnapshot(selectedPresetSnapshot);
+    }
+
+    private void ApplySelectedPreset(string presetId)
+    {
+        var preset = GetPreset(presetId);
+        if (preset == null)
+        {
+            selectedPresetSnapshot = null;
+            return;
+        }
+
+        selectedPresetSnapshot = preset.ToSnapshot();
+        GeneratedUtcTicks      = preset.GeneratedUtcTicks;
+        PresetRemark           = preset.Remark;
+        snapshotTouched        = false;
+        ApplySnapshot(selectedPresetSnapshot);
+    }
+
+    private void SetSelectedPresetId(string presetId)
+    {
+        isApplyingPresetSelection = true;
+        SelectedPresetId          = presetId;
+        isApplyingPresetSelection = false;
     }
 
     private void ApplySnapshot(DeviceProfileSnapshot snapshot)
     {
-        DeviceId   = snapshot.DeviceId;
-        MacAddress = snapshot.MacAddress;
-        HostName   = snapshot.HostName;
+        isApplyingSnapshot = true;
+
+        try
+        {
+            DeviceId   = snapshot.DeviceId;
+            MacAddress = snapshot.MacAddress;
+            HostName   = snapshot.HostName;
+        }
+        finally
+        {
+            isApplyingSnapshot = false;
+        }
+
+        SyncSelectedPresetWithCurrentSnapshot();
+    }
+
+    private void OnSnapshotFieldsChanged()
+    {
+        if (isApplyingSnapshot)
+            return;
+
+        SyncSelectedPresetWithCurrentSnapshot();
+    }
+
+    private void SyncSelectedPresetWithCurrentSnapshot()
+    {
+        if (!TryCreateCurrentSnapshot(out var snapshot))
+        {
+            selectedPresetSnapshot = null;
+            SetSelectedPresetId(string.Empty);
+            return;
+        }
+
+        var matchedPreset = Presets.FirstOrDefault(preset => preset.Matches(snapshot));
+        if (matchedPreset == null)
+        {
+            selectedPresetSnapshot = null;
+            SetSelectedPresetId(string.Empty);
+            return;
+        }
+
+        selectedPresetSnapshot = matchedPreset.ToSnapshot();
+        SetSelectedPresetId(matchedPreset.Id);
+    }
+
+    private bool TryCreateCurrentSnapshot(out DeviceProfileSnapshot snapshot)
+    {
+        if (!TryNormalizeDeviceId(DeviceId, out var normalizedDeviceId, out _)
+            || !TryNormalizeMacAddress(MacAddress, out var normalizedMacAddress, out _)
+            || !TryNormalizeHostName(HostName, out var normalizedHostName, out _))
+        {
+            snapshot = null!;
+            return false;
+        }
+
+        snapshot = new DeviceProfileSnapshot
+        {
+            DeviceId   = normalizedDeviceId,
+            MacAddress = normalizedMacAddress,
+            HostName   = normalizedHostName
+        };
+        return true;
     }
 
     private void RebuildDeviceIdFromCurrentFields()
@@ -434,15 +585,8 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         };
     }
 
-    private bool HasSnapshotChanged(DeviceProfileSnapshot snapshot)
-    {
-        if (savedSnapshot == null)
-            return true;
-
-        return !string.Equals(savedSnapshot.DeviceId,      snapshot.DeviceId,   StringComparison.Ordinal)
-               || !string.Equals(savedSnapshot.MacAddress, snapshot.MacAddress, StringComparison.Ordinal)
-               || !string.Equals(savedSnapshot.HostName,   snapshot.HostName,   StringComparison.Ordinal);
-    }
+    private bool HasSnapshotChanged(DeviceProfileSnapshot snapshot) =>
+        selectedPresetSnapshot == null || !selectedPresetSnapshot.Equals(snapshot);
 
     private void TouchGeneratedTime()
     {

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using Microsoft.Win32;
@@ -158,7 +159,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
         if (dialog.ShowDialog(this) != true)
             return;
 
-        var json = File.ReadAllText(dialog.FileName);
+        var json = File.ReadAllText(dialog.FileName, Encoding.UTF8);
         var data = JsonSerializer.Deserialize<AccountDeviceProfileExchangeData>(json, ExchangeJsonOptions)
                    ?? throw new InvalidOperationException("导入文件内容为空或格式无效。");
 
@@ -173,7 +174,8 @@ public partial class AccountDeviceProfileSettingsWindow : Window
             data.DeviceId,
             data.MacAddress,
             data.HostName,
-            data.GeneratedUtcTicks
+            data.GeneratedUtcTicks,
+            data.PresetRemark
         );
     }
 
@@ -193,7 +195,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
             return;
 
         var json = JsonSerializer.Serialize(CreateExchangeData(), ExchangeJsonOptions);
-        File.WriteAllText(dialog.FileName, json);
+        File.WriteAllText(dialog.FileName, json, new UTF8Encoding(false));
 
         _dialogService.ShowMessage
         (
@@ -217,6 +219,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
             PeriodicRefreshEnabled = ViewModel.PeriodicRefreshEnabled,
             RotationDays           = ViewModel.RotationDays,
             GeneratedUtcTicks      = ViewModel.GeneratedUtcTicks,
+            PresetRemark           = ViewModel.PresetRemark,
             DeviceId               = ViewModel.DeviceId,
             MacAddress             = ViewModel.MacAddress,
             HostName               = ViewModel.HostName
@@ -252,17 +255,4 @@ public partial class AccountDeviceProfileSettingsWindow : Window
         }
     }
 
-    private sealed class AccountDeviceProfileExchangeData
-    {
-        public int            Version                { get; init; }
-        public string         AccountDisplayName     { get; init; } = string.Empty;
-        public DateTimeOffset ExportedAtUtc          { get; init; }
-        public bool           DynamicEnabled         { get; init; }
-        public bool           PeriodicRefreshEnabled { get; init; }
-        public int            RotationDays           { get; init; }
-        public long           GeneratedUtcTicks      { get; init; }
-        public string         DeviceId               { get; init; } = string.Empty;
-        public string         MacAddress             { get; init; } = string.Empty;
-        public string         HostName               { get; init; } = string.Empty;
-    }
 }
