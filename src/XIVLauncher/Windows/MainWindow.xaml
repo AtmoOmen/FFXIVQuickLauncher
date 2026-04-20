@@ -260,6 +260,16 @@
                                     </Grid.RowDefinitions>
 
                                     <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,8,8,0">
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}" Value="1">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
                                         <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
                                                 ToolTip="启动器设置"
                                                 Command="{x:Static materialDesign:Transitioner.MovePreviousCommand}"
@@ -496,7 +506,7 @@
                                                 <materialDesign:FadeWipe />
                                             </materialDesign:TransitionerSlide.BackwardWipe>
 
-                                            <Grid Margin="24,12,24,8" VerticalAlignment="Stretch">
+                                            <Grid Margin="24,12,24,8" VerticalAlignment="Center">
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
