@@ -755,7 +755,7 @@ public class AccountManager
             Log.Warning(ex, "读取共享设备信息失败，将重新生成。");
         }
 
-        var generated = new StoredDeviceProfileSnapshot(FakeMachineInfo.CreateSnapshot(), DateTimeOffset.UtcNow.UtcTicks);
+        var generated = new StoredDeviceProfileSnapshot(RealMachineInfo.CreateSnapshot(), DateTimeOffset.UtcNow.UtcTicks);
         PersistSharedDeviceProfileState(generated);
         return generated;
     }

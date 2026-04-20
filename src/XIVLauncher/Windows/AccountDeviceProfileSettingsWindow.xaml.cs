@@ -103,6 +103,9 @@ public partial class AccountDeviceProfileSettingsWindow : Window
     private void RefreshAllButton_OnClick(object sender, RoutedEventArgs e) =>
         ExecuteWithErrorHandling(ViewModel.RefreshAll, "刷新整套设备信息失败。");
 
+    private void UseLocalMachineInfoButton_OnClick(object sender, RoutedEventArgs e) =>
+        ExecuteWithErrorHandling(ViewModel.UseLocalMachineInfo, "应用本机设备信息失败。");
+
     private void RefreshDeviceIdButton_OnClick(object sender, RoutedEventArgs e) =>
         ExecuteWithErrorHandling(ViewModel.RefreshDeviceId, "刷新设备 ID 失败。");
 

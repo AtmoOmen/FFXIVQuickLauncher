@@ -33,7 +33,7 @@
                         Visibility="{Binding AccountModeOptionsVisibility}"
                         Content="启用账号独立设备信息"
                         IsChecked="{Binding DynamicEnabled}"
-                        ToolTip="启用后，可为当前账号单独配置一套设备信息；禁用时，则使用启动器内部统一随机生成共享使用的设备信息。"/>
+                        ToolTip="启用后，可为当前账号单独配置一套设备信息；禁用时，则使用启动器内部统一共享的设备信息。"/>
 
                     <CheckBox
                         Margin="0,14,0,0"
@@ -68,6 +68,11 @@
                             MinWidth="132"
                             Click="RefreshAllButton_OnClick"
                             Content="刷新全部设备信息" />
+                        <Button
+                            MinWidth="132"
+                            Margin="12,0,0,0"
+                            Click="UseLocalMachineInfoButton_OnClick"
+                            Content="使用本机设备信息" />
                     </StackPanel>
 
                     <Grid Margin="0,12,0,0">

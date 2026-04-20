@@ -245,6 +245,12 @@ internal sealed partial class AccountDeviceProfileSettingsWindowViewModel
         TouchGeneratedTime();
     }
 
+    public void UseLocalMachineInfo()
+    {
+        ApplySnapshot(RealMachineInfo.CreateSnapshot());
+        TouchGeneratedTime();
+    }
+
     public void RefreshDeviceId()
     {
         RebuildDeviceIdFromCurrentFields();
