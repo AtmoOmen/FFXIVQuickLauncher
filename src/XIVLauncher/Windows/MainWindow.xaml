@@ -558,6 +558,7 @@
                                                             Command="{Binding Path=InjectModeSwitchCommand}"
                                                             Margin="0,4,0,0" Height="24" Padding="8,0"
                                                             Foreground="{DynamicResource MaterialDesignBodyLight}"
+                                                            Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                             ToolTip="手动注入至已启动的游戏进程">
                                                         <StackPanel Orientation="Horizontal">
                                                             <materialDesign:PackIcon Kind="Injection" Width="12" Height="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
@@ -716,6 +717,42 @@
                                                             </DataTemplate>
                                                         </ComboBox.ItemTemplate>
                                                     </ComboBox>
+
+                                                    <CheckBox x:Name="AutoInjectCheckBox"
+                                                              Content="自动注入"
+                                                              IsChecked="{Binding AutoInjectEnabled}"
+                                                              Margin="0,0,0,12"
+                                                              ToolTip="勾选后, 当检测到未注入 Dalamud 的游戏进程时, 自动执行注入" />
+
+                                                    <Grid Margin="0,0,0,12">
+                                                        <Grid.Style>
+                                                            <Style TargetType="Grid">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding ElementName=AutoInjectCheckBox, Path=IsChecked}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Grid.Style>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="手动注入延迟"
+                                                                   VerticalAlignment="Center" />
+                                                        <StackPanel Grid.Column="1"
+                                                                    Orientation="Horizontal"
+                                                                    VerticalAlignment="Center">
+                                                            <TextBox Width="70"
+                                                                     Text="{Binding ManualInjectDelayMs}"
+                                                                     VerticalAlignment="Center" />
+                                                            <TextBlock Text="ms"
+                                                                       Margin="8,0,0,0"
+                                                                       VerticalAlignment="Center"
+                                                                       Opacity="0.7" />
+                                                        </StackPanel>
+                                                    </Grid>
 
                                                     <Grid Margin="0,0,0,12">
                                                         <Grid.ColumnDefinitions>

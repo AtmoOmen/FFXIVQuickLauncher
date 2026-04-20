@@ -28,6 +28,8 @@ public interface ILauncherSettingsV3
     bool?              AskBeforePatchInstall         { get; set; }
     long               SpeedLimitBytes               { get; set; }
     decimal            DalamudInjectionDelayMs       { get; set; }
+    bool?              ManualInjectAutoInjectEnabled { get; set; }
+    decimal            ManualInjectDelayMs           { get; set; }
     bool?              KeepPatches                   { get; set; }
     bool?              HasComplainedAboutGShadeDxgi  { get; set; }
     AcquisitionMethod? PatchAcquisitionMethod        { get; set; }

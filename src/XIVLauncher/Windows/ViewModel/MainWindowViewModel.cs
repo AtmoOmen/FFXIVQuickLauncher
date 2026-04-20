@@ -63,15 +63,20 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public  string                   Password                   { get; set; } = null!;
     private CancellationTokenSource? LoginCancelSource          { get; set; }
     private CancellationTokenSource? ProcessRefreshCancelSource { get; set; }
+    private CancellationTokenSource? AutoInjectDelayCancelSource { get; set; }
     private Task?                    ProcessRefreshTask         { get; set; }
     private bool                     IsInjecting                { get; set; }
     private bool                     IsLoginCanceledByUser      { get; set; }
     private LoginCardType?           LoginCardAfterCompletion   { get; set; }
+    private int?                     PendingAutoInjectProcessId { get; set; }
+
+    private HashSet<int> AutoInjectAttemptedProcessIds { get; } = [];
 
     public MainWindowViewModel(Window window)
     {
         Window   = window;
         Settings = new SettingsControlViewModel(new DialogService(window), new ExternalLaunchService());
+        Settings.SettingsSaved += (_, _) => ReloadManualInjectSettings();
 
         StartLoginCommand       = new SyncCommand(CreateLoginHandler(LoginAfterAction.Start),               () => !IsLoggingIn);
         LoginNoStartCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.UpdateOnly),          () => !IsLoggingIn);
@@ -106,6 +111,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(ProcessSelectionHint));
             CommandManager.InvalidateRequerySuggested();
         };
+
+        ReloadManualInjectSettings();
     }
 
     #region 界面控制
@@ -130,6 +137,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public void SwitchMode() =>
         SwitchCard(LoginCardTransitionerIndex == (int)LoginCardType.InjectMode ? LoginCardType.MainPage : LoginCardType.InjectMode);
+
+    private void ReloadManualInjectSettings()
+    {
+        AutoInjectEnabled   = App.Settings.ManualInjectAutoInjectEnabled.GetValueOrDefault(false);
+        ManualInjectDelayMs = App.Settings.ManualInjectDelayMs;
+    }
 
     #endregion
 
@@ -1149,18 +1162,29 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public void StartInject()
     {
+        StartInject(SelectedProcess, false);
+    }
+
+    private void StartInject(FFXIVProcess? targetProcess, bool isAutoInjection)
+    {
         if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
         {
-            Window.Dispatcher.Invoke(StartInject);
+            Window.Dispatcher.Invoke(() => StartInject(targetProcess, isAutoInjection));
             return;
         }
 
-        if (IsInjecting || SelectedProcess == null)
+        if (IsInjecting || targetProcess == null)
             return;
 
-        IsLoadingDialogOpen  = true;
-        LoadingDialogMessage = "注入中...";
-        IsInjecting          = true;
+        CancelPendingAutoInject();
+
+        if (!isAutoInjection)
+        {
+            IsLoadingDialogOpen  = true;
+            LoadingDialogMessage = "注入中...";
+        }
+
+        IsInjecting = true;
         CommandManager.InvalidateRequerySuggested();
 
         Task.Run
@@ -1168,35 +1192,41 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 try
                 {
-                    var gamePid = SelectedProcess.ProcessID;
+                    var gamePid = targetProcess.ProcessID;
 
-                    if (SelectedProcess.HasInjected)
+                    if (targetProcess.HasInjected)
                     {
+                        if (isAutoInjection)
+                            return;
+
                         CustomMessageBox.Builder
                                         .NewFrom("选定进程已被注入")
                                         .WithButtons(MessageBoxButton.OK)
                                         .WithCaption("XIVLauncherCN (Soil)")
                                         .WithParentWindow(Window)
                                         .Show();
+                        return;
                     }
-                    else
+
+                    if (!InjectGameAndAddon(gamePid))
+                        return;
+
+                    Window.Dispatcher.Invoke(() => { targetProcess.HasInjected = true; });
+
+                    if (isAutoInjection)
+                        return;
+
+                    var dialog = CustomMessageBox.Builder
+                                                 .NewFrom("注入完成, 是否要退出 XIVLauncherCN")
+                                                 .WithButtons(MessageBoxButton.YesNo)
+                                                 .WithCaption("XIVLauncherCN (Soil)")
+                                                 .WithParentWindow(Window)
+                                                 .Show();
+
+                    if (dialog == MessageBoxResult.Yes)
                     {
-                        if (!InjectGameAndAddon(gamePid)) return;
-
-                        SelectedProcess.HasInjected = true;
-
-                        var dialog = CustomMessageBox.Builder
-                                                     .NewFrom("注入完成, 是否要退出 XIVLauncherCN")
-                                                     .WithButtons(MessageBoxButton.YesNo)
-                                                     .WithCaption("XIVLauncherCN (Soil)")
-                                                     .WithParentWindow(Window)
-                                                     .Show();
-
-                        if (dialog == MessageBoxResult.Yes)
-                        {
-                            Log.CloseAndFlush();
-                            Environment.Exit(0);
-                        }
+                        Log.CloseAndFlush();
+                        Environment.Exit(0);
                     }
                 }
                 catch (Exception ex)
@@ -1208,11 +1238,18 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 }
                 finally
                 {
-                    IsLoadingDialogOpen = false;
-                    IsInjecting         = false;
-                    CommandManager.InvalidateRequerySuggested();
+                    Window.Dispatcher.Invoke
+                    (() =>
+                        {
+                            IsLoadingDialogOpen = false;
+                            IsInjecting         = false;
+                            CommandManager.InvalidateRequerySuggested();
+                            SyncAutoInjectState();
 
-                    Activate();
+                            if (!isAutoInjection)
+                                Activate();
+                        }
+                    );
                 }
             }
         );
@@ -1264,6 +1301,100 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     #region 进程
 
+    private void CancelPendingAutoInject()
+    {
+        if (AutoInjectDelayCancelSource == null)
+            return;
+
+        AutoInjectDelayCancelSource.Cancel();
+        AutoInjectDelayCancelSource.Dispose();
+        AutoInjectDelayCancelSource = null;
+        PendingAutoInjectProcessId  = null;
+    }
+
+    private void CleanupAutoInjectAttemptedProcesses()
+    {
+        var activeProcessIds = FFXIVProcesses.Select(process => process.ProcessID).ToHashSet();
+        AutoInjectAttemptedProcessIds.RemoveWhere(processId => !activeProcessIds.Contains(processId));
+    }
+
+    private bool CanAutoInject() =>
+        LoginCardTransitionerIndex == (int)LoginCardType.InjectMode
+        && AutoInjectEnabled
+        && !IsLoggingIn
+        && !IsInjecting;
+
+    private void SyncAutoInjectState()
+    {
+        if (!CanAutoInject())
+        {
+            CancelPendingAutoInject();
+            return;
+        }
+
+        var candidate = FFXIVProcesses.FirstOrDefault
+        (
+            process => !process.HasInjected && !AutoInjectAttemptedProcessIds.Contains(process.ProcessID)
+        );
+
+        if (candidate == null)
+        {
+            CancelPendingAutoInject();
+            return;
+        }
+
+        if (PendingAutoInjectProcessId == candidate.ProcessID)
+            return;
+
+        CancelPendingAutoInject();
+        PendingAutoInjectProcessId  = candidate.ProcessID;
+        AutoInjectDelayCancelSource = new CancellationTokenSource();
+
+        var autoInjectToken = AutoInjectDelayCancelSource.Token;
+        var delayMs         = Math.Max((int)ManualInjectDelayMs.GetValueOrDefault(0), 0);
+
+        Task.Run
+        (
+            async () =>
+            {
+                try
+                {
+                    if (delayMs > 0)
+                        await Task.Delay(delayMs, autoInjectToken);
+
+                    if (autoInjectToken.IsCancellationRequested)
+                        return;
+
+                    Window.Dispatcher.Invoke
+                    (() =>
+                        {
+                            if (PendingAutoInjectProcessId != candidate.ProcessID || !CanAutoInject())
+                                return;
+
+                            var process = FFXIVProcesses.FirstOrDefault(p => p.ProcessID == candidate.ProcessID);
+                            if (process == null || process.HasInjected)
+                                return;
+
+                            AutoInjectAttemptedProcessIds.Add(process.ProcessID);
+                            SelectedProcess = process;
+                            StartInject(process, true);
+                        }
+                    );
+                }
+                catch (OperationCanceledException)
+                {
+                    // ignored
+                }
+                finally
+                {
+                    if (PendingAutoInjectProcessId == candidate.ProcessID)
+                        PendingAutoInjectProcessId = null;
+                }
+            },
+            autoInjectToken
+        );
+    }
+
     public void StartRefreshFFXIVProcess()
     {
         if (ProcessRefreshTask is { IsCompleted: false })
@@ -1294,6 +1425,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                                     if (incomingProcessMap.TryGetValue(existingProcess.ProcessID, out var duplicateProcess))
                                     {
+                                        existingProcess.HasInjected = duplicateProcess.HasInjected;
                                         duplicateProcess.Dispose();
                                         incomingProcessMap.Remove(existingProcess.ProcessID);
                                         continue;
@@ -1311,6 +1443,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                                               : SelectedProcess;
 
                                 SelectedProcess = nextSelectedProcess ?? FFXIVProcesses.FirstOrDefault();
+                                CleanupAutoInjectAttemptedProcesses();
+                                SyncAutoInjectState();
                             }
                         );
 
@@ -1329,6 +1463,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private void StopRefreshFFXIVProcess(bool clearCollection)
     {
+        CancelPendingAutoInject();
+
         if (ProcessRefreshCancelSource != null)
         {
             ProcessRefreshCancelSource.Cancel();
@@ -1344,6 +1480,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         foreach (var process in FFXIVProcesses)
             process.Dispose();
 
+        AutoInjectAttemptedProcessIds.Clear();
         FFXIVProcesses.Clear();
         SelectedProcess = null;
     }
@@ -2291,6 +2428,44 @@ public class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(ModeSwitchTitle));
         }
     } = "手动注入模式";
+
+    public bool AutoInjectEnabled
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+
+            field = value;
+            App.Settings.ManualInjectAutoInjectEnabled = value;
+
+            if (!value)
+            {
+                CancelPendingAutoInject();
+                AutoInjectAttemptedProcessIds.Clear();
+            }
+
+            OnPropertyChanged(nameof(AutoInjectEnabled));
+            SyncAutoInjectState();
+        }
+    }
+
+    public decimal? ManualInjectDelayMs
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+
+            field                       = value;
+            App.Settings.ManualInjectDelayMs = value ?? 0;
+            Settings.ManualInjectDelayMs = value;
+            OnPropertyChanged(nameof(ManualInjectDelayMs));
+            SyncAutoInjectState();
+        }
+    }
 
     public ObservableCollection<FFXIVProcess> FFXIVProcesses { get; } = [];
 

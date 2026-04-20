@@ -268,11 +268,26 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="注入延迟" FontSize="15" />
-                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="调整 Dalamud 挂载到游戏进程的时间" Opacity="0.7" FontSize="12" />
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="自动注入延迟" FontSize="15" />
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="自动注入 Dalamud 至通过 XIVLauncher 启动的游戏时要延迟的时间" Opacity="0.7" FontSize="12" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
                                     <TextBox Width="70" Text="{Binding DalamudInjectionDelayMs}" Foreground="{DynamicResource MaterialDesignBody}" VerticalAlignment="Center" />
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="ms" Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid Margin="0,0,0,24">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="手动注入延迟" FontSize="15" />
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="手动注入模式下, 自动注入 Dalamud 至游戏进程时要延迟的时间" Opacity="0.7" FontSize="12" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                    <TextBox Width="70" Text="{Binding ManualInjectDelayMs}" Foreground="{DynamicResource MaterialDesignBody}" VerticalAlignment="Center" />
                                     <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="ms" Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
                                 </StackPanel>
                             </Grid>

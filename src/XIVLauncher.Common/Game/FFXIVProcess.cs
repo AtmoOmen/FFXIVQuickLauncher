@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using XIVLauncher.Common.Util;
@@ -9,7 +10,7 @@ namespace XIVLauncher.Common.Game;
 public sealed class FFXIVProcess
 (
     Process p
-) : IDisposable
+) : IDisposable, INotifyPropertyChanged
 {
     public Process UnderlyingProcess { get; } = p;
 
@@ -17,7 +18,18 @@ public sealed class FFXIVProcess
     public string ProcessName => UnderlyingProcess.ProcessName;
     public int    ExitCode    => UnderlyingProcess.ExitCode;
     public string DisplayName { get; init; } = $"{p.Id} ({p.StartTime})";
-    public bool   HasInjected { get; set; }  = IsDalamudInjected(p);
+    public bool   HasInjected
+    {
+        get;
+        set
+        {
+            if (field == value)
+                return;
+
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasInjected)));
+        }
+    } = IsDalamudInjected(p);
 
     public void Dispose() =>
         UnderlyingProcess.Dispose();
@@ -41,4 +53,6 @@ public sealed class FFXIVProcess
 
         return processes;
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

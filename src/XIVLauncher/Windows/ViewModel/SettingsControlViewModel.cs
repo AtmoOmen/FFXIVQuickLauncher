@@ -124,6 +124,12 @@ public sealed class SettingsControlViewModel : ViewModelBase
         set => SetProperty(ref field, value);
     }
 
+    public decimal? ManualInjectDelayMs
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
     public bool EnableHooks
     {
         get;
@@ -296,6 +302,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         KeepPatches                   = App.Settings.KeepPatches           ?? false;
         PatchAcquisitionIndex         = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
         DalamudInjectionDelayMs       = App.Settings.DalamudInjectionDelayMs;
+        ManualInjectDelayMs           = App.Settings.ManualInjectDelayMs;
         UseEntryPointLoadMethod       = App.Settings.InGameAddonLoadMethod != DalamudLoadMethod.DllInject;
         EnableHooks                   = App.Settings.InGameAddonEnabled;
         EnableDcTravel                = true;
@@ -334,6 +341,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         App.Settings.PatchAcquisitionMethod  = (AcquisitionMethod)PatchAcquisitionIndex;
         App.Settings.InGameAddonEnabled      = EnableHooks;
         App.Settings.DalamudInjectionDelayMs = DalamudInjectionDelayMs ?? 0;
+        App.Settings.ManualInjectDelayMs     = ManualInjectDelayMs ?? 0;
         App.Settings.InGameAddonLoadMethod   = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
         App.Settings.AdditionalLaunchArgs    = LaunchArgs;
         App.Settings.DpiAwareness            = (DpiAwareness)DpiAwarenessIndex;
