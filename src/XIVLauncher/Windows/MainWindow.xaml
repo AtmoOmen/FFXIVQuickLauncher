@@ -99,7 +99,7 @@
                                                          Checked="BannerDot_OnChecked"
                                                          MouseEnter="RadioButton_MouseEnter"
                                                          MouseLeave="RadioButton_MouseLeave"
-                                                         Margin="3,0"
+                                                         Margin="0"
                                                          Cursor="Hand"
                                                          Style="{StaticResource {x:Type ToggleButton}}">
                                                 <RadioButton.Template>
