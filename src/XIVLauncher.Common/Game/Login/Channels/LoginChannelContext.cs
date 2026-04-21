@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Util;
@@ -199,7 +200,7 @@ public sealed class LoginChannelContext
 
     public async Task<string?> GetAccountGroupAsync(string tgt, string sid)
     {
-        var result = await GetJsonAsSdoClient("getAccountGroup", ["serviceUrl=http%3A%2F%2Fwww.sdo.com", $"tgt={tgt}"]).ConfigureAwait(false);
+        var result = await GetJsonAsSdoClient("getAccountGroup", [$"serviceUrl={Uri.EscapeDataString(Links.SDO_SERVICE_URL)}", $"tgt={tgt}"]).ConfigureAwait(false);
 
         if (result.ReturnCode != 0 || result.ErrorType != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
@@ -221,7 +222,7 @@ public sealed class LoginChannelContext
         var result = await GetJsonAsSdoClient
                      (
                          "accountGroupLogin",
-                         ["serviceUrl=http%3A%2F%2Fwww.sdo.com", $"tgt={tgt}", $"sndaId={sid}", "autoLoginFlag=1", $"autoLoginKeepTime={autoLoginKeepDays}"]
+                         [$"serviceUrl={Uri.EscapeDataString(Links.SDO_SERVICE_URL)}", $"tgt={tgt}", $"sndaId={sid}", "autoLoginFlag=1", $"autoLoginKeepTime={autoLoginKeepDays}"]
                      ).ConfigureAwait(false);
 
         if (result.ReturnCode != 0)
@@ -269,7 +270,7 @@ public sealed class LoginChannelContext
 
     public async Task<string> GetDCTravelSessionIDAsync(string tgt, string guid)
     {
-        _ = await GetPromotionInfoAsync(tgt, "https://ff14bjz.sdo.com/RegionKanTelepo").ConfigureAwait(false);
+        _ = await GetPromotionInfoAsync(tgt, Links.DC_TRAVEL_PAGE_URL).ConfigureAwait(false);
         return await SsoLoginAsync(tgt, guid).ConfigureAwait(false);
     }
 
@@ -377,10 +378,13 @@ public sealed class LoginChannelContext
 
         var casDomain   = Volatile.Read(ref casDomainMode) == 0 ? GLOBAL_CAS_DOMAIN : FALLBACK_CAS_DOMAIN;
         var requestPath = endPoint.StartsWith("/", StringComparison.Ordinal) ? endPoint : $"/authen/{endPoint}";
-        var queryPrefix = requestPath.Contains('?') ? "&" : "?";
         var queryString = string.Join("&", allParas);
 
-        return new Uri($"https://{casDomain}{requestPath}{queryPrefix}{queryString}");
+        return new UriBuilder(Uri.UriSchemeHttps, casDomain)
+        {
+            Path  = requestPath,
+            Query = queryString
+        }.Uri;
     }
 
     private Uri BuildCaptchaUri(string captchaUrl)
@@ -395,7 +399,10 @@ public sealed class LoginChannelContext
                                   ? $"/{captchaUrl}"
                                   : $"/authen/{captchaUrl}";
 
-        return new Uri($"https://{casDomain}{requestPath}");
+        return new UriBuilder(Uri.UriSchemeHttps, casDomain)
+        {
+            Path = requestPath
+        }.Uri;
     }
 
     private async Task<LoginResponse> GetJsonAsSdoClient

@@ -8,6 +8,7 @@ using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Exceptions;
 
 namespace XIVLauncher.Common.Game.DCTravel;
@@ -25,7 +26,7 @@ public partial class DCTravelClient
     private const int    KEEP_ALIVE_MIN_MINUTES = 30;
     private const int    KEEP_ALIVE_MAX_MINUTES = 91;
 
-    private static readonly Uri BaseUri = new($"https://{BASE_URL}/");
+    private static readonly Uri BaseUri = new UriBuilder(Uri.UriSchemeHttps, BASE_URL).Uri;
 
     private static readonly FrozenDictionary<string, string> DefaultHeaders =
         new Dictionary<string, string>
@@ -205,10 +206,10 @@ public partial class DCTravelClient
     private string ResolveReferer(DCTravelAPIType type) =>
         type switch
         {
-            DCTravelAPIType.Travel           => $"https://{BASE_URL}/RegionKanTelepo",
-            DCTravelAPIType.TravelWithTicket => $"https://{BASE_URL}/RegionKanTelepo?ticket={ticket}",
-            DCTravelAPIType.Order            => $"https://{BASE_URL}/orderList",
-            _                                => $"https://{BASE_URL}/"
+            DCTravelAPIType.Travel           => Links.DC_TRAVEL_PAGE_URL,
+            DCTravelAPIType.TravelWithTicket => $"{Links.DC_TRAVEL_PAGE_URL}?ticket={ticket}",
+            DCTravelAPIType.Order            => new Uri(BaseUri, "orderList").ToString(),
+            _                                => BaseUri.ToString()
         };
 
     #region 初始化 认证

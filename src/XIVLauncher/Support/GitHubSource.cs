@@ -9,6 +9,7 @@ using NuGet.Versioning;
 using Velopack;
 using Velopack.Logging;
 using Velopack.Sources;
+using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.Support;
 
@@ -166,7 +167,7 @@ public class GitHubSource
         string requestUrl;
 
         if (!string.IsNullOrEmpty(proxyUrl))
-            requestUrl = $"{proxyUrl}/https://api.github.com/{releasesPath}";
+            requestUrl = $"{proxyUrl}/{Links.GITHUB_API_BASE_URL.TrimEnd('/')}/{releasesPath}";
         else
         {
             // 直连逻辑 (回退到原始方式)

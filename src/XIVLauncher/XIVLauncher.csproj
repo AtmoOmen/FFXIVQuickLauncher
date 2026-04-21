@@ -100,12 +100,6 @@
         <ProjectReference Include="..\XIVLauncher.PatchInstaller\XIVLauncher.PatchInstaller.csproj"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <Page Update="Windows\QRDialog.xaml">
-            <XamlRuntime>$(DefaultXamlRuntime)</XamlRuntime>
-        </Page>
-    </ItemGroup>
-
     <!-- Git -->
     <Target Name="GetGitHash" BeforeTargets="WriteGitHash" Condition="'$(BuildHash)' == ''">
         <PropertyGroup>

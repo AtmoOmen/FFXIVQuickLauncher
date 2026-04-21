@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Serilog;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Util;
 
@@ -16,7 +17,7 @@ namespace XIVLauncher.Common.Dalamud;
 
 public class AssetManager
 {
-    private const string AssetStoreURL = "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/DalamudAssets/master/assetCN.json";
+    private const string AssetStoreURL = Links.DALAMUD_ASSET_STORE_URL;
 
     public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir)
     {

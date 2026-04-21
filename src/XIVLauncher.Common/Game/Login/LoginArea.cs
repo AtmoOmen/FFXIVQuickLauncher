@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.Common.Game.Login;
 
@@ -30,7 +31,7 @@ public class LoginArea
         using var client = new HttpClient(handler);
         client.Timeout = TimeSpan.FromSeconds(30);
 
-        var request = new HttpRequestMessage(HttpMethod.Get, "https://ff.dorado.sdo.com/ff/area/serverlist_new.js");
+        var request = new HttpRequestMessage(HttpMethod.Get, Links.SDO_LOGIN_AREA_URL);
         request.Headers.Add("Accept", "*/*");
         request.Headers.Add("Host",   "ff.dorado.sdo.com");
 

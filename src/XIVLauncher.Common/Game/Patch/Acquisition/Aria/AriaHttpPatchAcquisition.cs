@@ -45,7 +45,7 @@ public class AriaHttpPatchAcquisition : PatchAcquisition
             var ariaPath = Path.Combine(Paths.ResourcesPath, "aria2c-xl.exe");
 
             var ariaPort = PlatformHelpers.GetAvailablePort();
-            var ariaHost = $"http://localhost:{ariaPort}/jsonrpc";
+            var ariaHost = new UriBuilder(Uri.UriSchemeHttp, "localhost", ariaPort, "jsonrpc").Uri.ToString();
 
             var ariaArgs =
                 $"--enable-rpc --rpc-secret={secret} --rpc-listen-port={ariaPort} --log=\"{logFile.FullName}\" --log-level=notice --max-connection-per-server=8 --auto-file-renaming=false --allow-overwrite=true";

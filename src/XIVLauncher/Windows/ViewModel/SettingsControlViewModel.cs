@@ -392,7 +392,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
             if (!string.IsNullOrWhiteSpace(GitHubToken))
                 httpClient.DefaultRequestHeaders.Authorization = new("Bearer", GitHubToken);
 
-            var     response = await httpClient.GetAsync("https://api.github.com/rate_limit");
+            var     response = await httpClient.GetAsync(Links.GITHUB_API_RATE_LIMIT_URL);
             var     json     = await response.Content.ReadAsStringAsync();
             dynamic parsed   = JObject.Parse(json);
 
@@ -476,7 +476,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
     }
 
     public void OpenGitHub() =>
-        _externalLaunchService.OpenUrl("https://github.com/AtmoOmen/FFXIVQuickLauncher");
+        _externalLaunchService.OpenUrl(Links.REPO_URL);
 
     public void OpenBackupTool()
     {

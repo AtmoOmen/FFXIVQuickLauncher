@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
 using Velopack;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
@@ -16,7 +17,7 @@ internal class Updates
     ILauncherSettingsV3 settings
 )
 {
-    private const string UPDATE_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
+    private const string UPDATE_URL = Links.REPO_URL;
 
     public async Task<bool> Run(bool downloadPrerelease, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)
     {
@@ -44,7 +45,7 @@ internal class Updates
                 UPDATE_URL,
                 settings.GitHubToken,
                 true,
-                "https://gh.atmoomen.top/",
+                Links.GITHUB_PROXY_BASE_URL,
                 new XLHttpClientFileDownloader()
             );
 

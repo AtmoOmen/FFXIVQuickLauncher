@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Serilog;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Encryption;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
@@ -94,7 +95,7 @@ public partial class Launcher
             "User-Agent",
             "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.2; WOW64; Trident/7.0; .NET4.0C; .NET4.0E; .NET CLR 2.0.50727; .NET CLR 3.0.30729; .NET CLR 3.5.30729)"
         );
-        request.Headers.AddWithoutValidation("Referer", "https://ff.web.sdo.com/project/launcher0904/index.html");
+        request.Headers.AddWithoutValidation("Referer", Links.SDO_LAUNCHER_REFERER_URL);
 
         var resp = await MockHttpClient.SendAsync(request).ConfigureAwait(false);
         return await resp.Content.ReadAsByteArrayAsync().ConfigureAwait(false);

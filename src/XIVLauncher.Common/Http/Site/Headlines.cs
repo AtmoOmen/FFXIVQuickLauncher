@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 
 namespace XIVLauncher.Common.Http.Site;
@@ -30,7 +31,7 @@ public partial class Headlines
     {
         var json = Encoding.UTF8.GetString
         (
-            await game.DownloadAsLauncher("https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5203&pageIndex=0&pageSize=8", "*/*").ConfigureAwait
+            await game.DownloadAsLauncher(Links.SDO_NEWS_BANNER_API_URL, "*/*").ConfigureAwait
                 (false)
         );
 
@@ -43,7 +44,7 @@ public partial class Headlines
         var json = Encoding.UTF8.GetString
         (
             await game.DownloadAsLauncher
-                ("https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5310,5311,5312,5313,5316&pageIndex=0&pageSize=12", "*/*").ConfigureAwait
+                (Links.SDO_NEWS_LIST_API_URL, "*/*").ConfigureAwait
                 (false)
         );
 

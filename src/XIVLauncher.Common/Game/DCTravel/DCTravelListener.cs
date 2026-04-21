@@ -49,9 +49,11 @@ public sealed class DCTravelListener : IDisposable, IAsyncDisposable
             (key, iv) = GenerateAesKeyIv();
         rpcMethodCache = BuildRpcMethodCache();
 
+        var urlPrefix = new UriBuilder(Uri.UriSchemeHttp, "127.0.0.1", port).Uri.ToString().TrimEnd('/');
+
         webServer = new WebServer
             (o => o
-                  .WithUrlPrefix($"http://127.0.0.1:{port}")
+                  .WithUrlPrefix(urlPrefix)
                   .WithMode(HttpListenerMode.EmbedIO)
             )
             .WithWebApi("/dctravel", m => m.WithController(() => new RpcController(this)));

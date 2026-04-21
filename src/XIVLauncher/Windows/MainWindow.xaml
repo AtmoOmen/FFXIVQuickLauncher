@@ -11,6 +11,7 @@
     xmlns:windows="clr-namespace:XIVLauncher.Windows"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     xmlns:site="clr-namespace:XIVLauncher.Common.Http.Site;assembly=XIVLauncher.Common"
+    xmlns:constant="clr-namespace:XIVLauncher.Common.Constant;assembly=XIVLauncher.Common"
     mc:Ignorable="d"
     Title="XIVLauncherCN (Soil)"
     Width="700"
@@ -269,7 +270,7 @@
                                                     Padding="4"
                                                     Focusable="False"
                                                     Cursor="Hand"
-                                                    Tag="https://space.bilibili.com/6655514"
+                                                    Tag="{x:Static constant:Links.SDO_BILIBILI_URL}"
                                                     Click="OpenExternalSiteButton_OnClick">
                                                 <mahIcon:PackIconSimpleIcons Width="16"
                                                                              Height="16"
@@ -282,7 +283,7 @@
                                                     Padding="4"
                                                     Focusable="False"
                                                     Cursor="Hand"
-                                                    Tag="https://www.xiaohongshu.com/user/profile/5f814cbe0000000001003455"
+                                                    Tag="{x:Static constant:Links.SDO_XIAOHONGSHU_URL}"
                                                     Click="OpenExternalSiteButton_OnClick">
                                                 <mahIcon:PackIconSimpleIcons Width="16"
                                                                              Height="16"
@@ -295,7 +296,7 @@
                                                     Padding="4"
                                                     Focusable="False"
                                                     Cursor="Hand"
-                                                    Tag="https://weibo.com/u/1797798792"
+                                                    Tag="{x:Static constant:Links.SDO_WEIBO_URL}"
                                                     Click="OpenExternalSiteButton_OnClick">
                                                 <mahIcon:PackIconSimpleIcons Width="16"
                                                                              Height="16"
@@ -308,7 +309,7 @@
                                                     Padding="4"
                                                     Focusable="False"
                                                     Cursor="Hand"
-                                                    Tag="https://www.douyin.com/user/MS4wLjABAAAAHJts6kVkO7Lob9_H5VMSc3UZXCSq6gw5s02kplXQ7k0"
+                                                    Tag="{x:Static constant:Links.SDO_DOUYIN_URL}"
                                                     Click="OpenExternalSiteButton_OnClick">
                                                 <mahIcon:PackIconSimpleIcons Width="16"
                                                                              Height="16"

@@ -16,6 +16,7 @@ using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
@@ -378,7 +379,7 @@ public partial class MainWindow : Window
         if (!string.IsNullOrEmpty(item.Url))
             Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
         else if (!string.IsNullOrEmpty(item.Id))
-            Process.Start(new ProcessStartInfo($"https://ff.web.sdo.com/web8/index.html#/newstab/newscont/{item.Id}") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(Links.SDO_NEWS_ARTICLE_BASE_URL + item.Id) { UseShellExecute = true });
         
     }
     
@@ -630,7 +631,7 @@ public partial class MainWindow : Window
     }
 
     private void DCTravelPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo("https://ff14bjz.sdo.com/RegionKanTelepo") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(Links.DC_TRAVEL_PAGE_URL) { UseShellExecute = true });
 
     private void OpenExternalSiteButton_OnClick(object sender, RoutedEventArgs e)
     {
@@ -639,11 +640,11 @@ public partial class MainWindow : Window
     }
 
     private void PayPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo("https://pay.sdo.com/item/GWPAY-100001900/") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute = true });
     
     private void ShoppingPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo("https://qu.sdo.com/game/1") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true });
 
     private void RisingStonePageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo("https://ff14risingstones.web.sdo.com/pc/#/post") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(Links.RISING_STONE_URL) { UseShellExecute = true });
 }

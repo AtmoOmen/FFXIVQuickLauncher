@@ -824,7 +824,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     disableAutoLogin = true;
                     LoginMessage     = string.Empty;
-                    QRDialog.CloseQRWindow(Window);
 
                     if (string.IsNullOrWhiteSpace(oauthLoginException.OAuthErrorMessage))
                         msgbox.WithText("登录账号失败, 请检查用户名和密码");

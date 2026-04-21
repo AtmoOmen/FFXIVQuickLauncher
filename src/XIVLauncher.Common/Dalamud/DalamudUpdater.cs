@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
@@ -36,16 +37,14 @@ public class DalamudUpdater
     }
 
     // 运行时版本
-    private const string RUNTIME_INFO_URL = 
-        "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
+    private const string RUNTIME_INFO_URL = Links.DALAMUD_RUNTIME_INFO_URL;
     
     // 运行时下载源
-    private const string RUNTIME_SOURCE_NUGET_URL  = "https://api.nuget.org/v3-flatcontainer";
-    private const string RUNTIME_SOURCE_HUAWEI_URL = "https://repo.huaweicloud.com/artifactory/api/nuget/v3/nuget-remote";
+    private const string RUNTIME_SOURCE_NUGET_URL  = Links.NUGET_V3_FLAT_CONTAINER_URL;
+    private const string RUNTIME_SOURCE_HUAWEI_URL = Links.HUAWEI_NUGET_V3_REMOTE_URL;
     
     // Dalmaud 发布信息
-    private const string RELEASE_INFO_URL =
-        "https://gh.atmoomen.top/raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/Dalamud-DailyRoutines/Dalamud/releases/latest/data.json";
+    private const string RELEASE_INFO_URL = Links.DALAMUD_RELEASE_INFO_URL;
     
     private static string runtimeVersion = string.Empty;
 
@@ -629,11 +628,8 @@ public class DalamudUpdater
 
     public static async Task<bool> IsGoogleReachableAsync()
     {
-        const string GOOGLE_URL = "https://www.google.com";
-        const string HUAWEI_URL = "https://www.huaweicloud.com/";
-
-        var googleTask = GetConnectionTimeAsync(GOOGLE_URL);
-        var huaweiTask = GetConnectionTimeAsync(HUAWEI_URL);
+        var googleTask = GetConnectionTimeAsync(Links.GOOGLE_URL);
+        var huaweiTask = GetConnectionTimeAsync(Links.HUAWEI_CLOUD_URL);
 
         await Task.WhenAll(googleTask, huaweiTask);
 

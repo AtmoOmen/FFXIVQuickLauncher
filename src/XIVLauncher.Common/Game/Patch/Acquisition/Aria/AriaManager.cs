@@ -1,27 +1,20 @@
-﻿/**
- * This file is part of AriaNet by huming2207, licensed under the CC-BY-NC-SA 3.0 Australian Licence.
- * You can find the original code in this GitHub repository: https://github.com/huming2207/AriaNet
- */
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Patch.Acquisition.Aria.Attributes;
 using XIVLauncher.Common.Game.Patch.Acquisition.Aria.JsonRpc;
 
 namespace XIVLauncher.Common.Game.Patch.Acquisition.Aria;
 
 public class AriaManager
+(
+    string secret,
+    string rpcUrl = Links.LOCAL_ARIA_RPC_URL
+)
 {
-    private readonly JsonRpcHttpClient rpcClient;
-    private readonly string            secret;
-
-    public AriaManager(string secret, string rpcUrl = "http://localhost:6800/jsonrpc")
-    {
-        this.secret = secret;
-        rpcClient   = new JsonRpcHttpClient(rpcUrl);
-    }
+    private readonly JsonRpcHttpClient rpcClient = new(rpcUrl);
 
     public async Task<string> AddUri(List<string> uriList) =>
         await Invoke<string>("aria2.addUri", uriList);
