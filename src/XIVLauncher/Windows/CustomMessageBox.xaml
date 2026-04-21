@@ -72,21 +72,21 @@
                     x:Name="DiscordButton" Margin="5,0,0,0" Click="DiscordButton_Click">
                 <StackPanel Orientation="Horizontal">
                     <mahIcon:PackIconSimpleIcons Kind="Discord" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="加入 Discord 服务器" />
-                </StackPanel>
-            </Button>
-            <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
-                    x:Name="IntegrityReportButton" Margin="5,0,0,0" Click="IntegrityReportButton_Click">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="FileDocument" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="打开检查报告" />
+                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="Discord" />
                 </StackPanel>
             </Button>
             <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
                     x:Name="NewGitHubIssueButton" Margin="5,0,0,0" Click="NewGitHubIssueButton_OnClick">
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="Github" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="报告错误" />
+                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="GitHub" />
+                </StackPanel>
+            </Button>
+            <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
+                    x:Name="IntegrityReportButton" Margin="5,0,0,0" Click="IntegrityReportButton_Click">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="FileDocument" />
+                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="完整性报告" />
                 </StackPanel>
             </Button>
             <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
