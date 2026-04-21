@@ -118,9 +118,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
         );
 
-    public void SwitchMode() =>
-        SwitchCard(LoginCardTransitionerIndex == (int)LoginCardType.InjectMode ? LoginCardType.MainPage : LoginCardType.InjectMode);
-
     #endregion
 
     #region 登录

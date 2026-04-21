@@ -37,7 +37,7 @@ public sealed class LoginPageViewModel : ViewModelBase
         this.requestBackToMainPageAction = requestBackToMainPageAction;
         this.requestFakeStartAction      = requestFakeStartAction;
 
-        LoginTypeOptions = [.. LoginTypeOption.Get(App.Settings.ShowWeGameTokenLogin.GetValueOrDefault(false))];
+        LoginTypeOptions = [.. LoginTypeOption.Get()];
         loginTypeOption  = LoginTypeOptions.First(x => x.LoginType == App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.Slide));
         ApplyLoginType(loginTypeOption.LoginType);
 
@@ -83,33 +83,33 @@ public sealed class LoginPageViewModel : ViewModelBase
 
     public bool IsAutoLogin
     {
-        get => isAutoLogin;
-        set => SetProperty(ref isAutoLogin, value);
+        get;
+        set => SetProperty(ref field, value);
     }
 
     public bool IsFastLogin
     {
-        get => isFastLogin;
-        set => SetProperty(ref isFastLogin, value);
+        get;
+        set => SetProperty(ref field, value);
     }
 
     public bool IsReadWegameInfo
     {
-        get => isReadWegameInfo;
-        set => SetProperty(ref isReadWegameInfo, value);
+        get;
+        set => SetProperty(ref field, value);
     }
 
     public string Username
     {
-        get => username;
-        set => SetProperty(ref username, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public string Password
     {
-        get => password;
-        set => SetProperty(ref password, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public LoginTypeOption LoginTypeOption
     {
@@ -132,12 +132,12 @@ public sealed class LoginPageViewModel : ViewModelBase
 
     public LoginArea? Area
     {
-        get => area;
+        get;
         set
         {
-            var oldArea = area;
+            var oldArea = field;
 
-            if (!SetProperty(ref area, value))
+            if (!SetProperty(ref field, value))
                 return;
 
             Log.Information("大区变更 {OldArea} -> {NewArea}", oldArea, value);
@@ -146,28 +146,28 @@ public sealed class LoginPageViewModel : ViewModelBase
 
     public LoginArea[] LoginAreas
     {
-        get => loginAreas;
-        set => SetProperty(ref loginAreas, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = [];
 
     public string LoginMessage
     {
-        get => loginMessage;
-        set => SetProperty(ref loginMessage, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public BitmapImage? QRCodeBitmapImage
     {
-        get => qrCodeBitmapImage;
-        set => SetProperty(ref qrCodeBitmapImage, value);
+        get;
+        set => SetProperty(ref field, value);
     }
 
     public bool IsQrCodeExpired
     {
-        get => isQrCodeExpired;
+        get;
         set
         {
-            if (!SetProperty(ref isQrCodeExpired, value))
+            if (!SetProperty(ref field, value))
                 return;
 
             CommandManager.InvalidateRequerySuggested();
@@ -176,45 +176,45 @@ public sealed class LoginPageViewModel : ViewModelBase
 
     public bool IsUsernameVisible
     {
-        get => isUsernameVisible;
-        private set => SetProperty(ref isUsernameVisible, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = true;
 
     public bool IsPasswordVisible
     {
-        get => isPasswordVisible;
-        private set => SetProperty(ref isPasswordVisible, value);
+        get;
+        private set => SetProperty(ref field, value);
     }
 
     public bool IsFastLoginVisible
     {
-        get => isFastLoginVisible;
-        private set => SetProperty(ref isFastLoginVisible, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = true;
 
     public bool IsReadWegameInfoVisible
     {
-        get => isReadWegameInfoVisible;
-        private set => SetProperty(ref isReadWegameInfoVisible, value);
+        get;
+        private set => SetProperty(ref field, value);
     }
 
     public string FastLoginText
     {
-        get => fastLoginText;
-        private set => SetProperty(ref fastLoginText, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = "快速登录";
 
     public string UsernameHint
     {
-        get => usernameHint;
-        private set => SetProperty(ref usernameHint, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = "盛趣账号";
 
     public string PasswordHint
     {
-        get => passwordHint;
-        private set => SetProperty(ref passwordHint, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = "密码";
 
     public void SelectLoginType(LoginType loginType)
     {
@@ -223,6 +223,8 @@ public sealed class LoginPageViewModel : ViewModelBase
         if (option != null)
             LoginTypeOption = option;
     }
+    
+    private LoginTypeOption loginTypeOption = null!;
 
     private void ApplyLoginType(LoginType loginType)
     {
@@ -245,39 +247,20 @@ public sealed class LoginPageViewModel : ViewModelBase
 
             case LoginType.Static:
                 IsPasswordVisible = true;
-                FastLoginText     = "保存密码";
+                FastLoginText     = "静态密码";
                 break;
 
             case LoginType.WeGameToken:
                 IsPasswordVisible = true;
-                UsernameHint      = "SndaId";
-                PasswordHint      = "抓包Token";
+                UsernameHint      = "SndaID";
+                PasswordHint      = "抓包获取的 Token";
                 break;
 
             case LoginType.WeGameSID:
                 IsFastLoginVisible      = false;
                 IsReadWegameInfoVisible = true;
-                UsernameHint            = "从Wegame自动获取的账号";
+                UsernameHint            = "从 WeGame 自动获取的账号";
                 break;
         }
     }
-
-    private bool            isAutoLogin;
-    private bool            isFastLogin;
-    private bool            isReadWegameInfo;
-    private string          username        = string.Empty;
-    private string          password        = string.Empty;
-    private LoginTypeOption loginTypeOption = null!;
-    private LoginArea?      area;
-    private LoginArea[]     loginAreas   = [];
-    private string          loginMessage = string.Empty;
-    private BitmapImage?    qrCodeBitmapImage;
-    private bool            isQrCodeExpired;
-    private bool            isUsernameVisible = true;
-    private bool            isPasswordVisible;
-    private bool            isFastLoginVisible = true;
-    private bool            isReadWegameInfoVisible;
-    private string          fastLoginText = "快速登录";
-    private string          usernameHint  = "盛趣账号";
-    private string          passwordHint  = "密码";
 }
