@@ -5,7 +5,7 @@
 
 using Newtonsoft.Json;
 
-namespace AriaNet.Attributes;
+namespace XIVLauncher.Common.Game.Patch.Acquisition.Aria.Attributes;
 
 [JsonObject]
 public class AriaSession

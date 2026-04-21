@@ -1,4 +1,4 @@
-namespace XIVLauncher.Common.PatcherIpc;
+namespace XIVLauncher.Common.Patching.Rpc;
 
 public enum PatcherIpcOpCode
 {

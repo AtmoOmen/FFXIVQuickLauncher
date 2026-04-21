@@ -6,7 +6,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace AriaNet.Attributes;
+namespace XIVLauncher.Common.Game.Patch.Acquisition.Aria.Attributes;
 
 public class AriaFile
 {

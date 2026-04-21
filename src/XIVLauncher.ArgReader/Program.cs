@@ -6,7 +6,7 @@ using Serilog.Events;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Common.PatcherIpc;
+using XIVLauncher.Common.Patching.Rpc;
 using XIVLauncher.Common.Patching.Rpc.Implementations;
 
 namespace XIVLauncher.ArgReader;

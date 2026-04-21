@@ -3,7 +3,6 @@ using System.Text;
 using Newtonsoft.Json;
 using Serilog;
 using SharedMemory;
-using XIVLauncher.Common.PatcherIpc;
 
 namespace XIVLauncher.Common.Patching.Rpc.Implementations;
 

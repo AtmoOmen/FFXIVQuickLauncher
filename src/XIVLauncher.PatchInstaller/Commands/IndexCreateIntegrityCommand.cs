@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
 
 namespace XIVLauncher.PatchInstaller.Commands;

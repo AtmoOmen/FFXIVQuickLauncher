@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using XIVLauncher.Common.PatcherIpc;
 
 namespace XIVLauncher.Common.Patching.Rpc.Implementations;
 

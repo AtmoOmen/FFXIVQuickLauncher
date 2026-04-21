@@ -16,6 +16,7 @@ using XIVLauncher.Common.Addon.Implementations;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Support;

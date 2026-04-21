@@ -1,7 +1,7 @@
 using System.IO;
 using Newtonsoft.Json;
 
-namespace XIVLauncher.Common.PatcherIpc;
+namespace XIVLauncher.Common.Patching.Rpc;
 
 public class PatcherIpcStartInstall
 {

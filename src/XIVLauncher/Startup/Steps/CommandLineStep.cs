@@ -8,6 +8,7 @@ using CommandLine;
 using Newtonsoft.Json;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Integrity;
 
 namespace XIVLauncher.Startup.Steps;
 

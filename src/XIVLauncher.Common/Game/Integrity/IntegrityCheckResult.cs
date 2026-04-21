@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace XIVLauncher.Common.Game;
+namespace XIVLauncher.Common.Game.Integrity;
 
 public sealed class IntegrityCheckResult
 {

@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Patching.Util;
 
 namespace XIVLauncher.Common.Patching.SdoFileDownload;

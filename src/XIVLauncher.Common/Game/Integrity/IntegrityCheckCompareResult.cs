@@ -1,4 +1,4 @@
-namespace XIVLauncher.Common.Game;
+namespace XIVLauncher.Common.Game.Integrity;
 
 public enum IntegrityCheckCompareResult
 {

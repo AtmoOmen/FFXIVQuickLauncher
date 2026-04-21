@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SharedMemory;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Integrity;
 
 namespace XIVLauncher.Common.Patching.SdoFileDownload;
 

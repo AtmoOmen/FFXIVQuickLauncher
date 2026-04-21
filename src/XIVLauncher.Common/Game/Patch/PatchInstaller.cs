@@ -4,7 +4,6 @@ using System.IO;
 using System.Threading;
 using Serilog;
 using XIVLauncher.Common.Game.Patch.PatchList;
-using XIVLauncher.Common.PatcherIpc;
 using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.Rpc;
 using XIVLauncher.Common.Patching.Rpc.Implementations;

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
+namespace XIVLauncher.Common.Util;
+
 public class MaskMiddleConverter : JsonConverter
 {
     public override bool CanConvert(Type objectType) =>

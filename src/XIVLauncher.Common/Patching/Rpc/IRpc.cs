@@ -1,5 +1,4 @@
 using System;
-using XIVLauncher.Common.PatcherIpc;
 
 namespace XIVLauncher.Common.Patching.Rpc;
 

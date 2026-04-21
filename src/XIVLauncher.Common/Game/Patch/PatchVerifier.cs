@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Exceptions;
+using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.IndexedZiPatch;

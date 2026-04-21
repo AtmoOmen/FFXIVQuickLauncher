@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Patch.V3;
 
 namespace XIVLauncher.PatchInstaller.Commands;

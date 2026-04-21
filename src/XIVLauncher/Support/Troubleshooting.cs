@@ -6,6 +6,7 @@ using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Support;

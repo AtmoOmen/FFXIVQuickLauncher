@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using MaterialDesignThemes.Wpf.Transitions;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 

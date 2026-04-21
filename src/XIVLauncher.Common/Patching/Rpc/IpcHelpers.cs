@@ -2,7 +2,7 @@ using System;
 using System.Text;
 using Newtonsoft.Json;
 
-namespace XIVLauncher.Common.PatcherIpc;
+namespace XIVLauncher.Common.Patching.Rpc;
 
 public static class IpcHelpers
 {

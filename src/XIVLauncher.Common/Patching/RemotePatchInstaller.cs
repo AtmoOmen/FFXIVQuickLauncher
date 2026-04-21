@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
-using XIVLauncher.Common.PatcherIpc;
 using XIVLauncher.Common.Patching.Rpc;
 using XIVLauncher.Common.Patching.ZiPatch;
 using XIVLauncher.Common.Patching.ZiPatch.Util;

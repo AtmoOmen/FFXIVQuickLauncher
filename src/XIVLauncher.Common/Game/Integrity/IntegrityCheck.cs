@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Patch.V3;
 
-namespace XIVLauncher.Common.Game;
+namespace XIVLauncher.Common.Game.Integrity;
 
 public static class IntegrityCheck
 {

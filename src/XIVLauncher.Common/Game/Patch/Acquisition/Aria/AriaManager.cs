@@ -7,10 +7,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using AriaNet.Attributes;
+using XIVLauncher.Common.Game.Patch.Acquisition.Aria.Attributes;
 using XIVLauncher.Common.Game.Patch.Acquisition.Aria.JsonRpc;
 
-namespace AriaNet;
+namespace XIVLauncher.Common.Game.Patch.Acquisition.Aria;
 
 public class AriaManager
 {

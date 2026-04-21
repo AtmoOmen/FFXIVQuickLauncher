@@ -6,7 +6,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using AriaNet;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
