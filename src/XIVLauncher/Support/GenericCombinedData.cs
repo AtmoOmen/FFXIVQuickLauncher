@@ -9,10 +9,10 @@ public class GenericCombinedData<TValueType>
     /// <summary>
     ///     Gets or sets the name displayed.
     /// </summary>
-    public string Display { get; set; }
+    public required string Display { get; set; }
 
     /// <summary>
     ///     Gets or sets the value.
     /// </summary>
-    public TValueType Value { get; set; }
+    public required TValueType Value { get; set; }
 }

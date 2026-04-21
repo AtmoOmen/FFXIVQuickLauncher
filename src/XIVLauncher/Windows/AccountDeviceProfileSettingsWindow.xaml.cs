@@ -12,9 +12,12 @@ using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
 
-public partial class AccountDeviceProfileSettingsWindow : Window
+public partial class AccountDeviceProfileSettingsWindow
 {
-    private const int CurrentExchangeFormatVersion = 1;
+    private AccountDeviceProfileSettingsWindowViewModel ViewModel => 
+        (AccountDeviceProfileSettingsWindowViewModel)DataContext;
+    
+    private const int CURRENT_EXCHANGE_FORMAT_VERSION = 1;
 
     private static readonly JsonSerializerOptions ExchangeJsonOptions = new()
     {
@@ -23,22 +26,16 @@ public partial class AccountDeviceProfileSettingsWindow : Window
         Encoder                     = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    private readonly IDialogService _dialogService;
-    private Window?                 _ownerWindow;
-    private bool                    _restoreWindowStateAfterOwnerRestore;
+    private readonly DialogService dialogService;
+    private Window?                 ownerWindow;
 
-    private AccountDeviceProfileSettingsWindowViewModel ViewModel => (AccountDeviceProfileSettingsWindowViewModel)DataContext;
-
-    public AccountDeviceProfileSettingsWindow(XIVAccount account, AccountManager accountManager)
-        : this(account, accountManager, false)
-    {
-    }
-
-    public AccountDeviceProfileSettingsWindow(XIVAccount account, AccountManager accountManager, bool isTemporaryAccount)
+    private bool restoreWindowStateAfterOwnerRestore;
+    
+    public AccountDeviceProfileSettingsWindow(XIVAccount account, AccountManager accountManager, bool isTemporaryAccount = false)
     {
         InitializeComponent();
 
-        _dialogService = new DialogService(this);
+        dialogService = new DialogService(this);
         DataContext    = new AccountDeviceProfileSettingsWindowViewModel(accountManager);
         if (isTemporaryAccount)
             ViewModel.LoadTemporary(account);
@@ -54,7 +51,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
     {
         InitializeComponent();
 
-        _dialogService = new DialogService(this);
+        dialogService = new DialogService(this);
         DataContext    = new AccountDeviceProfileSettingsWindowViewModel(accountManager);
         ViewModel.LoadShared();
         Title = ViewModel.WindowTitle;
@@ -65,26 +62,26 @@ public partial class AccountDeviceProfileSettingsWindow : Window
 
     private void AttachOwnerWindow()
     {
-        if (ReferenceEquals(_ownerWindow, Owner))
+        if (ReferenceEquals(ownerWindow, Owner))
             return;
 
         DetachOwnerWindow();
-        _ownerWindow = Owner;
+        ownerWindow = Owner;
 
-        if (_ownerWindow == null)
+        if (ownerWindow == null)
             return;
 
-        _ownerWindow.StateChanged += OwnerWindow_OnStateChanged;
+        ownerWindow.StateChanged += OwnerWindow_OnStateChanged;
         SyncWindowStateWithOwner();
     }
 
     private void DetachOwnerWindow()
     {
-        if (_ownerWindow == null)
+        if (ownerWindow == null)
             return;
 
-        _ownerWindow.StateChanged -= OwnerWindow_OnStateChanged;
-        _ownerWindow = null;
+        ownerWindow.StateChanged -= OwnerWindow_OnStateChanged;
+        ownerWindow = null;
     }
 
     private void OwnerWindow_OnStateChanged(object? sender, EventArgs e) =>
@@ -92,21 +89,21 @@ public partial class AccountDeviceProfileSettingsWindow : Window
 
     private void SyncWindowStateWithOwner()
     {
-        if (_ownerWindow == null)
+        if (ownerWindow == null)
             return;
 
-        if (_ownerWindow.WindowState == WindowState.Minimized)
+        if (ownerWindow.WindowState == WindowState.Minimized)
         {
-            _restoreWindowStateAfterOwnerRestore = WindowState != WindowState.Minimized;
+            restoreWindowStateAfterOwnerRestore = WindowState != WindowState.Minimized;
             WindowState                          = WindowState.Minimized;
             return;
         }
 
-        if (!_restoreWindowStateAfterOwnerRestore || WindowState != WindowState.Minimized)
+        if (!restoreWindowStateAfterOwnerRestore || WindowState != WindowState.Minimized)
             return;
 
         WindowState                          = WindowState.Normal;
-        _restoreWindowStateAfterOwnerRestore = false;
+        restoreWindowStateAfterOwnerRestore = false;
     }
 
     private void RefreshAllButton_OnClick(object sender, RoutedEventArgs e) =>
@@ -139,7 +136,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
         }
         catch (Exception ex)
         {
-            _dialogService.ShowMessage
+            dialogService.ShowMessage
             (
                 $"保存设备信息设置失败。\n{ex.Message}",
                 "设备信息设置",
@@ -171,7 +168,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
         var data = JsonSerializer.Deserialize<AccountDeviceProfileExchangeData>(json, ExchangeJsonOptions)
                    ?? throw new InvalidOperationException("导入文件内容为空或格式无效。");
 
-        if (data.Version != CurrentExchangeFormatVersion)
+        if (data.Version != CURRENT_EXCHANGE_FORMAT_VERSION)
             throw new InvalidOperationException($"不支持的设备信息文件版本：{data.Version}。");
 
         ViewModel.Import
@@ -205,7 +202,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
         var json = JsonSerializer.Serialize(CreateExchangeData(), ExchangeJsonOptions);
         File.WriteAllText(dialog.FileName, json, new UTF8Encoding(false));
 
-        _dialogService.ShowMessage
+        dialogService.ShowMessage
         (
             $"设备信息已导出。\n\n保存位置：{dialog.FileName}",
             "设备信息设置",
@@ -220,7 +217,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
     private AccountDeviceProfileExchangeData CreateExchangeData() =>
         new()
         {
-            Version                = CurrentExchangeFormatVersion,
+            Version                = CURRENT_EXCHANGE_FORMAT_VERSION,
             AccountDisplayName     = ViewModel.AccountDisplayName,
             ExportedAtUtc          = DateTimeOffset.UtcNow,
             DynamicEnabled         = ViewModel.DynamicEnabled,
@@ -248,7 +245,7 @@ public partial class AccountDeviceProfileSettingsWindow : Window
         }
         catch (Exception ex)
         {
-            _dialogService.ShowMessage
+            dialogService.ShowMessage
             (
                 $"{title}\n{ex.Message}",
                 "设备信息设置",
@@ -263,4 +260,18 @@ public partial class AccountDeviceProfileSettingsWindow : Window
         }
     }
 
+    private sealed class AccountDeviceProfileExchangeData
+    {
+        public int            Version                { get; init; }
+        public string         AccountDisplayName     { get; init; } = string.Empty;
+        public DateTimeOffset ExportedAtUtc          { get; init; }
+        public bool           DynamicEnabled         { get; init; }
+        public bool           PeriodicRefreshEnabled { get; init; }
+        public int            RotationDays           { get; init; }
+        public long           GeneratedUtcTicks      { get; init; }
+        public string         PresetRemark           { get; init; } = string.Empty;
+        public string         DeviceId               { get; init; } = string.Empty;
+        public string         MacAddress             { get; init; } = string.Empty;
+        public string         HostName               { get; init; } = string.Empty;
+    }
 }

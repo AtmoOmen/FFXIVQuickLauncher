@@ -1,39 +1,43 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Serilog;
 
 namespace XIVLauncher.Xaml;
 
-public class AsyncCommand : ICommand
+public class AsyncCommand
+(
+    Func<object?, Task> execute,
+    Func<bool>?         canExecute = null
+) : ICommand
 {
-    private readonly Func<object?, Task> _execute;
-    private readonly Func<bool>?         _canExecute;
-    private          bool                _isExecuting;
-
-    public AsyncCommand(Func<object?, Task> execute, Func<bool>? canExecute = null)
-    {
-        _execute    = execute;
-        _canExecute = canExecute;
-    }
+    private bool isExecuting;
 
     public bool CanExecute(object? parameter) =>
-        !_isExecuting && (_canExecute?.Invoke() ?? true);
+        !isExecuting && (canExecute?.Invoke() ?? true);
 
     public async void Execute(object? parameter)
     {
-        if (!CanExecute(parameter))
-            return;
-
         try
         {
-            _isExecuting = true;
-            CommandManager.InvalidateRequerySuggested();
-            await _execute(parameter);
+            if (!CanExecute(parameter))
+                return;
+
+            try
+            {
+                isExecuting = true;
+                CommandManager.InvalidateRequerySuggested();
+                await execute(parameter);
+            }
+            finally
+            {
+                isExecuting = false;
+                CommandManager.InvalidateRequerySuggested();
+            }
         }
-        finally
+        catch (Exception e)
         {
-            _isExecuting = false;
-            CommandManager.InvalidateRequerySuggested();
+            Log.Error(e, "执行 AsyncCommand 时发生错误");
         }
     }
 

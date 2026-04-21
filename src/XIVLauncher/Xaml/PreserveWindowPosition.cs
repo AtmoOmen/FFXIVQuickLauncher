@@ -16,7 +16,7 @@ public static class PreserveWindowPosition
             return;
 
         var placement = App.Settings.MainWindowPlacement.Value;
-        placement.length  = Marshal.SizeOf(typeof(WindowPlacement));
+        placement.length  = Marshal.SizeOf<WindowPlacement>();
         placement.flags   = 0;
         placement.showCmd = placement.showCmd == SW_SHOWMINIMIZED ? SW_SHOWNORMAL : placement.showCmd;
 
@@ -41,33 +41,29 @@ public static class PreserveWindowPosition
     [Serializable]
     [StructLayout(LayoutKind.Sequential)]
     public struct Point
+    (
+        int x,
+        int y
+    )
     {
-        public int X;
-        public int Y;
-
-        public Point(int x, int y)
-        {
-            X = x;
-            Y = y;
-        }
+        public int X = x;
+        public int Y = y;
     }
 
     [Serializable]
     [StructLayout(LayoutKind.Sequential)]
     public struct Rect
+    (
+        int left,
+        int top,
+        int right,
+        int bottom
+    )
     {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-
-        public Rect(int left, int top, int right, int bottom)
-        {
-            Left   = left;
-            Top    = top;
-            Right  = right;
-            Bottom = bottom;
-        }
+        public int Left   = left;
+        public int Top    = top;
+        public int Right  = right;
+        public int Bottom = bottom;
     }
 
     [Serializable]

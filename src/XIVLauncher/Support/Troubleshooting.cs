@@ -5,9 +5,7 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Dalamud;
-using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
-using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Support;
 
@@ -19,7 +17,7 @@ public static class Troubleshooting
     /// <summary>
     ///     Gets the most recent exception to occur.
     /// </summary>
-    public static Exception LastException { get; private set; }
+    public static Exception LastException { get; private set; } = null!;
 
     /// <summary>
     ///     Log the last exception in a parseable format to serilog.
@@ -32,11 +30,11 @@ public static class Troubleshooting
 
         try
         {
-            var fixedContext = context?.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            var fixedContext = context?.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
 
             var payload = new ExceptionPayload
             {
-                Context = fixedContext,
+                Context = fixedContext!,
                 When    = DateTime.Now,
                 Info    = exception.ToString()
             };
@@ -58,11 +56,11 @@ public static class Troubleshooting
 
         try
         {
-            if (!gamePath.Exists || !gamePath.GetDirectories().Any(x => x.Name == "game"))
+            if (!gamePath.Exists || gamePath.GetDirectories().All(x => x.Name != "game"))
                 integrity = TroubleshootingPayload.IndexIntegrityResult.NoGame;
             else
             {
-                var result = IntegrityCheck.CompareIntegrityAsync(null, gamePath, true).Result;
+                var result = IntegrityCheck.CompareIntegrityAsync(null!, gamePath, true).Result;
 
                 integrity = result.compareResult switch
                 {
@@ -99,11 +97,11 @@ public static class Troubleshooting
             DalamudLoadMethod     = App.Settings.InGameAddonLoadMethod.GetValueOrDefault(),
             DalamudInjectionDelay = App.Settings.DalamudInjectionDelayMs,
             EncryptArguments      = App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
-            LauncherVersion       = AppUtil.GetAssemblyVersion(),
-            LauncherHash          = AppUtil.GetGitHash(),
-            Official              = AppUtil.GetBuildOrigin() == "goatcorp/FFXIVQuickLauncher",
+            LauncherVersion       = AppUtil.GetAssemblyVersion()!,
+            LauncherHash          = AppUtil.GetGitHash()!,
+            Official              = AppUtil.GetBuildOrigin() == "AtmoOmen/FFXIVQuickLauncher",
             DpiAwareness          = App.Settings.DpiAwareness.GetValueOrDefault(),
-            
+
             ObservedGameVersion = ffxivVer,
             ObservedEx1Version  = ex1Ver,
             ObservedEx2Version  = ex2Ver,
@@ -137,46 +135,46 @@ public static class Troubleshooting
 
     private class ExceptionPayload
     {
-        public DateTime When { get; set; }
+        public required DateTime When { get; set; }
 
-        public string Info { get; set; }
+        public required string Info { get; set; }
 
-        public string Context { get; set; }
+        public required string Context { get; set; }
     }
 
     private class TroubleshootingPayload
     {
-        public DateTime When { get; set; }
+        public required DateTime When { get; set; }
 
-        public bool IsAutoLogin { get; set; }
+        public required bool IsAutoLogin { get; set; }
 
-        public bool DalamudEnabled { get; set; }
+        public required bool DalamudEnabled { get; set; }
 
-        public DalamudLoadMethod DalamudLoadMethod { get; set; }
+        public required DalamudLoadMethod DalamudLoadMethod { get; set; }
 
-        public decimal DalamudInjectionDelay { get; set; }
+        public required decimal DalamudInjectionDelay { get; set; }
 
-        public bool EncryptArguments { get; set; }
+        public required bool EncryptArguments { get; set; }
 
-        public string LauncherVersion { get; set; }
+        public required string LauncherVersion { get; set; }
 
-        public string LauncherHash { get; set; }
+        public required string LauncherHash { get; set; }
 
-        public bool Official { get; set; }
+        public required bool Official { get; set; }
 
-        public DpiAwareness DpiAwareness { get; set; }
-        
-        public string ObservedGameVersion { get; set; }
+        public required DpiAwareness DpiAwareness { get; set; }
 
-        public string ObservedEx1Version { get; set; }
-        public string ObservedEx2Version { get; set; }
-        public string ObservedEx3Version { get; set; }
-        public string ObservedEx4Version { get; set; }
-        public string ObservedEx5Version { get; set; }
+        public required string ObservedGameVersion { get; set; }
 
-        public bool BckMatch { get; set; }
+        public required string ObservedEx1Version { get; set; }
+        public required string ObservedEx2Version { get; set; }
+        public required string ObservedEx3Version { get; set; }
+        public required string ObservedEx4Version { get; set; }
+        public required string ObservedEx5Version { get; set; }
 
-        public IndexIntegrityResult IndexIntegrity { get; set; }
+        public required bool BckMatch { get; set; }
+
+        public required IndexIntegrityResult IndexIntegrity { get; set; }
 
         public enum IndexIntegrityResult
         {
