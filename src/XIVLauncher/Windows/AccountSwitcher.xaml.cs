@@ -63,6 +63,7 @@ public partial class AccountSwitcher
         if (e.ChangedButton != MouseButton.Left)
             return;
 
+        ViewModel.ContextEntry = null;
         var selectedAccount = ViewModel.SelectCurrentAccount();
         if (selectedAccount == null)
             return;
@@ -152,6 +153,7 @@ public partial class AccountSwitcher
 
     private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        ViewModel.ContextEntry = null;
         dragStartPoint = e.GetPosition(null);
         draggedItem    = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
 
@@ -160,11 +162,17 @@ public partial class AccountSwitcher
 
     private void AccountListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is { } listViewItem)
-        {
-            AccountListView.SelectedItem = listViewItem.DataContext;
-            listViewItem.IsSelected      = true;
-        }
+        if (FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not { } listViewItem)
+            return;
+
+        ViewModel.ContextEntry = listViewItem.DataContext as AccountSwitcherEntry;
+        e.Handled              = true;
+
+        if (AccountListView.ContextMenu == null)
+            return;
+
+        AccountListView.ContextMenu.PlacementTarget = listViewItem;
+        AccountListView.ContextMenu.IsOpen          = true;
     }
 
     private void AccountListView_OnPreviewMouseMove(object sender, MouseEventArgs e)
@@ -199,4 +207,7 @@ public partial class AccountSwitcher
         var draggedIndex = AccountListView.ItemContainerGenerator.IndexFromContainer(draggedItem);
         ViewModel.MoveEntry(draggedIndex, targetIndex);
     }
+
+    private void AccountListViewContextMenu_OnClosed(object sender, RoutedEventArgs e) =>
+        ViewModel.ContextEntry = null;
 }

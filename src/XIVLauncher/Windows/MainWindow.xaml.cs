@@ -48,6 +48,7 @@ public partial class MainWindow : Window
     private BitmapImage[] _bannerBitmaps;
     private int           _currentBannerIndex;
     private bool          _everShown;
+    private bool          _suppressAccountSelectionTracking;
 
     private ObservableCollection<BannerDotInfo> _bannerDotList;
 
@@ -418,61 +419,86 @@ public partial class MainWindow : Window
 
     private void SwitchAccount(XIVAccount account, bool saveAsCurrent)
     {
-        if (saveAsCurrent)
-            _accountManager.CurrentAccount = account;
+        _suppressAccountSelectionTracking = true;
 
-        var hasUnavailableSecrets = _accountManager.HasUnavailableSecrets(account);
-        var currentLoginType      = Model.LoginPage.LoginTypeOption.LoginType;
-
-        Model.LoginPage.IsFastLogin = account.AutoLogin;
-        Model.LoginPage.Area = Model.LoginPage.LoginAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
-        LoginPassword.Password = string.Empty;
-
-        switch (account.AccountType)
+        try
         {
-            case XIVAccountType.Sdo:
-                var nextLoginType = currentLoginType is LoginType.Static or LoginType.Slide
-                    ? currentLoginType
-                    : string.IsNullOrWhiteSpace(account.Password)
-                        ? LoginType.Slide
-                        : LoginType.Static;
+            if (saveAsCurrent)
+                _accountManager.CurrentAccount = account;
 
-                Model.LoginPage.SelectLoginType(nextLoginType);
+            var hasUnavailableSecrets = _accountManager.HasUnavailableSecrets(account);
+            var currentLoginType      = Model.LoginPage.LoginTypeOption.LoginType;
 
-                if (nextLoginType == LoginType.Static && !string.IsNullOrWhiteSpace(account.Password))
-                {
-                    if (!hasUnavailableSecrets)
+            Model.LoginPage.IsFastLogin = account.AutoLogin;
+            Model.LoginPage.Area        = Model.LoginPage.LoginAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
+            LoginPassword.Password      = string.Empty;
+
+            switch (account.AccountType)
+            {
+                case XIVAccountType.Sdo:
+                    var nextLoginType = currentLoginType is LoginType.Static or LoginType.Slide
+                        ? currentLoginType
+                        : string.IsNullOrWhiteSpace(account.Password)
+                            ? LoginType.Slide
+                            : LoginType.Static;
+
+                    Model.LoginPage.SelectLoginType(nextLoginType);
+
+                    if (nextLoginType == LoginType.Static && !string.IsNullOrWhiteSpace(account.Password))
                     {
-                        // Make users happy by not showing their password
-                        LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                        if (!hasUnavailableSecrets)
+                        {
+                            // Make users happy by not showing their password
+                            LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                        }
                     }
-                }
 
-                break;
+                    break;
 
-            case XIVAccountType.WeGame:
-                if (currentLoginType != LoginType.WeGameToken)
-                    Model.LoginPage.SelectLoginType(LoginType.WeGameToken);
+                case XIVAccountType.WeGame:
+                    if (currentLoginType != LoginType.WeGameToken)
+                        Model.LoginPage.SelectLoginType(LoginType.WeGameToken);
 
-                if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.AutoLoginSessionKey))
-                    LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
-                break;
+                    if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.AutoLoginSessionKey))
+                        LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                    break;
 
-            case XIVAccountType.WeGameSID:
-                if (currentLoginType != LoginType.WeGameSID)
-                    Model.LoginPage.SelectLoginType(LoginType.WeGameSID);
+                case XIVAccountType.WeGameSID:
+                    if (currentLoginType != LoginType.WeGameSID)
+                        Model.LoginPage.SelectLoginType(LoginType.WeGameSID);
 
-                Model.LoginPage.IsReadWegameInfo = false;
-                break;
+                    Model.LoginPage.IsReadWegameInfo = false;
+                    break;
+            }
+
+            Model.LoginPage.Username = account.UserName;
         }
-
-        Model.LoginPage.Username = account.UserName;
+        finally
+        {
+            _suppressAccountSelectionTracking = false;
+        }
     }
 
     private void LoginPassword_OnPasswordChanged(object sender, RoutedEventArgs e)
     {
         if (DataContext != null)
             ((MainWindowViewModel)DataContext).LoginPage.Password = ((PasswordBox)sender).Password;
+    }
+
+    private void LoginUsername_OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressAccountSelectionTracking)
+            return;
+
+        _accountManager.ClearCurrentAccount();
+    }
+
+    private void LoginTypeSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressAccountSelectionTracking || e.RemovedItems.Count == 0 || e.AddedItems.Count == 0)
+            return;
+
+        _accountManager.ClearCurrentAccount();
     }
 
     private void ShowCredTypeRecoveryMessage()

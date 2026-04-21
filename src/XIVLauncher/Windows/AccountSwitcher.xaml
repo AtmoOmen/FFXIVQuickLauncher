@@ -62,6 +62,7 @@
                     SelectedItem="{Binding SelectedEntry}">
                     <ListView.ContextMenu>
                         <ContextMenu Language="zh-CN"
+                                     Closed="AccountListViewContextMenu_OnClosed"
                                      Style="{StaticResource MaterialDesignContextMenu}">
                             <ContextMenu.Resources>
                                 <Style TargetType="{x:Type MenuItem}"

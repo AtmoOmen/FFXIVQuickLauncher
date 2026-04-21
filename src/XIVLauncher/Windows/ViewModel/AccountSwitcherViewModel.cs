@@ -44,22 +44,37 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         }
     }
 
-    public bool IsSelectedAccountPasswordNotSaved
+    public AccountSwitcherEntry? ContextEntry
     {
-        get => SelectedEntry != null && !SelectedEntry.Account.AutoLogin;
+        get;
         set
         {
-            if (SelectedEntry == null)
+            if (!SetProperty(ref field, value))
                 return;
 
-            var account = FindTrackedAccount(SelectedEntry.Account);
+            OnPropertyChanged(nameof(IsSelectedAccountPasswordNotSaved));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    public bool IsSelectedAccountPasswordNotSaved
+    {
+        get => ActiveEntry != null && !ActiveEntry.Account.AutoLogin;
+        set
+        {
+            var activeEntry = ActiveEntry;
+            if (activeEntry == null)
+                return;
+
+            var selectedAccountId = SelectedEntry?.Account.Id;
+            var account = FindTrackedAccount(activeEntry.Account);
             account.AutoLogin = !value;
 
             if (value)
                 account.Password = string.Empty;
 
             _accountManager.Save();
-            RefreshEntries(account.Id);
+            RefreshEntries(selectedAccountId);
         }
     }
 
@@ -67,6 +82,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
     private readonly IDialogService        _dialogService;
     private readonly IShortcutService      _shortcutService;
     private readonly Action?               _requestClose;
+    private AccountSwitcherEntry?          ActiveEntry => ContextEntry ?? SelectedEntry;
 
     public AccountSwitcherViewModel(AccountManager accountManager, IDialogService? dialogService = null, IShortcutService? shortcutService = null, Action? requestClose = null)
     {
@@ -75,17 +91,20 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         _shortcutService = shortcutService ?? new ShortcutService();
         _requestClose    = requestClose;
 
-        CreateDesktopShortcutCommand = new SyncCommand(_ => CreateDesktopShortcut(),     () => SelectedEntry != null);
-        RemoveAccountCommand         = new SyncCommand(_ => RemoveSelectedAccount(),     () => SelectedEntry != null);
-        SetProfilePictureCommand     = new SyncCommand(_ => SetSelectedProfilePicture(), () => SelectedEntry != null);
-        SetNoteCommand               = new SyncCommand(_ => SetSelectedNote(),           () => SelectedEntry != null);
-        ConfigureDeviceProfileCommand = new SyncCommand(_ => ConfigureSelectedDeviceProfile(), () => SelectedEntry != null);
+        CreateDesktopShortcutCommand  = new SyncCommand(_ => CreateDesktopShortcut(),       () => ActiveEntry != null);
+        RemoveAccountCommand          = new SyncCommand(_ => RemoveSelectedAccount(),       () => ActiveEntry != null);
+        SetProfilePictureCommand      = new SyncCommand(_ => SetSelectedProfilePicture(),   () => ActiveEntry != null);
+        SetNoteCommand                = new SyncCommand(_ => SetSelectedNote(),             () => ActiveEntry != null);
+        ConfigureDeviceProfileCommand = new SyncCommand(_ => ConfigureSelectedDeviceProfile(), () => ActiveEntry != null);
         RefreshEntries();
     }
 
     public void RefreshEntries(string? selectedAccountId = null)
     {
-        selectedAccountId ??= SelectedEntry?.Account.Id ?? _accountManager.CurrentAccount?.Id;
+        ContextEntry = null;
+        selectedAccountId ??= SelectedEntry?.Account.Id;
+        if (string.IsNullOrWhiteSpace(selectedAccountId) && _accountManager.HasCurrentAccountSelection)
+            selectedAccountId = _accountManager.CurrentAccountId;
 
         Entries.Clear();
 
@@ -105,7 +124,9 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
             Entries.Add(entry);
         }
 
-        SelectedEntry = Entries.FirstOrDefault(entry => entry.Account.Id == selectedAccountId) ?? Entries.FirstOrDefault();
+        SelectedEntry = string.IsNullOrWhiteSpace(selectedAccountId)
+                            ? null
+                            : Entries.FirstOrDefault(entry => entry.Account.Id == selectedAccountId);
     }
 
     public XIVAccount? SelectCurrentAccount() =>
@@ -128,23 +149,24 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     public void CreateDesktopShortcut()
     {
-        if (SelectedEntry == null)
+        var activeEntry = ActiveEntry;
+        if (activeEntry == null)
             return;
 
         try
         {
-            var iconPath     = ResolveShortcutIconPath(SelectedEntry);
+            var iconPath     = ResolveShortcutIconPath(activeEntry);
             var launcherPath = Paths.ResolveExecutablePath();
             var desktop      = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 
             _shortcutService.CreateShortcut
             (
                 desktop,
-                $"XIVLauncherCN - {SelectedEntry.Account.UserName}",
+                $"XIVLauncherCN - {activeEntry.Account.UserName}",
                 launcherPath,
-                $"使用“{SelectedEntry.Account.UserName}”账号启动 XIVLauncher。",
+                $"使用“{activeEntry.Account.UserName}”账号启动 XIVLauncher。",
                 iconPath,
-                $"--account={SelectedEntry.Account.Id}"
+                $"--account={activeEntry.Account.Id}"
             );
         }
         catch (Exception ex)
@@ -161,17 +183,18 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     public void RemoveSelectedAccount()
     {
-        if (SelectedEntry == null)
+        var activeEntry = ActiveEntry;
+        if (activeEntry == null)
             return;
 
-        var accountId = SelectedEntry.Account.Id;
-        _accountManager.RemoveAccount(SelectedEntry.Account);
-        RefreshEntries(accountId);
+        var selectedAccountId = SelectedEntry?.Account.Id;
+        _accountManager.RemoveAccount(activeEntry.Account);
+        RefreshEntries(selectedAccountId == activeEntry.Account.Id ? null : selectedAccountId);
     }
 
     public void SetSelectedProfilePicture()
     {
-        var selectedEntry = SelectedEntry;
+        var selectedEntry = ActiveEntry;
         if (selectedEntry == null)
             return;
 
@@ -189,12 +212,12 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
         _accountManager.Save();
 
-        RefreshEntries(account.Id);
+        RefreshEntries(SelectedEntry?.Account.Id);
     }
 
     public void SetSelectedNote()
     {
-        var selectedEntry = SelectedEntry;
+        var selectedEntry = ActiveEntry;
         if (selectedEntry == null)
             return;
 
@@ -214,12 +237,12 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         account.UserDefinedName = string.IsNullOrWhiteSpace(note) ? null! : note;
         _accountManager.Save();
 
-        RefreshEntries(account.Id);
+        RefreshEntries(SelectedEntry?.Account.Id);
     }
 
     public void ConfigureSelectedDeviceProfile()
     {
-        var selectedEntry = SelectedEntry;
+        var selectedEntry = ActiveEntry;
         if (selectedEntry == null)
             return;
 
@@ -227,7 +250,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         _requestClose?.Invoke();
         var changed = _dialogService.ShowAccountDeviceProfileSettings(account, _accountManager);
         if (changed)
-            RefreshEntries(account.Id);
+            RefreshEntries(SelectedEntry?.Account.Id);
     }
 
     private static Bitmap BitmapSourceToBitmap(BitmapSource bitmapSource)

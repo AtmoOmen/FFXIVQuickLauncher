@@ -41,6 +41,10 @@ public class AccountManager
 
     public CredType CurrentCredType { get; private set; } = DEFAULT_CRED_TYPE;
 
+    public string CurrentAccountId => _setting.CurrentAccountId;
+
+    public bool HasCurrentAccountSelection => !string.IsNullOrWhiteSpace(_setting.CurrentAccountId);
+
     public bool HasUnavailableSavedSecrets => unavailableSavedSecretAccountIds.Count != 0;
 
     private static readonly string                DeviceProfilePresetStorePath        = Path.Combine(Paths.RoamingPath, "deviceProfilePresets.json");
@@ -563,6 +567,9 @@ public class AccountManager
             );
         }
     }
+
+    public void ClearCurrentAccount() =>
+        _setting.CurrentAccountId = string.Empty;
 
     public static string GetCredTypeDisplayName(CredType type) =>
         type switch

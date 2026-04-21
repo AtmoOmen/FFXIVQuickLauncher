@@ -374,12 +374,13 @@
                                             <Grid Margin="20,0,20,0" VerticalAlignment="Center">
                                                 <StackPanel>
                                                     <!--  Login Type & Area  -->
-                                                    <ComboBox x:Name="LoginTypeSelection"
-                                                              materialDesign:HintAssist.Hint="登录方式"
-                                                              materialDesign:HintAssist.IsFloating="False"
-                                                              SelectedItem="{Binding LoginPage.LoginTypeOption}"
-                                                              SelectedValuePath="LoginType"
-                                                              Margin="0,0,0,6">
+                                                      <ComboBox x:Name="LoginTypeSelection"
+                                                                materialDesign:HintAssist.Hint="登录方式"
+                                                                materialDesign:HintAssist.IsFloating="False"
+                                                                SelectionChanged="LoginTypeSelection_OnSelectionChanged"
+                                                               SelectedItem="{Binding LoginPage.LoginTypeOption}"
+                                                                SelectedValuePath="LoginType"
+                                                                Margin="0,0,0,6">
                                                         <ComboBox.Resources>
                                                             <CollectionViewSource x:Key="LoginTypeOptionsView"
                                                                                   Source="{Binding LoginPage.LoginTypeOptions}">
@@ -542,10 +543,11 @@
                                                     </ListBox>
 
                                                     <!--  Credentials  -->
-                                                    <TextBox x:Name="LoginUsername"
-                                                             materialDesign:HintAssist.Hint="{Binding LoginPage.UsernameHint}"
-                                                             materialDesign:HintAssist.IsFloating="False"
-                                                             ToolTipService.ShowOnDisabled="True"
+                                                      <TextBox x:Name="LoginUsername"
+                                                               materialDesign:HintAssist.Hint="{Binding LoginPage.UsernameHint}"
+                                                               materialDesign:HintAssist.IsFloating="False"
+                                                               TextChanged="LoginUsername_OnTextChanged"
+                                                               ToolTipService.ShowOnDisabled="True"
                                                              TextWrapping="Wrap"
                                                              Text="{Binding LoginPage.Username, UpdateSourceTrigger=PropertyChanged}"
                                                              ToolTip="{Binding LoginPage.UsernameToolTip}"
