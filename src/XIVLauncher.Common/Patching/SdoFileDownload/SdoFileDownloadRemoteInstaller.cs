@@ -84,10 +84,25 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 
     public async Task ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity, TimeSpan progressReportInterval = default)
     {
-        var writer = GetRequestCreator(WorkerInboundOpcode.Construct);
-        WriteIntegrityCheckResult(writer, remoteIntegrity);
-        writer.Write(progressReportInterval.TotalMilliseconds > 0 ? (int)progressReportInterval.TotalMilliseconds : 250);
-        await WaitForResult(writer);
+        for (var attempt = 0; ; attempt++)
+        {
+            var writer = GetRequestCreator(WorkerInboundOpcode.Construct);
+            WriteIntegrityCheckResult(writer, remoteIntegrity);
+            writer.Write(progressReportInterval.TotalMilliseconds > 0 ? (int)progressReportInterval.TotalMilliseconds : 250);
+
+            try
+            {
+                await WaitForResult(writer, timeoutMs: 60000);
+                return;
+            }
+            catch (Exception ex) when (attempt < 1 && ex is TimeoutException or IOException)
+            {
+                if (workerProcess is { HasExited: true })
+                    throw;
+
+                await Task.Delay(500).ConfigureAwait(false);
+            }
+        }
     }
 
     public async Task VerifyFiles(string gameRootPath, bool refine = false, int concurrentCount = 8, CancellationToken cancellationToken = default)
@@ -253,6 +268,23 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 
         if (isDisposed)
             throw new OperationCanceledException();
+
+        var logPath = Path.Combine(XIVLauncher.Common.Constant.Paths.RoamingPath, "patcher.log");
+        if (!response.Success)
+        {
+            if (workerProcess is { HasExited: true } exitedWorkerProcess)
+                throw new IOException($"远端修复进程在响应前退出，退出码 {exitedWorkerProcess.ExitCode}，可查看日志: {logPath}");
+
+            throw new TimeoutException($"远端修复进程未在 {timeoutMs} ms 内返回有效响应，可查看日志: {logPath}");
+        }
+
+        if (response.Data is null || response.Data.Length < sizeof(int))
+        {
+            if (workerProcess is { HasExited: true } exitedWorkerProcess)
+                throw new IOException($"远端修复进程返回空响应后退出，退出码 {exitedWorkerProcess.ExitCode}，可查看日志: {logPath}");
+
+            throw new IOException($"远端修复进程返回了空响应，可查看日志: {logPath}");
+        }
 
         var reader = new BinaryReader(new MemoryStream(response.Data));
 

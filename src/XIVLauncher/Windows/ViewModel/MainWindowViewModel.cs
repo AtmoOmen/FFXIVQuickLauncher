@@ -1263,10 +1263,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     #region 注入
 
-    public void StartInject()
-    {
+    public void StartInject() =>
         StartInject(SelectedProcess, false);
-    }
 
     private void StartInject(FFXIVProcess? targetProcess, bool isAutoInjection)
     {
@@ -1435,10 +1433,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        var candidate = FFXIVProcesses.FirstOrDefault
-        (
-            process => !process.HasInjected && !AutoInjectAttemptedProcessIds.Contains(process.ProcessID)
-        );
+        var candidate = FFXIVProcesses.FirstOrDefault(process => !process.HasInjected && !AutoInjectAttemptedProcessIds.Contains(process.ProcessID));
 
         if (candidate == null)
         {

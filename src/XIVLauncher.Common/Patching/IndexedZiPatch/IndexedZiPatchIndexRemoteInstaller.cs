@@ -314,6 +314,23 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
         if (isDisposed)
             throw new OperationCanceledException();
 
+        var logPath = Path.Combine(XIVLauncher.Common.Constant.Paths.RoamingPath, "patcher.log");
+        if (!response.Success)
+        {
+            if (workerProcess is { HasExited: true } exitedWorkerProcess)
+                throw new IOException($"远端补丁索引进程在响应前退出，退出码 {exitedWorkerProcess.ExitCode}，可查看日志: {logPath}");
+
+            throw new TimeoutException($"远端补丁索引进程未在 {timeoutMs} ms 内返回有效响应，可查看日志: {logPath}");
+        }
+
+        if (response.Data is null || response.Data.Length < sizeof(int))
+        {
+            if (workerProcess is { HasExited: true } exitedWorkerProcess)
+                throw new IOException($"远端补丁索引进程返回空响应后退出，退出码 {exitedWorkerProcess.ExitCode}，可查看日志: {logPath}");
+
+            throw new IOException($"远端补丁索引进程返回了空响应，可查看日志: {logPath}");
+        }
+
         var reader = new BinaryReader(new MemoryStream(response.Data));
 
         try

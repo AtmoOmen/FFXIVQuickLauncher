@@ -51,7 +51,6 @@ public class CheckIntegrityCommand
 
     static CheckIntegrityCommand()
     {
-        Command.Aliases.Add("check-integrity");
         Command.Arguments.Add(GameRootPathArgument);
         Command.Options.Add(IntegrityFilePathOption);
         Command.Options.Add(IndexOnlyOption);
