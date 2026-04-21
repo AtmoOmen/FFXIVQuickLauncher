@@ -21,17 +21,17 @@ public static class Program
                      .CreateLogger();
 
         var rc = new RootCommand();
-        rc.Subcommands.Add(CheckIntegrityCommand.Command);
-        rc.Subcommands.Add(InstallCommand.Command);
-        rc.Subcommands.Add(IndexCreateCommand.Command);
-        rc.Subcommands.Add(IndexCreateIntegrityCommand.Command);
-        rc.Subcommands.Add(IndexVerifyCommand.Command);
-        rc.Subcommands.Add(IndexRepairCommand.Command);
-        rc.Subcommands.Add(IndexUpdateCommand.Command);
-        rc.Subcommands.Add(IndexRpcCommand.Command);
-        rc.Subcommands.Add(IndexRpcTestCommand.Command);
-        rc.Subcommands.Add(RpcCommand.Command);
-        rc.Subcommands.Add(SdoRpcCommand.Command);
+        rc.Subcommands.Add(CheckIntegrityCommand.COMMAND);
+        rc.Subcommands.Add(InstallCommand.COMMAND);
+        rc.Subcommands.Add(IndexCreateCommand.COMMAND);
+        rc.Subcommands.Add(IndexCreateIntegrityCommand.COMMAND);
+        rc.Subcommands.Add(IndexVerifyCommand.COMMAND);
+        rc.Subcommands.Add(IndexRepairCommand.COMMAND);
+        rc.Subcommands.Add(IndexUpdateCommand.COMMAND);
+        rc.Subcommands.Add(IndexRpcCommand.COMMAND);
+        rc.Subcommands.Add(IndexRpcTestCommand.COMMAND);
+        rc.Subcommands.Add(RpcCommand.COMMAND);
+        rc.Subcommands.Add(SdoRpcCommand.COMMAND);
 
         var ret = -1;
 

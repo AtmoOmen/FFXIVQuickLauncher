@@ -1,15 +1,15 @@
 using System;
 using System.CommandLine;
 using System.CommandLine.Parsing;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
+using XIVLauncher.PatchInstaller.Utilities;
 
 namespace XIVLauncher.PatchInstaller.Commands;
 
 public class IndexRepairCommand
 {
-    public static readonly Command Command = new("index-repair", "Repair a game installation.");
+    public static readonly Command COMMAND = new("index-repair", "Repair a game installation.");
 
     private static readonly Argument<string> PatchIndexFileArgument = new("patch-index-file")
     {
@@ -39,11 +39,11 @@ public class IndexRepairCommand
 
     static IndexRepairCommand()
     {
-        Command.Arguments.Add(PatchIndexFileArgument);
-        Command.Arguments.Add(GameRootPathArgument);
-        Command.Arguments.Add(PatchRootPathArgument);
-        Command.Options.Add(ThreadCountOption);
-        Command.SetAction(parseResult => new IndexRepairCommand(parseResult).Handle());
+        COMMAND.Arguments.Add(PatchIndexFileArgument);
+        COMMAND.Arguments.Add(GameRootPathArgument);
+        COMMAND.Arguments.Add(PatchRootPathArgument);
+        COMMAND.Options.Add(ThreadCountOption);
+        COMMAND.SetAction(parseResult => new IndexRepairCommand(parseResult).Handle());
     }
 
     private IndexRepairCommand(ParseResult parseResult)
@@ -51,12 +51,7 @@ public class IndexRepairCommand
         patchIndexFile = parseResult.GetValue(PatchIndexFileArgument)!;
         gameRootPath   = parseResult.GetValue(GameRootPathArgument)!;
         patchRootPath  = parseResult.GetValue(PatchRootPathArgument)!;
-        threadCount    = parseResult.GetValue(ThreadCountOption) ?? Math.Min(Environment.ProcessorCount, 8);
-        if (threadCount < 0)
-            throw new ArgumentOutOfRangeException(nameof(threadCount), "Must be 0 or more");
-        if (threadCount == 0)
-            threadCount = Environment.ProcessorCount;
-        Debug.Assert(threadCount > 0);
+        threadCount    = ThreadCountResolver.Resolve(parseResult.GetValue(ThreadCountOption));
     }
 
     private async Task<int> Handle()

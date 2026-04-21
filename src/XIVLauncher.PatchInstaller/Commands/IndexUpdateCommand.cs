@@ -21,12 +21,13 @@ using XIVLauncher.Common.Patching.IndexedZiPatch;
 using XIVLauncher.Common.Patching.ZiPatch;
 using XIVLauncher.Common.Patching.ZiPatch.Util;
 using XIVLauncher.Common.PlatformAbstractions;
+using XIVLauncher.PatchInstaller.Utilities;
 
 namespace XIVLauncher.PatchInstaller.Commands;
 
 public class IndexUpdateCommand
 {
-    public static readonly Command Command = new("index-update", "Update patch index files from internet.");
+    public static readonly Command COMMAND = new("index-update", "Update patch index files from internet.");
 
     private static readonly Option<string?> PatchRootPathOption = new("--patch-root-path")
     {
@@ -49,9 +50,6 @@ public class IndexUpdateCommand
     };
 
     private readonly TempSettings settings;
-    private readonly string?      username;
-    private readonly string?      password;
-    private readonly string?      otp;
     private readonly bool         noVerifyOldPatchHash;
     private readonly bool         noVerifyNewPatchHash;
 
@@ -66,13 +64,13 @@ public class IndexUpdateCommand
 
     static IndexUpdateCommand()
     {
-        Command.Options.Add(PatchRootPathOption);
+        COMMAND.Options.Add(PatchRootPathOption);
         //Command.AddOption(UserNameOption);
         //Command.AddOption(PasswordOption);
         //Command.AddOption(OtpOption);
-        Command.Options.Add(NoVerifyOldPatchHashOption);
-        Command.Options.Add(NoVerifyNewPatchHashOption);
-        Command.SetAction((parseResult, cancellationToken) => new IndexUpdateCommand(parseResult).Handle(cancellationToken));
+        COMMAND.Options.Add(NoVerifyOldPatchHashOption);
+        COMMAND.Options.Add(NoVerifyNewPatchHashOption);
+        COMMAND.SetAction((parseResult, cancellationToken) => new IndexUpdateCommand(parseResult).Handle(cancellationToken));
     }
 
     private IndexUpdateCommand(ParseResult parseResult)
@@ -85,9 +83,6 @@ public class IndexUpdateCommand
                 ?? Path.Combine(Path.GetTempPath(), "XIVLauncher.PatchInstaller")
             )
         );
-        //this.username = parseResult.GetValueForOption(UserNameOption);
-        //this.password = parseResult.GetValueForOption(PasswordOption);
-        //this.otp = parseResult.GetValueForOption(OtpOption);
         noVerifyOldPatchHash = parseResult.GetValue(NoVerifyOldPatchHashOption);
         noVerifyNewPatchHash = parseResult.GetValue(NoVerifyNewPatchHashOption);
     }
@@ -129,48 +124,25 @@ public class IndexUpdateCommand
         }
     }
 
-    private static bool TryReadPatchListEntries(FileInfo path, out PatchListEntry[] entries)
-    {
-        entries = null!;
-        if (!path.Exists)
-            return false;
-
-        try
-        {
-            if (JsonConvert.DeserializeObject<PatchListEntry[]>(File.ReadAllText(path.FullName)) is { } r)
-            {
-                Log.Information($"Using cached file file: {path}");
-                entries = r;
-                return true;
-            }
-        }
-        catch (Exception e)
-        {
-            Log.Information(e, $"Ignoring file: {path}");
-        }
-
-        return false;
-    }
-
     private static string EnsureRelativePath(string path)
     {
         while (true)
         {
-            if (path.StartsWith("/", StringComparison.Ordinal) || path.StartsWith("\\", StringComparison.Ordinal))
+            if (path.StartsWith('/') || path.StartsWith('\\'))
             {
-                path = path.Substring(1);
+                path = path[1..];
                 continue;
             }
 
             if (path.StartsWith("./", StringComparison.Ordinal) || path.StartsWith(".\\", StringComparison.Ordinal))
             {
-                path = path.Substring(2);
+                path = path[2..];
                 continue;
             }
 
             if (path.StartsWith("../", StringComparison.Ordinal) || path.StartsWith("..\\", StringComparison.Ordinal))
             {
-                path = path.Substring(3);
+                path = path[3..];
                 continue;
             }
 
@@ -202,10 +174,10 @@ public class IndexUpdateCommand
 
         // 随机挑选一个服务器，别被抠抠搜搜的盛趣发现了 :(
         var areas = await LoginArea.Get();
-        var area  = areas[new Random().Next(areas.Length)];
+        var area  = areas[Random.Shared.Next(areas.Length)];
 
         var lr = await la.UpdateClient.CheckLegacy(area, settings.GamePath, false);
-        gamePatchList = lr.PendingPatches;
+        gamePatchList = lr.PendingPatches ?? throw new InvalidDataException("Failed to get CN patch list.");
         File.WriteAllText(gamePatchListFile.FullName, JsonConvert.SerializeObject(gamePatchList, Formatting.Indented));
 
         var indexSources = gamePatchList.GroupBy

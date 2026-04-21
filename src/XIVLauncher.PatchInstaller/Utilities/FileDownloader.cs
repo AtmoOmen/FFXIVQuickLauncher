@@ -13,7 +13,7 @@ using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Game.Exceptions;
 
-namespace XIVLauncher.PatchInstaller.Commands;
+namespace XIVLauncher.PatchInstaller.Utilities;
 
 public class FileDownloader
 {

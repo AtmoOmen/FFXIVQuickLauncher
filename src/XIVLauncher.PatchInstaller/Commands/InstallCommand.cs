@@ -2,16 +2,15 @@ using System;
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
-using Serilog;
 using XIVLauncher.Common.Patching;
+using XIVLauncher.PatchInstaller.Utilities;
 
 namespace XIVLauncher.PatchInstaller.Commands;
 
 public class InstallCommand
 {
-    public static readonly Command Command = new("install", "Install the given patch files in the specified order.");
+    public static readonly Command COMMAND = new("install", "Install the given patch files in the specified order.");
 
     private static readonly Argument<string> GameRootPathArgument = new("game-root")
     {
@@ -29,29 +28,16 @@ public class InstallCommand
 
     static InstallCommand()
     {
-        Command.Arguments.Add(GameRootPathArgument);
-        Command.Arguments.Add(PatchFilesArgument);
-        Command.SetAction(parseResult => new InstallCommand(parseResult).Handle());
+        COMMAND.Arguments.Add(GameRootPathArgument);
+        COMMAND.Arguments.Add(PatchFilesArgument);
+        COMMAND.SetAction(parseResult => new InstallCommand(parseResult).Handle());
     }
 
     private InstallCommand(ParseResult parseResult)
     {
         gameRootPath = parseResult.GetValue(GameRootPathArgument)!;
         patchFiles   = parseResult.GetValue(PatchFilesArgument)!;
-
-        // Do we have a .patch as the first argument?
-        if (File.Exists(gameRootPath) && gameRootPath.EndsWith(".patch", StringComparison.OrdinalIgnoreCase))
-        {
-            var lastArg = patchFiles[patchFiles.Length - 1];
-
-            // Do we have a folder as the last argument?
-            if (Directory.Exists(lastArg) || lastArg.EndsWith("/", StringComparison.Ordinal) || lastArg.EndsWith("\\", StringComparison.Ordinal))
-            {
-                Log.Information("Taking the first argument as the first patch file, and the last argument as the target directory.");
-                patchFiles   = new[] { gameRootPath }.Concat(patchFiles.Take(patchFiles.Length - 1)).ToArray();
-                gameRootPath = lastArg;
-            }
-        }
+        (gameRootPath, patchFiles) = CommandPathArgumentNormalizer.Normalize(gameRootPath, patchFiles, ".patch");
     }
 
     private Task<int> Handle()

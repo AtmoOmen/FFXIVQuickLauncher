@@ -12,7 +12,7 @@ namespace XIVLauncher.PatchInstaller.Commands;
 
 public class IndexRpcCommand
 {
-    public static readonly Command Command = new("index-rpc") { Hidden = true };
+    public static readonly Command COMMAND = new("index-rpc") { Hidden = true };
 
     private static readonly Argument<int> MonitorProcessIDArgument = new("process-id");
 
@@ -23,9 +23,9 @@ public class IndexRpcCommand
 
     static IndexRpcCommand()
     {
-        Command.Arguments.Add(MonitorProcessIDArgument);
-        Command.Arguments.Add(ChannelNameArgument);
-        Command.SetAction(parseResult => new IndexRpcCommand(parseResult).Handle());
+        COMMAND.Arguments.Add(MonitorProcessIDArgument);
+        COMMAND.Arguments.Add(ChannelNameArgument);
+        COMMAND.SetAction(parseResult => new IndexRpcCommand(parseResult).Handle());
     }
 
     private IndexRpcCommand(ParseResult parseResult)

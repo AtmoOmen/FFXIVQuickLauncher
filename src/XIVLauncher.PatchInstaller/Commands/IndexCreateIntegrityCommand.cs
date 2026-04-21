@@ -3,7 +3,6 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Parsing;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -17,12 +16,13 @@ using Serilog;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
+using XIVLauncher.PatchInstaller.Utilities;
 
 namespace XIVLauncher.PatchInstaller.Commands;
 
 public class IndexCreateIntegrityCommand
 {
-    public static readonly Command Command = new("index-create-integrity", "Create integrity check data for a game installation.");
+    public static readonly Command COMMAND = new("index-create-integrity", "Create integrity check data for a game installation.");
 
     private static readonly Argument<string> PatchRootPathArgument = new("patch-root-path")
     {
@@ -47,22 +47,17 @@ public class IndexCreateIntegrityCommand
 
     static IndexCreateIntegrityCommand()
     {
-        Command.Arguments.Add(PatchRootPathArgument);
-        Command.Arguments.Add(PatchIndexFilesArgument);
-        Command.Options.Add(ThreadCountOption);
-        Command.SetAction((parseResult, cancellationToken) => new IndexCreateIntegrityCommand(parseResult).Handle(cancellationToken));
+        COMMAND.Arguments.Add(PatchRootPathArgument);
+        COMMAND.Arguments.Add(PatchIndexFilesArgument);
+        COMMAND.Options.Add(ThreadCountOption);
+        COMMAND.SetAction((parseResult, cancellationToken) => new IndexCreateIntegrityCommand(parseResult).Handle(cancellationToken));
     }
 
     private IndexCreateIntegrityCommand(ParseResult parseResult)
     {
         patchRootPath   = parseResult.GetValue(PatchRootPathArgument)!;
         patchIndexFiles = parseResult.GetValue(PatchIndexFilesArgument)!;
-        threadCount     = parseResult.GetValue(ThreadCountOption) ?? Math.Min(Environment.ProcessorCount, 8);
-        if (threadCount < 0)
-            throw new ArgumentOutOfRangeException(nameof(threadCount), "Must be 0 or more");
-        if (threadCount == 0)
-            threadCount = Environment.ProcessorCount;
-        Debug.Assert(threadCount > 0);
+        threadCount     = ThreadCountResolver.Resolve(parseResult.GetValue(ThreadCountOption));
     }
 
     private async Task<int> Handle(CancellationToken cancellationToken)
@@ -200,7 +195,7 @@ public class IndexCreateIntegrityCommand
 
         sha1.Initialize();
         sha1.TransformFinalBlock(bytes, offset, length);
-        return string.Join(" ", sha1.Hash.Select(x => x.ToString("X2")));
+        return Sha1HashFormatter.Format(sha1.Hash);
     }
 
     private async Task<string> HashFromStream(Stream stream, CancellationToken cancellationToken)
@@ -228,7 +223,7 @@ public class IndexCreateIntegrityCommand
 
             sha1.TransformFinalBlock([], 0, 0);
 
-            return string.Join(" ", sha1.Hash.Select(x => x.ToString("X2")));
+            return Sha1HashFormatter.Format(sha1.Hash);
         }
         finally
         {

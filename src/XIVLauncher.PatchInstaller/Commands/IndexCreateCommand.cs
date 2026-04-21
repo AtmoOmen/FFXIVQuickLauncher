@@ -7,7 +7,7 @@ namespace XIVLauncher.PatchInstaller.Commands;
 
 public class IndexCreateCommand
 {
-    public static readonly Command Command = new("index-create", "Create patch index files according to a patch chain specified from arguments.");
+    public static readonly Command COMMAND = new("index-create", "Create patch index files according to a patch chain specified from arguments.");
 
     private static readonly Argument<int> ExpacVersionArgument = new("expac-version")
     {
@@ -25,9 +25,9 @@ public class IndexCreateCommand
 
     static IndexCreateCommand()
     {
-        Command.Arguments.Add(ExpacVersionArgument);
-        Command.Arguments.Add(PatchFilesArgument);
-        Command.SetAction(parseResult => new IndexCreateCommand(parseResult).Handle());
+        COMMAND.Arguments.Add(ExpacVersionArgument);
+        COMMAND.Arguments.Add(PatchFilesArgument);
+        COMMAND.SetAction(parseResult => new IndexCreateCommand(parseResult).Handle());
     }
 
     private IndexCreateCommand(ParseResult parseResult)
