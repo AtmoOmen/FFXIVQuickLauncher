@@ -116,7 +116,7 @@ internal class CustomMessageBoxViewModel : ViewModelBase
         DiscordVisibility             = builder.ShowDiscordLink ? Visibility.Visible : Visibility.Collapsed;
         IntegrityReportVisibility     = builder.ShowIntegrityReportLinks ? Visibility.Visible : Visibility.Collapsed;
         NewGitHubIssueVisibility      = builder.ShowNewGitHubIssue ? Visibility.Visible : Visibility.Collapsed;
-        PackTroubleshootingVisibility = builder.ShowHelpLinks ? Visibility.Visible : Visibility.Collapsed;
+        PackTroubleshootingVisibility = builder.ShowTroubleshootingPackButton ? Visibility.Visible : Visibility.Collapsed;
 
         switch (builder.Image)
         {

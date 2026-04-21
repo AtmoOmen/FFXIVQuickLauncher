@@ -40,7 +40,9 @@ public partial class CustomMessageBox : Window
 
         InitializeComponent();
 
-        DataContext = new CustomMessageBoxViewModel();
+        var viewModel = new CustomMessageBoxViewModel();
+        viewModel.ApplyBuilder(builder);
+        DataContext = viewModel;
 
         ViewModel.CopyMessageTextCommand = new SyncCommand(p => Clipboard.SetText(_builder.Text));
 
@@ -366,7 +368,7 @@ public partial class CustomMessageBox : Window
         Process.Start(new ProcessStartInfo(Links.REPO_URL) { UseShellExecute = true });
 
     private void PackTroubleshooting_OnClick(object sender, RoutedEventArgs e) =>
-        PackGenerator.PackAndShowMessage();
+        PackGenerator.PackAndShowMessage(this);
 
     public enum ExitOnCloseModes
     {
@@ -394,6 +396,7 @@ public partial class CustomMessageBox : Window
         internal bool             ShowIntegrityReportLinks;
         internal bool             ShowOfficialLauncher;
         internal bool             ShowNewGitHubIssue;
+        internal bool             ShowTroubleshootingPackButton;
         internal Window           ParentWindow;
         internal bool             OverrideTopMostFromParentWindow = true;
         internal float            YesCountDownSeconds;
@@ -410,6 +413,7 @@ public partial class CustomMessageBox : Window
                           .WithImage(MessageBoxImage.Error)
                           .WithShowHelpLinks()
                           .WithShowDiscordLink()
+                          .WithShowTroubleshootingPackButton()
                           .WithShowNewGitHubIssue()
                           .WithAppendDescription(exc.ToString())
                           .WithAppendSettingsDescription(context);
@@ -565,6 +569,12 @@ public partial class CustomMessageBox : Window
         public Builder WithShowNewGitHubIssue(bool showNewGitHubIssue = true)
         {
             ShowNewGitHubIssue = showNewGitHubIssue;
+            return this;
+        }
+
+        public Builder WithShowTroubleshootingPackButton(bool showTroubleshootingPackButton = true)
+        {
+            ShowTroubleshootingPackButton = showTroubleshootingPackButton;
             return this;
         }
 

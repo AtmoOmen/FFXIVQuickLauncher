@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -153,7 +152,7 @@ public partial class SettingsControl
             }
 
             case MessageBoxResult.No:
-                PackGenerator.PackAndShowMessage();
+                PackGenerator.PackAndShowMessage(Window.GetWindow(this));
                 break;
 
             case MessageBoxResult.Cancel:
@@ -163,7 +162,7 @@ public partial class SettingsControl
         if (_hasTriggeredLogo)
             return;
 
-        Process.Start("explorer.exe", $"/select, \"{PackGenerator.SavePack()}\"");
+        PackGenerator.OpenPackLocation(PackGenerator.SavePack());
         _hasTriggeredLogo = true;
 #endif
     }

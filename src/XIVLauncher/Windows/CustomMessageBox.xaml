@@ -90,7 +90,8 @@
                 </StackPanel>
             </Button>
             <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
-                    x:Name="PackTroubleshooting" Margin="5,0,0,0" Click="PackTroubleshooting_OnClick">
+                    x:Name="PackTroubleshooting" Margin="5,0,0,0" Click="PackTroubleshooting_OnClick"
+                    Visibility="{Binding PackTroubleshootingVisibility}">
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="Bug" />
                     <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="打包日志" />
