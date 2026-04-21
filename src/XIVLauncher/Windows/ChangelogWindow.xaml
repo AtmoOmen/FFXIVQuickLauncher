@@ -16,7 +16,6 @@
     SizeToContent="WidthAndHeight"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     Background="{DynamicResource MaterialDesignPaper}"
-    TextElement.FontWeight="Bold"
     Topmost="True">
     <StackPanel>
         <StackPanel>

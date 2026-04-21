@@ -10,7 +10,6 @@
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         Background="{DynamicResource MaterialDesignPaper}"
-        TextElement.FontWeight="Bold"
         d:DataContext="{d:DesignInstance viewModel:AdvancedSettingsViewModel}">
     <Grid>
         <StackPanel Orientation="Vertical" Margin="10,20,0,50">

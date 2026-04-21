@@ -12,7 +12,6 @@
         Icon="pack://application:,,,/Resources/dalamud_icon.ico"
         ResizeMode="NoResize"
         SizeToContent="Height"
-        TextElement.FontWeight="Bold"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         WindowStartupLocation="CenterOwner"
         mc:Ignorable="d">

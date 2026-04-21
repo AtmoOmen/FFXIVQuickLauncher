@@ -15,12 +15,11 @@
     Title="XIVLauncherCN (Soil)"
     Width="700"
     Height="420"
-    UseLayoutRounding="True"
     ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     Background="{DynamicResource MaterialDesignPaper}"
-    TextElement.FontWeight="Bold" Closing="MainWindow_OnClosing"
+    Closing="MainWindow_OnClosing"
     d:DataContext="{d:DesignInstance viewModel:MainWindowViewModel}">
 
     <Window.Resources>
@@ -37,7 +36,7 @@
                BasedOn="{StaticResource MaterialDesignSeparator}" />
     </Window.Resources>
 
-    <Grid SnapsToDevicePixels="True" ClipToBounds="True">
+    <Grid>
         <materialDesign:Transitioner SelectedIndex="1">
             <materialDesign:TransitionerSlide>
                 <materialDesign:TransitionerSlide.ForwardWipe>
@@ -147,8 +146,7 @@
                                             <Border
                                                 Background="{TemplateBinding Background}"
                                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                                Padding="{TemplateBinding Padding}"
-                                                SnapsToDevicePixels="True">
+                                                Padding="{TemplateBinding Padding}">
                                                 <ScrollViewer
                                                     Focusable="False"
                                                     CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
@@ -239,8 +237,6 @@
                                 Margin="8 0 0 4"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Stretch"
-                                SnapsToDevicePixels="True"
-                                ClipToBounds="True"
                                 KeyDown="Card_KeyDown">
                                 <Grid>
                                     <Grid.RowDefinitions>
@@ -428,7 +424,6 @@
                                                                                     </Trigger.ExitActions>
                                                                                     <Setter TargetName="Bg" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}" />
                                                                                     <Setter TargetName="Txt" Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}" />
-                                                                                    <Setter TargetName="Txt" Property="FontWeight" Value="Bold" />
                                                                                 </Trigger>
                                                                                 <MultiTrigger>
                                                                                     <MultiTrigger.Conditions>
@@ -573,7 +568,6 @@
                                                            Text="扫码登录" 
                                                            HorizontalAlignment="Center" 
                                                            FontSize="16" 
-                                                           FontWeight="Bold" 
                                                            Margin="0,0,0,8" />
                                                 <TextBlock Grid.Row="1"
                                                            Text="请打开手机叨鱼应用程序扫码登录" 
@@ -627,7 +621,6 @@
                                                                            Text="点击刷新"
                                                                            Foreground="White"
                                                                            FontSize="12"
-                                                                           FontWeight="SemiBold"
                                                                            Margin="0,4,0,0"
                                                                            Opacity="0.9"
                                                                            HorizontalAlignment="Center" />

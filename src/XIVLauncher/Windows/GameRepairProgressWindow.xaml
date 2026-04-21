@@ -8,7 +8,6 @@
         Title="Integrity check progress" WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        TextElement.FontWeight="Bold"
 
         AllowsTransparency="True"
         Background="Transparent"

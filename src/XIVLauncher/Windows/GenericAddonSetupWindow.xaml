@@ -12,7 +12,6 @@
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         Background="{DynamicResource MaterialDesignPaper}"
-        TextElement.FontWeight="Bold"
         d:DataContext="{d:DesignInstance viewModel:GenericAddonSetupWindowViewModel}">
     <Grid Margin="10,10,10,10">
         <Grid.RowDefinitions>

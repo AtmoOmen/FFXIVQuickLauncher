@@ -9,7 +9,6 @@
         Title="XIVLauncher Update" WindowStartupLocation="Manual" Left="0" Top="0"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        TextElement.FontWeight="Bold"
         AllowsTransparency="True"
         Background="Transparent" ShowInTaskbar="False"
         Topmost="True"
