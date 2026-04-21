@@ -96,7 +96,14 @@ public sealed class LoginPageViewModel : ViewModelBase
     public bool IsReadWegameInfo
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            if (loginTypeOption.LoginType == LoginType.WeGameSID)
+                ApplyWeGameSidMode();
+        }
     }
 
     public string Username
@@ -116,10 +123,14 @@ public sealed class LoginPageViewModel : ViewModelBase
         get => loginTypeOption;
         set
         {
+            var previousGroup = loginTypeOption?.Group;
+
             if (!SetProperty(ref loginTypeOption, value))
                 return;
 
             App.Settings.SelectedLoginType = value.LoginType;
+            if (previousGroup.HasValue && previousGroup.Value != value.Group)
+                Username = string.Empty;
             Password                       = string.Empty;
             ApplyLoginType(value.LoginType);
         }
@@ -180,6 +191,12 @@ public sealed class LoginPageViewModel : ViewModelBase
         private set => SetProperty(ref field, value);
     } = true;
 
+    public bool IsUsernameEnabled
+    {
+        get;
+        private set => SetProperty(ref field, value);
+    } = true;
+
     public bool IsPasswordVisible
     {
         get;
@@ -210,11 +227,29 @@ public sealed class LoginPageViewModel : ViewModelBase
         private set => SetProperty(ref field, value);
     } = "盛趣账号";
 
+    public string UsernameToolTip
+    {
+        get;
+        private set => SetProperty(ref field, value);
+    } = "输入盛趣账号";
+
     public string PasswordHint
     {
         get;
         private set => SetProperty(ref field, value);
     } = "密码";
+
+    public string ReadWeGameInfoText
+    {
+        get;
+        private set => SetProperty(ref field, value);
+    } = "重新获取账号信息";
+
+    public string ReadWeGameInfoToolTip
+    {
+        get;
+        private set => SetProperty(ref field, value);
+    } = "勾选后启动 WeGame 并读取当前启动账号的 SndaID 和 SID";
 
     public void SelectLoginType(LoginType loginType)
     {
@@ -229,12 +264,16 @@ public sealed class LoginPageViewModel : ViewModelBase
     private void ApplyLoginType(LoginType loginType)
     {
         IsUsernameVisible       = true;
+        IsUsernameEnabled       = true;
         IsPasswordVisible       = false;
         IsFastLoginVisible      = true;
         IsReadWegameInfoVisible = false;
         FastLoginText           = "快速登录";
         UsernameHint            = "盛趣账号";
+        UsernameToolTip         = "输入盛趣账号";
         PasswordHint            = "密码";
+        ReadWeGameInfoText      = "重新获取账号信息";
+        ReadWeGameInfoToolTip   = "勾选后将启动 WeGame 并读取当前启动账号信息";
 
         switch (loginType)
         {
@@ -253,14 +292,33 @@ public sealed class LoginPageViewModel : ViewModelBase
             case LoginType.WeGameToken:
                 IsPasswordVisible = true;
                 UsernameHint      = "SndaID";
-                PasswordHint      = "抓包获取的 Token";
+                UsernameToolTip   = "输入 WeGame 账号对应的 SndaID";
+                PasswordHint      = "登录令牌";
                 break;
 
             case LoginType.WeGameSID:
                 IsFastLoginVisible      = false;
                 IsReadWegameInfoVisible = true;
-                UsernameHint            = "从 WeGame 自动获取的账号";
+                IsReadWegameInfo        = string.IsNullOrWhiteSpace(Username);
+                ApplyWeGameSidMode();
                 break;
         }
+    }
+
+    private void ApplyWeGameSidMode()
+    {
+        IsUsernameEnabled = !IsReadWegameInfo;
+
+        if (IsReadWegameInfo)
+        {
+            UsernameHint          = "将从 WeGame 自动重新读取账号信息";
+            UsernameToolTip       = "将启动 WeGame 并读取当前启动账号信息";
+            ReadWeGameInfoToolTip = "取消勾选后, 按输入的 SndaID 查找本地已保存账号信息并尝试登录";
+            return;
+        }
+
+        UsernameHint          = "SndaID";
+        UsernameToolTip       = "输入 WeGame 账号对应的 SndaID";
+        ReadWeGameInfoToolTip = "勾选后将启动 WeGame 并读取当前启动账号信息";
     }
 }

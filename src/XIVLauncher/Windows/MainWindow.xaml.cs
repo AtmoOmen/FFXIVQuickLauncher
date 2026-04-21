@@ -130,10 +130,10 @@ public partial class MainWindow : Window
                 Model.StartLogin
                 (
                     LoginType.WeGameSID,
-                    savedAccount.LoginAccount,
-                    savedAccount.TestSID!,
+                    savedAccount.UserName,
+                    string.Empty,
                     Model.LoginPage.IsFastLogin,
-                    Model.LoginPage.IsReadWegameInfo,
+                    false,
                     LoginAfterAction.Start
                 );
             }
@@ -422,8 +422,8 @@ public partial class MainWindow : Window
             _accountManager.CurrentAccount = account;
 
         var hasUnavailableSecrets = _accountManager.HasUnavailableSecrets(account);
+        var currentLoginType      = Model.LoginPage.LoginTypeOption.LoginType;
 
-        Model.LoginPage.Username = account.UserName;
         Model.LoginPage.IsFastLogin = account.AutoLogin;
         Model.LoginPage.Area = Model.LoginPage.LoginAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
         LoginPassword.Password = string.Empty;
@@ -431,32 +431,42 @@ public partial class MainWindow : Window
         switch (account.AccountType)
         {
             case XIVAccountType.Sdo:
-                if (!string.IsNullOrWhiteSpace(account.Password))
-                {
-                    Model.LoginPage.SelectLoginType(LoginType.Static);
+                var nextLoginType = currentLoginType is LoginType.Static or LoginType.Slide
+                    ? currentLoginType
+                    : string.IsNullOrWhiteSpace(account.Password)
+                        ? LoginType.Slide
+                        : LoginType.Static;
 
+                Model.LoginPage.SelectLoginType(nextLoginType);
+
+                if (nextLoginType == LoginType.Static && !string.IsNullOrWhiteSpace(account.Password))
+                {
                     if (!hasUnavailableSecrets)
                     {
                         // Make users happy by not showing their password
                         LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
                     }
                 }
-                else
-                    Model.LoginPage.SelectLoginType(LoginType.Slide);
 
                 break;
 
             case XIVAccountType.WeGame:
-                Model.LoginPage.SelectLoginType(LoginType.WeGameToken);
+                if (currentLoginType != LoginType.WeGameToken)
+                    Model.LoginPage.SelectLoginType(LoginType.WeGameToken);
 
                 if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.AutoLoginSessionKey))
                     LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
                 break;
 
             case XIVAccountType.WeGameSID:
-                Model.LoginPage.SelectLoginType(LoginType.WeGameSID);
+                if (currentLoginType != LoginType.WeGameSID)
+                    Model.LoginPage.SelectLoginType(LoginType.WeGameSID);
+
+                Model.LoginPage.IsReadWegameInfo = false;
                 break;
         }
+
+        Model.LoginPage.Username = account.UserName;
     }
 
     private void LoginPassword_OnPasswordChanged(object sender, RoutedEventArgs e)

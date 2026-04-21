@@ -6,6 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
+    xmlns:data="clr-namespace:System.Windows.Data;assembly=PresentationFramework"
     xmlns:system="clr-namespace:System;assembly=mscorlib"
     xmlns:transitions="clr-namespace:XIVLauncher.Windows.Transitions"
     xmlns:windows="clr-namespace:XIVLauncher.Windows"
@@ -376,11 +377,45 @@
                                                     <ComboBox x:Name="LoginTypeSelection"
                                                               materialDesign:HintAssist.Hint="登录方式"
                                                               materialDesign:HintAssist.IsFloating="False"
-                                                              ItemsSource="{Binding LoginPage.LoginTypeOptions}"
                                                               SelectedItem="{Binding LoginPage.LoginTypeOption}"
                                                               SelectedValuePath="LoginType"
-                                                              DisplayMemberPath="DisplayName"
-                                                              Margin="0,0,0,6" />
+                                                              Margin="0,0,0,6">
+                                                        <ComboBox.Resources>
+                                                            <CollectionViewSource x:Key="LoginTypeOptionsView"
+                                                                                  Source="{Binding LoginPage.LoginTypeOptions}">
+                                                                <CollectionViewSource.GroupDescriptions>
+                                                                    <PropertyGroupDescription PropertyName="GroupDisplay" />
+                                                                </CollectionViewSource.GroupDescriptions>
+                                                            </CollectionViewSource>
+                                                        </ComboBox.Resources>
+                                                        <ComboBox.ItemsSource>
+                                                            <Binding Source="{StaticResource LoginTypeOptionsView}" />
+                                                        </ComboBox.ItemsSource>
+                                                        <ComboBox.GroupStyle>
+                                                                <GroupStyle>
+                                                                    <GroupStyle.HeaderTemplate>
+                                                                        <DataTemplate DataType="{x:Type data:CollectionViewGroup}">
+                                                                            <Border Margin="0,0,0,4"
+                                                                                    Padding="0,4"
+                                                                                    Background="{DynamicResource MaterialDesignDivider}">
+                                                                                <TextBlock Text="{Binding Name}"
+                                                                                    Margin="4 0 0 0"
+                                                                                    FontSize="10"
+                                                                                    Opacity="0.72"
+                                                                                    FontWeight="Medium" />
+                                                                        </Border>
+                                                                    </DataTemplate>
+                                                                </GroupStyle.HeaderTemplate>
+                                                            </GroupStyle>
+                                                        </ComboBox.GroupStyle>
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding DisplayName}"
+                                                                           VerticalAlignment="Center"
+                                                                           TextTrimming="CharacterEllipsis" />
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
                                                               
                                                     <ListBox x:Name="ServerSelection"
                                                              ItemsSource="{Binding LoginPage.LoginAreas}"
@@ -458,8 +493,11 @@
                                                     <TextBox x:Name="LoginUsername"
                                                              materialDesign:HintAssist.Hint="{Binding LoginPage.UsernameHint}"
                                                              materialDesign:HintAssist.IsFloating="False"
+                                                             ToolTipService.ShowOnDisabled="True"
                                                              TextWrapping="Wrap"
-                                                             Text="{Binding LoginPage.Username, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Text="{Binding LoginPage.Username, UpdateSourceTrigger=PropertyChanged}"
+                                                             ToolTip="{Binding LoginPage.UsernameToolTip}"
+                                                             IsEnabled="{Binding LoginPage.IsUsernameEnabled}"
                                                              Visibility="{Binding LoginPage.IsUsernameVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                              Cursor="IBeam"
                                                              Margin="0,0,0,6" />
@@ -481,9 +519,9 @@
                                                                   ToolTip="勾选后, 在登录时会自动保存账号信息, 以供下次快速登录"
                                                                   Margin="0,0,16,0" />
                                                         <CheckBox x:Name="ReadWeGameInfoCheckBox"
-                                                                  Content="读取登录信息"
+                                                                  Content="{Binding LoginPage.ReadWeGameInfoText}"
                                                                   Visibility="{Binding LoginPage.IsReadWegameInfoVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                                  ToolTip="从 WeGame 版游戏中读取登录信息"
+                                                                  ToolTip="{Binding LoginPage.ReadWeGameInfoToolTip}"
                                                                   IsChecked="{Binding LoginPage.IsReadWegameInfo}" />
                                                     </StackPanel>
 

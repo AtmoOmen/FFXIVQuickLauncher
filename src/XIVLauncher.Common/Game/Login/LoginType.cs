@@ -10,7 +10,7 @@ public enum LoginType
     Static,
 
     /// <summary>
-    ///     手势登录
+    ///     一键登录
     /// </summary>
     Slide,
 

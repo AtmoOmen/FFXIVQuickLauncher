@@ -171,6 +171,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 }
                 finally
                 {
+                    LoginCancelSource?.Dispose();
+                    LoginCancelSource = null;
+
                     var nextCard = LoginCardAfterCompletion ?? currentCard;
                     LoginCardAfterCompletion = null;
                     SwitchCard(nextCard, false);
@@ -195,9 +198,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             if (!LoginCancelSource.IsCancellationRequested)
                 LoginCancelSource.Cancel();
-
-            LoginCancelSource.Dispose();
-            LoginCancelSource = null;
         }
     }
 
@@ -263,11 +263,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 case LoginType.WeGameSID:
                     doingAutoLogin = true;
-                    if (!readWeGameInfo && !hasUnavailableSavedSecrets && savedAccount?.TestSID is { Length: > 0 } testSid)
-                        secret = await AccountManager.Decrypt(testSid);
-
-                    readWeGameInfo = username.IsNullOrEmpty() || secret.IsNullOrEmpty();
-
                     if (readWeGameInfo)
                     {
                         var loginData = await ReadWeGameAccountInfoAsync();
@@ -280,6 +275,38 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         secret   = loginData.SessionId;
                         var areaId = loginData.Args.Where(x => x.Contains("AreaID=")).Select(x => x.Split('=')[1]).First();
                         LoginPage.Area = LoginPage.LoginAreas.FirstOrDefault(x => x.AreaID == areaId) ?? LoginPage.Area;
+                    }
+                    else
+                    {
+                        ArgumentException.ThrowIfNullOrEmpty(username, "已保存账号的 SndaID");
+
+                        if (savedAccount == null)
+                        {
+                            CustomMessageBox.Show
+                            (
+                                "未找到该 SndaID 对应的已保存账号, 请勾选 \"重新从 WeGame 读取 SID\" 后再试",
+                                "XIVLauncherCN (Soil)",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Error,
+                                parentWindow: Window
+                            );
+                            return;
+                        }
+
+                        if (hasUnavailableSavedSecrets || string.IsNullOrWhiteSpace(savedAccount.TestSID))
+                        {
+                            CustomMessageBox.Show
+                            (
+                                "该账号没有可用的已保存 SID, 请勾选 \"重新从 WeGame 读取 SID\" 后再试",
+                                "XIVLauncherCN (Soil)",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Error,
+                                parentWindow: Window
+                            );
+                            return;
+                        }
+
+                        secret = await AccountManager.Decrypt(savedAccount.TestSID);
                     }
 
                     finalLoginType = LoginType.WeGameSID;
@@ -613,7 +640,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             await Task.Delay(1000);
             var newPidList = FFXIVProcess.GetGameProcessIDs().Except(pidList).ToArray();
-            LoginPage.LoginMessage = "请使用 WeGame 登录需要读取的 FFXIV 账号信息并启动游戏";
+            LoginPage.LoginMessage = "请使用 WeGame 登录需要读取的游戏账号并启动游戏";
 #if DEBUG
             newPidList = FFXIVProcess.GetGameProcessIDs().ToArray();
 #endif
