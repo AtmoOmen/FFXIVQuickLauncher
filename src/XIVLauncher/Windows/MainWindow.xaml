@@ -7,6 +7,7 @@
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
     xmlns:system="clr-namespace:System;assembly=mscorlib"
+    xmlns:transitions="clr-namespace:XIVLauncher.Windows.Transitions"
     xmlns:windows="clr-namespace:XIVLauncher.Windows"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     xmlns:site="clr-namespace:XIVLauncher.Common.Http.Site;assembly=XIVLauncher.Common"
@@ -40,7 +41,7 @@
         <materialDesign:Transitioner SelectedIndex="1">
             <materialDesign:TransitionerSlide>
                 <materialDesign:TransitionerSlide.ForwardWipe>
-                    <materialDesign:FadeWipe />
+                    <transitions:StableFadeWipe />
                 </materialDesign:TransitionerSlide.ForwardWipe>
                 <windows:SettingsControl x:Name="SettingsControl"
                                          DataContext="{Binding Settings}" />
@@ -48,7 +49,7 @@
 
             <materialDesign:TransitionerSlide>
                 <materialDesign:TransitionerSlide.BackwardWipe>
-                    <materialDesign:FadeWipe />
+                    <transitions:StableFadeWipe />
                 </materialDesign:TransitionerSlide.BackwardWipe>
                 <Grid>
                     <Grid Margin="10">
@@ -333,7 +334,7 @@
                                     <materialDesign:Transitioner x:Name="LoginCardTransitioner" Grid.Row="1" VerticalAlignment="Stretch" SelectedIndex="{Binding LoginCardTransitionerIndex}">
                                         <materialDesign:TransitionerSlide>
                                             <materialDesign:TransitionerSlide.ForwardWipe>
-                                                <materialDesign:FadeWipe />
+                                                <transitions:StableFadeWipe />
                                             </materialDesign:TransitionerSlide.ForwardWipe>
 
                                             <Grid Margin="24,0,24,0" VerticalAlignment="Center">
@@ -369,7 +370,7 @@
 
                                         <materialDesign:TransitionerSlide>
                                             <materialDesign:TransitionerSlide.BackwardWipe>
-                                                <materialDesign:FadeWipe />
+                                                <transitions:StableFadeWipe />
                                             </materialDesign:TransitionerSlide.BackwardWipe>
 
                                             <Grid Margin="20,0,20,0" VerticalAlignment="Center">
@@ -556,7 +557,7 @@
 
                                         <materialDesign:TransitionerSlide>
                                             <materialDesign:TransitionerSlide.BackwardWipe>
-                                                <materialDesign:FadeWipe />
+                                                <transitions:StableFadeWipe />
                                             </materialDesign:TransitionerSlide.BackwardWipe>
 
                                             <Grid Margin="24,12,24,8" VerticalAlignment="Center">
