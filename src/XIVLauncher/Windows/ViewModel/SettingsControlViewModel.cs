@@ -317,7 +317,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         EnableDcTravel                = true;
         LaunchArgs                    = App.Settings.AdditionalLaunchArgs ?? string.Empty;
         DpiAwarenessIndex             = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware);
-        VersionLabelText              = $"XIVLauncher - v{AppUtil.GetAssemblyVersion()} - {AppUtil.GetGitHash()} - {Environment.Version}";
+        VersionLabelText              = $"XIVLauncher - v{AppUtil.GetAssemblyVersion()}";
         SpeedLimitMb                  = (decimal)App.Settings.SpeedLimitBytes / BytesToMb;
         SelectedCredType             = App.AccountManager.CurrentCredType;
         GitHubToken                   = App.Settings.GitHubToken ?? string.Empty;

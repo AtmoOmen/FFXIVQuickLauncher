@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Media;
 using System.Windows;
 using Newtonsoft.Json;
@@ -22,6 +23,7 @@ public partial class ChangelogWindow : Window
 
         DiscordButton.Click += (_, _) => Process.Start(new ProcessStartInfo(Links.DISCORD_URL) { UseShellExecute = true });
         DataContext         =  new ChangeLogWindowViewModel();
+        Model.ChangeLogText =  File.ReadAllText(Path.Combine(Paths.ResourcesPath, "CHANGELOG.txt"));
 
         Activate();
         Topmost = true;

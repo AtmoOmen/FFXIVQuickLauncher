@@ -7,7 +7,7 @@
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
     mc:Ignorable="d"
-    Title="XIVLauncher Update"
+    Title="更新日志"
     Height="Auto"
     MaxWidth="800"
     WindowStartupLocation="CenterScreen"
@@ -44,12 +44,6 @@
             </StackPanel>
         </StackPanel>
 
-        <TextBlock Margin="10 20 10 20"
-                   MaxWidth="800"
-                   Height="Auto"
-                   Text="XIVLauncher 是由来自世界各地的社区成员共同维护的免费开源软件。"
-                   TextWrapping="Wrap" />
-
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Bottom"
@@ -62,7 +56,7 @@
                     <mahIcon:PackIconSimpleIcons Kind="Discord" />
                     <TextBlock Margin="8 0 0 0"
                                VerticalAlignment="Center"
-                               Text="加入 Discord 服务器" />
+                               Text="Discord" />
                 </StackPanel>
             </Button>
 
