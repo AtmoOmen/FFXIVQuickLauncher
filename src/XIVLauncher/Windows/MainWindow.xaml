@@ -392,27 +392,79 @@
                                                             <Binding Source="{StaticResource LoginTypeOptionsView}" />
                                                         </ComboBox.ItemsSource>
                                                         <ComboBox.GroupStyle>
-                                                                <GroupStyle>
-                                                                    <GroupStyle.HeaderTemplate>
-                                                                        <DataTemplate DataType="{x:Type data:CollectionViewGroup}">
-                                                                            <Border Margin="0,0,0,4"
-                                                                                    Padding="0,4"
-                                                                                    Background="{DynamicResource MaterialDesignDivider}">
-                                                                                <TextBlock Text="{Binding Name}"
-                                                                                    Margin="4 0 0 0"
-                                                                                    FontSize="10"
-                                                                                    Opacity="0.72"
-                                                                                    FontWeight="Medium" />
-                                                                        </Border>
+                                                            <GroupStyle>
+                                                                <GroupStyle.HeaderTemplate>
+                                                                    <DataTemplate DataType="{x:Type data:CollectionViewGroup}">
+                                                                        <Grid Margin="0,6,0,2">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Text="{Binding Name}"
+                                                                                       FontSize="11"
+                                                                                       Opacity="0.5"
+                                                                                       Margin="8,0,8,0"
+                                                                                       VerticalAlignment="Center" />
+                                                                            <Separator Grid.Column="1"
+                                                                                       Margin="0,0,8,0"
+                                                                                       Background="{DynamicResource MaterialDesignDivider}"
+                                                                                       VerticalAlignment="Center" />
+                                                                        </Grid>
                                                                     </DataTemplate>
                                                                 </GroupStyle.HeaderTemplate>
                                                             </GroupStyle>
                                                         </ComboBox.GroupStyle>
                                                         <ComboBox.ItemTemplate>
                                                             <DataTemplate>
-                                                                <TextBlock Text="{Binding DisplayName}"
-                                                                           VerticalAlignment="Center"
-                                                                           TextTrimming="CharacterEllipsis" />
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                                        <Ellipse Width="5" Height="5" Fill="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center">
+                                                                            <Ellipse.Style>
+                                                                                <Style TargetType="Ellipse">
+                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                    <Setter Property="Margin" Value="0,0,0,0" />
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}, Path=IsEnabled, FallbackValue=False}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                                            <Setter Property="Margin" Value="0,0,8,0" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Ellipse.Style>
+                                                                        </Ellipse>
+                                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                                   VerticalAlignment="Center"
+                                                                                   TextTrimming="CharacterEllipsis" />
+                                                                    </StackPanel>
+                                                                               
+                                                                    <Grid Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                                        <Grid.Style>
+                                                                            <Style TargetType="Grid">
+                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}, Path=Tag, FallbackValue=SHOW}" Value="SHOW">
+                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Grid.Style>
+                                                                        
+                                                                        <Border Background="{DynamicResource PrimaryHueMidBrush}" 
+                                                                                Opacity="0.12"
+                                                                                CornerRadius="4" />
+                                                                        <TextBlock HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"
+                                                                                   Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                                                   FontSize="10"
+                                                                                   FontWeight="SemiBold"
+                                                                                   Padding="4,2"
+                                                                                   Text="{Binding GroupDisplay}" />
+                                                                    </Grid>
+                                                                </Grid>
                                                             </DataTemplate>
                                                         </ComboBox.ItemTemplate>
                                                     </ComboBox>
