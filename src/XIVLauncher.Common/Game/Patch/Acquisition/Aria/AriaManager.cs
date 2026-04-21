@@ -11,9 +11,11 @@ namespace XIVLauncher.Common.Game.Patch.Acquisition.Aria;
 public class AriaManager
 (
     string secret,
-    string rpcUrl = Links.LOCAL_ARIA_RPC_URL
+    string rpcUrl = AriaManager.LOCAL_ARIA_RPC_URL
 )
 {
+    private const string LOCAL_ARIA_RPC_URL = "http://localhost:6800/jsonrpc";
+    
     private readonly JsonRpcHttpClient rpcClient = new(rpcUrl);
 
     public async Task<string> AddUri(List<string> uriList) =>

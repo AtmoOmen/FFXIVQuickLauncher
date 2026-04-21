@@ -53,6 +53,4 @@ public static class Links
     public const string SDO_WEIBO_URL = "https://weibo.com/u/1797798792";
 
     public const string SDO_DOUYIN_URL = "https://www.douyin.com/user/MS4wLjABAAAAHJts6kVkO7Lob9_H5VMSc3UZXCSq6gw5s02kplXQ7k0";
-
-    public const string LOCAL_ARIA_RPC_URL = "http://localhost:6800/jsonrpc";
 }
