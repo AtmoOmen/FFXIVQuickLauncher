@@ -348,14 +348,14 @@
                                                                FontSize="16"
                                                                FontWeight="SemiBold"
                                                                Margin="0,0,0,8" />
-                                                    <TextBlock Text="{Binding LoginMessage}"
+                                                    <TextBlock Text="{Binding LoginPage.LoginMessage}"
                                                                HorizontalAlignment="Center"
                                                                TextAlignment="Center"
                                                                TextWrapping="Wrap"
                                                                Opacity="0.7"
                                                                Margin="0,0,0,24" />
                                                     <Button Content="取消登录"
-                                                            Command="{Binding Path=LoginCancelCommand}"
+                                                            Command="{Binding LoginPage.LoginCancelCommand}"
                                                             Style="{StaticResource MaterialDesignOutlinedButton}"
                                                             materialDesign:ButtonAssist.CornerRadius="16"
                                                             HorizontalAlignment="Center"
@@ -376,16 +376,16 @@
                                                     <ComboBox x:Name="LoginTypeSelection"
                                                               materialDesign:HintAssist.Hint="登录方式"
                                                               materialDesign:HintAssist.IsFloating="False"
-                                                              SelectedItem="{Binding Path=LoginTypeOption}"
+                                                              ItemsSource="{Binding LoginPage.LoginTypeOptions}"
+                                                              SelectedItem="{Binding LoginPage.LoginTypeOption}"
                                                               SelectedValuePath="LoginType"
                                                               DisplayMemberPath="DisplayName"
-                                                              SelectionChanged="LoginTypeSelection_OnSelectionChanged"
                                                               Margin="0,0,0,6" />
                                                               
                                                     <ListBox x:Name="ServerSelection"
-                                                             ItemsSource="{Binding Path=LoginAreas}"
-                                                             SelectedIndex="{Binding Path=AreaIndex, Mode=OneWayToSource}"
-                                                             SelectedItem="{Binding Path=Area}"
+                                                             ItemsSource="{Binding LoginPage.LoginAreas}"
+                                                             SelectedIndex="{Binding LoginPage.AreaIndex, Mode=OneWayToSource}"
+                                                             SelectedItem="{Binding LoginPage.Area}"
                                                              SelectedValuePath="AreaID"
                                                              Margin="0,0,0,6">
                                                         <ListBox.ItemsPanel>
@@ -456,33 +456,35 @@
 
                                                     <!--  Credentials  -->
                                                     <TextBox x:Name="LoginUsername"
-                                                             materialDesign:HintAssist.Hint="账号"
+                                                             materialDesign:HintAssist.Hint="{Binding LoginPage.UsernameHint}"
                                                              materialDesign:HintAssist.IsFloating="False"
                                                              TextWrapping="Wrap"
-                                                             TextChanged="LoginUsername_OnTextChanged"
-                                                             Text="{Binding Username}" 
+                                                             Text="{Binding LoginPage.Username, UpdateSourceTrigger=PropertyChanged}" 
+                                                             Visibility="{Binding LoginPage.IsUsernameVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                              Cursor="IBeam"
                                                              Margin="0,0,0,6" />
 
                                                     <PasswordBox x:Name="LoginPassword"
-                                                                 materialDesign:HintAssist.Hint="密码"
+                                                                 materialDesign:HintAssist.Hint="{Binding LoginPage.PasswordHint}"
                                                                  materialDesign:HintAssist.IsFloating="False"
                                                                  PasswordChanged="LoginPassword_OnPasswordChanged"
+                                                                 Visibility="{Binding LoginPage.IsPasswordVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                                  Cursor="IBeam"
                                                                  Margin="0,0,0,8" />
 
                                                     <!--  Options  -->
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Center">
                                                         <CheckBox x:Name="FastLoginCheckBox"
-                                                                  Content="快速登录"
-                                                                  IsChecked="{Binding IsFastLogin}"
+                                                                  Content="{Binding LoginPage.FastLoginText}"
+                                                                  IsChecked="{Binding LoginPage.IsFastLogin}"
+                                                                  Visibility="{Binding LoginPage.IsFastLoginVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                                   ToolTip="勾选后, 在登录时会自动保存账号信息, 以供下次快速登录"
                                                                   Margin="0,0,16,0" />
                                                         <CheckBox x:Name="ReadWeGameInfoCheckBox"
                                                                   Content="读取登录信息"
-                                                                  Visibility="Collapsed"
+                                                                  Visibility="{Binding LoginPage.IsReadWegameInfoVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                                   ToolTip="从 WeGame 版游戏中读取登录信息"
-                                                                  IsChecked="{Binding IsReadWegameInfo}" />
+                                                                  IsChecked="{Binding LoginPage.IsReadWegameInfo}" />
                                                     </StackPanel>
 
                                                     <!--  Actions  -->
@@ -496,7 +498,7 @@
                                                         <Button x:Name="LoginButton"
                                                                 Grid.Column="0"
                                                                 Content="登  录"
-                                                                Command="{Binding Path=StartLoginCommand}"
+                                                                Command="{Binding LoginPage.StartLoginCommand}"
                                                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                                                 materialDesign:ButtonAssist.CornerRadius="16"
                                                                 Height="32"
@@ -510,15 +512,15 @@
                                                                         <Style TargetType="{x:Type Separator}"
                                                                                BasedOn="{StaticResource LoginActionSeparatorStyle}" />
                                                                     </ContextMenu.Resources>
-                                                                    <MenuItem Header="修复" Command="{Binding Path=LoginRepairCommand}" />
-                                                                    <MenuItem Header="更新" Command="{Binding Path=LoginNoStartCommand}" />
+                                                                    <MenuItem Header="修复" Command="{Binding LoginPage.LoginRepairCommand}" />
+                                                                    <MenuItem Header="更新" Command="{Binding LoginPage.LoginNoStartCommand}" />
                                                                     <Separator />
                                                                     <MenuItem Header="其他启动方式">
-                                                                        <MenuItem Header="无 Dalamud" Command="{Binding Path=LoginNoDalamudCommand}" />
-                                                                        <MenuItem Header="禁用插件" Command="{Binding Path=LoginNoPluginsCommand}" />
-                                                                        <MenuItem Header="禁用第三方插件" Command="{Binding Path=LoginNoThirdCommand}" />
+                                                                        <MenuItem Header="无 Dalamud" Command="{Binding LoginPage.LoginNoDalamudCommand}" />
+                                                                        <MenuItem Header="禁用插件" Command="{Binding LoginPage.LoginNoPluginsCommand}" />
+                                                                        <MenuItem Header="禁用第三方插件" Command="{Binding LoginPage.LoginNoThirdCommand}" />
                                                                         <Separator />
-                                                                        <MenuItem Header="调试用假启动" Command="{Binding Path=FakeStartCommand}" />
+                                                                        <MenuItem Header="调试用假启动" Command="{Binding LoginPage.FakeStartCommand}" />
                                                                     </MenuItem>
                                                                 </ContextMenu>
                                                             </Button.ContextMenu>
@@ -537,7 +539,7 @@
                                                     
                                                     <!-- Inject Mode Toggle -->
                                                     <Button Style="{StaticResource MaterialDesignFlatButton}"
-                                                            Command="{Binding Path=InjectModeSwitchCommand}"
+                                                            Command="{Binding LoginPage.InjectModeSwitchCommand}"
                                                             Margin="0,4,0,0" Height="24" Padding="8,0"
                                                             Foreground="{DynamicResource MaterialDesignBodyLight}"
                                                             Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BooleanToVisibilityConverter}}"
@@ -591,13 +593,13 @@
                                                         <Image x:Name="QrImage"
                                                                Margin="8"
                                                                Stretch="Uniform"
-                                                               Source="{Binding QRCodeBitmapImage}" />
-                                                        <Grid Visibility="{Binding IsQrCodeExpired, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                               Source="{Binding LoginPage.QRCodeBitmapImage}" />
+                                                        <Grid Visibility="{Binding LoginPage.IsQrCodeExpired, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                               Background="Transparent"
                                                               Cursor="Hand">
                                                             <Grid.InputBindings>
                                                                 <MouseBinding MouseAction="LeftClick"
-                                                                              Command="{Binding RefreshQrCodeCommand}" />
+                                                                              Command="{Binding LoginPage.RefreshQrCodeCommand}" />
                                                             </Grid.InputBindings>
                                                             <Border x:Name="OverlayBorder" CornerRadius="8">
                                                                 <Border.Background>
@@ -663,7 +665,7 @@
                                                         Width="130"
                                                         Height="32"
                                                         ToolTip="返回主页面"
-                                                        Click="BackToLoginPageButton_OnClick">
+                                                        Command="{Binding LoginPage.BackToMainPageCommand}">
                                                     <StackPanel Orientation="Horizontal">
                                                         <materialDesign:PackIcon Kind="ArrowLeft" Margin="0,0,8,0" VerticalAlignment="Center" />
                                                         <TextBlock Text="返回" VerticalAlignment="Center" />
@@ -679,10 +681,10 @@
                                             <Grid Margin="24,0,24,0" VerticalAlignment="Center">
                                                 <StackPanel>
                                                     <ComboBox x:Name="ProcessSelection"
-                                                              materialDesign:HintAssist.Hint="{Binding ProcessSelectionHint}"
+                                                              materialDesign:HintAssist.Hint="{Binding InjectPage.ProcessSelectionHint}"
                                                               materialDesign:HintAssist.IsFloating="False"
-                                                              ItemsSource="{Binding FFXIVProcesses}"
-                                                              SelectedItem="{Binding SelectedProcess}"
+                                                              ItemsSource="{Binding InjectPage.FFXIVProcesses}"
+                                                              SelectedItem="{Binding InjectPage.SelectedProcess}"
                                                               Margin="0,0,0,20">
                                                         <ComboBox.ItemTemplate>
                                                             <DataTemplate>
@@ -700,7 +702,7 @@
 
                                                     <CheckBox x:Name="AutoInjectCheckBox"
                                                               Content="自动注入"
-                                                              IsChecked="{Binding AutoInjectEnabled}"
+                                                              IsChecked="{Binding InjectPage.AutoInjectEnabled}"
                                                               Margin="0,0,0,12"
                                                               ToolTip="勾选后, 当检测到未注入 Dalamud 的游戏进程时, 自动执行注入" />
 
@@ -725,7 +727,7 @@
                                                                     Orientation="Horizontal"
                                                                     VerticalAlignment="Center">
                                                             <TextBox Width="70"
-                                                                     Text="{Binding ManualInjectDelayMs}"
+                                                                     Text="{Binding InjectPage.ManualInjectDelayMs}"
                                                                      VerticalAlignment="Center" />
                                                             <TextBlock Text="ms"
                                                                        Margin="8,0,0,0"
@@ -746,20 +748,20 @@
                                                                 materialDesign:ButtonAssist.CornerRadius="16"
                                                                 Height="32"
                                                                 Content="带回前台"
-                                                                Click="InjectButton_Click"
-                                                                IsEnabled="{Binding CanOperateOnSelectedProcess}" />
+                                                                Command="{Binding InjectPage.BringProcessForegroundCommand}"
+                                                                IsEnabled="{Binding InjectPage.CanOperateOnSelectedProcess}" />
                                                         <Button x:Name="BringUp"
                                                                 Grid.Column="2"
                                                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                                                 materialDesign:ButtonAssist.CornerRadius="16"
                                                                 Height="32"
                                                                 Content="注  入"
-                                                                Command="{Binding Path=InjectGameCommand}"
-                                                                IsEnabled="{Binding CanOperateOnSelectedProcess}" />
+                                                                Command="{Binding InjectPage.InjectGameCommand}"
+                                                                IsEnabled="{Binding InjectPage.CanOperateOnSelectedProcess}" />
                                                     </Grid>
                                                     
                                                     <Button Style="{StaticResource MaterialDesignFlatButton}"
-                                                            Command="{Binding Path=InjectModeSwitchCommand}"
+                                                            Command="{Binding InjectPage.ReturnToLoginPageCommand}"
                                                             Margin="0,0,0,0" Height="24" Padding="8,0"
                                                             HorizontalAlignment="Center"
                                                             Foreground="{DynamicResource MaterialDesignBodyLight}">

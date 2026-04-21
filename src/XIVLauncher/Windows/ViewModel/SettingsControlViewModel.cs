@@ -19,6 +19,7 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Util;
+using XIVLauncher.Settings;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Xaml;

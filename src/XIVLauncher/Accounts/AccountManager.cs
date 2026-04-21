@@ -14,6 +14,7 @@ using Serilog;
 using SQLite;
 using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Accounts.Cred.CredProviders;
+using XIVLauncher.Accounts.DeviceProfiles;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;

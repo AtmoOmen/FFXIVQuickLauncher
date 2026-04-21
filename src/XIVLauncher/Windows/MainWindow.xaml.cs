@@ -78,8 +78,6 @@ public partial class MainWindow : Window
 
         Model.ReloadHeadlines += () => Task.Run(SetupHeadlines);
 
-        LoginTypeSelection.ItemsSource   = LoginTypeOption.Get(App.Settings.ShowWeGameTokenLogin.GetValueOrDefault(false));
-        LoginTypeSelection.SelectedValue = App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.Slide);
         NewsListView.ItemsSource = new List<News>
         {
             new()
@@ -106,7 +104,7 @@ public partial class MainWindow : Window
     {
         SetDefaults();
 
-        Model.IsFastLogin = App.Settings.FastLogin;
+        Model.LoginPage.IsFastLogin = App.Settings.FastLogin;
 
         var savedAccount = _accountManager.CurrentAccount;
         var hasUnavailableSecrets = _accountManager.HasUnavailableSecrets(savedAccount);
@@ -134,8 +132,8 @@ public partial class MainWindow : Window
                     LoginType.WeGameSID,
                     savedAccount.LoginAccount,
                     savedAccount.TestSID,
-                    Model.IsFastLogin,
-                    Model.IsReadWegameInfo,
+                    Model.LoginPage.IsFastLogin,
+                    Model.LoginPage.IsReadWegameInfo,
                     LoginAfterAction.Start
                 );
             }
@@ -146,8 +144,8 @@ public partial class MainWindow : Window
                     LoginType.AutoLoginSession,
                     savedAccount.LoginAccount,
                     savedAccount.AutoLoginSessionKey,
-                    Model.IsFastLogin,
-                    Model.IsReadWegameInfo,
+                    Model.LoginPage.IsFastLogin,
+                    Model.LoginPage.IsReadWegameInfo,
                     LoginAfterAction.Start
                 );
             }
@@ -230,8 +228,8 @@ public partial class MainWindow : Window
         Dispatcher.Invoke
         (() =>
             {
-                Model.LoginAreas = [.. areas];
-                Model.Area       = Model.LoginAreas[0];
+                Model.LoginPage.LoginAreas = [.. areas];
+                Model.LoginPage.Area       = Model.LoginPage.LoginAreas[0];
             }
         );
     }
@@ -391,7 +389,7 @@ public partial class MainWindow : Window
         if (Model.IsLoggingIn)
             return;
 
-        Model.StartLoginCommand.Execute(null);
+        Model.LoginPage.StartLoginCommand.Execute(null);
     }
 
     private void AccountSwitcherButton_OnClick(object sender, RoutedEventArgs e)
@@ -428,10 +426,9 @@ public partial class MainWindow : Window
 
         var hasUnavailableSecrets = _accountManager.HasUnavailableSecrets(account);
 
-        Model.Username = account.UserName;
-        //Model.IsOtp = account.UseOtp;
-        Model.IsFastLogin      = account.AutoLogin;
-        Model.Area             = Model.LoginAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
+        Model.LoginPage.Username = account.UserName;
+        Model.LoginPage.IsFastLogin = account.AutoLogin;
+        Model.LoginPage.Area = Model.LoginPage.LoginAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
         LoginPassword.Password = string.Empty;
 
         switch (account.AccountType)
@@ -439,7 +436,7 @@ public partial class MainWindow : Window
             case XIVAccountType.Sdo:
                 if (!string.IsNullOrWhiteSpace(account.Password))
                 {
-                    LoginTypeSelection.SelectedValue = LoginType.Static;
+                    Model.LoginPage.SelectLoginType(LoginType.Static);
 
                     if (!hasUnavailableSecrets)
                     {
@@ -448,19 +445,19 @@ public partial class MainWindow : Window
                     }
                 }
                 else
-                    LoginTypeSelection.SelectedValue = LoginType.Slide;
+                    Model.LoginPage.SelectLoginType(LoginType.Slide);
 
                 break;
 
             case XIVAccountType.WeGame:
-                LoginTypeSelection.SelectedValue = LoginType.WeGameToken;
+                Model.LoginPage.SelectLoginType(LoginType.WeGameToken);
 
                 if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.AutoLoginSessionKey))
                     LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
                 break;
 
             case XIVAccountType.WeGameSID:
-                LoginTypeSelection.SelectedValue = LoginType.WeGameSID;
+                Model.LoginPage.SelectLoginType(LoginType.WeGameSID);
                 break;
         }
     }
@@ -468,7 +465,7 @@ public partial class MainWindow : Window
     private void LoginPassword_OnPasswordChanged(object sender, RoutedEventArgs e)
     {
         if (DataContext != null)
-            ((MainWindowViewModel)DataContext).Password = ((PasswordBox)sender).Password;
+            ((MainWindowViewModel)DataContext).LoginPage.Password = ((PasswordBox)sender).Password;
     }
 
     private void ShowCredTypeRecoveryMessage()
@@ -563,71 +560,6 @@ public partial class MainWindow : Window
         {
             Log.Error(ex, "Couldn't save window position");
         }
-    }
-
-    private void LoginTypeSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        var selectedItem = (LoginTypeOption)((ComboBox)sender).SelectedItem;
-        if (DataContext != null)
-            ((MainWindowViewModel)DataContext).LoginTypeOption = selectedItem;
-        App.Settings.SelectedLoginType = selectedItem.LoginType;
-        // Default
-        LoginUsername.Visibility = Visibility.Visible;
-        LoginPassword.Visibility = Visibility.Collapsed;
-
-        FastLoginCheckBox.Visibility      = Visibility.Visible;
-        ReadWeGameInfoCheckBox.Visibility = Visibility.Collapsed;
-        FastLoginCheckBox.Content         = "快速登录";
-        LoginPassword.Password            = string.Empty;
-        HintAssist.SetHint(LoginUsername, "盛趣账号");
-        HintAssist.SetHint(LoginPassword, "密码");
-
-        switch (selectedItem.LoginType)
-        {
-            //Todo: 各种地方的Hint
-            case LoginType.Slide:
-                break;
-
-            case LoginType.QRCode:
-                LoginUsername.Visibility = Visibility.Collapsed;
-                break;
-
-            case LoginType.Static:
-                LoginUsername.Visibility  = Visibility.Visible;
-                LoginPassword.Visibility  = Visibility.Visible;
-                FastLoginCheckBox.Content = "保存密码";
-                //FastLoginCheckBox.Visibility = Visibility.Collapsed;
-                break;
-
-            case LoginType.WeGameToken:
-                LoginPassword.Visibility = Visibility.Visible;
-                HintAssist.SetHint(LoginUsername, "SndaId");
-                HintAssist.SetHint(LoginPassword, "抓包Token");
-                break;
-
-            case LoginType.WeGameSID:
-                FastLoginCheckBox.Visibility      = Visibility.Collapsed;
-                ReadWeGameInfoCheckBox.Visibility = Visibility.Visible;
-                HintAssist.SetHint(LoginUsername, "从Wegame自动获取的账号");
-                break;
-        }
-    }
-
-    private void LoginUsername_OnTextChanged(object sender, TextChangedEventArgs e) =>
-        ((MainWindowViewModel)DataContext)?.Username = ((TextBox)sender).Text;
-
-    private void BackToLoginPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Dispatcher.Invoke(() => { Model.SwitchCard(MainWindowViewModel.LoginCardType.MainPage); });
-
-    private void InjectButton_Click(object sender, RoutedEventArgs e)
-    {
-        Dispatcher.Invoke
-        (() =>
-            {
-                if (Model.SelectedProcess != null)
-                    PlatformHelpers.BringProcessForeground(Model.SelectedProcess.ProcessID);
-            }
-        );
     }
 
     private void DCTravelPageButton_OnClick(object sender, RoutedEventArgs e) =>

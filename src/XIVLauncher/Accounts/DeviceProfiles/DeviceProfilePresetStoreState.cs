@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace XIVLauncher.Accounts;
+namespace XIVLauncher.Accounts.DeviceProfiles;
 
 public sealed class DeviceProfilePresetStoreState
 {

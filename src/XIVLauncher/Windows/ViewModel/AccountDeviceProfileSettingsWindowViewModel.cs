@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 using XIVLauncher.Accounts;
+using XIVLauncher.Accounts.DeviceProfiles;
 using XIVLauncher.Common.Game.Login;
 
 namespace XIVLauncher.Windows.ViewModel;

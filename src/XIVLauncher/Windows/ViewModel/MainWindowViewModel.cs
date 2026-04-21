@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -13,11 +12,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Castle.Core.Internal;
-using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
@@ -37,18 +33,24 @@ using XIVLauncher.Common.Windows;
 using XIVLauncher.Game;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Support;
-using XIVLauncher.Windows;
 using XIVLauncher.Windows.Services;
-using XIVLauncher.Xaml;
-using Constants = XIVLauncher.Common.Constants;
+using XIVLauncher.Windows.ViewModel.MainWindow.Factories;
+using XIVLauncher.Windows.ViewModel.MainWindow.Pages;
+using XIVLauncher.Windows.ViewModel.MainWindow.Providers;
+using XIVLauncher.Windows.ViewModel.MainWindow.Services;
 using DCTravelClient = XIVLauncher.Common.Game.DCTravel.DCTravelClient;
 
 namespace XIVLauncher.Windows.ViewModel;
 
 public class MainWindowViewModel : INotifyPropertyChanged
 {
-    public const string                   PRESUDO_PASSWORD = "********假的密码********";
-    public       SettingsControlViewModel Settings { get; }
+    public const string PRESUDO_PASSWORD = "********假的密码********";
+
+    public SettingsControlViewModel Settings { get; }
+
+    public LoginPageViewModel LoginPage { get; }
+
+    public InjectPageViewModel InjectPage { get; }
 
     public Launcher          Launcher         { get; private set; }
     public AccountManager    AccountManager   { get; private set; } = App.AccountManager;
@@ -59,60 +61,47 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public Action Hide            { get; set; } = null!;
     public Action ReloadHeadlines { get; set; } = null!;
 
-    public  bool                     IsLoggingIn                { get; set; }
-    public  string                   Password                   { get; set; } = null!;
-    private CancellationTokenSource? LoginCancelSource          { get; set; }
-    private CancellationTokenSource? ProcessRefreshCancelSource { get; set; }
-    private CancellationTokenSource? AutoInjectDelayCancelSource { get; set; }
-    private Task?                    ProcessRefreshTask         { get; set; }
-    private bool                     IsInjecting                { get; set; }
-    private bool                     IsLoginCanceledByUser      { get; set; }
-    private LoginCardType?           LoginCardAfterCompletion   { get; set; }
-    private int?                     PendingAutoInjectProcessId { get; set; }
+    public bool IsLoggingIn { get; set; }
 
-    private HashSet<int> AutoInjectAttemptedProcessIds { get; } = [];
+    private DalamudLauncherFactory        DalamudLauncherFactory   { get; }
+    private MainWindowDialogProvider      DialogProvider           { get; }
+    private MainWindowAccountDraftFactory AccountDraftFactory      { get; }
+    private GameLaunchService             GameLaunchService        { get; }
+    private CancellationTokenSource?      LoginCancelSource        { get; set; }
+    private bool                          IsLoginCanceledByUser    { get; set; }
+    private LoginCardType?                LoginCardAfterCompletion { get; set; }
 
     public MainWindowViewModel(Window window)
     {
-        Window   = window;
-        Settings = new SettingsControlViewModel(new DialogService(window), new ExternalLaunchService());
-        Settings.SettingsSaved += (_, _) => ReloadManualInjectSettings();
-
-        StartLoginCommand       = new SyncCommand(CreateLoginHandler(LoginAfterAction.Start),               () => !IsLoggingIn);
-        LoginNoStartCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.UpdateOnly),          () => !IsLoggingIn);
-        LoginNoDalamudCommand   = new SyncCommand(CreateLoginHandler(LoginAfterAction.StartWithoutDalamud), () => !IsLoggingIn);
-        LoginNoPluginsCommand   = new SyncCommand(CreateLoginHandler(LoginAfterAction.StartWithoutPlugins), () => !IsLoggingIn);
-        LoginNoThirdCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.StartWithoutThird),   () => !IsLoggingIn);
-        LoginRepairCommand      = new SyncCommand(CreateLoginHandler(LoginAfterAction.Repair),              () => !IsLoggingIn);
-        LoginForceQRCommand     = new SyncCommand(CreateLoginHandler(LoginAfterAction.ForceQR),             () => !IsLoggingIn);
-        RefreshQrCodeCommand    = new SyncCommand
+        Window                 = window;
+        Settings               = new SettingsControlViewModel(new DialogService(window), new ExternalLaunchService());
+        DalamudLauncherFactory = new DalamudLauncherFactory();
+        DialogProvider         = new MainWindowDialogProvider(window);
+        AccountDraftFactory    = new MainWindowAccountDraftFactory();
+        Launcher               = new();
+        GameLaunchService      = new GameLaunchService(window);
+        LoginPage = new LoginPageViewModel
         (
-            _ =>
-            {
-                LoginCardAfterCompletion = LoginCardType.MainPage;
-                StartLogin(LoginType.QRCode, Username, Password, IsFastLogin, IsReadWegameInfo, LoginAfterAction.Start);
-            },
-            () => !IsLoggingIn && IsQrCodeExpired
+            () => IsLoggingIn,
+            HandleLoginAction,
+            CancelLogin,
+            RefreshQrCode,
+            () => SwitchCard(LoginCardType.InjectMode),
+            () => SwitchCard(LoginCardType.MainPage),
+            FakeStartGame
         );
-        InjectModeSwitchCommand = new SyncCommand(_ => { SwitchMode(); },                                   () => !IsLoggingIn);
-        InjectGameCommand       = new SyncCommand(_ => { StartInject(); },                                  () => !IsLoggingIn && SelectedProcess != null);
-        FakeStartCommand        = new SyncCommand(_ => { FakeStartGame(); },                                () => !IsLoggingIn);
-        LoginCancelCommand      = new SyncCommand(CreateLoginHandler(LoginAfterAction.CancelLogin));
-
-        Launcher = new();
-
-        var worldStatusBrushOk = new SolidColorBrush(Color.FromRgb(0x21, 0x96, 0xf3));
-        WorldStatusIconColor = worldStatusBrushOk;
-        WorldStatusIconColor = new SolidColorBrush(Color.FromRgb(38, 38, 38));
-
-        FFXIVProcesses.CollectionChanged += (_, _) =>
-        {
-            OnPropertyChanged(nameof(HasAvailableProcesses));
-            OnPropertyChanged(nameof(ProcessSelectionHint));
-            CommandManager.InvalidateRequerySuggested();
-        };
-
-        ReloadManualInjectSettings();
+        InjectPage = new InjectPageViewModel
+        (
+            window,
+            GameLaunchService,
+            Settings,
+            () => IsLoggingIn,
+            ShowLoadingDialog,
+            HideLoadingDialog,
+            () => Activate(),
+            () => SwitchCard(LoginCardType.MainPage)
+        );
+        Settings.SettingsSaved += (_, _) => InjectPage.ReloadSettings();
     }
 
     #region 界面控制
@@ -125,24 +114,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     CancelLogin();
                 LoginCardTransitionerIndex = (int)i;
 
-                ModeSwitchIcon  = i == LoginCardType.InjectMode ? PackIconKind.Login : PackIconKind.Injection;
-                ModeSwitchTitle = i == LoginCardType.InjectMode ? "正常模式" : "手动注入模式";
-
-                if (LoginCardTransitionerIndex == (int)LoginCardType.InjectMode)
-                    StartRefreshFFXIVProcess();
-                else
-                    StopRefreshFFXIVProcess(true);
+                InjectPage.SetActive(LoginCardTransitionerIndex == (int)LoginCardType.InjectMode);
             }
         );
 
     public void SwitchMode() =>
         SwitchCard(LoginCardTransitionerIndex == (int)LoginCardType.InjectMode ? LoginCardType.MainPage : LoginCardType.InjectMode);
-
-    private void ReloadManualInjectSettings()
-    {
-        AutoInjectEnabled   = App.Settings.ManualInjectAutoInjectEnabled.GetValueOrDefault(false);
-        ManualInjectDelayMs = App.Settings.ManualInjectDelayMs;
-    }
 
     #endregion
 
@@ -169,12 +146,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         Log.Information("[MainWindow] 尝试开始登录");
 
-        IsLoggingIn           = true;
-        IsEnabled             = false;
-        IsLoginCanceledByUser = false;
-        IsQrCodeExpired       = false;
+        IsLoggingIn               = true;
+        IsEnabled                 = false;
+        IsLoginCanceledByUser     = false;
+        LoginPage.IsQrCodeExpired = false;
         LoginCancelSource?.Dispose();
-        LoginCancelSource     = new();
+        LoginCancelSource = new();
         CommandManager.InvalidateRequerySuggested();
 
         var currentCard = LoginCardAfterCompletion ?? (LoginCardType)LoginCardTransitionerIndex;
@@ -245,7 +222,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         if (!TryResolvePatchPath())
             return;
 
-        if (Area == null || Area.AreaID == "-1")
+        if (LoginPage.Area == null || LoginPage.Area.AreaID == "-1")
         {
             CustomMessageBox.Show
             (
@@ -260,15 +237,15 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
 
         if (!doingAutoLogin)
-            App.Settings.AutologinEnabled = IsAutoLogin;
-        App.Settings.FastLogin = IsFastLogin;
+            App.Settings.AutologinEnabled = LoginPage.IsAutoLogin;
+        App.Settings.FastLogin = LoginPage.IsFastLogin;
 
-        var finalLoginType             = loginType;
-        var secret                     = string.Empty;
-        var savedAccount               = FindSavedAccount(loginType, username);
-        var accountType                = ResolveAccountType(loginType, savedAccount);
-        var hasUnavailableSavedSecrets = AccountManager.HasUnavailableSecrets(savedAccount);
-        XIVAccount? pendingNewAccount = null;
+        var         finalLoginType             = loginType;
+        var         secret                     = string.Empty;
+        var         savedAccount               = FindSavedAccount(loginType, username);
+        var         accountType                = ResolveAccountType(loginType, savedAccount);
+        var         hasUnavailableSavedSecrets = AccountManager.HasUnavailableSecrets(savedAccount);
+        XIVAccount? pendingNewAccount          = null;
 
         try
         {
@@ -305,7 +282,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         username = loginData.SndaID;
                         secret   = loginData.SessionId;
                         var areaId = loginData.Args.Where(x => x.Contains("AreaID=")).Select(x => x.Split('=')[1]).First();
-                        Area = LoginAreas.FirstOrDefault(x => x.AreaID == areaId) ?? Area;
+                        LoginPage.Area = LoginPage.LoginAreas.FirstOrDefault(x => x.AreaID == areaId) ?? LoginPage.Area;
                     }
 
                     finalLoginType = LoginType.WeGameSID;
@@ -363,17 +340,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
             throw;
         }
 
-        var requiresNewAccountDeviceProfileSetup = ShouldRequireNewAccountDeviceProfileSetup(savedAccount, action);
+        var requiresNewAccountDeviceProfileSetup   = ShouldRequireNewAccountDeviceProfileSetup(savedAccount, action);
         var shouldRequestTemporaryAutoLoginSession = requiresNewAccountDeviceProfileSetup && loginType == LoginType.QRCode;
-        var loginAutoLogin = doingAutoLogin || shouldRequestTemporaryAutoLoginSession;
+        var loginAutoLogin                         = doingAutoLogin || shouldRequestTemporaryAutoLoginSession;
 
         ResolvedDeviceProfile resolvedDeviceProfile;
 
         if (requiresNewAccountDeviceProfileSetup && loginType != LoginType.QRCode)
         {
-            pendingNewAccount = CreatePendingNewAccount(username, username, accountType);
+            pendingNewAccount = MainWindowAccountDraftFactory.CreatePendingNewAccount(username, username, accountType, LoginPage.Area);
 
-            switch (PromptNewAccountDeviceProfileChoice())
+            switch (DialogProvider.PromptNewAccountDeviceProfileChoice())
             {
                 case MessageBoxResult.Yes:
                     resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(pendingNewAccount);
@@ -381,14 +358,15 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 case MessageBoxResult.No:
                 {
-                    var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
-                    if (!ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount))
+                    var configuredNewAccount = MainWindowAccountDraftFactory.CreateIndependentDeviceProfileDraft(pendingNewAccount);
+
+                    if (!DialogProvider.ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount, AccountManager))
                     {
                         SavePendingNewAccountWithoutSecrets(pendingNewAccount);
                         return;
                     }
 
-                    pendingNewAccount      = configuredNewAccount;
+                    pendingNewAccount     = configuredNewAccount;
                     resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(configuredNewAccount);
                     break;
                 }
@@ -411,7 +389,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
         };
 
-        var attemptedV3AutoUpdate = false;
+        var         attemptedV3AutoUpdate = false;
         LoginResult loginResult;
 
         while (true)
@@ -420,13 +398,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
             if (nextLoginResult == null)
                 return;
 
-            loginResult = nextLoginResult;
-            loginResult.Area  = Area;
-            loginResult.Areas = LoginAreas;
+            loginResult       = nextLoginResult;
+            loginResult.Area  = LoginPage.Area;
+            loginResult.Areas = LoginPage.LoginAreas;
 
             if (!attemptedV3AutoUpdate
                 && action is not (LoginAfterAction.UpdateOnly or LoginAfterAction.Repair)
-                && loginResult.State == LoginState.NeedsPatchGame
+                && loginResult.State            == LoginState.NeedsPatchGame
                 && loginResult.V3GameUpdatePlan != null)
             {
                 if (!ConfirmGamePatchInstall())
@@ -446,9 +424,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (requiresNewAccountDeviceProfileSetup && loginType == LoginType.QRCode && loginResult.State == LoginState.Ok && oAuthLogin != null)
         {
-            pendingNewAccount ??= CreatePendingNewAccount(oAuthLogin.InputUserID, oAuthLogin.SndaID, accountType);
+            pendingNewAccount ??= MainWindowAccountDraftFactory.CreatePendingNewAccount(oAuthLogin.InputUserID, oAuthLogin.SndaID, accountType, LoginPage.Area);
 
-            switch (PromptNewAccountDeviceProfileChoice())
+            switch (DialogProvider.PromptNewAccountDeviceProfileChoice())
             {
                 case MessageBoxResult.Yes:
                     resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(pendingNewAccount);
@@ -457,8 +435,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 case MessageBoxResult.No:
                 {
-                    var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
-                    if (!ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount))
+                    var configuredNewAccount = MainWindowAccountDraftFactory.CreateIndependentDeviceProfileDraft(pendingNewAccount);
+
+                    if (!DialogProvider.ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount, AccountManager))
                     {
                         SavePendingNewAccountWithoutSecrets(pendingNewAccount);
                         return;
@@ -477,7 +456,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         return;
                     }
 
-                    pendingNewAccount      = configuredNewAccount;
+                    pendingNewAccount     = configuredNewAccount;
                     resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(configuredNewAccount);
                     deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
 
@@ -496,8 +475,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         return;
 
                     loginResult       = reloginResult;
-                    loginResult.Area  = Area;
-                    loginResult.Areas = LoginAreas;
+                    loginResult.Area  = LoginPage.Area;
+                    loginResult.Areas = LoginPage.LoginAreas;
                     oAuthLogin        = loginResult.OAuthLogin;
                     break;
                 }
@@ -534,12 +513,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     LoginAccount                       = oAuthLogin?.InputUserID!,
                     SndaId                             = oAuthLogin?.SndaID!,
                     AccountType                        = accountType,
-                    AreaName                           = Area.AreaName,
-                    UserDefinedName                    = deviceProfileAccount?.UserDefinedName            ?? null!,
-                    DeviceProfilePresetId              = deviceProfileAccount?.DeviceProfilePresetId      ?? string.Empty,
-                    DeviceProfileDynamicEnabled        = deviceProfileAccount?.DeviceProfileDynamicEnabled ?? false,
-                    IsDeviceProfileRotation            = deviceProfileAccount?.IsDeviceProfileRotation    ?? true,
-                    DeviceProfileRotationDays          = deviceProfileAccount?.DeviceProfileRotationDays  ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
+                    AreaName                           = LoginPage.Area!.AreaName,
+                    UserDefinedName                    = deviceProfileAccount?.UserDefinedName                    ?? null!,
+                    DeviceProfilePresetId              = deviceProfileAccount?.DeviceProfilePresetId              ?? string.Empty,
+                    DeviceProfileDynamicEnabled        = deviceProfileAccount?.DeviceProfileDynamicEnabled        ?? false,
+                    IsDeviceProfileRotation            = deviceProfileAccount?.IsDeviceProfileRotation            ?? true,
+                    DeviceProfileRotationDays          = deviceProfileAccount?.DeviceProfileRotationDays          ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
                     DeviceProfileLastGeneratedUtcTicks = deviceProfileAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0
                 };
 
@@ -637,7 +616,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             await Task.Delay(1000);
             var newPidList = FFXIVProcess.GetGameProcessIDs().Except(pidList).ToArray();
-            LoginMessage = "请使用 WeGame 登录需要读取的 FFXIV 账号信息并启动游戏";
+            LoginPage.LoginMessage = "请使用 WeGame 登录需要读取的 FFXIV 账号信息并启动游戏";
 #if DEBUG
             newPidList = FFXIVProcess.GetGameProcessIDs().ToArray();
 #endif
@@ -647,7 +626,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             await argReader.OpenProcess(pid);
             var data = await argReader.ReadArgs();
 #if DEBUG
-            LoginMessage = "读取成功";
+            LoginPage.LoginMessage = "读取成功";
 #endif
             argReader.Stop(true);
             return data;
@@ -669,7 +648,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         if (IsLoginCanceledByUser)
             return null;
 
-        if (Area == null || Area.AreaID == "-1")
+        if (LoginPage.Area == null || LoginPage.Area.AreaID == "-1")
         {
             CustomMessageBox.Show
             (
@@ -691,7 +670,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             var gamePath = App.Settings.GamePath;
             return await Launcher.LoginClient.LoginWithPatchCheck
                    (
-                       _ => Launcher.UpdateClient.Check(Area, gamePath, action == LoginAfterAction.Repair),
+                       _ => Launcher.UpdateClient.Check(LoginPage.Area, gamePath, action == LoginAfterAction.Repair),
                        action == LoginAfterAction.UpdateOnly,
                        type,
                        fallbackLoginType,
@@ -711,8 +690,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                Window.Dispatcher.Invoke
                                (() =>
                                    {
-                                       QRCodeBitmapImage = qrBytes.ToBitmapImage();
-                                       IsQrCodeExpired  = false;
+                                       LoginPage.QRCodeBitmapImage = qrBytes.ToBitmapImage();
+                                       LoginPage.IsQrCodeExpired   = false;
                                    }
                                );
                            },
@@ -722,9 +701,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
                                    return;
 
                                Log.Information("[MainWindow] 接收到叨鱼确认码: {Code}", code);
-                               LoginMessage = $"确认码: {code}";
+                               LoginPage.LoginMessage = $"确认码: {code}";
                            },
-                           message => Window.Dispatcher.Invoke(() => LoginMessage = message),
+                           message => Window.Dispatcher.Invoke(() => LoginPage.LoginMessage = message),
                            (text, caption, initialText) =>
                                Window.Dispatcher.Invoke(() => new DialogService(Window).ShowTextInput(text, caption, initialText, Window)),
                            challenge => Window.Dispatcher.Invoke
@@ -767,7 +746,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 if ((type == LoginType.QRCode || fallbackLoginType == LoginType.QRCode) && sdoLoginEx.Message == "二维码不存在或已过期，请重试")
                 {
                     Log.Information("[MainWindow] 二维码已过期，等待手动刷新");
-                    Window.Dispatcher.Invoke(() => IsQrCodeExpired = true);
+                    Window.Dispatcher.Invoke(() => LoginPage.IsQrCodeExpired = true);
                     LoginCardAfterCompletion = LoginCardType.ScanQRCode;
                     return null;
                 }
@@ -817,13 +796,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     if ((type == LoginType.QRCode || fallbackLoginType == LoginType.QRCode) && oauthLoginException.OAuthErrorMessage == "二维码不存在或已过期，请重试")
                     {
                         Log.Information("[MainWindow] 二维码已过期，等待手动刷新");
-                        Window.Dispatcher.Invoke(() => IsQrCodeExpired = true);
+                        Window.Dispatcher.Invoke(() => LoginPage.IsQrCodeExpired = true);
                         LoginCardAfterCompletion = LoginCardType.ScanQRCode;
                         return null;
                     }
 
-                    disableAutoLogin = true;
-                    LoginMessage     = string.Empty;
+                    disableAutoLogin       = true;
+                    LoginPage.LoginMessage = string.Empty;
 
                     if (string.IsNullOrWhiteSpace(oauthLoginException.OAuthErrorMessage))
                         msgbox.WithText("登录账号失败, 请检查用户名和密码");
@@ -938,7 +917,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 if (loginResult.State == LoginState.NeedsPatchGame)
                 {
-                    if (!await RepairGame(loginResult).ConfigureAwait(false))
+                    if (!await RepairGame().ConfigureAwait(false))
                         return false;
 
                     loginResult.State = LoginState.Ok;
@@ -1260,335 +1239,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     #endregion
 
-    #region 注入
-
-    public void StartInject() =>
-        StartInject(SelectedProcess, false);
-
-    private void StartInject(FFXIVProcess? targetProcess, bool isAutoInjection)
-    {
-        if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
-        {
-            Window.Dispatcher.Invoke(() => StartInject(targetProcess, isAutoInjection));
-            return;
-        }
-
-        if (IsInjecting || targetProcess == null)
-            return;
-
-        CancelPendingAutoInject();
-
-        if (!isAutoInjection)
-        {
-            IsLoadingDialogOpen  = true;
-            LoadingDialogMessage = "注入中...";
-        }
-
-        IsInjecting = true;
-        CommandManager.InvalidateRequerySuggested();
-
-        Task.Run
-        (() =>
-            {
-                try
-                {
-                    var gamePid = targetProcess.ProcessID;
-
-                    if (targetProcess.HasInjected)
-                    {
-                        if (isAutoInjection)
-                            return;
-
-                        CustomMessageBox.Builder
-                                        .NewFrom("选定进程已被注入")
-                                        .WithButtons(MessageBoxButton.OK)
-                                        .WithCaption("XIVLauncherCN (Soil)")
-                                        .WithParentWindow(Window)
-                                        .Show();
-                        return;
-                    }
-
-                    if (!InjectGameAndAddon(gamePid))
-                        return;
-
-                    Window.Dispatcher.Invoke(() => { targetProcess.HasInjected = true; });
-
-                    if (isAutoInjection)
-                        return;
-
-                    var dialog = CustomMessageBox.Builder
-                                                 .NewFrom("注入完成, 是否要退出 XIVLauncherCN")
-                                                 .WithButtons(MessageBoxButton.YesNo)
-                                                 .WithCaption("XIVLauncherCN (Soil)")
-                                                 .WithParentWindow(Window)
-                                                 .Show();
-
-                    if (dialog == MessageBoxResult.Yes)
-                    {
-                        Log.CloseAndFlush();
-                        Environment.Exit(0);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    CustomMessageBox.Builder
-                                    .NewFromUnexpectedException(ex, "InjectGame")
-                                    .WithParentWindow(Window)
-                                    .Show();
-                }
-                finally
-                {
-                    Window.Dispatcher.Invoke
-                    (() =>
-                        {
-                            IsLoadingDialogOpen = false;
-                            IsInjecting         = false;
-                            CommandManager.InvalidateRequerySuggested();
-                            SyncAutoInjectState();
-
-                            if (!isAutoInjection)
-                                Activate();
-                        }
-                    );
-                }
-            }
-        );
-    }
-
-    public bool InjectGameAndAddon(int gamePid, bool noThird = false, bool noPlugins = false)
-    {
-        var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;
-        var gameExeFolder = Path.GetDirectoryName(gameExePath);
-        var gamePath      = new DirectoryInfo(gameExeFolder!).Parent;
-
-        if (gamePath == null)
-        {
-            CustomMessageBox.Show
-            (
-                "无法解析游戏目录, 注入失败",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error,
-                parentWindow: Window
-            );
-            return false;
-        }
-
-        EnsureDalamudCompatibility();
-
-        var dalamudLauncher = CreateDalamudLauncher(gamePath, DalamudLoadMethod.DllInject, noPlugins, noThird);
-        var dalamudOk       = EnsureDalamudUpdate(dalamudLauncher, App.Settings.GamePath, true);
-
-        Troubleshooting.LogTroubleshooting();
-
-        if (!dalamudOk)
-        {
-            CustomMessageBox.Show
-            (
-                "Dalamud 尚未准备完成, 注入失败",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
-            return false;
-        }
-
-        dalamudLauncher.Inject(gamePid, noPlugins);
-        return true;
-    }
-
-    #endregion
-
-    #region 进程
-
-    private void CancelPendingAutoInject()
-    {
-        if (AutoInjectDelayCancelSource == null)
-            return;
-
-        AutoInjectDelayCancelSource.Cancel();
-        AutoInjectDelayCancelSource.Dispose();
-        AutoInjectDelayCancelSource = null;
-        PendingAutoInjectProcessId  = null;
-    }
-
-    private void CleanupAutoInjectAttemptedProcesses()
-    {
-        var activeProcessIds = FFXIVProcesses.Select(process => process.ProcessID).ToHashSet();
-        AutoInjectAttemptedProcessIds.RemoveWhere(processId => !activeProcessIds.Contains(processId));
-    }
-
-    private bool CanAutoInject() =>
-        LoginCardTransitionerIndex == (int)LoginCardType.InjectMode
-        && AutoInjectEnabled
-        && !IsLoggingIn
-        && !IsInjecting;
-
-    private void SyncAutoInjectState()
-    {
-        if (!CanAutoInject())
-        {
-            CancelPendingAutoInject();
-            return;
-        }
-
-        var candidate = FFXIVProcesses.FirstOrDefault(process => !process.HasInjected && !AutoInjectAttemptedProcessIds.Contains(process.ProcessID));
-
-        if (candidate == null)
-        {
-            CancelPendingAutoInject();
-            return;
-        }
-
-        if (PendingAutoInjectProcessId == candidate.ProcessID)
-            return;
-
-        CancelPendingAutoInject();
-        PendingAutoInjectProcessId  = candidate.ProcessID;
-        AutoInjectDelayCancelSource = new CancellationTokenSource();
-
-        var autoInjectToken = AutoInjectDelayCancelSource.Token;
-        var delayMs         = Math.Max((int)ManualInjectDelayMs.GetValueOrDefault(0), 0);
-
-        Task.Run
-        (
-            async () =>
-            {
-                try
-                {
-                    if (delayMs > 0)
-                        await Task.Delay(delayMs, autoInjectToken);
-
-                    if (autoInjectToken.IsCancellationRequested)
-                        return;
-
-                    Window.Dispatcher.Invoke
-                    (() =>
-                        {
-                            if (PendingAutoInjectProcessId != candidate.ProcessID || !CanAutoInject())
-                                return;
-
-                            var process = FFXIVProcesses.FirstOrDefault(p => p.ProcessID == candidate.ProcessID);
-                            if (process == null || process.HasInjected)
-                                return;
-
-                            AutoInjectAttemptedProcessIds.Add(process.ProcessID);
-                            SelectedProcess = process;
-                            StartInject(process, true);
-                        }
-                    );
-                }
-                catch (OperationCanceledException)
-                {
-                    // ignored
-                }
-                finally
-                {
-                    if (PendingAutoInjectProcessId == candidate.ProcessID)
-                        PendingAutoInjectProcessId = null;
-                }
-            },
-            autoInjectToken
-        );
-    }
-
-    public void StartRefreshFFXIVProcess()
-    {
-        if (ProcessRefreshTask is { IsCompleted: false })
-            return;
-
-        ProcessRefreshCancelSource?.Dispose();
-        ProcessRefreshCancelSource = new();
-
-        var processRefreshToken = ProcessRefreshCancelSource.Token;
-        ProcessRefreshTask = Task.Run
-        (
-            async () =>
-            {
-                try
-                {
-                    while (!processRefreshToken.IsCancellationRequested)
-                    {
-                        var newProcesses = FFXIVProcess.GetGameProcess();
-                        Application.Current.Dispatcher.Invoke
-                        (() =>
-                            {
-                                var selectedProcessId  = SelectedProcess?.ProcessID;
-                                var incomingProcessMap = newProcesses.ToDictionary(p => p.ProcessID);
-
-                                for (var i = FFXIVProcesses.Count - 1; i >= 0; i--)
-                                {
-                                    var existingProcess = FFXIVProcesses[i];
-
-                                    if (incomingProcessMap.TryGetValue(existingProcess.ProcessID, out var duplicateProcess))
-                                    {
-                                        existingProcess.HasInjected = duplicateProcess.HasInjected;
-                                        duplicateProcess.Dispose();
-                                        incomingProcessMap.Remove(existingProcess.ProcessID);
-                                        continue;
-                                    }
-
-                                    existingProcess.Dispose();
-                                    FFXIVProcesses.RemoveAt(i);
-                                }
-
-                                foreach (var process in incomingProcessMap.Values)
-                                    FFXIVProcesses.Add(process);
-
-                                var nextSelectedProcess = selectedProcessId.HasValue
-                                                              ? FFXIVProcesses.FirstOrDefault(p => p.ProcessID == selectedProcessId.Value)
-                                                              : SelectedProcess;
-
-                                SelectedProcess = nextSelectedProcess ?? FFXIVProcesses.FirstOrDefault();
-                                CleanupAutoInjectAttemptedProcesses();
-                                SyncAutoInjectState();
-                            }
-                        );
-
-                        Log.Verbose("Refreshing Processes...");
-                        await Task.Delay(1000, processRefreshToken);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    // ignored
-                }
-            },
-            processRefreshToken
-        );
-    }
-
-    private void StopRefreshFFXIVProcess(bool clearCollection)
-    {
-        CancelPendingAutoInject();
-
-        if (ProcessRefreshCancelSource != null)
-        {
-            ProcessRefreshCancelSource.Cancel();
-            ProcessRefreshCancelSource.Dispose();
-            ProcessRefreshCancelSource = null;
-        }
-
-        ProcessRefreshTask = null;
-
-        if (!clearCollection)
-            return;
-
-        foreach (var process in FFXIVProcesses)
-            process.Dispose();
-
-        AutoInjectAttemptedProcessIds.Clear();
-        FFXIVProcesses.Clear();
-        SelectedProcess = null;
-    }
-
-    #endregion
-
     #region 启动游戏
 
     public async Task<FFXIVProcess?> StartGameAndAddon(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
     {
-        if (Area == null || Area.AreaID == "-1")
+        if (LoginPage.Area == null || LoginPage.Area.AreaID == "-1")
         {
             CustomMessageBox.Show
             (
@@ -1604,7 +1259,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        var dalamudLauncher = CreateDalamudLauncher
+        var dalamudLauncher = DalamudLauncherFactory.Create
         (
             App.Settings.GamePath,
             App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
@@ -1634,10 +1289,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
             loginResult.OAuthLogin!.SessionID,
             loginResult.OAuthLogin!.SndaID,
             loginResult.DCTravelPort,
-            Area.AreaID,
-            Area.AreaLobby,
-            Area.AreaGM,
-            Area.AreaConfigUpload,
+            LoginPage.Area.AreaID,
+            LoginPage.Area.AreaLobby,
+            LoginPage.Area.AreaGM,
+            LoginPage.Area.AreaConfigUpload,
             Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
             App.Settings.AdditionalLaunchArgs,
             App.Settings.GamePath,
@@ -1837,13 +1492,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private Task<bool> RepairGame(LoginResult loginResult) =>
-        HandleV3GamePatchAsync(loginResult, PatchVerifierMode.Repair);
+    private Task<bool> RepairGame() =>
+        HandleV3GamePatchAsync(PatchVerifierMode.Repair);
 
-    private async Task<bool> HandleV3GamePatchAsync(LoginResult loginResult, PatchVerifierMode mode)
+    private async Task<bool> HandleV3GamePatchAsync(PatchVerifierMode mode)
     {
-        var doLogin = false;
-        using var mutex = new Mutex(false, "XivLauncherIsPatching");
+        var       doLogin = false;
+        using var mutex   = new Mutex(false, "XivLauncherIsPatching");
 
         if (!mutex.WaitOne(0, false))
         {
@@ -2003,7 +1658,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private Task<bool> InstallGamePatch(LoginResult loginResult)
     {
         if (loginResult.V3GameUpdatePlan != null)
-            return HandleV3GamePatchAsync(loginResult, PatchVerifierMode.Update);
+            return HandleV3GamePatchAsync(PatchVerifierMode.Update);
 
         var pendingPatches = PatchExecutionCoordinator.GetPendingPatchesForInstall(loginResult);
         return HandlePatchAsync(Repository.Ffxiv, pendingPatches, loginResult.UniqueID ?? string.Empty);
@@ -2179,106 +1834,51 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     #region 杂项
 
-    private static DalamudLauncher CreateDalamudLauncher(DirectoryInfo gamePath, DalamudLoadMethod loadMethod, bool noPlugins, bool noThird) =>
-        new
-        (
-            new WindowsDalamudRunner(),
-            App.DalamudUpdater,
-            loadMethod,
-            gamePath,
-            new DirectoryInfo(Paths.RoamingPath),
-            new DirectoryInfo(Paths.RoamingPath),
-            ClientLanguage.ChineseSimplified,
-            (int)App.Settings.DalamudInjectionDelayMs,
-            false,
-            noPlugins,
-            noThird,
-            Troubleshooting.GetTroubleshootingJson()
-        );
+    private void HandleLoginAction(LoginPageViewModel loginPage, LoginAfterAction action)
+    {
+        if (IsLoggingIn)
+            return;
 
-    private Action<object> CreateLoginHandler(LoginAfterAction action) =>
-        _ =>
+        if (action == LoginAfterAction.Start)
+            loginPage.LoginMessage = string.Empty;
+
+        if (loginPage.IsAutoLogin && !App.Settings.HasShownAutoLaunchDisclaimer.GetValueOrDefault(false))
         {
-            if (action == LoginAfterAction.CancelLogin)
-            {
-                CancelLogin();
-                return;
-            }
+            DialogProvider.ShowAutoLoginDisclaimer();
+            App.Settings.HasShownAutoLaunchDisclaimer = true;
+        }
 
-            if (IsLoggingIn)
-                return;
+        if (GameHelpers.CheckIsGameOpen() && action == LoginAfterAction.Repair)
+        {
+            DialogProvider.ShowRepairBlockedMessage();
+            return;
+        }
 
-            if (action == LoginAfterAction.Start) LoginMessage = string.Empty;
+        if (action == LoginAfterAction.Repair && !DialogProvider.ConfirmRepairGame())
+            return;
 
-            if (IsAutoLogin && !App.Settings.HasShownAutoLaunchDisclaimer.GetValueOrDefault(false))
-            {
-                CustomMessageBox.Builder
-                                .NewFrom("自动登录已启用, 后续将默认使用当前账号登录, 并不再显示主窗口\n若需要修改设置, 请在登录时按住 SHIFT 键")
-                                .WithParentWindow(Window)
-                                .Show();
+        StartLogin(loginPage.LoginTypeOption.LoginType, loginPage.Username, loginPage.Password, loginPage.IsFastLogin, loginPage.IsReadWegameInfo, action);
+    }
 
-                App.Settings.HasShownAutoLaunchDisclaimer = true;
-            }
+    private void RefreshQrCode(LoginPageViewModel loginPage)
+    {
+        LoginCardAfterCompletion = LoginCardType.MainPage;
+        StartLogin(LoginType.QRCode, loginPage.Username, loginPage.Password, loginPage.IsFastLogin, loginPage.IsReadWegameInfo, LoginAfterAction.Start);
+    }
 
-            if (GameHelpers.CheckIsGameOpen() && action == LoginAfterAction.Repair)
-            {
-                CustomMessageBox.Builder
-                                .NewFrom("官方启动器或游戏正在运行中, 无法执行修复, 请关闭相关进程后重试")
-                                .WithImage(MessageBoxImage.Exclamation)
-                                .WithParentWindow(Window)
-                                .Show();
+    private void ShowLoadingDialog(string message)
+    {
+        IsLoadingDialogOpen  = true;
+        LoadingDialogMessage = message;
+    }
 
-                return;
-            }
-
-            if (action == LoginAfterAction.Repair)
-            {
-                var res = CustomMessageBox.Builder
-                                          .NewFrom("XIVLauncher 将会搜寻任何与原版不一致的游戏文件并替换修复\n这可能导致使用 TexTools 安装的模组被还原\n持续时间可能较长, 请确认是否要继续?")
-                                          .WithButtons(MessageBoxButton.YesNo)
-                                          .WithImage(MessageBoxImage.Question)
-                                          .WithParentWindow(Window)
-                                          .Show();
-
-                if (res == MessageBoxResult.No)
-                    return;
-            }
-
-            StartLogin(LoginTypeOption.LoginType, Username, Password, IsFastLogin, IsReadWegameInfo, action);
-        };
+    private void HideLoadingDialog() =>
+        IsLoadingDialogOpen = false;
 
     private bool ShouldRequireNewAccountDeviceProfileSetup(XIVAccount? savedAccount, LoginAfterAction action) =>
         App.Settings.RequireDeviceProfileSetupForNewAccountLogin.GetValueOrDefault(false)
         && savedAccount == null
-        && action != LoginAfterAction.UpdateOnly;
-
-    private XIVAccount CreatePendingNewAccount(string loginAccount, string sndaId, XIVAccountType accountType) =>
-        new()
-        {
-            LoginAccount                = loginAccount,
-            SndaId                      = sndaId,
-            AccountType                 = accountType,
-            AreaName                    = Area?.AreaName ?? string.Empty,
-            DeviceProfilePresetId       = string.Empty,
-            DeviceProfileDynamicEnabled = false,
-            IsDeviceProfileRotation     = true,
-            DeviceProfileRotationDays   = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS
-        };
-
-    private XIVAccount CreateIndependentDeviceProfileDraft(XIVAccount account) =>
-        new()
-        {
-            LoginAccount                       = account.LoginAccount,
-            SndaId                             = account.SndaId,
-            AccountType                        = account.AccountType,
-            AreaName                           = account.AreaName,
-            UserDefinedName                    = account.UserDefinedName,
-            DeviceProfilePresetId              = account.DeviceProfilePresetId,
-            DeviceProfileDynamicEnabled        = true,
-            IsDeviceProfileRotation            = account.IsDeviceProfileRotation,
-            DeviceProfileRotationDays          = account.DeviceProfileRotationDays,
-            DeviceProfileLastGeneratedUtcTicks = account.DeviceProfileLastGeneratedUtcTicks
-        };
+        && action       != LoginAfterAction.UpdateOnly;
 
     private void SavePendingNewAccountWithoutSecrets(XIVAccount account)
     {
@@ -2292,34 +1892,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         AccountManager.CurrentAccount = account;
         AccountManager.Save();
     }
-
-    private MessageBoxResult PromptNewAccountDeviceProfileChoice() =>
-        CustomMessageBox.Builder
-                        .NewFrom("检测到新账号首次登录，需先确认本次使用的设备信息")
-                        .WithCaption("设备信息")
-                        .WithButtons(MessageBoxButton.YesNo)
-                        .WithYesButtonText("使用共享设备信息")
-                        .WithNoButtonText("配置账号设备信息")
-                        .WithDefaultResult(MessageBoxResult.Yes)
-                        .WithImage(MessageBoxImage.Question)
-                        .WithParentWindow(Window)
-                        .Show();
-
-    private bool ShowTemporaryAccountDeviceProfileSettings(XIVAccount account) =>
-        Window.Dispatcher.Invoke
-        (() =>
-            {
-                var dialog = new AccountDeviceProfileSettingsWindow(account, AccountManager, true);
-
-                if (Window.IsVisible)
-                {
-                    dialog.Owner         = Window;
-                    dialog.ShowInTaskbar = false;
-                }
-
-                return dialog.ShowDialog() == true;
-            }
-        );
 
     private XIVAccount? FindSavedAccount(LoginType loginType, string username)
     {
@@ -2362,7 +1934,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public void OnWindowClosed(object? sender, object args)
     {
-        StopRefreshFFXIVProcess(true);
+        InjectPage.StopRefreshing(true);
         CancelLogin();
         Application.Current.Shutdown();
     }
@@ -2401,91 +1973,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     #endregion
 
-    #region Commands
-
-    public ICommand StartLoginCommand       { get; set; }
-    public ICommand LoginNoStartCommand     { get; set; }
-    public ICommand LoginNoDalamudCommand   { get; set; }
-    public ICommand LoginNoPluginsCommand   { get; set; }
-    public ICommand LoginNoThirdCommand     { get; set; }
-    public ICommand LoginRepairCommand      { get; set; }
-    public ICommand LoginCancelCommand      { get; set; }
-    public ICommand LoginForceQRCommand     { get; set; }
-    public ICommand RefreshQrCodeCommand    { get; set; }
-    public ICommand InjectModeSwitchCommand { get; set; }
-    public ICommand InjectGameCommand       { get; set; }
-    public ICommand FakeStartCommand        { get; set; }
-
-    #endregion
-
     #region Bindings
-
-    public bool IsAutoLogin
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(IsAutoLogin));
-        }
-    }
-
-    public bool IsFastLogin
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(IsFastLogin));
-        }
-    }
-
-    public bool IsReadWegameInfo
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(IsReadWegameInfo));
-        }
-    }
-
-    public string Username
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(Username));
-        }
-    } = string.Empty;
-
-    public LoginTypeOption LoginTypeOption
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(LoginTypeOption));
-        }
-    } = null!;
-
-    public int AreaIndex
-    {
-        set => App.Settings.SelectedServer = value;
-    }
-
-    public LoginArea? Area
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(Area));
-
-            Log.Information("大区变更 {OldArea} -> {NewArea}", field, value);
-        }
-    }
 
     public bool IsEnabled
     {
@@ -2526,138 +2014,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(LoadingDialogMessage));
         }
     } = string.Empty;
-
-    public string LoginMessage
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(LoginMessage));
-        }
-    } = string.Empty;
-
-    public SolidColorBrush WorldStatusIconColor
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(WorldStatusIconColor));
-        }
-    }
-
-    public BitmapImage? QRCodeBitmapImage
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(QRCodeBitmapImage));
-        }
-    }
-
-    public bool IsQrCodeExpired
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(IsQrCodeExpired));
-            CommandManager.InvalidateRequerySuggested();
-        }
-    }
-
-    public PackIconKind ModeSwitchIcon
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(ModeSwitchIcon));
-        }
-    } = PackIconKind.Injection;
-
-    public string ModeSwitchTitle
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(ModeSwitchTitle));
-        }
-    } = "手动注入模式";
-
-    public bool AutoInjectEnabled
-    {
-        get;
-        set
-        {
-            if (field == value)
-                return;
-
-            field = value;
-            App.Settings.ManualInjectAutoInjectEnabled = value;
-
-            if (!value)
-            {
-                CancelPendingAutoInject();
-                AutoInjectAttemptedProcessIds.Clear();
-            }
-
-            OnPropertyChanged(nameof(AutoInjectEnabled));
-            SyncAutoInjectState();
-        }
-    }
-
-    public decimal? ManualInjectDelayMs
-    {
-        get;
-        set
-        {
-            if (field == value)
-                return;
-
-            field                       = value;
-            App.Settings.ManualInjectDelayMs = value ?? 0;
-            Settings.ManualInjectDelayMs = value;
-            OnPropertyChanged(nameof(ManualInjectDelayMs));
-            SyncAutoInjectState();
-        }
-    }
-
-    public ObservableCollection<FFXIVProcess> FFXIVProcesses { get; } = [];
-
-    public FFXIVProcess? SelectedProcess
-    {
-        get;
-        set
-        {
-            if (ReferenceEquals(field, value))
-                return;
-
-            field = value;
-            OnPropertyChanged(nameof(SelectedProcess));
-            OnPropertyChanged(nameof(CanOperateOnSelectedProcess));
-            CommandManager.InvalidateRequerySuggested();
-        }
-    }
-
-    public bool HasAvailableProcesses => FFXIVProcesses.Count > 0;
-
-    public bool CanOperateOnSelectedProcess => SelectedProcess != null;
-
-    public string ProcessSelectionHint => HasAvailableProcesses ? "选择要注入的进程" : "未检测到可注入进程";
-
-    public LoginArea[] LoginAreas
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(LoginAreas));
-        }
-    } = [];
 
     #endregion
 
