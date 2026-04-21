@@ -35,16 +35,6 @@ public class DalamudUpdater
         get => RunnerOverride ?? field;
         private set;
     }
-
-    // 运行时版本
-    private const string RUNTIME_INFO_URL = Links.DALAMUD_RUNTIME_INFO_URL;
-    
-    // 运行时下载源
-    private const string RUNTIME_SOURCE_NUGET_URL  = Links.NUGET_V3_FLAT_CONTAINER_URL;
-    private const string RUNTIME_SOURCE_HUAWEI_URL = Links.HUAWEI_NUGET_V3_REMOTE_URL;
-    
-    // Dalmaud 发布信息
-    private const string RELEASE_INFO_URL = Links.DALAMUD_RELEASE_INFO_URL;
     
     private static string runtimeVersion = string.Empty;
 
@@ -54,6 +44,7 @@ public class DalamudUpdater
 
     private readonly TimeSpan   defaultTimeout = TimeSpan.FromMinutes(1);
     private readonly HttpClient httpClient;
+    private readonly HttpClient testHttpClient;
     
     public DalamudUpdater
     (
@@ -84,6 +75,9 @@ public class DalamudUpdater
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
         if (!string.IsNullOrWhiteSpace(this.githubToken))
             httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
+
+        testHttpClient         = new HttpClient();
+        testHttpClient.Timeout = TimeSpan.FromSeconds(3);
     }
 
     public void Run()
@@ -324,14 +318,14 @@ public class DalamudUpdater
     {
         try
         {
-            var runtimeResponse = await httpClient.GetAsync(RUNTIME_INFO_URL);
+            var runtimeResponse = await httpClient.GetAsync(Links.DALAMUD_RUNTIME_INFO_URL);
             runtimeResponse.EnsureSuccessStatusCode();
             runtimeVersion = await runtimeResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
             runtimeVersion = runtimeVersion.Trim().Trim('\n');
 
             Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
-            var response = await httpClient.GetAsync(RELEASE_INFO_URL);
+            var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
             response.EnsureSuccessStatusCode();
 
             var       json    = await response.Content.ReadAsStringAsync();
@@ -392,7 +386,7 @@ public class DalamudUpdater
 
         try
         {
-            var response = await httpClient.GetAsync(RELEASE_INFO_URL);
+            var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
             response.EnsureSuccessStatusCode();
 
             var       json    = await response.Content.ReadAsStringAsync();
@@ -449,7 +443,7 @@ public class DalamudUpdater
         try
         {
             // 微软 .NET 运行时下载链接
-            var packageBaseAddress = await IsGoogleReachableAsync() ? RUNTIME_SOURCE_NUGET_URL : RUNTIME_SOURCE_HUAWEI_URL;
+            var packageBaseAddress = await IsGoogleReachableAsync() ? Links.NUGET_V3_FLAT_CONTAINER_URL : Links.HUAWEI_NUGET_V3_REMOTE_URL;
 
             var dotnetUrl  = $"{packageBaseAddress}/microsoft.netcore.app.runtime.win-x64/{version}/microsoft.netcore.app.runtime.win-x64.{version}.nupkg";
             var desktopUrl = $"{packageBaseAddress}/microsoft.windowsdesktop.app.runtime.win-x64/{version}/microsoft.windowsdesktop.app.runtime.win-x64.{version}.nupkg";
@@ -487,7 +481,7 @@ public class DalamudUpdater
         }
     }
 
-    private string GetLocalRuntimeVersion(FileInfo versionFile)
+    private static string GetLocalRuntimeVersion(FileInfo versionFile)
     {
         const string DEFAULT_VERSION = "5.0.0";
 
@@ -626,7 +620,7 @@ public class DalamudUpdater
         }
     }
 
-    public static async Task<bool> IsGoogleReachableAsync()
+    public async Task<bool> IsGoogleReachableAsync()
     {
         var googleTask = GetConnectionTimeAsync(Links.GOOGLE_URL);
         var huaweiTask = GetConnectionTimeAsync(Links.HUAWEI_CLOUD_URL);
@@ -676,11 +670,8 @@ public class DalamudUpdater
 
             try
             {
-                using var client = new HttpClient();
-                client.Timeout = TimeSpan.FromSeconds(3);
-
                 stopwatch.Start();
-                using var response = await client.GetAsync(url);
+                using var response = await testHttpClient.GetAsync(url);
                 stopwatch.Stop();
 
                 return (response.IsSuccessStatusCode, stopwatch.Elapsed);

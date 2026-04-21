@@ -17,8 +17,6 @@ namespace XIVLauncher.Common.Dalamud;
 
 public class AssetManager
 {
-    private const string AssetStoreURL = Links.DALAMUD_ASSET_STORE_URL;
-
     public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir)
     {
         using var metaClient = new HttpClient
@@ -188,9 +186,9 @@ public class AssetManager
             Log.Error(ex, "[DASSET] 无法读取 asset.ver");
         }
 
-        var remoteVer = JsonSerializer.Deserialize<AssetInfo>(await client.GetStringAsync(AssetStoreURL), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var remoteVer = JsonSerializer.Deserialize<AssetInfo>(await client.GetStringAsync(Links.DALAMUD_ASSET_STORE_URL), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        Log.Verbose("[DASSET] 版本检查 - 本地:{0} 远端:{1}", localVer, remoteVer.Version);
+        Log.Verbose("[DASSET] 版本检查 - 本地:{0} 远端:{1}", localVer, remoteVer!.Version);
 
         var needsUpdate = remoteVer.Version > localVer;
 
@@ -234,17 +232,17 @@ public class AssetManager
     {
         [JsonPropertyName("version")] public int Version { get; set; }
 
-        [JsonPropertyName("assets")] public IReadOnlyList<Asset> Assets { get; set; }
+        [JsonPropertyName("assets")] public IReadOnlyList<Asset> Assets { get; set; } = null!;
 
-        [JsonPropertyName("packageUrl")] public string PackageUrl { get; set; }
+        [JsonPropertyName("packageUrl")] public string PackageUrl { get; set; } = null!;
 
         public class Asset
         {
-            [JsonPropertyName("url")] public string Url { get; set; }
+            [JsonPropertyName("url")] public string Url { get; set; } = null!;
 
-            [JsonPropertyName("fileName")] public string FileName { get; set; }
+            [JsonPropertyName("fileName")] public string FileName { get; set; } = null!;
 
-            [JsonPropertyName("hash")] public string Hash { get; set; }
+            [JsonPropertyName("hash")] public string Hash { get; set; } = null!;
         }
     }
 }

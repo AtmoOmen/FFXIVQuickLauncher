@@ -17,8 +17,6 @@ internal class Updates
     ILauncherSettingsV3 settings
 )
 {
-    private const string UPDATE_URL = Links.REPO_URL;
-
     public async Task<bool> Run(bool downloadPrerelease, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)
     {
 #if XL_NOAUTOUPDATE
@@ -42,7 +40,7 @@ internal class Updates
 
             var updateSource = new GitHubSource
             (
-                UPDATE_URL,
+                Links.REPO_URL,
                 settings.GitHubToken,
                 true,
                 Links.GITHUB_PROXY_BASE_URL,
