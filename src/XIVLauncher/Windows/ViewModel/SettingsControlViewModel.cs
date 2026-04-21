@@ -255,8 +255,14 @@ public sealed class SettingsControlViewModel : ViewModelBase
         get;
         set => SetProperty(ref field, value);
     } = "XIVLauncher";
+    
+    public string CommitLabelText
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
 
-    private const int BytesToMb = 1048576;
+    private const int BYTES_TO_MB = 1048576;
 
     private readonly IDialogService         _dialogService;
     private readonly IExternalLaunchService _externalLaunchService;
@@ -304,23 +310,24 @@ public sealed class SettingsControlViewModel : ViewModelBase
         App.Settings.PatchPath ??= new DirectoryInfo(Path.Combine(Paths.RoamingPath, "patches"));
         PatchPath              =   App.Settings.PatchPath?.FullName ?? string.Empty;
 
-        LauncherLanguage              = LauncherLanguage.SimplifiedChinese;
-        LauncherLanguageNoticeVisible = false;
-        AskBeforePatching             = App.Settings.AskBeforePatchInstall ?? true;
-        KeepPatches                   = App.Settings.KeepPatches           ?? false;
+        LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
+        LauncherLanguageNoticeVisible               = false;
+        AskBeforePatching                           = App.Settings.AskBeforePatchInstall                       ?? true;
+        KeepPatches                                 = App.Settings.KeepPatches                                 ?? false;
         RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewAccountLogin ?? false;
-        PatchAcquisitionIndex         = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
-        DalamudInjectionDelayMs       = App.Settings.DalamudInjectionDelayMs;
-        ManualInjectDelayMs           = App.Settings.ManualInjectDelayMs;
-        UseEntryPointLoadMethod       = App.Settings.InGameAddonLoadMethod != DalamudLoadMethod.DllInject;
-        EnableHooks                   = App.Settings.InGameAddonEnabled;
-        EnableDcTravel                = true;
-        LaunchArgs                    = App.Settings.AdditionalLaunchArgs ?? string.Empty;
-        DpiAwarenessIndex             = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware);
-        VersionLabelText              = $"XIVLauncher - v{AppUtil.GetAssemblyVersion()}";
-        SpeedLimitMb                  = (decimal)App.Settings.SpeedLimitBytes / BytesToMb;
-        SelectedCredType             = App.AccountManager.CurrentCredType;
-        GitHubToken                   = App.Settings.GitHubToken ?? string.Empty;
+        PatchAcquisitionIndex                       = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
+        DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMs;
+        ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
+        UseEntryPointLoadMethod                     = App.Settings.InGameAddonLoadMethod != DalamudLoadMethod.DllInject;
+        EnableHooks                                 = App.Settings.InGameAddonEnabled;
+        EnableDcTravel                              = true;
+        LaunchArgs                                  = App.Settings.AdditionalLaunchArgs ?? string.Empty;
+        DpiAwarenessIndex                           = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware);
+        VersionLabelText                            = $"XIVLauncher - v{AppUtil.GetAssemblyVersion()}";
+        CommitLabelText                             = $"{AppUtil.GetGitHash()}";
+        SpeedLimitMb                                = (decimal)App.Settings.SpeedLimitBytes / BYTES_TO_MB;
+        SelectedCredType                            = App.AccountManager.CurrentCredType;
+        GitHubToken                                 = App.Settings.GitHubToken ?? string.Empty;
 
         ReplaceAddonEntries(App.Settings.AddonList ?? []);
         RefreshGamePathWarning();
@@ -355,7 +362,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         App.Settings.InGameAddonLoadMethod   = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
         App.Settings.AdditionalLaunchArgs    = LaunchArgs;
         App.Settings.DpiAwareness            = (DpiAwareness)DpiAwarenessIndex;
-        App.Settings.SpeedLimitBytes         = (long)((SpeedLimitMb ?? 0) * BytesToMb);
+        App.Settings.SpeedLimitBytes         = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
         App.Settings.GitHubToken             = GitHubToken;
 
         var requestedCredType   = SelectedCredType;
