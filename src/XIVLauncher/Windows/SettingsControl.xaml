@@ -8,6 +8,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:dragablz="http://dragablz.net/winfx/xaml/dragablz"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     d:DataContext="{d:DesignInstance viewModel:SettingsControlViewModel}"
@@ -336,7 +337,7 @@
                             <WrapPanel Margin="0,0,0,24">
                                 <Button x:Name="DiscordButton" Style="{DynamicResource MaterialDesignOutlinedButton}" Margin="0,0,8,8">
                                     <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="Discord" VerticalAlignment="Center" />   
+                                        <mahIcon:PackIconSimpleIcons Kind="Discord" VerticalAlignment="Center" />   
                                         <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Margin="8,0,0,0" VerticalAlignment="Center" Text="Discord" />
                                     </StackPanel>
                                 </Button>

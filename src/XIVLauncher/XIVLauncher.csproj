@@ -78,6 +78,7 @@
         <PackageReference Include="Downloader" />
         <PackageReference Include="Dragablz"/>
         <PackageReference Include="Extended.Wpf.Toolkit"/>
+        <PackageReference Include="MahApps.Metro.IconPacks" />
         <PackageReference Include="MaterialDesignThemes"/>
         <PackageReference Include="Microsoft.WindowsAPICodePack-Shell"/>
         <PackageReference Include="NSec.Cryptography"/>

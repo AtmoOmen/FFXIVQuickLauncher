@@ -5,6 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
     mc:Ignorable="d"
     Title="XIVLauncher Update"
     Height="Auto"
@@ -59,7 +60,7 @@
                     x:Name="DiscordButton"
                     Margin="0,0,5,0">
                 <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="Discord" />
+                    <mahIcon:PackIconSimpleIcons Kind="Discord" />
                     <TextBlock Margin="8 0 0 0"
                                VerticalAlignment="Center"
                                Text="加入 Discord 服务器" />
