@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.CommandLine;
 using System.IO;
 using System.IO.Compression;
@@ -7,10 +6,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
+using XIVLauncher.Common;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Common.Game.Patch.PatchList;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
+using XIVLauncher.PatchInstaller.Commands.Internal;
 
 namespace XIVLauncher.PatchInstaller.Commands;
 
@@ -37,11 +37,29 @@ public class IndexRpcTestCommand
         var launcher                = new Launcher();
         var areas                   = await LoginArea.Get();
         var area                    = areas[Random.Shared.Next(areas.Length)];
-        var loginResult             = await launcher.UpdateClient.CheckLegacy(area, new DirectoryInfo(PATCH_ROOT_PATH), true);
-        var pendingPatches          = loginResult.PendingPatches ?? throw new InvalidDataException("Failed to get CN patch list.");
-        var availableSourceUrls     = pendingPatches.ToDictionary(GetPatchSourceKey, static patch => patch.Url);
-        var latestBaseGamePatch     = pendingPatches.Last(static patch => GetPatchSourceKey(patch).StartsWith("ex0:", StringComparison.Ordinal));
-        var patchIndexFilePath      = Path.Combine(PATCH_ROOT_PATH, GetRelativePatchPath(latestBaseGamePatch) + ".index");
+        var loginResult             = await launcher.UpdateClient.Check(area, new DirectoryInfo(PATCH_ROOT_PATH), true);
+
+        if (loginResult.V3GameUpdatePlan == null)
+            throw new InvalidDataException("Failed to get V3 update plan.");
+
+        var updatePlan = loginResult.V3GameUpdatePlan;
+        using var metadataClient = new V3PatchIndexMetadataClient();
+        var latestVersions = await metadataClient.DownloadLatestVersionsAsync(cancellationToken);
+        var gameVersionInfo = latestVersions[Repository.Ffxiv];
+        if (!string.Equals(gameVersionInfo.Version, updatePlan.TargetGameVersion, StringComparison.Ordinal))
+            throw new InvalidDataException($"V3 target version mismatch: {updatePlan.TargetGameVersion} != {gameVersionInfo.Version}");
+
+        var patchIndexFilePath = (await metadataClient.DownloadPatchIndexAsync
+        (
+            new DirectoryInfo(PATCH_ROOT_PATH),
+            Repository.Ffxiv,
+            gameVersionInfo.Version,
+            gameVersionInfo.Revision,
+            cancellationToken
+        )).FullName;
+        var availablePatchFiles = Directory.EnumerateFiles(PATCH_ROOT_PATH, "*.patch", SearchOption.AllDirectories)
+                                           .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                                           .ToDictionary(static group => group.Key!, static group => group.First(), StringComparer.OrdinalIgnoreCase);
 
         // Run verifier as another thread
         using var verifier = new IndexedZiPatchIndexRemoteInstaller(null, true);
@@ -63,14 +81,16 @@ public class IndexRpcTestCommand
 
             var missingPartIndicesPerPatch = await verifier.GetMissingPartIndicesPerPatch(cancellationToken);
             await verifier.SetTargetStreamsFromPathReadWriteForMissingFiles(GAME_ROOT_PATH, cancellationToken);
-            var patchSourcePrefix = patchIndex.ExpacVersion == IndexedZiPatchIndex.ExpacVersionBoot ? "boot:" : $"ex{patchIndex.ExpacVersion}:";
 
             for (var i = 0; i < patchIndex.Sources.Count; i++)
             {
                 if (!missingPartIndicesPerPatch[i].Any())
                     continue;
 
-                await verifier.QueueInstall(i, new(availableSourceUrls[patchSourcePrefix + patchIndex.Sources[i]]), null, MAX_CONCURRENT_CONNECTIONS_FOR_PATCH_SET, cancellationToken);
+                if (!availablePatchFiles.TryGetValue(patchIndex.Sources[i], out var patchFilePath))
+                    throw new FileNotFoundException($"Missing local patch file: {patchIndex.Sources[i]}", patchIndex.Sources[i]);
+
+                await verifier.QueueInstall(i, new FileInfo(patchFilePath));
             }
 
             await verifier.Install(MAX_CONCURRENT_CONNECTIONS_FOR_PATCH_SET, cancellationToken);
@@ -81,18 +101,6 @@ public class IndexRpcTestCommand
         verifier.OnInstallProgress -= ReportInstallProgress;
 
         return 0;
-
-        static string GetPatchSourceKey(PatchListEntry patch)
-        {
-            var repoName = patch.GetRepoName();
-            if (repoName == "ffxiv")
-                repoName = "ex0";
-
-            return $"{repoName}:{Path.GetFileName(new Uri(patch.Url).LocalPath)}";
-        }
-
-        static string GetRelativePatchPath(PatchListEntry patch) =>
-            new Uri(patch.Url).LocalPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
 
         void ReportCheckProgress(int index, long progress, long max) =>
             Log.Information

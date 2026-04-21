@@ -21,7 +21,7 @@ public partial class Launcher
     public HttpClient     MockHttpClient { get; } = new(new HttpClientHandler { UseCookies = true });
 
     public Launcher() =>
-        UpdateClient = new(MockHttpClient);
+        UpdateClient = new();
 
     public FFXIVProcess? LaunchGame
     (

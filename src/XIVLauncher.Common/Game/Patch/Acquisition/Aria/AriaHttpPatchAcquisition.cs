@@ -40,8 +40,7 @@ public class AriaHttpPatchAcquisition : PatchAcquisition
             }
 
             // I don't really see the point of this, but aria complains if we don't provide a secret
-            var rng    = new Random();
-            var secret = BitConverter.ToString(MD5.Create().ComputeHash(Encoding.UTF8.GetBytes($"{rng.Next()}{rng.Next()}{rng.Next()}{rng.Next()}")));
+            var secret = BitConverter.ToString(MD5.HashData(Encoding.UTF8.GetBytes($"{Random.Shared.Next()}{Random.Shared.Next()}{Random.Shared.Next()}{Random.Shared.Next()}")));
 
             var ariaPath = Path.Combine(Paths.ResourcesPath, "aria2c-xl.exe");
 
