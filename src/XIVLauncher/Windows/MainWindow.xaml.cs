@@ -123,7 +123,7 @@ public partial class MainWindow : Window
 
         if (App.Settings.AutologinEnabled && savedAccount != null && !hasUnavailableSecrets && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
         {
-            Log.Information("Engaging Autologin...");
+            Log.Information("自动登录中...");
 
             if (savedAccount.AccountType == XIVAccountType.WeGameSID)
             {
@@ -131,7 +131,7 @@ public partial class MainWindow : Window
                 (
                     LoginType.WeGameSID,
                     savedAccount.LoginAccount,
-                    savedAccount.TestSID,
+                    savedAccount.TestSID!,
                     Model.LoginPage.IsFastLogin,
                     Model.LoginPage.IsReadWegameInfo,
                     LoginAfterAction.Start
@@ -154,10 +154,7 @@ public partial class MainWindow : Window
         }
 
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || bool.Parse(Environment.GetEnvironmentVariable("XL_NOAUTOLOGIN") ?? "false"))
-        {
             App.Settings.AutologinEnabled = false;
-            //AutoLoginCheckBox.IsChecked = false;
-        }
 
         if (App.Settings.GamePath?.Exists != true)
         {

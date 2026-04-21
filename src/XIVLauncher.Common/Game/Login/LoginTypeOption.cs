@@ -14,8 +14,8 @@ public class LoginTypeOption
             new() { LoginType = LoginType.Slide, DisplayName       = "一键登录" },
             new() { LoginType = LoginType.QRCode, DisplayName      = "扫码登录" },
             new() { LoginType = LoginType.Static, DisplayName      = "密码登录" },
-            new() { LoginType = LoginType.WeGameSID, DisplayName   = "WeGame SID" },
-            new() { LoginType = LoginType.WeGameToken, DisplayName = "WeGame 抓包" }
+            new() { LoginType = LoginType.WeGameSID, DisplayName   = "WeGame (自动读取)" },
+            new() { LoginType = LoginType.WeGameToken, DisplayName = "WeGame (手动抓包)" }
         };
 
         return types;
