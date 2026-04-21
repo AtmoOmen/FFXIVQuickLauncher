@@ -7,6 +7,7 @@
     <Style TargetType="{x:Type Window}">
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="materialDesign:ShadowAssist.CacheMode" Value="{x:Null}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="TextElement.FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="Language" Value="zh-CN" />
@@ -15,6 +16,7 @@
     <Style TargetType="{x:Type UserControl}">
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="materialDesign:ShadowAssist.CacheMode" Value="{x:Null}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="TextElement.FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="Language" Value="zh-CN" />
@@ -23,6 +25,7 @@
     <Style TargetType="{x:Type ContextMenu}">
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="materialDesign:ShadowAssist.CacheMode" Value="{x:Null}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="TextElement.FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="Language" Value="zh-CN" />
@@ -31,6 +34,7 @@
     <Style TargetType="{x:Type Menu}">
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="materialDesign:ShadowAssist.CacheMode" Value="{x:Null}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="TextElement.FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="Language" Value="zh-CN" />
@@ -39,6 +43,7 @@
     <Style TargetType="{x:Type ToolTip}">
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="materialDesign:ShadowAssist.CacheMode" Value="{x:Null}" />
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="TextElement.FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="Language" Value="zh-CN" />
@@ -53,6 +58,7 @@
     <Style TargetType="{x:Type materialDesign:Card}" BasedOn="{StaticResource {x:Type materialDesign:Card}}">
         <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="materialDesign:ShadowAssist.CacheMode" Value="{x:Null}" />
     </Style>
 
     <Style x:Key="MaterialDesignToggleButtonWithIcon" BasedOn="{StaticResource MaterialDesignFloatingActionButton}"
