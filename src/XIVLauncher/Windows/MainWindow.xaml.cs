@@ -255,6 +255,7 @@ public partial class MainWindow : Window
                 bitmapImage.BeginInit();
                 bitmapImage.StreamSource = stream;
                 bitmapImage.CacheOption  = BitmapCacheOption.OnLoad;
+                bitmapImage.DecodePixelWidth = 400;
                 bitmapImage.EndInit();
                 bitmapImage.Freeze();
 
@@ -560,7 +561,9 @@ public partial class MainWindow : Window
         SetBannerDotActiveState(bannerIndex);
         
         var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
+        Timeline.SetDesiredFrameRate(fadeOut, 60);
         var fadeIn = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200));
+        Timeline.SetDesiredFrameRate(fadeIn, 60);
         
         fadeOut.Completed += (s, e) =>
         {

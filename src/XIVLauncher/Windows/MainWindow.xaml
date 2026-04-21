@@ -142,6 +142,7 @@
                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                                          VirtualizingPanel.ScrollUnit="Pixel"
+                                         VirtualizingPanel.VirtualizationMode="Recycling"
                                          HorizontalContentAlignment="Stretch">
                                     <ListBox.Template>
                                         <ControlTemplate TargetType="ListBox">
@@ -340,11 +341,11 @@
                                                     <ProgressBar x:Name="ProgressBar"
                                                                  Style="{StaticResource MaterialDesignCircularProgressBar}"
                                                                  Value="0"
-                                                                 IsIndeterminate="True" 
+                                                                 IsIndeterminate="{Binding IsLoggingIn}" 
                                                                  Height="48" Width="48" 
                                                                  Margin="0,0,0,16" 
                                                                  HorizontalAlignment="Center" />
-                                                    <TextBlock Text="正在登录…"
+                                                    <TextBlock Text="正在登录"
                                                                HorizontalAlignment="Center"
                                                                FontSize="16"
                                                                FontWeight="SemiBold"
@@ -355,7 +356,7 @@
                                                                TextWrapping="Wrap"
                                                                Opacity="0.7"
                                                                Margin="0,0,0,24" />
-                                                    <Button Content="取消登录"
+                                                    <Button Content="取消"
                                                             Command="{Binding LoginPage.LoginCancelCommand}"
                                                             Style="{StaticResource MaterialDesignOutlinedButton}"
                                                             materialDesign:ButtonAssist.CornerRadius="16"
@@ -499,14 +500,14 @@
                                                                                 <Trigger Property="IsSelected" Value="True">
                                                                                     <Trigger.EnterActions>
                                                                                         <BeginStoryboard>
-                                                                                            <Storyboard>
+                                                                                            <Storyboard Timeline.DesiredFrameRate="60">
                                                                                                 <DoubleAnimation Storyboard.TargetName="ActiveBg" Storyboard.TargetProperty="Opacity" To="0.15" Duration="0:0:0.15" />
                                                                                             </Storyboard>
                                                                                         </BeginStoryboard>
                                                                                     </Trigger.EnterActions>
                                                                                     <Trigger.ExitActions>
                                                                                         <BeginStoryboard>
-                                                                                            <Storyboard>
+                                                                                            <Storyboard Timeline.DesiredFrameRate="60">
                                                                                                 <DoubleAnimation Storyboard.TargetName="ActiveBg" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15" />
                                                                                             </Storyboard>
                                                                                         </BeginStoryboard>
@@ -521,14 +522,14 @@
                                                                                     </MultiTrigger.Conditions>
                                                                                     <MultiTrigger.EnterActions>
                                                                                         <BeginStoryboard>
-                                                                                            <Storyboard>
+                                                                                            <Storyboard Timeline.DesiredFrameRate="60">
                                                                                                 <DoubleAnimation Storyboard.TargetName="Bg" Storyboard.TargetProperty="Opacity" To="0.5" Duration="0:0:0.15" />
                                                                                             </Storyboard>
                                                                                         </BeginStoryboard>
                                                                                     </MultiTrigger.EnterActions>
                                                                                     <MultiTrigger.ExitActions>
                                                                                         <BeginStoryboard>
-                                                                                            <Storyboard>
+                                                                                            <Storyboard Timeline.DesiredFrameRate="60">
                                                                                                 <DoubleAnimation Storyboard.TargetName="Bg" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
                                                                                             </Storyboard>
                                                                                         </BeginStoryboard>
@@ -679,7 +680,7 @@
                                                         HorizontalAlignment="Center"
                                                         Margin="0,0,0,16">
                                                     <Border.Effect>
-                                                        <DropShadowEffect BlurRadius="10" Opacity="0.1" ShadowDepth="2" />
+                                                        <DropShadowEffect BlurRadius="10" Opacity="0.1" ShadowDepth="2" RenderingBias="Performance" />
                                                     </Border.Effect>
                                                     <Grid Width="136" Height="136">
                                                         <Image x:Name="QrImage"
@@ -723,7 +724,7 @@
                                                             <Grid.Triggers>
                                                                 <EventTrigger RoutedEvent="MouseEnter">
                                                                     <BeginStoryboard>
-                                                                        <Storyboard>
+                                                                        <Storyboard Timeline.DesiredFrameRate="60">
                                                                             <ColorAnimation Storyboard.TargetName="OverlayBorder" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#B3000000" Duration="0:0:0.15" />
                                                                             <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.15" />
                                                                             <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.15" />
@@ -735,7 +736,7 @@
                                                                 </EventTrigger>
                                                                 <EventTrigger RoutedEvent="MouseLeave">
                                                                     <BeginStoryboard>
-                                                                        <Storyboard>
+                                                                        <Storyboard Timeline.DesiredFrameRate="60">
                                                                             <ColorAnimation Storyboard.TargetName="OverlayBorder" Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="#99000000" Duration="0:0:0.15" />
                                                                             <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="0.85" Duration="0:0:0.15" />
                                                                             <DoubleAnimation Storyboard.TargetName="RefreshIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="0.85" Duration="0:0:0.15" />
@@ -963,7 +964,7 @@
 
                                             Style="{StaticResource MaterialDesignCircularProgressBar}"
                                             Value="0"
-                                            IsIndeterminate="True" Height="30" Width="30" Margin="0 8 0 0" />
+                                            IsIndeterminate="{Binding IsLoadingDialogOpen}" Height="30" Width="30" Margin="0 8 0 0" />
                                     </StackPanel>
                                 </StackPanel>
                             </materialDesign:DialogHost.DialogContent>

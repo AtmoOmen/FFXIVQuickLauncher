@@ -21,10 +21,12 @@ public sealed class StableFadeWipe : ITransitionWipe
         var midpointKeyTime = KeyTime.FromTimeSpan(TimeSpan.FromSeconds(Duration.TotalSeconds / 2));
 
         var fromAnimation = new DoubleAnimationUsingKeyFrames();
+        Timeline.SetDesiredFrameRate(fromAnimation, 60);
         fromAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1, zeroKeyTime));
         fromAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, midpointKeyTime, sineEase));
 
         var toAnimation = new DoubleAnimationUsingKeyFrames();
+        Timeline.SetDesiredFrameRate(toAnimation, 60);
         toAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0, zeroKeyTime));
         toAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(1, midpointKeyTime, sineEase));
 
