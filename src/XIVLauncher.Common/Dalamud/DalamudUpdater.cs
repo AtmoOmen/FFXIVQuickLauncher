@@ -58,25 +58,12 @@ public class DalamudUpdater
         Runtime             = runtimeDirectory;
         this.assetDirectory = assetDirectory;
         this.githubToken    = githubToken;
-        httpClient = new HttpClient
-        (
-            new SocketsHttpHandler
-            {
-                UseProxy                       = true,
-                ConnectTimeout                 = TimeSpan.FromSeconds(10),
-                MaxConnectionsPerServer        = 50,
-                EnableMultipleHttp2Connections = true,
-                PooledConnectionLifetime       = TimeSpan.FromMinutes(1),
-                Expect100ContinueTimeout       = TimeSpan.Zero,
-                AutomaticDecompression         = DecompressionMethods.All,
-                ConnectCallback                = HappyEyeballsCallback.ConnectCallback
-            }
-        );
+        httpClient = XLHttpClientFactory.Create(TimeSpan.FromSeconds(10), 50, DecompressionMethods.All);
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
         if (!string.IsNullOrWhiteSpace(this.githubToken))
             httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
 
-        testHttpClient         = new HttpClient();
+        testHttpClient         = XLHttpClientFactory.Create(TimeSpan.FromSeconds(3), 8, DecompressionMethods.All);
         testHttpClient.Timeout = TimeSpan.FromSeconds(3);
     }
 
@@ -671,7 +658,8 @@ public class DalamudUpdater
             try
             {
                 stopwatch.Start();
-                using var response = await testHttpClient.GetAsync(url);
+                using var request  = new HttpRequestMessage(HttpMethod.Get, url);
+                using var response = await testHttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
                 stopwatch.Stop();
 
                 return (response.IsSuccessStatusCode, stopwatch.Elapsed);

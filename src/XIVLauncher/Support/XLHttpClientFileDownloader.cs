@@ -27,20 +27,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
 
     public XLHttpClientFileDownloader()
     {
-        httpClient = new HttpClient
-        (
-            new SocketsHttpHandler
-            {
-                UseProxy                       = true,
-                ConnectTimeout                 = ConnectTimeout,
-                MaxConnectionsPerServer        = 50,
-                EnableMultipleHttp2Connections = true,
-                PooledConnectionLifetime       = TimeSpan.FromMinutes(1),
-                Expect100ContinueTimeout       = TimeSpan.Zero,
-                AutomaticDecompression         = DecompressionMethods.All,
-                ConnectCallback                = HappyEyeballsCallback.ConnectCallback
-            }
-        );
+        httpClient = XLHttpClientFactory.Create(ConnectTimeout, 50, DecompressionMethods.All);
         httpClient.Timeout = Timeout.InfiniteTimeSpan;
     }
 

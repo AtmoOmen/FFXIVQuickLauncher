@@ -31,18 +31,11 @@ public class HttpClientDownloadWithProgress
     public async Task Download(TimeSpan? timeout = null, bool isNuGet = false)
     {
         timeout       ??= TimeSpan.FromMinutes(10);
-        parallelParts =   Environment.ProcessorCount;
+        parallelParts =   Math.Clamp(Environment.ProcessorCount / 2, 4, 12);
         Log.Information("[DUPDATE] 下载线程数: {0}", parallelParts);
 
-        var handler = new SocketsHttpHandler
-        {
-            AutomaticDecompression         = DecompressionMethods.All,
-            MaxConnectionsPerServer        = 20,
-            EnableMultipleHttp2Connections = true,
-            ConnectTimeout                 = TimeSpan.FromSeconds(5),
-            ConnectCallback                = HappyEyeballsCallback.ConnectCallback
-        };
-        httpClient = new HttpClient(handler) { Timeout = timeout.Value };
+        httpClient = XLHttpClientFactory.Create(TimeSpan.FromSeconds(5), 20, DecompressionMethods.All);
+        httpClient.Timeout = timeout.Value;
         httpClient.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
 
         var probeTotalSize = await ProbeRangeSupport(isNuGet).ConfigureAwait(false);

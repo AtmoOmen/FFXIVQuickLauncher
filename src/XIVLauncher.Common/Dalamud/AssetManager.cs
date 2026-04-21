@@ -19,20 +19,12 @@ public class AssetManager
 {
     public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir)
     {
-        using var metaClient = new HttpClient
+        using var metaClient = XLHttpClientFactory.Create
         (
-            new SocketsHttpHandler
-            {
-                UseProxy                       = true,
-                ConnectTimeout                 = TimeSpan.FromSeconds(10),
-                MaxConnectionsPerServer        = 50,
-                EnableMultipleHttp2Connections = true,
-                PooledConnectionLifetime       = TimeSpan.FromMinutes(1),
-                Expect100ContinueTimeout       = TimeSpan.Zero,
-                ConnectCallback                = HappyEyeballsCallback.ConnectCallback,
-                // Don't Remove!!!
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-            }
+            TimeSpan.FromSeconds(10),
+            50,
+            // Don't Remove!!!
+            DecompressionMethods.GZip | DecompressionMethods.Deflate
         );
         metaClient.Timeout = TimeSpan.FromMinutes(4);
 
@@ -90,7 +82,7 @@ public class AssetManager
             }
         }
 
-        var tasks = new List<Task>();
+        var tasks = new List<Task<bool>>();
 
         foreach (var entry in assetFileDownloadList)
         {
@@ -121,7 +113,14 @@ public class AssetManager
             }
 
             tasks.Add(Download(entry.Url, newFilePath));
-            await Task.WhenAll(tasks);
+        }
+
+        if (tasks.Count > 0)
+        {
+            var downloadResults = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+            for (var i = 0; i < downloadResults.Length; i++)
+                isRefreshNeeded |= downloadResults[i];
         }
 
         if (isRefreshNeeded)
@@ -152,17 +151,18 @@ public class AssetManager
 
         return (currentDir, info.Version);
 
-        async Task Download(string url, string path)
+        async Task<bool> Download(string url, string path)
         {
             try
             {
                 Log.Information("[DASSET] 正在下载 {0} 至 {1}...", url, path);
                 await updater.DownloadFile(url, path, TimeSpan.FromMinutes(4)).ConfigureAwait(false);
-                isRefreshNeeded = true;
+                return true;
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "[DASSET] 无法下载资源文件: {0}", url);
+                return false;
             }
         }
     }

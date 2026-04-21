@@ -1,6 +1,6 @@
-﻿using System;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -9,168 +9,239 @@ using Serilog;
 
 namespace XIVLauncher.Common.Http;
 
-public static class DNSResolver
+internal static class DNSResolver
 {
-    private const string HIJACK_CNAME = "cf.951886.xyz";
+    private static readonly ConcurrentDictionary<string, CacheEntry> CachedCandidatesByHost =
+        new(StringComparer.OrdinalIgnoreCase);
 
-    private const AddressFamily FORCED_ADDRESS_FAMILY = AddressFamily.InterNetwork;
+    private static readonly CloudflareIpv4Range[] CloudflareRanges =
+    [
+        new(IPAddress.Parse("173.245.48.0"), 20),
+        new(IPAddress.Parse("103.21.244.0"), 22),
+        new(IPAddress.Parse("103.22.200.0"), 22),
+        new(IPAddress.Parse("103.31.4.0"), 22),
+        new(IPAddress.Parse("141.101.64.0"), 18),
+        new(IPAddress.Parse("108.162.192.0"), 18),
+        new(IPAddress.Parse("190.93.240.0"), 20),
+        new(IPAddress.Parse("188.114.96.0"), 20),
+        new(IPAddress.Parse("197.234.240.0"), 22),
+        new(IPAddress.Parse("198.41.128.0"), 17),
+        new(IPAddress.Parse("162.158.0.0"), 15),
+        new(IPAddress.Parse("104.16.0.0"), 13),
+        new(IPAddress.Parse("104.24.0.0"), 14),
+        new(IPAddress.Parse("172.64.0.0"), 13),
+        new(IPAddress.Parse("131.0.72.0"), 22)
+    ];
 
-    private static readonly List<CidrRange> CachedRanges;
+    private static readonly ConcurrentDictionary<string, Task<CacheEntry>> PendingResolutionsByHost =
+        new(StringComparer.OrdinalIgnoreCase);
 
-    private readonly struct CidrRange
+    private static HijackCacheEntry? hijackCacheEntry;
+
+    private static Task<HijackCacheEntry>? pendingHijackResolution;
+
+    public static async Task<IReadOnlyList<ConnectionCandidate>> GetSortedAddressesAsync(string hostname, CancellationToken token)
     {
-        public readonly uint Network;
-        public readonly uint Mask;
+        if (TryGetCachedCandidates(hostname, out var cachedCandidates))
+            return cachedCandidates;
 
-        public CidrRange(IPAddress ip, int prefixLength)
-        {
-            var bytes = ip.GetAddressBytes();
-            if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
-
-            var ipNum = BitConverter.ToUInt32(bytes, 0);
-            var mask  = prefixLength == 0 ? 0 : uint.MaxValue << 32 - prefixLength;
-
-            Network = ipNum & mask;
-            Mask    = mask;
-        }
-    }
-
-    // From https://www.cloudflare.com/ips/
-    static DNSResolver()
-    {
-        var rawRanges = new List<(string Ip, int Prefix)>
-        {
-            ("173.245.48.0", 20),
-            ("103.21.244.0", 22),
-            ("103.22.200.0", 22),
-            ("103.31.4.0", 22),
-            ("141.101.64.0", 18),
-            ("108.162.192.0", 18),
-            ("190.93.240.0", 20),
-            ("188.114.96.0", 20),
-            ("197.234.240.0", 22),
-            ("198.41.128.0", 17),
-            ("162.158.0.0", 15),
-            ("104.16.0.0", 13),
-            ("104.24.0.0", 14),
-            ("172.64.0.0", 13),
-            ("131.0.72.0", 22)
-        };
-
-        CachedRanges = new List<CidrRange>(rawRanges.Count);
-
-        foreach (var (ipStr, prefix) in rawRanges)
-            CachedRanges.Add(new CidrRange(IPAddress.Parse(ipStr), prefix));
-    }
-
-    public static async Task<List<IPAddress>> GetSortedAddressesAsync(string hostname, CancellationToken token)
-    {
-        var dnsRecords = await Dns.GetHostAddressesAsync(hostname, FORCED_ADDRESS_FAMILY, token);
-
-        if (dnsRecords.Length > 0 && !string.IsNullOrEmpty(HIJACK_CNAME) && dnsRecords.All(IsCloudflareIp))
-        {
-            try
-            {
-                var cnameRecords = await Dns.GetHostAddressesAsync(HIJACK_CNAME, FORCED_ADDRESS_FAMILY, token);
-                var selectedCnameIps = cnameRecords
-                                       .Where(IsCloudflareIp)
-                                       .Take(3)
-                                       .ToArray();
-
-                if (selectedCnameIps.Length > 0)
-                {
-                    dnsRecords = selectedCnameIps
-                                 .Concat(dnsRecords)
-                                 .Distinct()
-                                 .ToArray();
-                }
-                else
-                {
-                    Log.Warning
-                    (
-                        "CNAME {_hijackCname} resolved to empty or invalid IPs for {Hostname}",
-                        HIJACK_CNAME,
-                        hostname
-                    );
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning
-                (
-                    ex,
-                    "Failed to resolve CNAME {_hijackCname} for hijack of {Hostname}",
-                    HIJACK_CNAME,
-                    hostname
-                );
-            }
-        }
-
-        var groups = dnsRecords
-                     .GroupBy(a => a.AddressFamily)
-                     .Select(g => g.ToArray())
-                     .ToArray<IEnumerable<IPAddress>>();
-        return ZipperMerge(groups).ToList();
-    }
-
-    /// <summary>
-    ///     Perform a "zipper merge" (A, 1, B, 2, C, 3) of multiple enumerables, allowing for lists to end early.
-    ///     Copied From
-    ///     https://github.com/goatcorp/Dalamud/blob/3be14d4135fecf3816d033e87259115941b18494/Dalamud/Utility/Util.cs#L502-L544
-    /// </summary>
-    /// <param name="sources">A set of enumerable sources to combine.</param>
-    /// <typeparam name="TSource">The resulting type of the merged list to return.</typeparam>
-    /// <returns>A new enumerable, consisting of the final merge of all lists.</returns>
-    public static IEnumerable<TSource> ZipperMerge<TSource>(params IEnumerable<TSource>[] sources)
-    {
-        // Borrowed from https://codereview.stackexchange.com/a/263451, thank you!
-        var enumerators = new IEnumerator<TSource>[sources.Length];
+        var task = PendingResolutionsByHost.GetOrAdd(hostname, static host => ResolveCandidatesAsync(host));
 
         try
         {
-            for (var i = 0; i < sources.Length; i++)
-                enumerators[i] = sources[i].GetEnumerator();
-
-            var hasNext = new bool[enumerators.Length];
-
-            bool MoveNext()
-            {
-                var anyHasNext = false;
-
-                for (var i = 0; i < enumerators.Length; i++)
-                    anyHasNext |= hasNext[i] = enumerators[i].MoveNext();
-
-                return anyHasNext;
-            }
-
-            while (MoveNext())
-            {
-                for (var i = 0; i < enumerators.Length; i++)
-                {
-                    if (hasNext[i])
-                        yield return enumerators[i].Current;
-                }
-            }
+            var cacheEntry = await task.WaitAsync(token).ConfigureAwait(false);
+            CachedCandidatesByHost[hostname] = cacheEntry;
+            return cacheEntry.Candidates;
         }
         finally
         {
-            foreach (var enumerator in enumerators)
-                enumerator?.Dispose();
+            if (task.IsCompleted)
+                PendingResolutionsByHost.TryRemove(hostname, out _);
         }
     }
 
-    private static bool IsCloudflareIp(IPAddress ip)
+    private static void AppendCandidates
+    (
+        List<ConnectionCandidate>  candidates,
+        HashSet<IPAddress>         seenAddresses,
+        IReadOnlyList<IPAddress>   addresses,
+        ConnectionCandidateSource  source
+    )
     {
-        if (ip.AddressFamily != AddressFamily.InterNetwork)
+        foreach (var address in addresses)
+        {
+            if (!seenAddresses.Add(address))
+                continue;
+
+            candidates.Add(new ConnectionCandidate(address, source, candidates.Count));
+        }
+    }
+
+    private static bool AreAllCloudflare(IReadOnlyList<IPAddress> addresses)
+    {
+        if (addresses.Count == 0)
             return false;
 
-        var bytes = ip.GetAddressBytes();
+        foreach (var address in addresses)
+        {
+            if (!IsCloudflareIp(address))
+                return false;
+        }
 
-        if (BitConverter.IsLittleEndian)
-            Array.Reverse(bytes);
-
-        var ipNum = BitConverter.ToUInt32(bytes, 0);
-
-        return CachedRanges.Any(range => (ipNum & range.Mask) == range.Network);
+        return true;
     }
+
+    private static async Task<IReadOnlyList<IPAddress>> GetHijackAddressesAsync()
+    {
+        var snapshot = hijackCacheEntry;
+
+        if (snapshot is { } cachedEntry && cachedEntry.ExpiresAt > DateTimeOffset.UtcNow)
+            return cachedEntry.Addresses;
+
+        var pendingTask = pendingHijackResolution;
+
+        if (pendingTask == null || pendingTask.IsCompleted)
+        {
+            var createdTask = ResolveHijackAddressesAsync();
+            var originalTask = Interlocked.CompareExchange(ref pendingHijackResolution, createdTask, pendingTask);
+            pendingTask = originalTask ?? createdTask;
+        }
+
+        try
+        {
+            var resolvedEntry = await pendingTask.ConfigureAwait(false);
+            hijackCacheEntry = resolvedEntry;
+            return resolvedEntry.Addresses;
+        }
+        finally
+        {
+            if (pendingTask.IsCompleted)
+                _ = Interlocked.CompareExchange(ref pendingHijackResolution, null, pendingTask);
+        }
+    }
+
+    private static bool IsCloudflareIp(IPAddress address)
+    {
+        if (address.AddressFamily != AddressFamily.InterNetwork)
+            return false;
+
+        for (var i = 0; i < CloudflareRanges.Length; i++)
+        {
+            if (CloudflareRanges[i].Contains(address))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static async Task<CacheEntry> ResolveCandidatesAsync(string hostname)
+    {
+        var directAddresses = await ResolveIpv4AddressesAsync(hostname).ConfigureAwait(false);
+
+        if (directAddresses.Count == 0)
+            throw new SocketException((int)SocketError.HostNotFound);
+
+        var candidates    = new List<ConnectionCandidate>(directAddresses.Count + MAX_HIJACK_ADDRESS_COUNT);
+        var seenAddresses = new HashSet<IPAddress>();
+
+        if (!hostname.Equals(HIJACK_CNAME, StringComparison.OrdinalIgnoreCase) && AreAllCloudflare(directAddresses))
+        {
+            try
+            {
+                var hijackAddresses = await GetHijackAddressesAsync().ConfigureAwait(false);
+
+                if (hijackAddresses.Count > 0)
+                    AppendCandidates(candidates, seenAddresses, hijackAddresses, ConnectionCandidateSource.HijackDns);
+                else
+                    Log.Warning("Cloudflare 劫持入口 {HijackCname} 未返回可用 IPv4 地址", HIJACK_CNAME);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "解析 Cloudflare 劫持入口 {HijackCname} 失败", HIJACK_CNAME);
+            }
+        }
+
+        AppendCandidates(candidates, seenAddresses, directAddresses, ConnectionCandidateSource.DirectDns);
+
+        var orderedCandidates = ConnectionTelemetryStore.SortCandidates(hostname, candidates);
+
+        return new CacheEntry(orderedCandidates, DateTimeOffset.UtcNow.AddSeconds(HOST_CACHE_SECONDS));
+    }
+
+    private static async Task<HijackCacheEntry> ResolveHijackAddressesAsync()
+    {
+        var resolvedAddresses = await ResolveIpv4AddressesAsync(HIJACK_CNAME).ConfigureAwait(false);
+        var filteredAddresses = new List<IPAddress>(Math.Min(resolvedAddresses.Count, MAX_HIJACK_ADDRESS_COUNT));
+
+        for (var i = 0; i < resolvedAddresses.Count && filteredAddresses.Count < MAX_HIJACK_ADDRESS_COUNT; i++)
+        {
+            var address = resolvedAddresses[i];
+
+            if (IsCloudflareIp(address))
+                filteredAddresses.Add(address);
+        }
+
+        return new HijackCacheEntry(filteredAddresses, DateTimeOffset.UtcNow.AddSeconds(HIJACK_CACHE_SECONDS));
+    }
+
+    private static async Task<IReadOnlyList<IPAddress>> ResolveIpv4AddressesAsync(string hostname)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(DNS_RESOLVE_TIMEOUT_SECONDS));
+        var resolvedAddresses = await Dns.GetHostAddressesAsync(hostname, AddressFamily.InterNetwork, cts.Token).ConfigureAwait(false);
+
+        if (resolvedAddresses.Length == 0)
+            return [];
+
+        var uniqueAddresses = new HashSet<IPAddress>();
+        var orderedAddresses = new List<IPAddress>(resolvedAddresses.Length);
+
+        foreach (var address in resolvedAddresses)
+        {
+            if (!uniqueAddresses.Add(address))
+                continue;
+
+            orderedAddresses.Add(address);
+        }
+
+        return orderedAddresses;
+    }
+
+    private static bool TryGetCachedCandidates(string hostname, out IReadOnlyList<ConnectionCandidate> candidates)
+    {
+        if (CachedCandidatesByHost.TryGetValue(hostname, out var cacheEntry) && cacheEntry.ExpiresAt > DateTimeOffset.UtcNow)
+        {
+            candidates = cacheEntry.Candidates;
+            return true;
+        }
+
+        CachedCandidatesByHost.TryRemove(hostname, out _);
+        candidates = [];
+        return false;
+    }
+
+    private readonly record struct CacheEntry
+    (
+        IReadOnlyList<ConnectionCandidate> Candidates,
+        DateTimeOffset                     ExpiresAt
+    );
+
+    private readonly record struct HijackCacheEntry
+    (
+        IReadOnlyList<IPAddress> Addresses,
+        DateTimeOffset           ExpiresAt
+    );
+
+    #region Constants
+
+    private const int DNS_RESOLVE_TIMEOUT_SECONDS = 4;
+
+    private const int HIJACK_CACHE_SECONDS = 90;
+
+    private const string HIJACK_CNAME = "cf.951886.xyz";
+
+    private const int HOST_CACHE_SECONDS = 75;
+
+    private const int MAX_HIJACK_ADDRESS_COUNT = 4;
+
+    #endregion
 }
