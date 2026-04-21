@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -380,6 +381,22 @@ public class AccountManager
         var sharedPreset = GetSharedDeviceProfilePreset();
         var account = FindAccount(userName, accountType);
 
+        return ResolveDeviceProfile(sharedPreset, account, false);
+    }
+
+    public ResolvedDeviceProfile ResolveDeviceProfile(XIVAccount account)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+
+        var sharedPreset    = GetSharedDeviceProfilePreset();
+        var trackedAccount  = GetTrackedAccount(account);
+        var isTrackedAccount = Accounts.Any(existing => existing.Id == trackedAccount.Id);
+
+        return ResolveDeviceProfile(sharedPreset, trackedAccount, isTrackedAccount);
+    }
+
+    private ResolvedDeviceProfile ResolveDeviceProfile(DeviceProfilePreset sharedPreset, XIVAccount? account, bool saveChanges)
+    {
         if (account == null)
             return new ResolvedDeviceProfile
             (
@@ -391,45 +408,44 @@ public class AccountManager
                 sharedPreset.GeneratedUtcTicks
             );
 
-        var trackedAccount = GetTrackedAccount(account);
-        var isChanged      = NormalizeDeviceProfileSettings(trackedAccount) || MigrateLegacyDeviceProfile(trackedAccount);
+        var isChanged = NormalizeDeviceProfileSettings(account) || MigrateLegacyDeviceProfile(account);
 
-        if (!trackedAccount.DeviceProfileDynamicEnabled)
+        if (!account.DeviceProfileDynamicEnabled)
         {
-            if (isChanged)
-                Save(trackedAccount);
+            if (isChanged && saveChanges)
+                Save(account);
 
             return new ResolvedDeviceProfile
             (
                 sharedPreset.ToSnapshot(),
                 null,
                 false,
-                trackedAccount.IsDeviceProfileRotation,
-                NormalizeDeviceProfileRotationDays(trackedAccount.DeviceProfileRotationDays),
+                account.IsDeviceProfileRotation,
+                NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays),
                 sharedPreset.GeneratedUtcTicks
             );
         }
 
         var nowUtc       = DateTimeOffset.UtcNow;
-        var accountPreset = EnsureAccountDeviceProfilePreset(trackedAccount, sharedPreset, nowUtc, ref isChanged);
+        var accountPreset = EnsureAccountDeviceProfilePreset(account, sharedPreset, nowUtc, ref isChanged);
 
-        if (ShouldRotateDeviceProfile(trackedAccount, nowUtc))
+        if (ShouldRotateDeviceProfile(account, nowUtc))
         {
-            accountPreset = AssignPresetToAccount(trackedAccount, FakeMachineInfo.CreateSnapshot(), nowUtc.UtcTicks);
+            accountPreset = AssignPresetToAccount(account, FakeMachineInfo.CreateSnapshot(), nowUtc.UtcTicks);
             isChanged     = true;
         }
 
-        if (isChanged)
-            Save(trackedAccount);
+        if (isChanged && saveChanges)
+            Save(account);
 
         return new ResolvedDeviceProfile
         (
             accountPreset.ToSnapshot(),
-            trackedAccount.DeviceProfilePresetId,
-            trackedAccount.DeviceProfileDynamicEnabled,
-            trackedAccount.IsDeviceProfileRotation,
-            NormalizeDeviceProfileRotationDays(trackedAccount.DeviceProfileRotationDays),
-            trackedAccount.DeviceProfileLastGeneratedUtcTicks
+            account.DeviceProfilePresetId,
+            account.DeviceProfileDynamicEnabled,
+            account.IsDeviceProfileRotation,
+            NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays),
+            account.DeviceProfileLastGeneratedUtcTicks
         );
     }
 
@@ -453,11 +469,13 @@ public class AccountManager
     public DeviceProfilePreset SaveDeviceProfileSelection(XIVAccount account, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark)
     {
         var trackedAccount = GetTrackedAccount(account);
-        var normalizedTicks = NormalizeGeneratedUtcTicks(generatedUtcTicks);
-        var preset          = AssignPresetToAccount(trackedAccount, snapshot, normalizedTicks, remark);
+        var preset = ApplyDeviceProfileSelection(trackedAccount, snapshot, generatedUtcTicks, remark);
         Save(trackedAccount);
         return preset;
     }
+
+    public DeviceProfilePreset ApplyDeviceProfileSelection(XIVAccount account, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark) =>
+        AssignPresetToAccount(account, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
 
     public DeviceProfilePreset SaveSharedDeviceProfileSelection(DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark)
     {
@@ -503,6 +521,34 @@ public class AccountManager
         ClearUnavailableSecrets(account.Id);
         Accounts.Remove(account);
 
+        if (string.Equals(_setting.CurrentAccountId, account.Id, StringComparison.Ordinal))
+            _setting.CurrentAccountId = string.Empty;
+
+        AccountSwitcherEntry.RemoveCustomProfileImage(account);
+
+        var profileIconPath = Path.Combine
+        (
+            Paths.RoamingPath,
+            "profileIcons",
+            $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(account.Id)))}.ico"
+        );
+        if (File.Exists(profileIconPath))
+            File.Delete(profileIconPath);
+
+        if (!string.IsNullOrWhiteSpace(account.DeviceProfilePresetId))
+        {
+            lock (DeviceProfilePresetStoreSyncRoot)
+            {
+                var state = GetDeviceProfilePresetStoreState();
+                if (!string.Equals(state.SharedPresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)
+                    && Accounts.All(existing => !string.Equals(existing.DeviceProfilePresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)))
+                {
+                    state.Presets.RemoveAll(preset => string.Equals(preset.Id, account.DeviceProfilePresetId, StringComparison.Ordinal));
+                    PersistDeviceProfilePresetStoreState(state);
+                }
+            }
+        }
+
         lock (syncRoot)
         {
 
@@ -511,7 +557,7 @@ public class AccountManager
                 {
                     var record = db.Table<XIVAccount>().FirstOrDefault(a => a.Id == account.Id);
                     if (record != null)
-                        db.Delete(account);
+                        db.Delete(record);
                 }
             );
         }
