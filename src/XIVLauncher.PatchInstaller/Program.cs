@@ -27,9 +27,7 @@ public static class Program
         rc.Subcommands.Add(IndexCreateIntegrityCommand.COMMAND);
         rc.Subcommands.Add(IndexVerifyCommand.COMMAND);
         rc.Subcommands.Add(IndexRepairCommand.COMMAND);
-        rc.Subcommands.Add(IndexUpdateCommand.COMMAND);
         rc.Subcommands.Add(IndexRpcCommand.COMMAND);
-        rc.Subcommands.Add(IndexRpcTestCommand.COMMAND);
         rc.Subcommands.Add(RpcCommand.COMMAND);
         rc.Subcommands.Add(SdoRpcCommand.COMMAND);
 

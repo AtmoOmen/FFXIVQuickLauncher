@@ -3,23 +3,17 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Integrity;
-using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
 using XIVLauncher.Common.Patching.SdoFileDownload;
-using XIVLauncher.Common.Patching.Util;
 using XIVLauncher.Common.PlatformAbstractions;
 
 namespace XIVLauncher.Common.Game.Patch;
@@ -80,34 +74,24 @@ public class PatchVerifier : IDisposable
     ];
 
     private readonly ISettings                             _settings;
-    private readonly int                                   _maxExpansionToCheck;
     private readonly bool                                  _external;
     private readonly Lock                                  _installProgressLock                 = new();
     private readonly Dictionary<int, InstallProgressEntry> _currentInstallProgressBySourceIndex = new();
 
-    private const string BASE_URL = "https://gh.atmoomen.top/https://raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/patchInfo/";
-
-    //private readonly bool _useSdoVerifierV3;
     private readonly HttpClient _client;
 
-    private readonly Dictionary<Repository, string>  _repoMetaPaths           = new();
-    private readonly Dictionary<string, PatchSource> _patchSources            = new();
-    private readonly List<Tuple<long, long>>         _reportedProgresses      = new();
-    private          CancellationTokenSource         _cancellationTokenSource = new();
+    private readonly List<Tuple<long, long>> _reportedProgresses      = new();
+    private          CancellationTokenSource _cancellationTokenSource = new();
 
     private Task _verificationTask;
 
-    public PatchVerifier(ISettings settings, LoginResult loginResult, PatchVerifierMode mode, TimeSpan progressUpdateInterval, int maxExpansion, bool external = true)
+    public PatchVerifier(ISettings settings, PatchVerifierMode mode, TimeSpan progressUpdateInterval, bool external = true)
     {
         _settings              = settings;
         _client                = new HttpClient();
         Mode                   = mode;
         ProgressUpdateInterval = progressUpdateInterval;
-        _maxExpansionToCheck   = maxExpansion;
         _external              = external;
-        //_useSdoVerifierV3 = loginResult.OauthLogin?.LoginType is LoginType.SdoStatic or LoginType.SdoSlide or LoginType.SdoQrCode or LoginType.WeGameToken or LoginType.WeGameSid or LoginType.AutoLoginSession;
-
-        SetLoginState(loginResult);
     }
 
     #region Disposal
@@ -285,31 +269,6 @@ public class PatchVerifier : IDisposable
     {
         var normalized = path.TrimStart('\\').Replace('\\', Path.DirectorySeparatorChar).Substring("\\game\\".Length - 1);
         return normalized;
-    }
-
-    private void SetLoginState(LoginResult result)
-    {
-        _patchSources.Clear();
-
-        if (result.PendingPatches == null)
-            return;
-
-        foreach (var patch in result.PendingPatches)
-        {
-            var repoName = patch.GetRepoName();
-            if (repoName == "ffxiv")
-                repoName = "ex0";
-
-            _patchSources.Add
-            (
-                $"{repoName}:{Path.GetFileName(patch.GetFilePath())}",
-                new PatchSource
-                {
-                    FileInfo = new FileInfo(Path.Combine(_settings.PatchPath.FullName, patch.GetFilePath())),
-                    Uri      = new Uri(patch.Url)
-                }
-            );
-        }
     }
 
     private bool AdminAccessRequired(string gameRootPath)
@@ -562,339 +521,6 @@ public class PatchVerifier : IDisposable
             _currentInstallProgressBySourceIndex[sourceIndex] = new InstallProgressEntry(filePath, effectiveProgress, total);
     }
 
-    private async Task _RunVerifier()
-    {
-        State         = VerifyState.NotStarted;
-        LastException = null;
-        IIndexedZiPatchIndexInstaller indexedZiPatchIndexInstaller = null;
-
-        try
-        {
-            var assemblyLocation = AppContext.BaseDirectory;
-
-            if (_external)
-            {
-                indexedZiPatchIndexInstaller = new IndexedZiPatchIndexRemoteInstaller
-                (
-                    Path.Combine(assemblyLocation!, "XIVLauncher.PatchInstaller.exe"),
-                    AdminAccessRequired(_settings.GamePath.FullName)
-                );
-            }
-            else
-                indexedZiPatchIndexInstaller = new IndexedZiPatchIndexLocalInstaller();
-
-            await indexedZiPatchIndexInstaller.SetWorkerProcessPriority(ProcessPriorityClass.Idle).ConfigureAwait(false);
-
-            while (!_cancellationTokenSource.IsCancellationRequested && State != VerifyState.Done)
-            {
-                switch (State)
-                {
-                    case VerifyState.NotStarted:
-                        State = VerifyState.DownloadMeta;
-                        break;
-
-                    case VerifyState.DownloadMeta:
-                        await GetPatchMeta().ConfigureAwait(false);
-                        State = VerifyState.VerifyAndRepair;
-                        break;
-
-                    case VerifyState.VerifyAndRepair:
-                        Debug.Assert(_repoMetaPaths.Count != 0);
-
-                        const int MAX_CONCURRENT_CONNECTIONS_FOR_PATCH_SET = 8;
-                        const int REATTEMPT_COUNT                          = 5;
-
-                        CurrentFile   = null;
-                        TaskIndex     = 0;
-                        PatchSetIndex = 0;
-                        PatchSetCount = _repoMetaPaths.Count;
-                        Progress      = Total = 0;
-
-                        HashSet<string> targetRelativePaths = new();
-
-                        var bootPath = Path.Combine(_settings.GamePath.FullName, "boot");
-                        var gamePath = Path.Combine(_settings.GamePath.FullName, "game");
-
-                        foreach (var metaPath in _repoMetaPaths)
-                        {
-                            var patchIndex = new IndexedZiPatchIndex(new BinaryReader(new DeflateStream(new FileStream(metaPath.Value, FileMode.Open, FileAccess.Read), CompressionMode.Decompress)));
-                            var adjustedGamePath = patchIndex.ExpacVersion == IndexedZiPatchIndex.ExpacVersionBoot ? bootPath : gamePath;
-
-                            foreach (var target in patchIndex.Targets)
-                                targetRelativePaths.Add(target.RelativePath);
-
-                            void UpdateVerifyProgress(int targetIndex, long progress, long max)
-                            {
-                                CurrentFile = patchIndex[Math.Min(targetIndex, patchIndex.Length - 1)].RelativePath;
-                                TaskIndex   = targetIndex;
-                                Progress    = Math.Min(progress, max);
-                                Total       = max;
-                                RecordProgressForEstimation();
-                            }
-
-                            void UpdateInstallProgress(int sourceIndex, long progress, long max, IndexedZiPatchInstaller.InstallTaskState state)
-                            {
-                                CurrentFile             = patchIndex.Sources[Math.Min(sourceIndex, patchIndex.Sources.Count - 1)];
-                                TaskIndex               = sourceIndex;
-                                Progress                = Math.Min(progress, max);
-                                Total                   = max;
-                                CurrentMetaInstallState = state;
-                                RecordProgressForEstimation();
-                            }
-
-                            try
-                            {
-                                indexedZiPatchIndexInstaller.OnVerifyProgress  += UpdateVerifyProgress;
-                                indexedZiPatchIndexInstaller.OnInstallProgress += UpdateInstallProgress;
-                                await indexedZiPatchIndexInstaller.ConstructFromPatchFile(patchIndex, ProgressUpdateInterval).ConfigureAwait(false);
-
-                                var fileBroken = new bool[patchIndex.Length].ToList();
-                                var repaired   = false;
-
-                                for (var attemptIndex = 0; attemptIndex < REATTEMPT_COUNT; attemptIndex++)
-                                {
-                                    CurrentMetaInstallState = IndexedZiPatchInstaller.InstallTaskState.NotStarted;
-
-                                    TaskCount = patchIndex.Length;
-                                    Progress  = Total = TaskIndex = 0;
-                                    _reportedProgresses.Clear();
-
-                                    await indexedZiPatchIndexInstaller.SetTargetStreamsFromPathReadOnly(adjustedGamePath).ConfigureAwait(false);
-                                    // TODO: check one at a time if random access is slow?
-                                    await indexedZiPatchIndexInstaller.VerifyFiles(attemptIndex > 0, Environment.ProcessorCount, _cancellationTokenSource.Token).ConfigureAwait(false);
-
-                                    var missingPartIndicesPerTargetFile = await indexedZiPatchIndexInstaller.GetMissingPartIndicesPerTargetFile().ConfigureAwait(false);
-                                    if (repaired = missingPartIndicesPerTargetFile.All(x => x.Count == 0))
-                                        break;
-                                    if (attemptIndex == 1)
-                                        Log.Warning("One or more of local copies of patch files seem to be corrupt, if any. Ignoring local patch files for further attempts.");
-
-                                    for (var i = 0; i < missingPartIndicesPerTargetFile.Count; i++)
-                                    {
-                                        if (missingPartIndicesPerTargetFile[i].Any())
-                                            fileBroken[i] = true;
-                                    }
-
-                                    TaskCount = patchIndex.Sources.Count;
-                                    Progress  = Total = TaskIndex = 0;
-                                    _reportedProgresses.Clear();
-                                    var missing = await indexedZiPatchIndexInstaller.GetMissingPartIndicesPerPatch().ConfigureAwait(false);
-
-                                    await indexedZiPatchIndexInstaller.SetTargetStreamsFromPathReadWriteForMissingFiles(adjustedGamePath).ConfigureAwait(false);
-                                    var prefix = patchIndex.ExpacVersion == IndexedZiPatchIndex.ExpacVersionBoot ? "boot:" : $"ex{patchIndex.ExpacVersion}:";
-
-                                    for (var i = 0; i < patchIndex.Sources.Count; i++)
-                                    {
-                                        var patchSourceKey = prefix + patchIndex.Sources[i];
-
-                                        if (!missing[i].Any())
-                                            continue;
-                                        Log.Information("Looking for patch file {0} (key: \"{1}\")", patchIndex.Sources[i], patchSourceKey);
-
-                                        if (!_patchSources.TryGetValue(patchSourceKey, out var source))
-                                            throw new InvalidOperationException($"Key \"{patchSourceKey}\" not found in _patchSources");
-
-                                        // We might be trying again because local copy of the patch file might be corrupt, so refer to the local copy only for the first attempt.
-                                        if (attemptIndex == 0 && source.FileInfo.Exists)
-                                            await indexedZiPatchIndexInstaller.QueueInstall(i, source.FileInfo).ConfigureAwait(false);
-                                        else
-                                            await indexedZiPatchIndexInstaller.QueueInstall(i, source.Uri, null).ConfigureAwait(false);
-                                    }
-
-                                    CurrentMetaInstallState = IndexedZiPatchInstaller.InstallTaskState.Connecting;
-
-                                    try
-                                    {
-                                        await indexedZiPatchIndexInstaller.Install(MAX_CONCURRENT_CONNECTIONS_FOR_PATCH_SET, _cancellationTokenSource.Token).ConfigureAwait(false);
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        Log.Error(e, "IndexedZiPatchIndexInstaller.Install");
-                                        if (attemptIndex == REATTEMPT_COUNT - 1)
-                                            throw;
-                                    }
-                                }
-
-                                if (!repaired)
-                                    throw new IOException($"Failed to repair after {REATTEMPT_COUNT} attempts");
-
-                                await indexedZiPatchIndexInstaller.WriteVersionFiles(adjustedGamePath).ConfigureAwait(false);
-
-                                NumBrokenFiles += fileBroken.Count(x => x);
-                                PatchSetIndex++;
-                            }
-                            finally
-                            {
-                                indexedZiPatchIndexInstaller.OnVerifyProgress  -= UpdateVerifyProgress;
-                                indexedZiPatchIndexInstaller.OnInstallProgress -= UpdateInstallProgress;
-                            }
-                        }
-
-                        await MoveUnnecessaryFiles(indexedZiPatchIndexInstaller, gamePath, targetRelativePaths);
-
-                        State = VerifyState.Done;
-                        break;
-
-                    case VerifyState.Done:
-                        break;
-
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            if (ex is OperationCanceledException)
-                State = VerifyState.Cancelled;
-            else if (_cancellationTokenSource.IsCancellationRequested)
-                State = VerifyState.Cancelled;
-            else if (ex is Win32Exception winex && (uint)winex.HResult == 0x80004005u) // The operation was canceled by the user (UAC dialog cancellation)
-                State = VerifyState.Cancelled;
-            else
-            {
-                Log.Error(ex, "Unexpected error occurred in RunVerifier");
-                Log.Information("_patchSources had following:");
-                foreach (var kvp in _patchSources)
-                    Log.Information("* \"{0}\" = {1} / {2}({3})", kvp.Key, kvp.Value.Uri.ToString(), kvp.Value.FileInfo.FullName, kvp.Value.FileInfo.Exists ? "Exists" : "Nonexistent");
-
-                LastException = ex;
-                State         = VerifyState.Error;
-            }
-        }
-        finally
-        {
-            indexedZiPatchIndexInstaller?.Dispose();
-        }
-    }
-
-    private async Task GetPatchMeta()
-    {
-        PatchSetCount = 6;
-        PatchSetIndex = 0;
-
-        _repoMetaPaths.Clear();
-
-        var metaFolder = Path.Combine(Paths.RoamingPath, "patchMeta");
-        Directory.CreateDirectory(metaFolder);
-
-        CurrentFile = "latest.json";
-        Total       = Progress = 0;
-
-        var latestVersionJson = await _client.GetStringAsync(BASE_URL + "latest.json").ConfigureAwait(false);
-        _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-        var latestVersion = JsonConvert.DeserializeObject<VerifyVersions>(latestVersionJson);
-
-        PatchSetIndex++;
-        await GetRepoMeta(Repository.Ffxiv, latestVersion.Game, metaFolder, latestVersion.GameRevision).ConfigureAwait(false);
-        _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-        PatchSetIndex++;
-        if (_maxExpansionToCheck >= 1)
-            await GetRepoMeta(Repository.Ex1, latestVersion.Ex1, metaFolder, latestVersion.Ex1Revision).ConfigureAwait(false);
-        _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-        PatchSetIndex++;
-        if (_maxExpansionToCheck >= 2)
-            await GetRepoMeta(Repository.Ex2, latestVersion.Ex2, metaFolder, latestVersion.Ex2Revision).ConfigureAwait(false);
-        _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-        PatchSetIndex++;
-        if (_maxExpansionToCheck >= 3)
-            await GetRepoMeta(Repository.Ex3, latestVersion.Ex3, metaFolder, latestVersion.Ex3Revision).ConfigureAwait(false);
-        _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-        PatchSetIndex++;
-        if (_maxExpansionToCheck >= 4)
-            await GetRepoMeta(Repository.Ex4, latestVersion.Ex4, metaFolder, latestVersion.Ex4Revision).ConfigureAwait(false);
-        _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-        PatchSetIndex++;
-        if (_maxExpansionToCheck >= 5)
-            await GetRepoMeta(Repository.Ex5, latestVersion.Ex5, metaFolder, latestVersion.Ex5Revision).ConfigureAwait(false);
-        _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-        PatchSetIndex++;
-    }
-
-    private async Task GetRepoMeta(Repository repo, string latestVersion, string baseDir, int patchIndexFileRevision)
-    {
-        _reportedProgresses.Clear();
-        CurrentFile = latestVersion;
-        Total       = 32 * 1048576;
-        Progress    = 0;
-
-        _ = repo.GetVer(_settings.GamePath);
-
-        // TODO: We should not assume that this always has a "D". We should just store them by the patchlist VersionId instead.
-        var repoShorthand = repo == Repository.Ffxiv ? "game" : repo.ToString().ToLower();
-        var fileName      = $"{latestVersion}.patch.index";
-
-        var metaPath = Path.Combine(baseDir, repoShorthand);
-        var filePath = Path.Combine(metaPath, fileName) + (patchIndexFileRevision > 0 ? $".v{patchIndexFileRevision}" : "");
-        Directory.CreateDirectory(metaPath);
-
-        if (!File.Exists(filePath))
-        {
-            var request = await _client.GetAsync($"{BASE_URL}{repoShorthand}/{fileName}", HttpCompletionOption.ResponseHeadersRead, _cancellationTokenSource.Token).ConfigureAwait(false);
-            if (request.StatusCode == HttpStatusCode.NotFound)
-                throw new NoVersionReferenceException(repo, latestVersion);
-
-            request.EnsureSuccessStatusCode();
-
-            Total = request.Content.Headers.ContentLength.GetValueOrDefault(Total);
-
-            var tempFile = new FileInfo(filePath + ".tmp");
-            var complete = false;
-
-            try
-            {
-                using var sourceStream = await request.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                using var buffer       = ReusableByteBufferManager.GetBuffer();
-
-                using (var targetStream = tempFile.OpenWrite())
-                {
-                    while (true)
-                    {
-                        _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-                        var read = await sourceStream.ReadAsync(buffer.Buffer, 0, buffer.Buffer.Length, _cancellationTokenSource.Token).ConfigureAwait(false);
-                        if (read == 0)
-                            break;
-
-                        Total    =  Math.Max(Total, Progress + read);
-                        Progress += read;
-                        RecordProgressForEstimation();
-                        await targetStream.WriteAsync(buffer.Buffer, 0, read, _cancellationTokenSource.Token).ConfigureAwait(false);
-                    }
-                }
-
-                complete = true;
-            }
-            finally
-            {
-                if (complete)
-                    tempFile.MoveTo(filePath);
-                else
-                {
-                    try
-                    {
-                        if (tempFile.Exists)
-                            tempFile.Delete();
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "Failed to delete temp file at {0}", tempFile.FullName);
-                    }
-                }
-            }
-        }
-
-        _repoMetaPaths.Add(repo, filePath);
-        Log.Verbose("Downloaded patch index for {Repo}({Version})", repo, latestVersion);
-    }
-
     public enum VerifyState
     {
         NotStarted,
@@ -905,40 +531,4 @@ public class PatchVerifier : IDisposable
         Error
     }
 
-    private struct PatchSource
-    {
-        public FileInfo FileInfo;
-        public Uri      Uri;
-    }
-
-    private class VerifyVersions
-    {
-        [JsonProperty("boot")] public string Boot { get; set; }
-
-        [JsonProperty("bootRevision")] public int BootRevision { get; set; }
-
-        [JsonProperty("game")] public string Game { get; set; }
-
-        [JsonProperty("gameRevision")] public int GameRevision { get; set; }
-
-        [JsonProperty("ex1")] public string Ex1 { get; set; }
-
-        [JsonProperty("ex1Revision")] public int Ex1Revision { get; set; }
-
-        [JsonProperty("ex2")] public string Ex2 { get; set; }
-
-        [JsonProperty("ex2Revision")] public int Ex2Revision { get; set; }
-
-        [JsonProperty("ex3")] public string Ex3 { get; set; }
-
-        [JsonProperty("ex3Revision")] public int Ex3Revision { get; set; }
-
-        [JsonProperty("ex4")] public string Ex4 { get; set; }
-
-        [JsonProperty("ex4Revision")] public int Ex4Revision { get; set; }
-
-        [JsonProperty("ex5")] public string Ex5 { get; set; }
-
-        [JsonProperty("ex5Revision")] public int Ex5Revision { get; set; }
-    }
 }

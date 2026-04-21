@@ -1866,7 +1866,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         if (!AppUtil.TryYellOnGameFilesBeingOpen(Window, _ => $"关闭以下进程以{actionText}游戏"))
             return false;
 
-        using var verify = new PatchVerifier(CommonSettings.Instance, loginResult, mode, TimeSpan.FromMilliseconds(100), Constants.MaxExpansion);
+        using var verify = new PatchVerifier(CommonSettings.Instance, mode, TimeSpan.FromMilliseconds(100));
 
         Hide();
         IsEnabled = false;
@@ -1960,18 +1960,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private bool ShowPatchVerifierRetryDialog(PatchVerifier verify, PatchVerifierMode mode)
     {
         var actionText = mode == PatchVerifierMode.Update ? "更新" : "修复";
-
-        if (verify.LastException is NoVersionReferenceException)
-        {
-            return CustomMessageBox.Builder
-                                   .NewFrom($"当前游戏版本无对应可用的版本参考信息, 暂时无法通过 XIVLauncher {actionText}游戏")
-                                   .WithImage(MessageBoxImage.Exclamation)
-                                   .WithButtons(MessageBoxButton.OKCancel)
-                                   .WithOkButtonText("重试")
-                                   .WithParentWindow(Window)
-                                   .Show()
-                   == MessageBoxResult.OK;
-        }
 
         if (verify.LastException != null && verify.LastException.ToString().Contains("Data error"))
         {
