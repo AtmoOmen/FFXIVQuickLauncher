@@ -118,6 +118,12 @@ public sealed class SettingsControlViewModel : ViewModelBase
         set => SetProperty(ref field, value);
     }
 
+    public bool RequireDeviceProfileSetupForNewAccountLogin
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
     public decimal? DalamudInjectionDelayMs
     {
         get;
@@ -300,6 +306,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         LauncherLanguageNoticeVisible = false;
         AskBeforePatching             = App.Settings.AskBeforePatchInstall ?? true;
         KeepPatches                   = App.Settings.KeepPatches           ?? false;
+        RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewAccountLogin ?? false;
         PatchAcquisitionIndex         = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
         DalamudInjectionDelayMs       = App.Settings.DalamudInjectionDelayMs;
         ManualInjectDelayMs           = App.Settings.ManualInjectDelayMs;
@@ -338,6 +345,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         App.Settings.AddonList               = AddonEntries.ToList();
         App.Settings.AskBeforePatchInstall   = AskBeforePatching;
         App.Settings.KeepPatches             = KeepPatches;
+        App.Settings.RequireDeviceProfileSetupForNewAccountLogin = RequireDeviceProfileSetupForNewAccountLogin;
         App.Settings.PatchAcquisitionMethod  = (AcquisitionMethod)PatchAcquisitionIndex;
         App.Settings.InGameAddonEnabled      = EnableHooks;
         App.Settings.DalamudInjectionDelayMs = DalamudInjectionDelayMs ?? 0;

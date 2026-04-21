@@ -204,6 +204,18 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="登录至新账号时要求配置设备信息" FontSize="15" />
+                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="新账号首次登录前需要先指定所要使用的设备信息才能启动游戏" Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding RequireDeviceProfileSetupForNewAccountLogin}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                        </Grid>
+
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                                 <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="共享设备信息" FontSize="15" />
                                 <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="未设置独立设备信息的账号将使用此处设置的共享设备信息" Opacity="0.7" FontSize="12" />
                             </StackPanel>

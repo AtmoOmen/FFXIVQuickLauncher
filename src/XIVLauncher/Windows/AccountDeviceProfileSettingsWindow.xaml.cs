@@ -30,12 +30,20 @@ public partial class AccountDeviceProfileSettingsWindow : Window
     private AccountDeviceProfileSettingsWindowViewModel ViewModel => (AccountDeviceProfileSettingsWindowViewModel)DataContext;
 
     public AccountDeviceProfileSettingsWindow(XIVAccount account, AccountManager accountManager)
+        : this(account, accountManager, false)
+    {
+    }
+
+    public AccountDeviceProfileSettingsWindow(XIVAccount account, AccountManager accountManager, bool isTemporaryAccount)
     {
         InitializeComponent();
 
         _dialogService = new DialogService(this);
         DataContext    = new AccountDeviceProfileSettingsWindowViewModel(accountManager);
-        ViewModel.Load(account);
+        if (isTemporaryAccount)
+            ViewModel.LoadTemporary(account);
+        else
+            ViewModel.Load(account);
         Title = ViewModel.WindowTitle;
 
         Loaded += (_, _) => AttachOwnerWindow();

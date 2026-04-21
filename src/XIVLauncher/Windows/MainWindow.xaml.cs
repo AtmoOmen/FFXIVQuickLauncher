@@ -309,6 +309,7 @@ public partial class MainWindow : Window
             App.Settings.AddonList = App.Settings.AddonList.Where(x => !string.IsNullOrEmpty(x.Addon.Path)).ToList();
 
         App.Settings.AskBeforePatchInstall ??= true;
+        App.Settings.RequireDeviceProfileSetupForNewAccountLogin ??= false;
 
         App.Settings.DpiAwareness ??= DpiAwareness.Unaware;
 

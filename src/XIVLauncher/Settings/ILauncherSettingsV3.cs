@@ -29,6 +29,7 @@ public interface ILauncherSettingsV3
     long               SpeedLimitBytes               { get; set; }
     decimal            DalamudInjectionDelayMs       { get; set; }
     bool?              ManualInjectAutoInjectEnabled { get; set; }
+    bool?              RequireDeviceProfileSetupForNewAccountLogin { get; set; }
     decimal            ManualInjectDelayMs           { get; set; }
     bool?              KeepPatches                   { get; set; }
     bool?              HasComplainedAboutGShadeDxgi  { get; set; }

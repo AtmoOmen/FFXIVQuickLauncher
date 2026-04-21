@@ -26,6 +26,7 @@ internal sealed class AccountDeviceProfileSettingsWindowViewModel
     private bool                   isApplyingPresetSelection;
     private bool                   isApplyingSnapshot;
     private bool                   snapshotTouched;
+    private bool                   persistChangesToAccountManager;
 
     public ObservableCollection<DeviceProfilePreset> Presets { get; } = [];
 
@@ -168,7 +169,38 @@ internal sealed class AccountDeviceProfileSettingsWindowViewModel
 
     public void Load(XIVAccount targetAccount)
     {
-        account = accountManager.Accounts.First(existing => existing.Id == targetAccount.Id);
+        account                       = accountManager.Accounts.First(existing => existing.Id == targetAccount.Id);
+        persistChangesToAccountManager = true;
+
+        ApplyMode(false);
+        LoadPresets();
+
+        var sharedPreset = GetRequiredSharedPreset();
+        savedIndependentPreset = accountManager.FindDeviceProfilePreset(account.DeviceProfilePresetId);
+
+        var currentPreset = account.DeviceProfileDynamicEnabled
+                                ? savedIndependentPreset ?? sharedPreset
+                                : sharedPreset;
+
+        GeneratedUtcTicks = account.DeviceProfileDynamicEnabled
+                                ? account.DeviceProfileLastGeneratedUtcTicks > 0
+                                      ? account.DeviceProfileLastGeneratedUtcTicks
+                                      : currentPreset.GeneratedUtcTicks
+                                : sharedPreset.GeneratedUtcTicks;
+        snapshotTouched = false;
+
+        AccountDisplayName     = account.DisplayName;
+        DynamicEnabled         = account.DeviceProfileDynamicEnabled;
+        PeriodicRefreshEnabled = account.IsDeviceProfileRotation;
+        RotationDays           = AccountManager.NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays);
+
+        ApplyPreset(currentPreset);
+    }
+
+    public void LoadTemporary(XIVAccount targetAccount)
+    {
+        account                       = targetAccount;
+        persistChangesToAccountManager = false;
 
         ApplyMode(false);
         LoadPresets();
@@ -198,6 +230,7 @@ internal sealed class AccountDeviceProfileSettingsWindowViewModel
     public void LoadShared()
     {
         account = null;
+        persistChangesToAccountManager = true;
 
         ApplyMode(true);
         LoadPresets();
@@ -237,19 +270,30 @@ internal sealed class AccountDeviceProfileSettingsWindowViewModel
                                        && !snapshotTouched
                                        && savedIndependentPreset != null;
 
-        accountManager.UpdateDeviceProfileSettings
-        (
-            targetAccount,
-            DynamicEnabled,
-            PeriodicRefreshEnabled,
-            RotationDays
-        );
+        if (persistChangesToAccountManager)
+        {
+            accountManager.UpdateDeviceProfileSettings
+            (
+                targetAccount,
+                DynamicEnabled,
+                PeriodicRefreshEnabled,
+                RotationDays
+            );
+        }
+        else
+        {
+            targetAccount.DeviceProfileDynamicEnabled = DynamicEnabled;
+            targetAccount.IsDeviceProfileRotation     = PeriodicRefreshEnabled;
+            targetAccount.DeviceProfileRotationDays   = RotationDays;
+        }
 
         if (!DynamicEnabled)
         {
             if (snapshotTouched)
             {
-                var preservedPreset = accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
+                var preservedPreset = persistChangesToAccountManager
+                                          ? accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark)
+                                          : accountManager.ApplyDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
                 savedIndependentPreset = preservedPreset;
             }
 
@@ -258,16 +302,16 @@ internal sealed class AccountDeviceProfileSettingsWindowViewModel
         }
 
         var assignedPreset = shouldRestoreSavedPreset
-                                 ? accountManager.SaveDeviceProfileSelection
+                                 ? SaveAccountDeviceProfileSelection
                                    (
-                                        targetAccount,
-                                        savedIndependentPreset!.ToSnapshot(),
-                                        targetAccount.DeviceProfileLastGeneratedUtcTicks > 0
-                                            ? targetAccount.DeviceProfileLastGeneratedUtcTicks
-                                            : savedIndependentPreset.GeneratedUtcTicks,
-                                        PresetRemark
-                                    )
-                                 : accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
+                                       targetAccount,
+                                       savedIndependentPreset!.ToSnapshot(),
+                                       targetAccount.DeviceProfileLastGeneratedUtcTicks > 0
+                                           ? targetAccount.DeviceProfileLastGeneratedUtcTicks
+                                           : savedIndependentPreset.GeneratedUtcTicks,
+                                       PresetRemark
+                                   )
+                                 : SaveAccountDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
 
         savedIndependentPreset = assignedPreset;
         GeneratedUtcTicks      = targetAccount.DeviceProfileLastGeneratedUtcTicks;
@@ -565,6 +609,11 @@ internal sealed class AccountDeviceProfileSettingsWindowViewModel
 
         DeviceId = FakeMachineInfo.CreateDeviceId(normalizedMacAddress, normalizedHostName);
     }
+
+    private DeviceProfilePreset SaveAccountDeviceProfileSelection(XIVAccount targetAccount, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? presetRemark) =>
+        persistChangesToAccountManager
+            ? accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, generatedUtcTicks, presetRemark)
+            : accountManager.ApplyDeviceProfileSelection(targetAccount, snapshot, generatedUtcTicks, presetRemark);
 
     private DeviceProfileSnapshot CreateValidatedSnapshot()
     {

@@ -37,6 +37,7 @@ using XIVLauncher.Common.Windows;
 using XIVLauncher.Game;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Support;
+using XIVLauncher.Windows;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Xaml;
 using Constants = XIVLauncher.Common.Constants;
@@ -267,6 +268,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         var savedAccount               = FindSavedAccount(loginType, username);
         var accountType                = ResolveAccountType(loginType, savedAccount);
         var hasUnavailableSavedSecrets = AccountManager.HasUnavailableSecrets(savedAccount);
+        XIVAccount? pendingNewAccount = null;
 
         try
         {
@@ -361,7 +363,43 @@ public class MainWindowViewModel : INotifyPropertyChanged
             throw;
         }
 
-        var resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(username, accountType);
+        var requiresNewAccountDeviceProfileSetup = ShouldRequireNewAccountDeviceProfileSetup(savedAccount, action);
+        var shouldRequestTemporaryAutoLoginSession = requiresNewAccountDeviceProfileSetup && loginType == LoginType.QRCode;
+        var loginAutoLogin = doingAutoLogin || shouldRequestTemporaryAutoLoginSession;
+
+        ResolvedDeviceProfile resolvedDeviceProfile;
+
+        if (requiresNewAccountDeviceProfileSetup && loginType != LoginType.QRCode)
+        {
+            pendingNewAccount = CreatePendingNewAccount(username, username, accountType);
+
+            switch (PromptNewAccountDeviceProfileChoice())
+            {
+                case MessageBoxResult.Yes:
+                    resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(pendingNewAccount);
+                    break;
+
+                case MessageBoxResult.No:
+                {
+                    var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
+                    if (!ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount))
+                    {
+                        SavePendingNewAccountWithoutSecrets(pendingNewAccount);
+                        return;
+                    }
+
+                    pendingNewAccount      = configuredNewAccount;
+                    resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(configuredNewAccount);
+                    break;
+                }
+
+                default:
+                    return;
+            }
+        }
+        else
+            resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(username, accountType);
+
         var deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
 
         var dcTraveler = new DCTravelClient(string.Empty)
@@ -378,7 +416,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         while (true)
         {
-            var nextLoginResult = await LoginToGameAsync(finalLoginType, loginType, username, secret, doingAutoLogin, deviceProfileSnapshot, dcTraveler, action).ConfigureAwait(false);
+            var nextLoginResult = await LoginToGameAsync(finalLoginType, loginType, username, secret, loginAutoLogin, deviceProfileSnapshot, dcTraveler, action).ConfigureAwait(false);
             if (nextLoginResult == null)
                 return;
 
@@ -406,6 +444,69 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         var oAuthLogin = loginResult.OAuthLogin;
 
+        if (requiresNewAccountDeviceProfileSetup && loginType == LoginType.QRCode && loginResult.State == LoginState.Ok && oAuthLogin != null)
+        {
+            pendingNewAccount ??= CreatePendingNewAccount(oAuthLogin.InputUserID, oAuthLogin.SndaID, accountType);
+
+            switch (PromptNewAccountDeviceProfileChoice())
+            {
+                case MessageBoxResult.Yes:
+                    resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(pendingNewAccount);
+                    deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
+                    break;
+
+                case MessageBoxResult.No:
+                {
+                    var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
+                    if (!ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount))
+                    {
+                        SavePendingNewAccountWithoutSecrets(pendingNewAccount);
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(oAuthLogin.AutoLoginSessionKey))
+                    {
+                        CustomMessageBox.Show
+                        (
+                            "首次扫码登录未能获取可用于设备信息重登的会话密钥，本次无法继续启动游戏",
+                            "XIVLauncherCN (Soil)",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error,
+                            parentWindow: Window
+                        );
+                        return;
+                    }
+
+                    pendingNewAccount      = configuredNewAccount;
+                    resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(configuredNewAccount);
+                    deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
+
+                    var reloginResult = await LoginToGameAsync
+                                        (
+                                            LoginType.AutoLoginSession,
+                                            LoginType.AutoLoginSession,
+                                            oAuthLogin.InputUserID,
+                                            oAuthLogin.AutoLoginSessionKey,
+                                            true,
+                                            deviceProfileSnapshot,
+                                            dcTraveler,
+                                            action
+                                        ).ConfigureAwait(false);
+                    if (reloginResult == null)
+                        return;
+
+                    loginResult       = reloginResult;
+                    loginResult.Area  = Area;
+                    loginResult.Areas = LoginAreas;
+                    oAuthLogin        = loginResult.OAuthLogin;
+                    break;
+                }
+
+                default:
+                    return;
+            }
+        }
+
         if (loginResult.State == LoginState.NeedsPatchGame && action != LoginAfterAction.Repair)
             action = LoginAfterAction.UpdateOnly;
 
@@ -413,6 +514,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             if (loginResult.State == LoginState.Ok)
             {
+                var deviceProfileAccount = pendingNewAccount ?? savedAccount;
+
                 if (App.Settings.InGameAddonEnabled && loginType != LoginType.WeGameSID)
                 {
                     Log.Information("[DCTravelListener] 正在开启监听用端口");
@@ -432,11 +535,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     SndaId                             = oAuthLogin?.SndaID!,
                     AccountType                        = accountType,
                     AreaName                           = Area.AreaName,
-                    DeviceProfilePresetId              = savedAccount?.DeviceProfilePresetId              ?? string.Empty,
-                    DeviceProfileDynamicEnabled        = savedAccount?.DeviceProfileDynamicEnabled        ?? false,
-                    IsDeviceProfileRotation            = savedAccount?.IsDeviceProfileRotation            ?? true,
-                    DeviceProfileRotationDays          = savedAccount?.DeviceProfileRotationDays          ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
-                    DeviceProfileLastGeneratedUtcTicks = savedAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0
+                    UserDefinedName                    = deviceProfileAccount?.UserDefinedName            ?? null!,
+                    DeviceProfilePresetId              = deviceProfileAccount?.DeviceProfilePresetId      ?? string.Empty,
+                    DeviceProfileDynamicEnabled        = deviceProfileAccount?.DeviceProfileDynamicEnabled ?? false,
+                    IsDeviceProfileRotation            = deviceProfileAccount?.IsDeviceProfileRotation    ?? true,
+                    DeviceProfileRotationDays          = deviceProfileAccount?.DeviceProfileRotationDays  ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
+                    DeviceProfileLastGeneratedUtcTicks = deviceProfileAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0
                 };
 
                 AccountManager.ApplyResolvedDeviceProfile(accountToSave, resolvedDeviceProfile);
@@ -2160,6 +2264,80 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
             StartLogin(LoginTypeOption.LoginType, Username, Password, IsFastLogin, IsReadWegameInfo, action);
         };
+
+    private bool ShouldRequireNewAccountDeviceProfileSetup(XIVAccount? savedAccount, LoginAfterAction action) =>
+        App.Settings.RequireDeviceProfileSetupForNewAccountLogin.GetValueOrDefault(false)
+        && savedAccount == null
+        && action != LoginAfterAction.UpdateOnly;
+
+    private XIVAccount CreatePendingNewAccount(string loginAccount, string sndaId, XIVAccountType accountType) =>
+        new()
+        {
+            LoginAccount                = loginAccount,
+            SndaId                      = sndaId,
+            AccountType                 = accountType,
+            AreaName                    = Area?.AreaName ?? string.Empty,
+            DeviceProfilePresetId       = string.Empty,
+            DeviceProfileDynamicEnabled = false,
+            IsDeviceProfileRotation     = true,
+            DeviceProfileRotationDays   = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS
+        };
+
+    private XIVAccount CreateIndependentDeviceProfileDraft(XIVAccount account) =>
+        new()
+        {
+            LoginAccount                       = account.LoginAccount,
+            SndaId                             = account.SndaId,
+            AccountType                        = account.AccountType,
+            AreaName                           = account.AreaName,
+            UserDefinedName                    = account.UserDefinedName,
+            DeviceProfilePresetId              = account.DeviceProfilePresetId,
+            DeviceProfileDynamicEnabled        = true,
+            IsDeviceProfileRotation            = account.IsDeviceProfileRotation,
+            DeviceProfileRotationDays          = account.DeviceProfileRotationDays,
+            DeviceProfileLastGeneratedUtcTicks = account.DeviceProfileLastGeneratedUtcTicks
+        };
+
+    private void SavePendingNewAccountWithoutSecrets(XIVAccount account)
+    {
+        account.AutoLogin           = false;
+        account.AutoLoginSessionKey = string.Empty;
+        account.Password            = string.Empty;
+        account.TestSID             = null;
+        account.NSessionId          = string.Empty;
+        account.GenerateID();
+        AccountManager.AddAccount(account);
+        AccountManager.CurrentAccount = account;
+        AccountManager.Save();
+    }
+
+    private MessageBoxResult PromptNewAccountDeviceProfileChoice() =>
+        CustomMessageBox.Builder
+                        .NewFrom("检测到新账号首次登录，需先确认本次使用的设备信息")
+                        .WithCaption("设备信息")
+                        .WithButtons(MessageBoxButton.YesNo)
+                        .WithYesButtonText("使用共享设备信息")
+                        .WithNoButtonText("配置账号设备信息")
+                        .WithDefaultResult(MessageBoxResult.Yes)
+                        .WithImage(MessageBoxImage.Question)
+                        .WithParentWindow(Window)
+                        .Show();
+
+    private bool ShowTemporaryAccountDeviceProfileSettings(XIVAccount account) =>
+        Window.Dispatcher.Invoke
+        (() =>
+            {
+                var dialog = new AccountDeviceProfileSettingsWindow(account, AccountManager, true);
+
+                if (Window.IsVisible)
+                {
+                    dialog.Owner         = Window;
+                    dialog.ShowInTaskbar = false;
+                }
+
+                return dialog.ShowDialog() == true;
+            }
+        );
 
     private XIVAccount? FindSavedAccount(LoginType loginType, string username)
     {
