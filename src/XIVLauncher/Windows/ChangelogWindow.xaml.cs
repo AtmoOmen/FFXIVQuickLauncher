@@ -1,7 +1,9 @@
 using System;
+using System.Diagnostics;
 using System.Media;
 using System.Windows;
 using Newtonsoft.Json;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 
@@ -18,7 +20,7 @@ public partial class ChangelogWindow : Window
     {
         InitializeComponent();
 
-        DiscordButton.Click += SupportLinks.OpenDiscordChannel;
+        DiscordButton.Click += (_, _) => Process.Start(new ProcessStartInfo(Links.DISCORD_URL) { UseShellExecute = true });
         DataContext         =  new ChangeLogWindowViewModel();
 
         Activate();

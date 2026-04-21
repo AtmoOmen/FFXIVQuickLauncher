@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using MaterialDesignThemes.Wpf.Transitions;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Support;
@@ -18,21 +20,18 @@ namespace XIVLauncher.Windows;
 public partial class SettingsControl
 {
     private SettingsControlViewModel ViewModel => (SettingsControlViewModel)DataContext;
-    private bool                     _hasTriggeredLogo;
 
     public SettingsControl()
     {
         InitializeComponent();
 
-        AddonListView.ContextMenu.DataContext = DataContext;
-        DiscordButton.Click += SupportLinks.OpenDiscordChannel;
+        AddonListView.ContextMenu?.DataContext = DataContext;
+
+        DiscordButton.Click += (_, _) => Process.Start(new ProcessStartInfo(Links.DISCORD_URL) { UseShellExecute = true });
     }
 
-    private void SettingsControl_OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        if (AddonListView.ContextMenu != null)
-            AddonListView.ContextMenu.DataContext = e.NewValue;
-    }
+    private void SettingsControl_OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e) =>
+        AddonListView.ContextMenu?.DataContext = e.NewValue;
 
     public void ReloadSettings() =>
         ViewModel.ReloadFromSettings();
@@ -124,47 +123,10 @@ public partial class SettingsControl
             if (current is T ancestor)
                 return ancestor;
 
-            current = VisualTreeHelper.GetParent(current);
+            current = VisualTreeHelper.GetParent(current!);
         }
         while (current != null);
 
         return null;
-    }
-
-    private void Logo_OnMouseUp(object sender, MouseButtonEventArgs e)
-    {
-#if DEBUG
-        var result = MessageBox.Show
-        (
-            "是：首次设置\n否：保存疑难排查包\n取消：返回",
-            "XIVLauncher 调试入口",
-            MessageBoxButton.YesNoCancel,
-            MessageBoxImage.Question
-        );
-
-        switch (result)
-        {
-            case MessageBoxResult.Yes:
-            {
-                var setup = new FirstTimeSetup();
-                setup.ShowDialog();
-                ReloadSettings();
-                break;
-            }
-
-            case MessageBoxResult.No:
-                PackGenerator.PackAndShowMessage(Window.GetWindow(this));
-                break;
-
-            case MessageBoxResult.Cancel:
-                return;
-        }
-#else
-        if (_hasTriggeredLogo)
-            return;
-
-        PackGenerator.OpenPackLocation(PackGenerator.SavePack());
-        _hasTriggeredLogo = true;
-#endif
     }
 }

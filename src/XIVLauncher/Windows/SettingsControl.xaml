@@ -385,7 +385,7 @@
                             </Button>
                         </StackPanel>
 
-                        <Image Grid.Column="1" Width="180" Height="180" Margin="32,0,0,0" VerticalAlignment="Top" MouseUp="Logo_OnMouseUp" Opacity="0.8" RenderOptions.BitmapScalingMode="HighQuality" Source="pack://application:,,,/Resources/logo.png" Cursor="Hand" />
+                        <Image Grid.Column="1" Width="180" Height="180" Margin="32,0,0,0" VerticalAlignment="Top" Opacity="0.8" RenderOptions.BitmapScalingMode="HighQuality" Source="pack://application:,,,/Resources/logo.png" Cursor="Hand" />
                     </Grid>
                 </ScrollViewer>
             </TabItem>

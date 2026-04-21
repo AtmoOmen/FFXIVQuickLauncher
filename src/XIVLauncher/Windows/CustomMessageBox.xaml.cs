@@ -359,7 +359,7 @@ public partial class CustomMessageBox : Window
     }
 
     private void DiscordButton_Click(object sender, RoutedEventArgs e) =>
-        SupportLinks.OpenDiscordChannel(sender, e);
+        Process.Start(new ProcessStartInfo(Links.DISCORD_URL) { UseShellExecute = true });
 
     private void IntegrityReportButton_Click(object sender, RoutedEventArgs e) =>
         Process.Start(Path.Combine(Paths.RoamingPath, "integrityreport.txt"));
