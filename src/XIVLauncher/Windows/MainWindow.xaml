@@ -799,7 +799,7 @@
 
                                                         <Button x:Name="LoginButton"
                                                                 Grid.Column="0"
-                                                                Content="登  录"
+                                                                Content="登录"
                                                                 Command="{Binding LoginPage.StartLoginCommand}"
                                                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                                                 materialDesign:ButtonAssist.CornerRadius="18"
