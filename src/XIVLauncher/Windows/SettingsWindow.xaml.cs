@@ -2,10 +2,9 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Controls;
 using System.Windows.Media;
-using MaterialDesignThemes.Wpf.Transitions;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
@@ -17,31 +16,27 @@ namespace XIVLauncher.Windows;
 /// <summary>
 ///     Interaction logic for SettingsControl.xaml
 /// </summary>
-public partial class SettingsControl
+public partial class SettingsWindow : Window
 {
-    private SettingsControlViewModel ViewModel => (SettingsControlViewModel)DataContext;
+    private SettingsWindowViewModel ViewModel => (SettingsWindowViewModel)DataContext;
 
-    public SettingsControl()
+    public SettingsWindow(SettingsWindowViewModel viewModel)
     {
-        InitializeComponent();
+        viewModel.ReloadFromSettings();
 
-        AddonListView.ContextMenu?.DataContext = DataContext;
+        InitializeComponent();
+        DataContext = viewModel;
+        AddonListView.ContextMenu?.DataContext = viewModel;
 
         DiscordButton.Click += (_, _) => Process.Start(new ProcessStartInfo(Links.DISCORD_URL) { UseShellExecute = true });
     }
-
-    private void SettingsControl_OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e) =>
-        AddonListView.ContextMenu?.DataContext = e.NewValue;
-
-    public void ReloadSettings() =>
-        ViewModel.ReloadFromSettings();
 
     private async void AcceptButton_Click(object sender, RoutedEventArgs e)
     {
         if (!await ViewModel.SaveToSettingsAsync())
             return;
 
-        Transitioner.MoveNextCommand.Execute(null, null);
+        Close();
     }
 
     private void AddonListView_OnMouseUp(object sender, MouseButtonEventArgs e)
@@ -88,13 +83,8 @@ public partial class SettingsControl
 
         progress.ProgressChanged += (_, checkProgress) => window.UpdateProgress(checkProgress);
 
-        var owner = Window.GetWindow(this);
-
-        if (owner != null)
-        {
-            window.Owner         = owner;
-            window.ShowInTaskbar = false;
-        }
+        window.Owner         = Owner;
+        window.ShowInTaskbar = false;
 
         try
         {

@@ -1,5 +1,5 @@
-<UserControl
-    x:Class="XIVLauncher.Windows.SettingsControl"
+<Window
+    x:Class="XIVLauncher.Windows.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:addon="clr-namespace:XIVLauncher.Common.Addon;assembly=XIVLauncher.Common"
@@ -11,9 +11,13 @@
     xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
-    d:DataContext="{d:DesignInstance viewModel:SettingsControlViewModel}"
+    Title="软件设置"
+    Width="780"
+    Height="540"
+    ResizeMode="NoResize"
+    WindowStartupLocation="CenterOwner"
     Background="{DynamicResource MaterialDesignPaper}"
-    DataContextChanged="SettingsControl_OnDataContextChanged"
+    d:DataContext="{d:DesignInstance viewModel:SettingsWindowViewModel}"
     TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     mc:Ignorable="d">
     <Grid>
@@ -394,10 +398,10 @@
                             </Button>
                         </StackPanel>
 
-                        <Image Grid.Column="1" Width="180" Height="180" Margin="32,0,0,0" VerticalAlignment="Top" Opacity="0.8" RenderOptions.BitmapScalingMode="HighQuality" Source="pack://application:,,,/Resources/logo.png" Cursor="Hand" />
+                        <Image Grid.Column="1" Width="180" Height="180" Margin="32,0,0,0" VerticalAlignment="Top" Opacity="0.8" RenderOptions.BitmapScalingMode="HighQuality" Source="pack://application:,,,/Resources/logo.png" />
                     </Grid>
                 </ScrollViewer>
             </TabItem>
         </dragablz:TabablzControl>
     </Grid>
-</UserControl>
+</Window>

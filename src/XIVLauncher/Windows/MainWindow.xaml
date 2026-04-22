@@ -9,7 +9,6 @@
     xmlns:data="clr-namespace:System.Windows.Data;assembly=PresentationFramework"
     xmlns:system="clr-namespace:System;assembly=mscorlib"
     xmlns:transitions="clr-namespace:XIVLauncher.Windows.Transitions"
-    xmlns:windows="clr-namespace:XIVLauncher.Windows"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     xmlns:site="clr-namespace:XIVLauncher.Common.Http.Site;assembly=XIVLauncher.Common"
     xmlns:constant="clr-namespace:XIVLauncher.Common.Constant;assembly=XIVLauncher.Common"
@@ -40,22 +39,8 @@
     </Window.Resources>
 
     <Grid>
-        <materialDesign:Transitioner SelectedIndex="1">
-            <materialDesign:TransitionerSlide>
-                <materialDesign:TransitionerSlide.ForwardWipe>
-                    <transitions:StableFadeWipe />
-                </materialDesign:TransitionerSlide.ForwardWipe>
-                <windows:SettingsControl x:Name="SettingsControl"
-                                         DataContext="{Binding Settings}" />
-            </materialDesign:TransitionerSlide>
-
-            <materialDesign:TransitionerSlide>
-                <materialDesign:TransitionerSlide.BackwardWipe>
-                    <transitions:StableFadeWipe />
-                </materialDesign:TransitionerSlide.BackwardWipe>
-                <Grid>
-                    <Grid Margin="10">
-                        <Grid>
+        <Grid Margin="10">
+            <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition />
@@ -358,8 +343,8 @@
                                                                              Foreground="{DynamicResource PrimaryHueMidBrush}" />
                                             </Button>
                                         </StackPanel>
-                                        
-                                        <StackPanel Grid.Column="1" 
+
+                                        <StackPanel Grid.Column="1"
                                                     Orientation="Horizontal"
                                                     HorizontalAlignment="Left">
                                             <Button
@@ -372,20 +357,20 @@
                                                 <materialDesign:PackIcon Kind="Injection" Width="20" Height="20"
                                                                          Foreground="{DynamicResource PrimaryHueMidBrush}" />
                                             </Button>
-                                        
+
                                             <Button
                                                 Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                    ToolTip="软件设置"
-                                                    Command="{x:Static materialDesign:Transitioner.MovePreviousCommand}"
-                                                    Width="32" Height="32" Padding="4"
-                                                    Focusable="False" Cursor="Hand">
+                                                ToolTip="软件设置"
+                                                Click="SettingsButton_OnClick"
+                                                Width="32" Height="32" Padding="4"
+                                                Focusable="False" Cursor="Hand">
                                                 <materialDesign:PackIcon Kind="Gear" Width="20" Height="20"
                                                                          Foreground="{DynamicResource PrimaryHueMidBrush}" />
                                             </Button>
-                                            
+
                                         </StackPanel>
-                                        
-                                        
+
+
                                     </Grid>
 
                                     <materialDesign:Transitioner x:Name="LoginCardTransitioner" Grid.Row="1"
@@ -398,24 +383,36 @@
 
                                             <Grid Margin="24,0,24,0" VerticalAlignment="Center">
                                                 <StackPanel>
-                                                    <Grid Margin="0,0,0,20" Width="80" Height="80" HorizontalAlignment="Center">
+                                                    <Grid Margin="0,0,0,20" Width="80" Height="80"
+                                                          HorizontalAlignment="Center">
                                                         <!-- Pulsing circle -->
-                                                        <Ellipse Fill="{DynamicResource PrimaryHueMidBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Width="48" Height="48">
+                                                        <Ellipse Fill="{DynamicResource PrimaryHueMidBrush}"
+                                                                 HorizontalAlignment="Center"
+                                                                 VerticalAlignment="Center" Width="48" Height="48">
                                                             <Ellipse.Triggers>
                                                                 <EventTrigger RoutedEvent="Loaded">
                                                                     <BeginStoryboard>
                                                                         <Storyboard RepeatBehavior="Forever">
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Width" From="48" To="80" Duration="0:0:1.5" AutoReverse="True">
+                                                                            <DoubleAnimation
+                                                                                Storyboard.TargetProperty="Width"
+                                                                                From="48" To="80" Duration="0:0:1.5"
+                                                                                AutoReverse="True">
                                                                                 <DoubleAnimation.EasingFunction>
                                                                                     <SineEase EasingMode="EaseInOut" />
                                                                                 </DoubleAnimation.EasingFunction>
                                                                             </DoubleAnimation>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Height" From="48" To="80" Duration="0:0:1.5" AutoReverse="True">
+                                                                            <DoubleAnimation
+                                                                                Storyboard.TargetProperty="Height"
+                                                                                From="48" To="80" Duration="0:0:1.5"
+                                                                                AutoReverse="True">
                                                                                 <DoubleAnimation.EasingFunction>
                                                                                     <SineEase EasingMode="EaseInOut" />
                                                                                 </DoubleAnimation.EasingFunction>
                                                                             </DoubleAnimation>
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.25" To="0.05" Duration="0:0:1.5" AutoReverse="True">
+                                                                            <DoubleAnimation
+                                                                                Storyboard.TargetProperty="Opacity"
+                                                                                From="0.25" To="0.05"
+                                                                                Duration="0:0:1.5" AutoReverse="True">
                                                                                 <DoubleAnimation.EasingFunction>
                                                                                     <SineEase EasingMode="EaseInOut" />
                                                                                 </DoubleAnimation.EasingFunction>
@@ -431,17 +428,21 @@
                                                                      Value="0"
                                                                      IsIndeterminate="{Binding IsLoggingIn}"
                                                                      Height="52" Width="52"
-                                                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                     HorizontalAlignment="Center"
+                                                                     VerticalAlignment="Center" />
 
-                                                        <materialDesign:PackIcon Kind="Login" 
-                                                                                 Width="24" Height="24" 
-                                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                                 Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                        <materialDesign:PackIcon Kind="Login"
+                                                                Width="24" Height="24"
+                                                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                Foreground="{DynamicResource PrimaryHueMidBrush}">
                                                             <materialDesign:PackIcon.Triggers>
                                                                 <EventTrigger RoutedEvent="Loaded">
                                                                     <BeginStoryboard>
                                                                         <Storyboard RepeatBehavior="Forever">
-                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.5" To="1.0" Duration="0:0:1.5" AutoReverse="True">
+                                                                            <DoubleAnimation
+                                                                                Storyboard.TargetProperty="Opacity"
+                                                                                From="0.5" To="1.0" Duration="0:0:1.5"
+                                                                                AutoReverse="True">
                                                                                 <DoubleAnimation.EasingFunction>
                                                                                     <SineEase EasingMode="EaseInOut" />
                                                                                 </DoubleAnimation.EasingFunction>
@@ -458,7 +459,7 @@
                                                                FontSize="18"
                                                                FontWeight="Bold"
                                                                Margin="0,0,0,8" />
-                                                               
+
                                                     <TextBlock Text="{Binding LoginPage.LoginMessage}"
                                                                HorizontalAlignment="Center"
                                                                TextAlignment="Center"
@@ -469,7 +470,10 @@
                                                             <EventTrigger RoutedEvent="Loaded">
                                                                 <BeginStoryboard>
                                                                     <Storyboard RepeatBehavior="Forever">
-                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.4" To="0.9" Duration="0:0:1.5" AutoReverse="True">
+                                                                        <DoubleAnimation
+                                                                            Storyboard.TargetProperty="Opacity"
+                                                                            From="0.4" To="0.9" Duration="0:0:1.5"
+                                                                            AutoReverse="True">
                                                                             <DoubleAnimation.EasingFunction>
                                                                                 <SineEase EasingMode="EaseInOut" />
                                                                             </DoubleAnimation.EasingFunction>
@@ -479,7 +483,7 @@
                                                             </EventTrigger>
                                                         </TextBlock.Triggers>
                                                     </TextBlock>
-                                                    
+
                                                     <Button Content="取消"
                                                             Command="{Binding LoginPage.LoginCancelCommand}"
                                                             Style="{StaticResource MaterialDesignOutlinedButton}"
@@ -838,12 +842,13 @@
                                                                 materialDesign:ButtonAssist.CornerRadius="18"
                                                                 Width="32" Height="32" Padding="0"
                                                                 ToolTip="账户管理器"
-                                                                Click="AccountSwitcherButton_OnClick">
+                                                                Command="{Binding AccountSwitcherButtonCommand}"
+                                                                CommandParameter="{Binding RelativeSource={RelativeSource Self}}">
                                                             <materialDesign:PackIcon Kind="AccountGroup" Width="18"
                                                                     Height="18" />
                                                         </Button>
                                                     </Grid>
-                                                    
+
                                                 </StackPanel>
                                             </Grid>
                                         </materialDesign:TransitionerSlide>
@@ -1231,9 +1236,6 @@
                                 </StackPanel>
                             </materialDesign:DialogHost.DialogContent>
                         </materialDesign:DialogHost>
-                    </Grid>
-                </Grid>
-            </materialDesign:TransitionerSlide>
-        </materialDesign:Transitioner>
+            </Grid>
     </Grid>
 </Window>

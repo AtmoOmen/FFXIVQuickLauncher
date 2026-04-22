@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Castle.Core.Internal;
 using Serilog;
@@ -33,11 +34,13 @@ using XIVLauncher.Common.Windows;
 using XIVLauncher.Game;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Support;
+using XIVLauncher.Windows;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel.MainWindow.Factories;
 using XIVLauncher.Windows.ViewModel.MainWindow.Pages;
 using XIVLauncher.Windows.ViewModel.MainWindow.Providers;
 using XIVLauncher.Windows.ViewModel.MainWindow.Services;
+using XIVLauncher.Xaml;
 using DCTravelClient = XIVLauncher.Common.Game.DCTravel.DCTravelClient;
 
 namespace XIVLauncher.Windows.ViewModel;
@@ -46,11 +49,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
 {
     public const string PRESUDO_PASSWORD = "********假的密码********";
 
-    public SettingsControlViewModel Settings { get; }
+    public SettingsWindowViewModel Settings { get; }
 
     public LoginPageViewModel LoginPage { get; }
 
     public InjectPageViewModel InjectPage { get; }
+
+    public ICommand AccountSwitcherButtonCommand { get; }
 
     public Launcher          Launcher         { get; private set; }
     public AccountManager    AccountManager   { get; private set; } = App.AccountManager;
@@ -67,6 +72,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private MainWindowDialogProvider      DialogProvider           { get; }
     private MainWindowAccountDraftFactory AccountDraftFactory      { get; }
     private GameLaunchService             GameLaunchService        { get; }
+    private AccountSwitcher               AccountSwitcher          { get; set; } = null!;
     private CancellationTokenSource?      LoginCancelSource        { get; set; }
     private bool                          IsLoginCanceledByUser    { get; set; }
     private LoginCardType?                LoginCardAfterCompletion { get; set; }
@@ -74,12 +80,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public MainWindowViewModel(Window window)
     {
         Window                 = window;
-        Settings               = new SettingsControlViewModel(new DialogService(window), new ExternalLaunchService());
+        Settings               = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
         DalamudLauncherFactory = new DalamudLauncherFactory();
         DialogProvider         = new MainWindowDialogProvider(window);
         AccountDraftFactory    = new MainWindowAccountDraftFactory();
         Launcher               = new();
         GameLaunchService      = new GameLaunchService(window);
+        AccountSwitcherButtonCommand = new SyncCommand(ExecuteAccountSwitcherButton);
         LoginPage = new LoginPageViewModel
         (
             () => IsLoggingIn,
@@ -104,6 +111,14 @@ public class MainWindowViewModel : INotifyPropertyChanged
         Settings.SettingsSaved += (_, _) => InjectPage.ReloadSettings();
     }
 
+    public void AttachAccountSwitcher(AccountSwitcher accountSwitcher) =>
+        AccountSwitcher = accountSwitcher;
+
+    public bool IsAccountSwitcherVisible => AccountSwitcher.IsVisible;
+
+    public void CloseAccountSwitcher(bool animate) =>
+        AccountSwitcher.CloseWindow(animate);
+
     #region 界面控制
 
     public void SwitchCard(LoginCardType i, bool shouldCancelLogin = true) =>
@@ -117,6 +132,39 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 InjectPage.SetActive(LoginCardTransitionerIndex == (int)LoginCardType.InjectMode);
             }
         );
+
+    private void ExecuteAccountSwitcherButton(object parameter)
+    {
+        var accountSwitcherButton = (FrameworkElement)parameter;
+
+        AccountSwitcher.Owner ??= Window;
+
+        if (AccountSwitcher.IsVisible)
+        {
+            AccountSwitcher.CloseWindow(true);
+            return;
+        }
+
+        AccountSwitcher.BeginAnimation(UIElement.OpacityProperty, null);
+        AccountSwitcher.BeginAnimation(FrameworkElement.MarginProperty, null);
+
+        AccountSwitcher.Opacity = 1;
+        AccountSwitcher.Margin  = new Thickness(0);
+
+        var locationFromScreen = accountSwitcherButton.PointToScreen(new Point(0, 0));
+        var source             = PresentationSource.FromVisual(Window);
+
+        if (source != null)
+        {
+            var targetPoints = source.CompositionTarget!.TransformFromDevice.Transform(locationFromScreen);
+
+            AccountSwitcher.WindowStartupLocation = WindowStartupLocation.Manual;
+            AccountSwitcher.Left                  = targetPoints.X - 15;
+            AccountSwitcher.Top                   = targetPoints.Y - 15;
+        }
+
+        AccountSwitcher.Show();
+    }
 
     #endregion
 
@@ -2017,7 +2065,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             field = value;
             OnPropertyChanged(nameof(LoginCardTransitionerIndex));
         }
-    }
+    } = 1;
 
     public bool IsLoadingDialogOpen
     {

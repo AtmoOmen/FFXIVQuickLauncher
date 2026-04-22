@@ -18,7 +18,7 @@ public sealed class InjectPageViewModel : ViewModelBase
 {
     private readonly Window                   window;
     private readonly GameLaunchService        gameLaunchService;
-    private readonly SettingsControlViewModel settings;
+    private readonly SettingsWindowViewModel settings;
     private readonly Func<bool>               isLoggingInFunc;
     private readonly Action<string>           showLoadingDialogAction;
     private readonly Action                   hideLoadingDialogAction;
@@ -34,7 +34,7 @@ public sealed class InjectPageViewModel : ViewModelBase
     (
         Window                   window,
         GameLaunchService        gameLaunchService,
-        SettingsControlViewModel settings,
+        SettingsWindowViewModel settings,
         Func<bool>               isLoggingInFunc,
         Action<string>           showLoadingDialogAction,
         Action                   hideLoadingDialogAction,

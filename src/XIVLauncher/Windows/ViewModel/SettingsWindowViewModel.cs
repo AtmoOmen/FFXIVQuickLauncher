@@ -26,7 +26,7 @@ using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-public sealed class SettingsControlViewModel : ViewModelBase
+public sealed class SettingsWindowViewModel : ViewModelBase
 {
     public List<GenericCombinedData<LauncherLanguage>> LauncherLanguageList { get; }
 
@@ -209,8 +209,6 @@ public sealed class SettingsControlViewModel : ViewModelBase
         {
             if (!SetProperty(ref field, value))
                 return;
-
-            OnPropertyChanged(nameof(UseDllInjectLoadMethod));
         }
     } = true;
 
@@ -273,7 +271,7 @@ public sealed class SettingsControlViewModel : ViewModelBase
         "繁體中文"
     ];
 
-    internal SettingsControlViewModel(IDialogService? dialogService = null, IExternalLaunchService? externalLaunchService = null)
+    internal SettingsWindowViewModel(IDialogService? dialogService = null, IExternalLaunchService? externalLaunchService = null)
     {
         _dialogService         = dialogService         ?? new DialogService();
         _externalLaunchService = externalLaunchService ?? new ExternalLaunchService();

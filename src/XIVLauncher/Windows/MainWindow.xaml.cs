@@ -72,11 +72,10 @@ public partial class MainWindow
             accountSwitcher.CloseWindow(false);
         };
         accountSwitcher.AccountSwitched += OnAccountSwitchedEventHandler;
+        Model.AttachAccountSwitcher(accountSwitcher);
 
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
-
-        Model.LoginCardTransitionerIndex = 1;
 
         Model.Activate += () => Dispatcher.Invoke
         (() =>
@@ -171,7 +170,7 @@ public partial class MainWindow
                 return;
             }
 
-            SettingsControl.ReloadSettings();
+            Model.Settings.ReloadFromSettings();
         }
 
         Task.Run
@@ -199,6 +198,16 @@ public partial class MainWindow
         ShowCredTypeRecoveryMessage();
 
         everShown = true;
+    }
+
+    private void SettingsButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var window = new SettingsWindow(Model.Settings)
+        {
+            Owner = this
+        };
+
+        window.ShowDialog();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -388,46 +397,14 @@ public partial class MainWindow
         Model.LoginPage.StartLoginCommand.Execute(null);
     }
 
-    private void AccountSwitcherButton_OnClick(object sender, RoutedEventArgs e)
-    {
-        accountSwitcher.Owner ??= this;
-
-        if (accountSwitcher.IsVisible)
-        {
-            accountSwitcher.CloseWindow(true);
-            return;
-        }
-
-        // Clear previous animations so manual assignments work
-        accountSwitcher.BeginAnimation(OpacityProperty, null);
-        accountSwitcher.BeginAnimation(MarginProperty,  null);
-
-        accountSwitcher.Opacity = 1;
-        accountSwitcher.Margin  = new Thickness(0);
-
-        var locationFromScreen = AccountSwitcherButton.PointToScreen(new Point(0, 0));
-        var source             = PresentationSource.FromVisual(this);
-
-        if (source != null)
-        {
-            var targetPoints = source.CompositionTarget!.TransformFromDevice.Transform(locationFromScreen);
-
-            accountSwitcher.WindowStartupLocation = WindowStartupLocation.Manual;
-            accountSwitcher.Left                  = targetPoints.X - 15;
-            accountSwitcher.Top                   = targetPoints.Y - 15;
-        }
-
-        accountSwitcher.Show();
-    }
-
     protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
     {
         base.OnPreviewMouseDown(e);
 
-        if (accountSwitcher.IsVisible)
+        if (Model.IsAccountSwitcherVisible)
         {
             if (e.OriginalSource is DependencyObject depObj && !AccountSwitcherButton.IsAncestorOf(depObj) && !Equals(e.OriginalSource, AccountSwitcherButton))
-                accountSwitcher.CloseWindow(true);
+                Model.CloseAccountSwitcher(true);
         }
     }
 
@@ -435,8 +412,8 @@ public partial class MainWindow
     {
         base.OnLocationChanged(e);
 
-        if (accountSwitcher.IsVisible)
-            accountSwitcher.CloseWindow(false);
+        if (Model.IsAccountSwitcherVisible)
+            Model.CloseAccountSwitcher(false);
     }
 
     private void OnAccountSwitchedEventHandler(object? sender, XIVAccount e) =>
