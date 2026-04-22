@@ -36,6 +36,7 @@
         <Style x:Key="LoginActionSeparatorStyle"
                TargetType="{x:Type Separator}"
                BasedOn="{StaticResource MaterialDesignSeparator}" />
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Window.Resources>
 
     <Grid>
@@ -363,10 +364,11 @@
                                                     HorizontalAlignment="Left">
                                             <Button
                                                 Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                    ToolTip="手动注入"
-                                                    Command="{Binding LoginPage.InjectModeSwitchCommand}"
-                                                    Width="32" Height="32" Padding="4"
-                                                    Focusable="False" Cursor="Hand">
+                                                ToolTip="手动注入"
+                                                Command="{Binding LoginPage.InjectModeSwitchCommand}"
+                                                Width="32" Height="32" Padding="4"
+                                                Focusable="False" Cursor="Hand"
+                                                Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BoolToVis}}">
                                                 <materialDesign:PackIcon Kind="Injection" Width="20" Height="20"
                                                                          Foreground="{DynamicResource PrimaryHueMidBrush}" />
                                             </Button>
