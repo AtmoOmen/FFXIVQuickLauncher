@@ -73,11 +73,7 @@
                             <MenuItem
                                 Command="{Binding SetProfilePictureCommand}"
                                 Foreground="{DynamicResource MaterialDesignBody}"
-                                Header="设置头像" />
-                            <MenuItem
-                                Command="{Binding SetNoteCommand}"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                Header="设置备注" />
+                                Header="设置账号信息" />
                             <MenuItem
                                 Command="{Binding ConfigureDeviceProfileCommand}"
                                 Foreground="{DynamicResource MaterialDesignBody}"

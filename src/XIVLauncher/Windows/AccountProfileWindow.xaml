@@ -1,0 +1,212 @@
+<Window
+    x:Class="XIVLauncher.Windows.AccountProfileWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
+    Title="账号信息"
+    Width="620"
+    SizeToContent="Height"
+    Background="{DynamicResource MaterialDesignPaper}"
+    Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+    ResizeMode="NoResize"
+    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    WindowStartupLocation="CenterOwner"
+    mc:Ignorable="d" d:DataContext="{d:DesignInstance viewModel:AccountProfileWindowViewModel}">
+    
+    <Window.Resources>
+        <Storyboard x:Key="WindowLoadAnim">
+            <DoubleAnimation Storyboard.TargetName="RootGrid" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.35" >
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="RootTranslate" Storyboard.TargetProperty="Y" From="20" To="0" Duration="0:0:0.35" >
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </Window.Resources>
+
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnim}" />
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Grid x:Name="RootGrid" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="RootTranslate" Y="20" />
+        </Grid.RenderTransform>
+        
+        <Grid Margin="28,24,28,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- 账号信息标题 -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,24" VerticalAlignment="Center">
+                <materialDesign:PackIcon Kind="AccountCircleOutline" Width="28" Height="28" VerticalAlignment="Center" Margin="0,0,8,0" Opacity="0.7" />
+                <TextBlock Text="{Binding AccountDisplayName}" FontSize="20" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+
+            <!-- 主要内容区 -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="32" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 头像区域 (带悬浮和点击特效) -->
+                <Grid Grid.Column="0" Width="128" Height="128" Cursor="Hand" VerticalAlignment="Top">
+                    <!-- 阴影底底 -->
+                    <Ellipse Fill="{DynamicResource MaterialDesignPaper}">
+                        <Ellipse.Effect>
+                            <DropShadowEffect BlurRadius="12" Opacity="0.15" ShadowDepth="4" RenderingBias="Performance" />
+                        </Ellipse.Effect>
+                    </Ellipse>
+                    
+                    <!-- 图片 (Ellipse自动完美圆形裁切) -->
+                    <Ellipse>
+                        <Ellipse.Fill>
+                            <ImageBrush ImageSource="{Binding PreviewImage}" Stretch="UniformToFill" />
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    
+                    <!-- 悬浮遮罩背景 -->
+                    <Ellipse x:Name="AvatarOverlay" Fill="#B2000000" Opacity="0" />
+                    
+                    <!-- 悬浮遮罩内容 -->
+                    <StackPanel x:Name="AvatarOverlayText" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0" IsHitTestVisible="False">
+                        <materialDesign:PackIcon Kind="Camera" Width="36" Height="36" Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                        <TextBlock Text="更换图片" Foreground="White" FontSize="13" FontWeight="Medium" HorizontalAlignment="Center" />
+                    </StackPanel>
+                    
+                    <!-- 隐形的可点击按钮 -->
+                    <Button Background="Transparent" Click="BrowseButton_OnClick">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="Transparent" CornerRadius="64" />
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <Grid.Triggers>
+                        <EventTrigger RoutedEvent="MouseEnter">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="AvatarOverlay" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
+                                    <DoubleAnimation Storyboard.TargetName="AvatarOverlayText" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="MouseLeave">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="AvatarOverlay" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15" />
+                                    <DoubleAnimation Storyboard.TargetName="AvatarOverlayText" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Grid.Triggers>
+                </Grid>
+
+                <!-- 右侧信息与操作 -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Top" Margin="0,0,0,0">
+                    
+                    <TextBlock Text="基本信息" FontSize="14" FontWeight="Bold" Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <Border Background="{DynamicResource MaterialDesignDivider}" CornerRadius="4" Padding="8,4" Margin="0,0,8,0">
+                            <TextBlock Text="{Binding OriginalUserName}" FontSize="12" Opacity="0.8" />
+                        </Border>
+                        <Border Background="{DynamicResource MaterialDesignDivider}" CornerRadius="4" Padding="8,4" Margin="0,0,8,0">
+                            <TextBlock Text="{Binding AreaName}" FontSize="12" Opacity="0.8" />
+                        </Border>
+                        <Border Background="{DynamicResource MaterialDesignDivider}" CornerRadius="4" Padding="8,4">
+                            <TextBlock Text="{Binding AccountType}" FontSize="12" Opacity="0.8" />
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock Text="备注" FontSize="14" FontWeight="Bold" Margin="0,0,0,8" />
+                    <TextBox Text="{Binding UserDefinedName, UpdateSourceTrigger=PropertyChanged}" 
+                             materialDesign:HintAssist.Hint="留空时将显示原始账号名"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Margin="0,0,0,24" />
+
+                    <TextBlock Text="头像" FontSize="14" FontWeight="Bold" Margin="0,0,0,8" />
+                    <Border BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
+                        <TextBlock TextTrimming="CharacterEllipsis" 
+                                   ToolTip="{Binding SelectedFilePath}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="{Binding SelectedFilePath}" />
+                                    <Setter Property="Opacity" Value="0.8" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasSelectedFile}" Value="False">
+                                            <Setter Property="Text" Value="(默认头像)" />
+                                            <Setter Property="Opacity" Value="0.5" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                             
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                materialDesign:ButtonAssist.CornerRadius="6"
+                                Click="BrowseButton_OnClick"
+                                Margin="0,0,12,0"
+                                Padding="16,0"
+                                Height="36">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FolderOpen" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Text="浏览文件..." VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                materialDesign:ButtonAssist.CornerRadius="6"
+                                Click="ClearButton_OnClick"
+                                Foreground="#FF5252"
+                                IsEnabled="{Binding HasSelectedFile}"
+                                Padding="16,0"
+                                Height="36">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="DeleteOutline" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock Text="清除头像" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <!-- 底部操作按钮 -->
+            <Grid Grid.Row="2" Margin="0,32,0,0">
+                <Border Height="1" Background="{DynamicResource MaterialDesignDivider}" VerticalAlignment="Top" Margin="-28,0,-28,0" Opacity="0.5" />
+                
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Margin="0,20,0,0">
+                    <Button Content="取消"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            materialDesign:ButtonAssist.CornerRadius="6"
+                            Margin="0,0,12,0"
+                            Width="96"
+                            Height="36"
+                            IsCancel="True" />
+                    <Button Content="保存并应用"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            materialDesign:ButtonAssist.CornerRadius="6"
+                            Width="128"
+                            Height="36"
+                            IsDefault="True"
+                            Click="ConfirmButton_OnClick" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

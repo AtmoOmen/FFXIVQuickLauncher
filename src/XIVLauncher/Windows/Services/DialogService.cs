@@ -74,7 +74,7 @@ internal sealed class DialogService
 
     public bool ShowProfilePictureInput(XIVAccount account, out string? profileImagePath)
     {
-        var window = new ProfilePictureInputWindow(account);
+        var window = new AccountProfileWindow(account);
         PrepareOwner(window);
         var dialogResult = window.ShowDialog();
         profileImagePath = window.ResultPath;

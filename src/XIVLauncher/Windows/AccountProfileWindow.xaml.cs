@@ -6,17 +6,17 @@ using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
 
-public partial class ProfilePictureInputWindow
+public partial class AccountProfileWindow
 {
     public string? ResultPath { get; private set; }
 
-    private ProfilePictureInputWindowViewModel ViewModel => (ProfilePictureInputWindowViewModel)DataContext;
+    private AccountProfileWindowViewModel ViewModel => (AccountProfileWindowViewModel)DataContext;
 
-    public ProfilePictureInputWindow(XIVAccount account)
+    public AccountProfileWindow(XIVAccount account)
     {
         InitializeComponent();
 
-        DataContext = new ProfilePictureInputWindowViewModel();
+        DataContext = new AccountProfileWindowViewModel();
         ViewModel.Load(account);
     }
 
@@ -56,6 +56,7 @@ public partial class ProfilePictureInputWindow
     private void ConfirmButton_OnClick(object sender, RoutedEventArgs e)
     {
         ResultPath   = ViewModel.SelectedFilePath;
+        ViewModel.ApplyChanges();
         DialogResult = true;
     }
 }
