@@ -48,7 +48,7 @@ public sealed class MainWindowDialogProvider
 
     public bool ShowTemporaryAccountDeviceProfileSettings(XIVAccount account, AccountManager accountManager)
     {
-        var dialog = new AccountDeviceProfileSettingsWindow(account, accountManager, true);
+        var dialog = new AccountDeviceProfileWindow(account, accountManager, true);
 
         if (window.IsVisible)
         {

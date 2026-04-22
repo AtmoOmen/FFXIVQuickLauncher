@@ -10,7 +10,7 @@ using XIVLauncher.Common.Game.Login;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal sealed class AccountDeviceProfileSettingsWindowViewModel
+internal sealed class AccountDeviceProfileWindowViewModel
 (
     AccountManager accountManager
 ) : ViewModelBase

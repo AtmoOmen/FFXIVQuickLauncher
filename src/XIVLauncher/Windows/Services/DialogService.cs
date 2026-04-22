@@ -83,14 +83,14 @@ internal sealed class DialogService
 
     public bool ShowAccountDeviceProfileSettings(XIVAccount account, AccountManager accountManager)
     {
-        var window = new AccountDeviceProfileSettingsWindow(account, accountManager);
+        var window = new AccountDeviceProfileWindow(account, accountManager);
         PrepareOwner(window);
         return window.ShowDialog() == true;
     }
 
     public bool ShowSharedDeviceProfileSettings(AccountManager accountManager)
     {
-        var window = new AccountDeviceProfileSettingsWindow(accountManager);
+        var window = new AccountDeviceProfileWindow(accountManager);
         PrepareOwner(window);
         return window.ShowDialog() == true;
     }

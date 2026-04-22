@@ -12,10 +12,10 @@ using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
 
-public partial class AccountDeviceProfileSettingsWindow
+public partial class AccountDeviceProfileWindow
 {
-    private AccountDeviceProfileSettingsWindowViewModel ViewModel => 
-        (AccountDeviceProfileSettingsWindowViewModel)DataContext;
+    private AccountDeviceProfileWindowViewModel ViewModel => 
+        (AccountDeviceProfileWindowViewModel)DataContext;
     
     private const int CURRENT_EXCHANGE_FORMAT_VERSION = 1;
 
@@ -31,12 +31,12 @@ public partial class AccountDeviceProfileSettingsWindow
 
     private bool restoreWindowStateAfterOwnerRestore;
     
-    public AccountDeviceProfileSettingsWindow(XIVAccount account, AccountManager accountManager, bool isTemporaryAccount = false)
+    public AccountDeviceProfileWindow(XIVAccount account, AccountManager accountManager, bool isTemporaryAccount = false)
     {
         InitializeComponent();
 
         dialogService = new DialogService(this);
-        DataContext    = new AccountDeviceProfileSettingsWindowViewModel(accountManager);
+        DataContext    = new AccountDeviceProfileWindowViewModel(accountManager);
         if (isTemporaryAccount)
             ViewModel.LoadTemporary(account);
         else
@@ -47,12 +47,12 @@ public partial class AccountDeviceProfileSettingsWindow
         Closed += (_, _) => DetachOwnerWindow();
     }
 
-    public AccountDeviceProfileSettingsWindow(AccountManager accountManager)
+    public AccountDeviceProfileWindow(AccountManager accountManager)
     {
         InitializeComponent();
 
         dialogService = new DialogService(this);
-        DataContext    = new AccountDeviceProfileSettingsWindowViewModel(accountManager);
+        DataContext    = new AccountDeviceProfileWindowViewModel(accountManager);
         ViewModel.LoadShared();
         Title = ViewModel.WindowTitle;
 
