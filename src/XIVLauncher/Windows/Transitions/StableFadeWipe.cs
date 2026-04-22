@@ -7,10 +7,9 @@ namespace XIVLauncher.Windows.Transitions;
 
 public sealed class StableFadeWipe : ITransitionWipe
 {
-    private readonly SineEase sineEase = new();
-    private readonly KeyTime zeroKeyTime = KeyTime.FromTimeSpan(TimeSpan.Zero);
+    private readonly IEasingFunction modernEasing = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-    public TimeSpan Duration { get; set; } = TimeSpan.FromSeconds(0.5);
+    public TimeSpan Duration { get; set; } = TimeSpan.FromSeconds(0.4);
 
     public void Wipe(TransitionerSlide fromSlide, TransitionerSlide toSlide, Point origin, IZIndexController zIndexController)
     {
@@ -18,36 +17,35 @@ public sealed class StableFadeWipe : ITransitionWipe
         ArgumentNullException.ThrowIfNull(toSlide);
         ArgumentNullException.ThrowIfNull(zIndexController);
 
-        var midpointKeyTime = KeyTime.FromTimeSpan(TimeSpan.FromSeconds(Duration.TotalSeconds / 2));
+        var durationKeyTime = KeyTime.FromTimeSpan(Duration);
+        var zeroKeyTime     = KeyTime.FromTimeSpan(TimeSpan.Zero);
 
-        var fromAnimation = new DoubleAnimationUsingKeyFrames();
-        Timeline.SetDesiredFrameRate(fromAnimation, 60);
-        fromAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1, zeroKeyTime));
-        fromAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, midpointKeyTime, sineEase));
+        var fadeOutEndPoint  = KeyTime.FromTimeSpan(TimeSpan.FromSeconds(Duration.TotalSeconds * 0.55));
+        var fadeInStartPoint = KeyTime.FromTimeSpan(TimeSpan.FromSeconds(Duration.TotalSeconds * 0.45));
 
-        var toAnimation = new DoubleAnimationUsingKeyFrames();
-        Timeline.SetDesiredFrameRate(toAnimation, 60);
-        toAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0, zeroKeyTime));
-        toAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(1, midpointKeyTime, sineEase));
+        var outAnimation = new DoubleAnimationUsingKeyFrames();
+        outAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(1.0, zeroKeyTime));
+        outAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0.0, fadeOutEndPoint, modernEasing));
+        outAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, durationKeyTime));
 
-        fromSlide.Opacity = 1;
-        toSlide.Opacity = 0;
+        var inAnimation = new DoubleAnimationUsingKeyFrames();
+        inAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, zeroKeyTime));
+        inAnimation.KeyFrames.Add(new LinearDoubleKeyFrame(0.0, fadeInStartPoint));
+        inAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(1.0, durationKeyTime, modernEasing));
 
-        toAnimation.Completed += (_, _) =>
-        {
-            toSlide.BeginAnimation(UIElement.OpacityProperty, null);
-            fromSlide.Opacity = 0;
-            toSlide.Opacity = 1;
-        };
+        zIndexController.Stack(toSlide, fromSlide);
+        fromSlide.Opacity = 1.0;
+        toSlide.Opacity   = 0.0;
 
-        fromAnimation.Completed += (_, _) =>
+        inAnimation.Completed += (_, _) =>
         {
             fromSlide.BeginAnimation(UIElement.OpacityProperty, null);
-            fromSlide.Opacity = 0;
-            toSlide.BeginAnimation(UIElement.OpacityProperty, toAnimation);
+            toSlide.BeginAnimation(UIElement.OpacityProperty, null);
+            fromSlide.Opacity = 0.0;
+            toSlide.Opacity   = 1.0;
         };
 
-        fromSlide.BeginAnimation(UIElement.OpacityProperty, fromAnimation);
-        zIndexController.Stack(toSlide, fromSlide);
+        fromSlide.BeginAnimation(UIElement.OpacityProperty, outAnimation);
+        toSlide.BeginAnimation(UIElement.OpacityProperty, inAnimation);
     }
 }

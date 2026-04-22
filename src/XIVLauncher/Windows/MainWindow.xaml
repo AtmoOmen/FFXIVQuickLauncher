@@ -591,8 +591,7 @@
                                                                                     Value="True">
                                                                                     <Trigger.EnterActions>
                                                                                         <BeginStoryboard>
-                                                                                            <Storyboard
-                                                                                                Timeline.DesiredFrameRate="60">
+                                                                                            <Storyboard>
                                                                                                 <DoubleAnimation
                                                                                                     Storyboard.TargetName="ActiveBg"
                                                                                                     Storyboard.TargetProperty="Opacity"
@@ -608,8 +607,7 @@
                                                                                     </Trigger.EnterActions>
                                                                                     <Trigger.ExitActions>
                                                                                         <BeginStoryboard>
-                                                                                            <Storyboard
-                                                                                                Timeline.DesiredFrameRate="60">
+                                                                                            <Storyboard>
                                                                                                 <DoubleAnimation
                                                                                                     Storyboard.TargetName="ActiveBg"
                                                                                                     Storyboard.TargetProperty="Opacity"
@@ -644,8 +642,7 @@
                                                                                     </MultiTrigger.Conditions>
                                                                                     <MultiTrigger.EnterActions>
                                                                                         <BeginStoryboard>
-                                                                                            <Storyboard
-                                                                                                Timeline.DesiredFrameRate="60">
+                                                                                            <Storyboard>
                                                                                                 <DoubleAnimation
                                                                                                     Storyboard.TargetName="Bg"
                                                                                                     Storyboard.TargetProperty="Opacity"
@@ -661,8 +658,7 @@
                                                                                     </MultiTrigger.EnterActions>
                                                                                     <MultiTrigger.ExitActions>
                                                                                         <BeginStoryboard>
-                                                                                            <Storyboard
-                                                                                                Timeline.DesiredFrameRate="60">
+                                                                                            <Storyboard>
                                                                                                 <DoubleAnimation
                                                                                                     Storyboard.TargetName="Bg"
                                                                                                     Storyboard.TargetProperty="Opacity"
@@ -869,7 +865,7 @@
                                                             <Grid.Triggers>
                                                                 <EventTrigger RoutedEvent="MouseEnter">
                                                                     <BeginStoryboard>
-                                                                        <Storyboard Timeline.DesiredFrameRate="60">
+                                                                        <Storyboard>
                                                                             <ColorAnimation
                                                                                 Storyboard.TargetName="OverlayBorder"
                                                                                 Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
@@ -899,7 +895,7 @@
                                                                 </EventTrigger>
                                                                 <EventTrigger RoutedEvent="MouseLeave">
                                                                     <BeginStoryboard>
-                                                                        <Storyboard Timeline.DesiredFrameRate="60">
+                                                                        <Storyboard>
                                                                             <ColorAnimation
                                                                                 Storyboard.TargetName="OverlayBorder"
                                                                                 Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
