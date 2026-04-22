@@ -8,23 +8,23 @@
         mc:Ignorable="d"
         Title="XIVLauncher Update" WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
         AllowsTransparency="True"
         Background="Transparent"
         WindowStyle="None" Height="240" Width="340"
         d:DataContext="{d:DesignInstance viewModel:PatchDownloadDialogViewModel}"
         Closing="PatchDownloadDialog_OnClosing">
     <Grid Margin="0,0,0,0">
-        <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" Height="Auto" Margin="0,0,10,0">
+        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" Height="Auto" Margin="0,0,10,0">
             <StackPanel Margin="16,16,16,0">
-                <TextBlock Foreground="{DynamicResource MaterialDesignBody}"
+                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                            HorizontalAlignment="Center" Text="{Binding PatchProgressText}" Margin="0,0,0,15" />
 
                 <ItemsControl ItemsSource="{Binding ProgressItems}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type viewModel:PatchProgressItemViewModel}">
                             <StackPanel>
-                                <TextBlock Foreground="{DynamicResource MaterialDesignBody}"
+                                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                            HorizontalAlignment="Center" Text="{Binding Title}" />
                                 <ProgressBar Value="{Binding Progress}" IsIndeterminate="{Binding IsIndeterminate}"
                                              Margin="0,0,0,10" />
@@ -33,7 +33,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock Foreground="{DynamicResource MaterialDesignBody}"
+                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                            HorizontalAlignment="Center" Text="{Binding InstallingText}" />
                 <ProgressBar IsIndeterminate="True" Margin="0,0,0,11" />
 

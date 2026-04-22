@@ -9,11 +9,11 @@
     Title="XIVLauncher Error"
     Width="Auto"
     Height="Auto"
-    Background="{DynamicResource MaterialDesignPaper}"
+    Background="{DynamicResource MaterialDesign.Brush.Background}"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
     SizeToContent="WidthAndHeight"
-    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
     <Grid MouseMove="CustomMessageBox_MouseMove">
@@ -47,7 +47,7 @@
                     Margin="0,10,0,0"
                     Padding="4,4,10,4"
                     VerticalAlignment="Center"
-                    Foreground="{DynamicResource MaterialDesignBody}" />
+                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
             </StackPanel>
             <StackPanel.ContextMenu>
                 <ContextMenu Style="{StaticResource MaterialDesignContextMenu}">

@@ -14,7 +14,7 @@
     <PackageVersion Include="Iced" Version="1.21.0" />
     <PackageVersion Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
     <PackageVersion Include="MahApps.Metro.IconPacks" Version="6.2.1" />
-    <PackageVersion Include="MaterialDesignThemes" Version="4.9.0" />
+    <PackageVersion Include="MaterialDesignThemes" Version="5.3.1" />
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
     <PackageVersion Include="Microsoft.WindowsAPICodePack-Shell" Version="1.1.0" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />

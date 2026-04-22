@@ -8,18 +8,18 @@
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     Title="XIVLauncher 设置向导"
     Width="450"
-    Background="{DynamicResource MaterialDesignPaper}"
+    Background="{DynamicResource MaterialDesign.Brush.Background}"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
     SizeToContent="Height"
-    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance viewModel:FirstTimeSetupViewModel}">
     <Grid>
         <TabControl
             x:Name="SetupTabControl"
-            Background="{DynamicResource MaterialDesignPaper}"
+            Background="{DynamicResource MaterialDesign.Brush.Background}"
             BorderThickness="0"
             IsEnabled="True"
             SelectedIndex="{Binding CurrentStepIndex}">
@@ -43,7 +43,7 @@
                         HorizontalAlignment="Left"
                         VerticalAlignment="Center"
                         Description="选择文件夹"
-                        Foreground="{DynamicResource MaterialDesignBody}"
+                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                         Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
                     <Button
                         Width="79"
@@ -61,7 +61,7 @@
                         <TextBlock
                             HorizontalAlignment="Left"
                             VerticalAlignment="Top"
-                            Foreground="{DynamicResource MaterialDesignBody}"
+                            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                             Text="是否启用 Dalamud？它会为游戏提供额外功能，例如聊天辅助、屏蔽骚扰消息和副本通知。"
                             TextWrapping="Wrap" />
 
@@ -69,7 +69,7 @@
                             Margin="0,25,0,50"
                             HorizontalAlignment="Left"
                             Content="启用 Dalamud"
-                            Foreground="{DynamicResource MaterialDesignBody}"
+                            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                             IsChecked="{Binding EnableDalamud}" />
                     </StackPanel>
 

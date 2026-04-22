@@ -8,16 +8,16 @@
         mc:Ignorable="d"
         Title="XIVLauncher Update" WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
         AllowsTransparency="True"
         Background="Transparent"
         WindowStyle="None" Height="170.088" Width="269.186"
         d:DataContext="{d:DesignInstance viewModel:UpdateLoadingDialogViewModel}">
     <Grid Margin="0,0,0,0">
-        <materialDesign:Card x:Name="UpdateLoadingCard" Background="{DynamicResource MaterialDesignPaper}" Height="149"
+        <materialDesign:Card x:Name="UpdateLoadingCard" Background="{DynamicResource MaterialDesign.Brush.Background}" Height="149"
                              Margin="0,0,10,0">
             <StackPanel Margin="16,16,10,0">
-                <TextBlock Foreground="{DynamicResource MaterialDesignBody}" HorizontalAlignment="Center"
+                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" HorizontalAlignment="Center"
                            Text="{Binding StatusText}" />
                 <ProgressBar IsIndeterminate="True" Margin="0,50,0,0" />
                 <Separator Opacity="0" Height="30" />

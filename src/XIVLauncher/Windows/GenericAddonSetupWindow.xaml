@@ -10,8 +10,8 @@
         SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+        Background="{DynamicResource MaterialDesign.Brush.Background}"
         d:DataContext="{d:DesignInstance viewModel:GenericAddonSetupWindowViewModel}">
     <Grid Margin="10,10,10,10">
         <Grid.RowDefinitions>

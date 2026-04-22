@@ -16,7 +16,7 @@
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
     TextElement.FontWeight="Medium"
-    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
     Topmost="True"
     WindowStartupLocation="Manual"
     WindowStyle="None"
@@ -41,7 +41,7 @@
         </EventTrigger>
     </Window.Triggers>
     <Grid Margin="16">
-        <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" 
+        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" 
                              UniformCornerRadius="12" 
                              materialDesign:ElevationAssist.Elevation="Dp4"
                              Margin="0">
@@ -69,7 +69,7 @@
                                 <Style TargetType="{x:Type MenuItem}"
                                        BasedOn="{StaticResource MaterialDesignMenuItem}">
                                     <Setter Property="Height" Value="36" />
-                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
                                 </Style>
                                 <Style TargetType="{x:Type Separator}"
                                        BasedOn="{StaticResource MaterialDesignSeparator}">
@@ -133,10 +133,10 @@
                                                 BorderThickness="0"
                                                 CornerRadius="10">
                                             <Grid>
-                                                <Border x:Name="HoverBorder" Background="{DynamicResource PrimaryHueMidBrush}" Opacity="0" CornerRadius="10" />
-                                                <Border x:Name="SelectedBorder" Background="{DynamicResource PrimaryHueMidBrush}" Opacity="0" CornerRadius="10" />
+                                                <Border x:Name="HoverBorder" Background="{DynamicResource MaterialDesign.Brush.Primary}" Opacity="0" CornerRadius="10" />
+                                                <Border x:Name="SelectedBorder" Background="{DynamicResource MaterialDesign.Brush.Primary}" Opacity="0" CornerRadius="10" />
                                                 
-                                                <Border x:Name="AccentBar" Width="4" Height="24" Background="{DynamicResource PrimaryHueMidBrush}" 
+                                                <Border x:Name="AccentBar" Width="4" Height="24" Background="{DynamicResource MaterialDesign.Brush.Primary}" 
                                                         HorizontalAlignment="Left" VerticalAlignment="Center" CornerRadius="2" Opacity="0" Margin="3,0,0,0" />
                                                         
                                                 <ContentPresenter Margin="{TemplateBinding Padding}"
@@ -201,7 +201,7 @@
                                             <ImageBrush ImageSource="{Binding ProfileImage}" Stretch="UniformToFill" />
                                         </Ellipse.Fill>
                                     </Ellipse>
-                                    <Ellipse Width="42" Height="42" Stroke="{DynamicResource MaterialDesignDivider}" StrokeThickness="1" Opacity="0.5" />
+                                    <Ellipse Width="42" Height="42" Stroke="{DynamicResource MaterialDesign.Brush.Outline}" StrokeThickness="1" Opacity="0.5" />
                                 </Grid>
                                 
                                 <StackPanel Grid.Column="1" Margin="14,0,10,0" VerticalAlignment="Center">

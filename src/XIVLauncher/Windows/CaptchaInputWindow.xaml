@@ -12,7 +12,7 @@
         Icon="pack://application:,,,/Resources/dalamud_icon.ico"
         ResizeMode="NoResize"
         TextElement.FontWeight="Medium"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+        TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
         mc:Ignorable="d">
@@ -36,7 +36,7 @@
     </Window.Triggers>
 
     <Grid Margin="16">
-        <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" 
+        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" 
                              UniformCornerRadius="14" 
                              materialDesign:ElevationAssist.Elevation="Dp8"
                              Margin="0">
@@ -53,7 +53,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" Margin="24,20,24,16" VerticalAlignment="Center">
-                        <materialDesign:PackIcon Kind="ShieldCheckOutline" Width="24" Height="24" Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <materialDesign:PackIcon Kind="ShieldCheckOutline" Width="24" Height="24" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                         <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}" 
                                    FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
                     </StackPanel>
@@ -90,7 +90,7 @@
                             Padding="8"
                             Background="{DynamicResource MaterialDesignTextFieldBoxBackground}"
                             CornerRadius="8"
-                            BorderBrush="{DynamicResource MaterialDesignDivider}"
+                            BorderBrush="{DynamicResource MaterialDesign.Brush.Outline}"
                             BorderThickness="1">
                         <Image x:Name="CaptchaImage"
                                Height="110"

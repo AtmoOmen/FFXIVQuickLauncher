@@ -8,8 +8,8 @@
         Title="高级设置" SizeToContent="Height" Width="450"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        Background="{DynamicResource MaterialDesignPaper}"
+        TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+        Background="{DynamicResource MaterialDesign.Brush.Background}"
         d:DataContext="{d:DesignInstance viewModel:AdvancedSettingsViewModel}">
     <Grid>
         <StackPanel Orientation="Vertical" Margin="10,20,0,50">

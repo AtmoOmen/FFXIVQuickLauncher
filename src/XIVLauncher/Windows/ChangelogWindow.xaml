@@ -14,8 +14,8 @@
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
     SizeToContent="WidthAndHeight"
-    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-    Background="{DynamicResource MaterialDesignPaper}"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+    Background="{DynamicResource MaterialDesign.Brush.Background}"
     Topmost="True">
     <StackPanel>
         <StackPanel>
@@ -24,7 +24,7 @@
                     <TextBlock x:Name="UpdateNotice"
                                Margin="10,10,10,0"
                                TextWrapping="Wrap"
-                               Foreground="{DynamicResource MaterialDesignBody}"
+                               Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                Text="{Binding UpdateNotice}" />
                     <TextBlock x:Name="ChangeLogText"
                                Margin="10"
@@ -36,7 +36,7 @@
 
                 <materialDesign:PackIcon Kind="Globe"
                                          HorizontalAlignment="Stretch"
-                                         Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                         Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
                                          VerticalAlignment="Stretch"
                                          Width="30"
                                          Height="30"

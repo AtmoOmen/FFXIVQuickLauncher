@@ -452,7 +452,7 @@ public partial class MainWindow
                 case XIVAccountType.Sdo:
                     var nextLoginType = currentLoginType is LoginType.Static or LoginType.Slide
                                             ? currentLoginType
-                    : string.IsNullOrWhiteSpace(account.SdoPassword)
+                                            : string.IsNullOrWhiteSpace(account.SdoPassword)
                                                 ? LoginType.Slide
                                                 : LoginType.Static;
 

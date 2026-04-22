@@ -12,8 +12,8 @@
     ResizeMode="NoResize"
     SizeToContent="Height"
     WindowStartupLocation="CenterOwner"
-    Background="{DynamicResource MaterialDesignPaper}"
-    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    Background="{DynamicResource MaterialDesign.Brush.Background}"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
     TextElement.FontWeight="Regular"
     TextElement.FontSize="14"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
@@ -28,7 +28,7 @@
         <StackPanel Grid.Row="0" Margin="24,24,24,16">
             <!-- Header -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,24" VerticalAlignment="Center">
-                <materialDesign:PackIcon Kind="MonitorDashboard" Width="36" Height="36" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryHueMidBrush}" Margin="0,0,16,0"/>
+                <materialDesign:PackIcon Kind="MonitorDashboard" Width="36" Height="36" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" Margin="0,0,16,0"/>
                 <TextBlock Style="{StaticResource MaterialDesignHeadline5TextBlock}" Text="{Binding AccountDisplayName}" VerticalAlignment="Center" FontWeight="SemiBold" />
             </StackPanel>
 
@@ -36,7 +36,7 @@
             <materialDesign:Card Margin="0,0,0,16" UniformCornerRadius="8" Visibility="{Binding AccountModeSectionVisibility}">
                 <StackPanel Margin="20">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                        <materialDesign:PackIcon Kind="AccountCog" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                        <materialDesign:PackIcon Kind="AccountCog" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource MaterialDesign.Brush.Primary}"/>
                         <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold" Text="账号独立设置" />
                     </StackPanel>
 
@@ -51,12 +51,12 @@
                                   IsEnabled="{Binding DynamicEnabled}" />
 
                         <StackPanel Margin="32,12,0,0" Orientation="Horizontal" IsEnabled="{Binding DynamicEnabled}">
-                            <TextBlock VerticalAlignment="Center" Text="每隔" Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                            <TextBlock VerticalAlignment="Center" Text="每隔" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
                             <xctk:IntegerUpDown Width="100" Margin="12,0" Minimum="1"
                                                 IsEnabled="{Binding CanEditRotationDays}"
                                                 Value="{Binding RotationDays}"
                                                 Padding="4" />
-                            <TextBlock VerticalAlignment="Center" Text="天自动更换一次" Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                            <TextBlock VerticalAlignment="Center" Text="天自动更换一次" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
@@ -72,7 +72,7 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="FormatListBulleted" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                            <materialDesign:PackIcon Kind="FormatListBulleted" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource MaterialDesign.Brush.Primary}"/>
                             <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold" Text="设备信息预设" VerticalAlignment="Center" />
                         </StackPanel>
 
@@ -128,7 +128,7 @@
                         </Grid.ColumnDefinitions>
                         
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="Laptop" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                            <materialDesign:PackIcon Kind="Laptop" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource MaterialDesign.Brush.Primary}"/>
                             <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold" Text="设备信息详情" VerticalAlignment="Center" />
                         </StackPanel>
 
@@ -206,7 +206,7 @@
         </StackPanel>
 
         <!-- Bottom Actions -->
-        <Border Grid.Row="1" Background="{DynamicResource MaterialDesignCardBackground}" BorderBrush="{DynamicResource MaterialDesignDivider}" BorderThickness="0,1,0,0" Padding="24,16">
+        <Border Grid.Row="1" Background="{DynamicResource MaterialDesign.Brush.Surface}" BorderBrush="{DynamicResource MaterialDesign.Brush.Outline}" BorderThickness="0,1,0,0" Padding="24,16">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
