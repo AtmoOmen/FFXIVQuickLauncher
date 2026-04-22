@@ -26,7 +26,7 @@
 
     <Window.Resources>
         <system:Double x:Key="BannerCardWidth">450</system:Double>
-        <system:Double x:Key="BannerCardHeight">240</system:Double>
+        <system:Double x:Key="BannerCardHeight">250</system:Double>
         <Style x:Key="LoginActionContextMenuStyle"
                TargetType="{x:Type ContextMenu}"
                BasedOn="{StaticResource MaterialDesignContextMenu}" />

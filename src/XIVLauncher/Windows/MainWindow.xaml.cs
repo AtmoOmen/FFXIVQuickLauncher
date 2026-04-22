@@ -390,8 +390,7 @@ public partial class MainWindow
 
     private void AccountSwitcherButton_OnClick(object sender, RoutedEventArgs e)
     {
-        if (accountSwitcher.Owner == null)
-            accountSwitcher.Owner = this;
+        accountSwitcher.Owner ??= this;
 
         if (accountSwitcher.IsVisible)
         {
