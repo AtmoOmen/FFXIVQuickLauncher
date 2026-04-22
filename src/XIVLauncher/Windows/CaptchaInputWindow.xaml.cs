@@ -37,6 +37,14 @@ public partial class CaptchaInputWindow : Window
         base.OnClosed(e);
     }
 
+    private void TopBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ButtonState == MouseButtonState.Pressed)
+        {
+            DragMove();
+        }
+    }
+
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         switch (e.Key)
@@ -96,7 +104,7 @@ public partial class CaptchaInputWindow : Window
         try
         {
             RefreshButton.IsEnabled = false;
-            RefreshButton.Content   = "刷新中...";
+            RefreshText.Text        = "刷新中...";
 
             var refreshedChallenge = await currentChallenge.RefreshAsync(refreshCancellationTokenSource.Token);
             ApplyChallenge(refreshedChallenge);
@@ -121,7 +129,7 @@ public partial class CaptchaInputWindow : Window
         {
             if (IsLoaded)
             {
-                RefreshButton.Content   = "刷新";
+                RefreshText.Text        = "刷新";
                 RefreshButton.IsEnabled = currentChallenge.RefreshAsync != null;
             }
         }

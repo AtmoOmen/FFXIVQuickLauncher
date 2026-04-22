@@ -5,67 +5,159 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="验证码验证"
-        Width="420"
-        Height="Auto"
-        MinHeight="320"
-        Background="{DynamicResource MaterialDesignPaper}"
+        Width="440"
+        SizeToContent="Height"
+        AllowsTransparency="True"
+        Background="Transparent"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico"
         ResizeMode="NoResize"
-        SizeToContent="Height"
+        TextElement.FontWeight="Medium"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
         mc:Ignorable="d">
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25">
+                        <DoubleAnimation.EasingFunction>
+                            <QuarticEase EasingMode="EaseOut" />
+                        </DoubleAnimation.EasingFunction>
+                    </DoubleAnimation>
+                    <ThicknessAnimation Storyboard.TargetProperty="Margin" From="0,20,0,-20" To="0,0,0,0" Duration="0:0:0.4">
+                        <ThicknessAnimation.EasingFunction>
+                            <QuarticEase EasingMode="EaseOut" />
+                        </ThicknessAnimation.EasingFunction>
+                    </ThicknessAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
 
-        <TextBlock x:Name="PromptTextBlock"
-                   TextWrapping="Wrap"
-                   FontSize="14" />
+    <Grid Margin="16">
+        <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" 
+                             UniformCornerRadius="14" 
+                             materialDesign:ElevationAssist.Elevation="Dp8"
+                             Margin="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-        <Border Grid.Row="1"
-                Margin="0,16,0,0"
-                Padding="12"
-                HorizontalAlignment="Center"
-                Background="#FFF7F2E8"
-                BorderBrush="#40FF9800"
-                BorderThickness="1"
-                CornerRadius="8">
-            <Image x:Name="CaptchaImage"
-                   Width="240"
-                   Height="100"
-                   Stretch="Uniform" />
-        </Border>
+                <!-- Header / Title Bar -->
+                <Grid Grid.Row="0" Background="Transparent" MouseLeftButtonDown="TopBar_OnMouseLeftButtonDown">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" Margin="24,20,24,16" VerticalAlignment="Center">
+                        <materialDesign:PackIcon Kind="ShieldCheckOutline" Width="24" Height="24" Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                   FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    
+                    <Button Grid.Column="1" Margin="0,0,16,0" 
+                            Style="{StaticResource MaterialDesignIconForegroundButton}"
+                            Click="CancelButton_OnClick"
+                            ToolTip="关闭"
+                            Width="36" Height="36" Padding="0">
+                        <materialDesign:PackIcon Kind="Close" Width="20" Height="20" />
+                    </Button>
+                </Grid>
 
-        <TextBox x:Name="CaptchaTextBox"
-                 Grid.Row="2"
-                 Margin="0,16,0,0"
-                 Padding="10,8"
-                 materialDesign:HintAssist.Hint="输入验证码"
-                 VerticalContentAlignment="Center" />
+                <!-- Content Body -->
+                <Grid Grid.Row="1" Margin="24,0,24,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="3"
-                    Margin="0,18,0,0"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right">
-            <Button x:Name="CancelButton"
-                    Width="96"
-                    Margin="0,0,10,0"
-                    Click="CancelButton_OnClick"
-                    Content="取消" />
-            <Button x:Name="RefreshButton"
-                    Width="96"
-                    Margin="0,0,10,0"
-                    Click="RefreshButton_OnClick"
-                    Content="刷新" />
-            <Button x:Name="ConfirmButton"
-                    Width="96"
-                    Click="ConfirmButton_OnClick"
-                    Content="确认" />
-        </StackPanel>
+                    <!-- Prompt -->
+                    <TextBlock x:Name="PromptTextBlock"
+                               Grid.Row="0"
+                               Margin="0,0,0,16"
+                               TextWrapping="Wrap"
+                               Opacity="0.8"
+                               FontSize="14" />
+
+                    <!-- Captcha Image Area -->
+                    <Border Grid.Row="1"
+                            Margin="0,0,0,20"
+                            Padding="8"
+                            Background="{DynamicResource MaterialDesignTextFieldBoxBackground}"
+                            CornerRadius="8"
+                            BorderBrush="{DynamicResource MaterialDesignDivider}"
+                            BorderThickness="1">
+                        <Image x:Name="CaptchaImage"
+                               Height="110"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Border>
+
+                    <!-- Input row -->
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox x:Name="CaptchaTextBox"
+                                 Grid.Column="0"
+                                 Margin="0,0,12,0"
+                                 Padding="16,14"
+                                 FontSize="16"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 materialDesign:HintAssist.Hint="输入验证码"
+                                 materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                 VerticalContentAlignment="Center" />
+
+                        <Button x:Name="RefreshButton"
+                                Grid.Column="1"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Height="52" Padding="12,0"
+                                materialDesign:ButtonAssist.CornerRadius="8"
+                                Click="RefreshButton_OnClick"
+                                ToolTip="刷新验证码">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <materialDesign:PackIcon Kind="Refresh" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock x:Name="RefreshText" Text="刷新" VerticalAlignment="Center" FontWeight="Medium"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                    
+                    <!-- Action Buttons -->
+                    <Grid Grid.Row="3" Margin="0,28,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <Button x:Name="CancelButton"
+                                Grid.Column="0"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Height="40"
+                                Padding="16,0"
+                                materialDesign:ButtonAssist.CornerRadius="8"
+                                Click="CancelButton_OnClick"
+                                Content="取消" />
+
+                        <Button x:Name="ConfirmButton"
+                                Grid.Column="2"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Height="40"
+                                Width="120"
+                                materialDesign:ButtonAssist.CornerRadius="8"
+                                Click="ConfirmButton_OnClick"
+                                Content="确认验证" 
+                                FontWeight="Bold" />
+                    </Grid>
+                </Grid>
+            </Grid>
+        </materialDesign:Card>
     </Grid>
 </Window>
