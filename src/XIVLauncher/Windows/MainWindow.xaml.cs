@@ -47,6 +47,7 @@ public partial class MainWindow
     private Banner[]?                            banners;
     private BitmapImage[]?                       bannerBitmaps;
     private int                                  currentBannerIndex;
+    private bool                                 isBannerRotationActive;
 
     private bool everShown;
     private bool suppressAccountSelectionTracking;
@@ -58,7 +59,7 @@ public partial class MainWindow
         DataContext                  =  new MainWindowViewModel(this);
         accountManager               =  Model.AccountManager;
         launcher                     =  Model.Launcher;
-        Model.Settings.SettingsSaved += (_, _) => Task.Run(SetupHeadlines);
+        Model.Settings.SettingsSaved += (_, _) => _ = SetupHeadlines();
 
         accountSwitcher = new AccountSwitcher(accountManager, this)
         {
@@ -88,7 +89,7 @@ public partial class MainWindow
 
         Model.Hide += () => Dispatcher.Invoke(Hide);
 
-        Model.ReloadHeadlines += () => Task.Run(SetupHeadlines);
+        Model.ReloadHeadlines += () => _ = SetupHeadlines();
 
         NewsListView.ItemsSource = new List<News>
         {
@@ -260,7 +261,7 @@ public partial class MainWindow
     {
         try
         {
-            bannerChangeTimer?.Stop();
+            StopBannerRotation();
 
             headlines = await Headlines.GetHeadlinesAsync(launcher)
                                        .ConfigureAwait(false);
@@ -286,32 +287,26 @@ public partial class MainWindow
                 bannerDotList.Add(new() { Index = i });
             }
 
-            currentBannerIndex = 0;
-            SetBannerDotActiveState(currentBannerIndex);
-
             _ = Dispatcher.BeginInvoke
             (
                 new Action
                 (() =>
                     {
+                        currentBannerIndex   = 0;
                         BannerImage.Source    = bannerBitmaps[currentBannerIndex];
                         BannerDot.ItemsSource = bannerDotList;
+                        SetBannerDotActiveState(currentBannerIndex);
+                        StartBannerRotation();
                     }
                 )
             );
-
-            bannerChangeTimer = new Timer { Interval = 5000 };
-
-            bannerChangeTimer.Elapsed += (_, _) => Dispatcher.BeginInvoke(new Action(ShowNextBanner), DispatcherPriority.Background);
-
-            bannerChangeTimer.AutoReset = true;
-            bannerChangeTimer.Start();
 
             _ = Dispatcher.BeginInvoke(new Action(() => { NewsListView.ItemsSource = headlines.News?.OrderByDescending(n => n.Date).ToList(); }));
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Could not get news");
+            StopBannerRotation();
             _ = Dispatcher.BeginInvoke
                 (new Action(() => { NewsListView.ItemsSource = new List<News> { new() { Title = "无法获取公告信息", Tag = "DlError" } }; }));
         }
@@ -534,19 +529,22 @@ public partial class MainWindow
         if (sender is not RadioButton { DataContext: BannerDotInfo bannerDotInfo })
             return;
 
+        if (!isBannerRotationActive)
+            return;
+
         SwitchBanner(bannerDotInfo.Index);
     }
 
     private void RadioButton_MouseEnter(object sender, MouseEventArgs e)
     {
-        bannerChangeTimer?.Stop();
+        StopBannerRotation();
 
         if (sender is RadioButton { DataContext: BannerDotInfo bannerDotInfo })
             SwitchBanner(bannerDotInfo.Index);
     }
 
     private void RadioButton_MouseLeave(object sender, MouseEventArgs e) =>
-        bannerChangeTimer?.Start();
+        StartBannerRotation();
 
     private void ShowNextBanner()
     {
@@ -586,6 +584,29 @@ public partial class MainWindow
         BannerImage.BeginAnimation(OpacityProperty, fadeOut);
     }
 
+    private void StartBannerRotation()
+    {
+        if (bannerChangeTimer != null || bannerBitmaps is not { Length: > 0 })
+            return;
+
+        bannerChangeTimer = new Timer { Interval = 5000, AutoReset = true };
+        bannerChangeTimer.Elapsed += (_, _) => Dispatcher.BeginInvoke(new Action(ShowNextBanner), DispatcherPriority.Background);
+        bannerChangeTimer.Start();
+        isBannerRotationActive = true;
+    }
+
+    private void StopBannerRotation()
+    {
+        isBannerRotationActive = false;
+
+        if (bannerChangeTimer == null)
+            return;
+
+        bannerChangeTimer.Stop();
+        bannerChangeTimer.Dispose();
+        bannerChangeTimer = null;
+    }
+
     private void SetBannerDotActiveState(int activeIndex)
     {
         if (bannerDotList == null)
@@ -602,6 +623,7 @@ public partial class MainWindow
 
         try
         {
+            StopBannerRotation();
             PreserveWindowPosition.SaveWindowPosition(this);
         }
         catch (Exception ex)

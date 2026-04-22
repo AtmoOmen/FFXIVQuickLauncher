@@ -34,27 +34,28 @@ public sealed class SettingsWindowViewModel : ViewModelBase
 
     public ObservableCollection<CredTypeOptionItem> CredTypeOptions { get; } = [];
 
-    public ICommand IdentifyTokenCommand { get; }
+    public ICommand IdentifyTokenCommand => identifyTokenCommand;
 
-    public ICommand AddAddonCommand { get; }
-
-    public ICommand EditSelectedAddonCommand { get; }
-
-    public ICommand RemoveSelectedAddonCommand { get; }
-
-    public ICommand OpenGitHubCommand { get; }
-
-    public ICommand OpenBackupToolCommand { get; }
-
-    public ICommand OpenOriginalLauncherCommand { get; }
+    public ICommand AddAddonCommand => addAddonCommand;
     
-    public ICommand OpenLicenseCommand { get; }
+    public ICommand RemoveSelectedAddonCommand => removeSelectedAddonCommand;
 
-    public ICommand OpenAdvancedSettingsCommand { get; }
+    public ICommand OpenGitHubCommand => openGitHubCommand;
 
-    public ICommand OpenChangelogCommand { get; }
+    public ICommand OpenBackupToolCommand => openBackupToolCommand;
 
-    public ICommand OpenSharedDeviceProfileCommand { get; }
+    public ICommand OpenOriginalLauncherCommand => openOriginalLauncherCommand;
+    
+    public ICommand OpenAdvancedSettingsCommand => openAdvancedSettingsCommand;
+
+    private readonly AsyncCommand identifyTokenCommand;
+    private readonly SyncCommand  addAddonCommand;
+    private readonly SyncCommand  editSelectedAddonCommand;
+    private readonly SyncCommand  removeSelectedAddonCommand;
+    private readonly SyncCommand  openGitHubCommand;
+    private readonly SyncCommand  openBackupToolCommand;
+    private readonly SyncCommand  openOriginalLauncherCommand;
+    private readonly SyncCommand  openAdvancedSettingsCommand;
 
     public bool IsRunIntegrityCheckPossible =>
         !string.IsNullOrWhiteSpace(GamePath) && Directory.Exists(GamePath);
@@ -74,7 +75,8 @@ public sealed class SettingsWindowViewModel : ViewModelBase
 
             RefreshGamePathWarning();
             OnPropertyChanged(nameof(IsRunIntegrityCheckPossible));
-            CommandManager.InvalidateRequerySuggested();
+            openBackupToolCommand.RaiseCanExecuteChanged();
+            openOriginalLauncherCommand.RaiseCanExecuteChanged();
         }
     } = string.Empty;
 
@@ -232,7 +234,8 @@ public sealed class SettingsWindowViewModel : ViewModelBase
             if (!SetProperty(ref field, value))
                 return;
 
-            CommandManager.InvalidateRequerySuggested();
+            editSelectedAddonCommand.RaiseCanExecuteChanged();
+            removeSelectedAddonCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -282,17 +285,14 @@ public sealed class SettingsWindowViewModel : ViewModelBase
                 .Select(pair => new GenericCombinedData<LauncherLanguage> { Display = pair.First, Value = pair.Second })
                 .ToList();
 
-        IdentifyTokenCommand        = new AsyncCommand(_ => IdentifyTokenAsync());
-        AddAddonCommand             = new SyncCommand(_ => AddAddon());
-        EditSelectedAddonCommand    = new SyncCommand(_ => EditSelectedAddon(),   () => CanEditSelectedAddon);
-        RemoveSelectedAddonCommand  = new SyncCommand(_ => RemoveSelectedAddon(), () => SelectedAddonEntry != null);
-        OpenGitHubCommand           = new SyncCommand(_ => OpenGitHub());
-        OpenBackupToolCommand       = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
-        OpenOriginalLauncherCommand = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
-        OpenLicenseCommand          = new SyncCommand(_ => OpenLicense());
-        OpenAdvancedSettingsCommand = new SyncCommand(_ => OpenAdvancedSettings());
-        OpenChangelogCommand        = new SyncCommand(_ => OpenChangelog());
-        OpenSharedDeviceProfileCommand = new SyncCommand(_ => OpenSharedDeviceProfile());
+        identifyTokenCommand          = new AsyncCommand(_ => IdentifyTokenAsync());
+        addAddonCommand               = new SyncCommand(_ => AddAddon());
+        editSelectedAddonCommand      = new SyncCommand(_ => EditSelectedAddon(),   () => CanEditSelectedAddon);
+        removeSelectedAddonCommand    = new SyncCommand(_ => RemoveSelectedAddon(), () => SelectedAddonEntry != null);
+        openGitHubCommand             = new SyncCommand(_ => OpenGitHub());
+        openBackupToolCommand         = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
+        openOriginalLauncherCommand   = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
+        openAdvancedSettingsCommand   = new SyncCommand(_ => OpenAdvancedSettings());
 
         InitializeCredTypeOptions();
         ReloadFromSettings();

@@ -12,6 +12,7 @@ public class AsyncCommand
 ) : ICommand
 {
     private bool isExecuting;
+    private EventHandler? canExecuteChanged;
 
     public bool CanExecute(object? parameter) =>
         !isExecuting && (canExecute?.Invoke() ?? true);
@@ -26,13 +27,13 @@ public class AsyncCommand
             try
             {
                 isExecuting = true;
-                CommandManager.InvalidateRequerySuggested();
+                canExecuteChanged?.Invoke(this, EventArgs.Empty);
                 await execute(parameter);
             }
             finally
             {
                 isExecuting = false;
-                CommandManager.InvalidateRequerySuggested();
+                canExecuteChanged?.Invoke(this, EventArgs.Empty);
             }
         }
         catch (Exception e)
@@ -43,7 +44,7 @@ public class AsyncCommand
 
     public event EventHandler? CanExecuteChanged
     {
-        add => CommandManager.RequerySuggested += value;
-        remove => CommandManager.RequerySuggested -= value;
+        add => canExecuteChanged += value;
+        remove => canExecuteChanged -= value;
     }
 }

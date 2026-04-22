@@ -9,6 +9,8 @@ public class SyncCommand
     Func<bool>     canExecute
 ) : ICommand
 {
+    private EventHandler? canExecuteChanged;
+
     public SyncCommand(Action<object> command)
         : this(command, () => true)
     {
@@ -20,9 +22,12 @@ public class SyncCommand
     public void Execute(object? parameter) =>
         command(parameter!);
 
+    public void RaiseCanExecuteChanged() =>
+        canExecuteChanged?.Invoke(this, EventArgs.Empty);
+
     public event EventHandler? CanExecuteChanged
     {
-        add => CommandManager.RequerySuggested += value;
-        remove => CommandManager.RequerySuggested -= value;
+        add => canExecuteChanged += value;
+        remove => canExecuteChanged -= value;
     }
 }

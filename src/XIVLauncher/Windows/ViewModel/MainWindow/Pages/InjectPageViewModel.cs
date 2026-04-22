@@ -24,6 +24,9 @@ public sealed class InjectPageViewModel : ViewModelBase
     private readonly Action                   hideLoadingDialogAction;
     private readonly Action                   activateWindowAction;
     private readonly HashSet<int>             autoInjectAttemptedProcessIds = [];
+    private readonly SyncCommand              injectGameCommand;
+    private readonly SyncCommand              bringProcessForegroundCommand;
+    private readonly SyncCommand              returnToLoginPageCommand;
 
     private CancellationTokenSource? processRefreshCancelSource;
     private CancellationTokenSource? autoInjectDelayCancelSource;
@@ -54,11 +57,12 @@ public sealed class InjectPageViewModel : ViewModelBase
         {
             OnPropertyChanged(nameof(HasAvailableProcesses));
             OnPropertyChanged(nameof(ProcessSelectionHint));
-            CommandManager.InvalidateRequerySuggested();
+            injectGameCommand.RaiseCanExecuteChanged();
+            bringProcessForegroundCommand.RaiseCanExecuteChanged();
         };
 
-        InjectGameCommand = new SyncCommand(_ => StartInject(SelectedProcess, false), () => !this.isLoggingInFunc() && !IsInjecting && SelectedProcess != null);
-        BringProcessForegroundCommand = new SyncCommand
+        injectGameCommand = new SyncCommand(_ => StartInject(SelectedProcess, false), () => !this.isLoggingInFunc() && !IsInjecting && SelectedProcess != null);
+        bringProcessForegroundCommand = new SyncCommand
         (
             _ =>
             {
@@ -67,16 +71,16 @@ public sealed class InjectPageViewModel : ViewModelBase
             },
             () => SelectedProcess != null
         );
-        ReturnToLoginPageCommand = new SyncCommand(_ => requestReturnToLoginPageAction(), () => !this.isLoggingInFunc());
+        returnToLoginPageCommand = new SyncCommand(_ => requestReturnToLoginPageAction(), () => !this.isLoggingInFunc());
 
         ReloadSettings();
     }
 
-    public ICommand InjectGameCommand { get; }
+    public ICommand InjectGameCommand => injectGameCommand;
 
-    public ICommand BringProcessForegroundCommand { get; }
+    public ICommand BringProcessForegroundCommand => bringProcessForegroundCommand;
 
-    public ICommand ReturnToLoginPageCommand { get; }
+    public ICommand ReturnToLoginPageCommand => returnToLoginPageCommand;
 
     public ObservableCollection<FFXIVProcess> FFXIVProcesses { get; } = [];
 
@@ -125,7 +129,8 @@ public sealed class InjectPageViewModel : ViewModelBase
             selectedProcess = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanOperateOnSelectedProcess));
-            CommandManager.InvalidateRequerySuggested();
+            injectGameCommand.RaiseCanExecuteChanged();
+            bringProcessForegroundCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -155,6 +160,13 @@ public sealed class InjectPageViewModel : ViewModelBase
 
     public string ProcessSelectionHint => HasAvailableProcesses ? "选择要注入的进程" : "未检测到可注入进程";
 
+    public void RefreshCommandStates()
+    {
+        injectGameCommand.RaiseCanExecuteChanged();
+        bringProcessForegroundCommand.RaiseCanExecuteChanged();
+        returnToLoginPageCommand.RaiseCanExecuteChanged();
+    }
+
     private bool IsInjecting
     {
         get => isInjecting;
@@ -163,7 +175,7 @@ public sealed class InjectPageViewModel : ViewModelBase
             if (!SetProperty(ref isInjecting, value))
                 return;
 
-            CommandManager.InvalidateRequerySuggested();
+            injectGameCommand.RaiseCanExecuteChanged();
             SyncAutoInjectState();
         }
     }

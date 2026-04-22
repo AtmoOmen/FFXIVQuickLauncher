@@ -106,6 +106,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
             () => Activate(),
             () => SwitchCard(LoginCardType.MainPage)
         );
+        LoginPage.RefreshCommandStates();
+        InjectPage.RefreshCommandStates();
         Settings.SettingsSaved += (_, _) => InjectPage.ReloadSettings();
     }
 
@@ -195,7 +197,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
         LoginPage.IsQrCodeExpired = false;
         LoginCancelSource?.Dispose();
         LoginCancelSource = new();
-        CommandManager.InvalidateRequerySuggested();
+        LoginPage.RefreshCommandStates();
+        InjectPage.RefreshCommandStates();
 
         var currentCard = LoginCardAfterCompletion ?? (LoginCardType)LoginCardTransitionerIndex;
         LoginCardAfterCompletion = null;
@@ -210,26 +213,37 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 }
                 catch (Exception ex)
                 {
-                    CustomMessageBox.Builder
-                                    .NewFromUnexpectedException(ex, "CreateLoginHandler/Task")
-                                    .WithParentWindow(Window)
-                                    .Show();
+                    Window.Dispatcher.Invoke
+                    (() =>
+                        {
+                            CustomMessageBox.Builder
+                                            .NewFromUnexpectedException(ex, "CreateLoginHandler/Task")
+                                            .WithParentWindow(Window)
+                                            .Show();
+                        }
+                    );
                 }
                 finally
                 {
-                    LoginCancelSource?.Dispose();
-                    LoginCancelSource = null;
+                    Window.Dispatcher.Invoke
+                    (() =>
+                        {
+                            LoginCancelSource?.Dispose();
+                            LoginCancelSource = null;
 
-                    var nextCard = LoginCardAfterCompletion ?? currentCard;
-                    LoginCardAfterCompletion = null;
-                    SwitchCard(nextCard, false);
+                            var nextCard = LoginCardAfterCompletion ?? currentCard;
+                            LoginCardAfterCompletion = null;
+                            SwitchCard(nextCard, false);
 
-                    IsLoggingIn = false;
-                    IsEnabled   = true;
-                    CommandManager.InvalidateRequerySuggested();
+                            IsLoggingIn = false;
+                            IsEnabled   = true;
+                            LoginPage.RefreshCommandStates();
+                            InjectPage.RefreshCommandStates();
 
-                    ReloadHeadlines();
-                    Activate();
+                            ReloadHeadlines();
+                            Activate();
+                        }
+                    );
                 }
             }
         );

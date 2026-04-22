@@ -17,6 +17,18 @@ public sealed class LoginPageViewModel : ViewModelBase
     private readonly Action                                       requestShowInjectPageAction;
     private readonly Action                                       requestBackToMainPageAction;
     private readonly Action                                       requestFakeStartAction;
+    private readonly SyncCommand                                  startLoginCommand;
+    private readonly SyncCommand                                  loginNoStartCommand;
+    private readonly SyncCommand                                  loginNoDalamudCommand;
+    private readonly SyncCommand                                  loginNoPluginsCommand;
+    private readonly SyncCommand                                  loginNoThirdCommand;
+    private readonly SyncCommand                                  loginRepairCommand;
+    private readonly SyncCommand                                  loginCancelCommand;
+    private readonly SyncCommand                                  loginForceQRCommand;
+    private readonly SyncCommand                                  refreshQrCodeCommand;
+    private readonly SyncCommand                                  injectModeSwitchCommand;
+    private readonly SyncCommand                                  backToMainPageCommand;
+    private readonly SyncCommand                                  fakeStartCommand;
 
     public LoginPageViewModel
     (
@@ -41,43 +53,43 @@ public sealed class LoginPageViewModel : ViewModelBase
         loginTypeOption  = LoginTypeOptions.First(x => x.LoginType == App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.Slide));
         ApplyLoginType(loginTypeOption.LoginType);
 
-        StartLoginCommand       = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start),               () => !this.isBusyFunc());
-        LoginNoStartCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.UpdateOnly),          () => !this.isBusyFunc());
-        LoginNoDalamudCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutDalamud), () => !this.isBusyFunc());
-        LoginNoPluginsCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutPlugins), () => !this.isBusyFunc());
-        LoginNoThirdCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutThird),   () => !this.isBusyFunc());
-        LoginRepairCommand      = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Repair),              () => !this.isBusyFunc());
-        LoginForceQRCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.ForceQR),             () => !this.isBusyFunc());
-        LoginCancelCommand      = new SyncCommand(_ => this.requestCancelLoginAction());
-        RefreshQrCodeCommand    = new SyncCommand(_ => this.requestRefreshQrCodeAction(this), () => !this.isBusyFunc() && IsQrCodeExpired);
-        InjectModeSwitchCommand = new SyncCommand(_ => this.requestShowInjectPageAction(),    () => !this.isBusyFunc());
-        BackToMainPageCommand   = new SyncCommand(_ => this.requestBackToMainPageAction());
-        FakeStartCommand        = new SyncCommand(_ => this.requestFakeStartAction(), () => !this.isBusyFunc());
+        startLoginCommand       = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start),               () => !this.isBusyFunc());
+        loginNoStartCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.UpdateOnly),          () => !this.isBusyFunc());
+        loginNoDalamudCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutDalamud), () => !this.isBusyFunc());
+        loginNoPluginsCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutPlugins), () => !this.isBusyFunc());
+        loginNoThirdCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutThird),   () => !this.isBusyFunc());
+        loginRepairCommand      = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Repair),              () => !this.isBusyFunc());
+        loginForceQRCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.ForceQR),             () => !this.isBusyFunc());
+        loginCancelCommand      = new SyncCommand(_ => this.requestCancelLoginAction());
+        refreshQrCodeCommand    = new SyncCommand(_ => this.requestRefreshQrCodeAction(this), () => !this.isBusyFunc() && IsQrCodeExpired);
+        injectModeSwitchCommand = new SyncCommand(_ => this.requestShowInjectPageAction(),    () => !this.isBusyFunc());
+        backToMainPageCommand   = new SyncCommand(_ => this.requestBackToMainPageAction());
+        fakeStartCommand        = new SyncCommand(_ => this.requestFakeStartAction(), () => !this.isBusyFunc());
     }
 
-    public ICommand StartLoginCommand { get; }
+    public ICommand StartLoginCommand => startLoginCommand;
 
-    public ICommand LoginNoStartCommand { get; }
+    public ICommand LoginNoStartCommand => loginNoStartCommand;
 
-    public ICommand LoginNoDalamudCommand { get; }
+    public ICommand LoginNoDalamudCommand => loginNoDalamudCommand;
 
-    public ICommand LoginNoPluginsCommand { get; }
+    public ICommand LoginNoPluginsCommand => loginNoPluginsCommand;
 
-    public ICommand LoginNoThirdCommand { get; }
+    public ICommand LoginNoThirdCommand => loginNoThirdCommand;
 
-    public ICommand LoginRepairCommand { get; }
+    public ICommand LoginRepairCommand => loginRepairCommand;
 
-    public ICommand LoginCancelCommand { get; }
+    public ICommand LoginCancelCommand => loginCancelCommand;
 
-    public ICommand LoginForceQRCommand { get; }
+    public ICommand LoginForceQRCommand => loginForceQRCommand;
 
-    public ICommand RefreshQrCodeCommand { get; }
+    public ICommand RefreshQrCodeCommand => refreshQrCodeCommand;
 
-    public ICommand InjectModeSwitchCommand { get; }
+    public ICommand InjectModeSwitchCommand => injectModeSwitchCommand;
 
-    public ICommand BackToMainPageCommand { get; }
+    public ICommand BackToMainPageCommand => backToMainPageCommand;
 
-    public ICommand FakeStartCommand { get; }
+    public ICommand FakeStartCommand => fakeStartCommand;
 
     public LoginTypeOption[] LoginTypeOptions { get; }
 
@@ -178,10 +190,10 @@ public sealed class LoginPageViewModel : ViewModelBase
         get;
         set
         {
-            if (!SetProperty(ref field, value))
-                return;
+        if (!SetProperty(ref field, value))
+            return;
 
-            CommandManager.InvalidateRequerySuggested();
+            refreshQrCodeCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -257,6 +269,22 @@ public sealed class LoginPageViewModel : ViewModelBase
 
         if (option != null)
             LoginTypeOption = option;
+    }
+
+    public void RefreshCommandStates()
+    {
+        startLoginCommand.RaiseCanExecuteChanged();
+        loginNoStartCommand.RaiseCanExecuteChanged();
+        loginNoDalamudCommand.RaiseCanExecuteChanged();
+        loginNoPluginsCommand.RaiseCanExecuteChanged();
+        loginNoThirdCommand.RaiseCanExecuteChanged();
+        loginRepairCommand.RaiseCanExecuteChanged();
+        loginCancelCommand.RaiseCanExecuteChanged();
+        loginForceQRCommand.RaiseCanExecuteChanged();
+        refreshQrCodeCommand.RaiseCanExecuteChanged();
+        injectModeSwitchCommand.RaiseCanExecuteChanged();
+        backToMainPageCommand.RaiseCanExecuteChanged();
+        fakeStartCommand.RaiseCanExecuteChanged();
     }
     
     private LoginTypeOption loginTypeOption = null!;
