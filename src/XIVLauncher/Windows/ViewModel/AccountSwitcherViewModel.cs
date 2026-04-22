@@ -8,7 +8,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common.Constant;
@@ -67,51 +66,58 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
                 return;
 
             var selectedAccountId = SelectedEntry?.Account.ID;
-            var account = FindTrackedAccount(activeEntry.Account);
+            var account           = FindTrackedAccount(activeEntry.Account);
             account.AutoLogin = !value;
 
             if (value)
             {
-                account.SdoPassword = string.Empty;
+                account.SdoPassword       = string.Empty;
                 account.WeGameTokenSecret = null;
             }
 
-            _accountManager.Save();
+            accountManager.Save();
             RefreshEntries(selectedAccountId);
         }
     }
 
-    private readonly AccountManager        _accountManager;
-    private readonly IDialogService        _dialogService;
-    private readonly IShortcutService      _shortcutService;
-    private readonly Action?               _requestClose;
-    private AccountSwitcherEntry?          ActiveEntry => ContextEntry ?? SelectedEntry;
+    private AccountSwitcherEntry? ActiveEntry => ContextEntry ?? SelectedEntry;
 
-    public AccountSwitcherViewModel(AccountManager accountManager, IDialogService? dialogService = null, IShortcutService? shortcutService = null, Action? requestClose = null)
+    private readonly AccountManager   accountManager;
+    private readonly IDialogService   dialogService;
+    private readonly IShortcutService shortcutService;
+    private readonly Action?          requestClose;
+
+    public AccountSwitcherViewModel
+    (
+        AccountManager    accountManager,
+        IDialogService?   dialogService   = null,
+        IShortcutService? shortcutService = null,
+        Action?           requestClose    = null
+    )
     {
-        _accountManager  = accountManager;
-        _dialogService   = dialogService   ?? new DialogService();
-        _shortcutService = shortcutService ?? new ShortcutService();
-        _requestClose    = requestClose;
+        this.accountManager  = accountManager;
+        this.dialogService   = dialogService   ?? new DialogService();
+        this.shortcutService = shortcutService ?? new ShortcutService();
+        this.requestClose    = requestClose;
 
-        CreateDesktopShortcutCommand  = new SyncCommand(_ => CreateDesktopShortcut(),       () => ActiveEntry != null);
-        RemoveAccountCommand          = new SyncCommand(_ => RemoveSelectedAccount(),       () => ActiveEntry != null);
-        SetProfilePictureCommand      = new SyncCommand(_ => SetSelectedProfilePicture(),   () => ActiveEntry != null);
-        SetNoteCommand                = new SyncCommand(_ => SetSelectedNote(),             () => ActiveEntry != null);
+        CreateDesktopShortcutCommand  = new SyncCommand(_ => CreateDesktopShortcut(),          () => ActiveEntry != null);
+        RemoveAccountCommand          = new SyncCommand(_ => RemoveSelectedAccount(),          () => ActiveEntry != null);
+        SetProfilePictureCommand      = new SyncCommand(_ => SetSelectedProfilePicture(),      () => ActiveEntry != null);
+        SetNoteCommand                = new SyncCommand(_ => SetSelectedNote(),                () => ActiveEntry != null);
         ConfigureDeviceProfileCommand = new SyncCommand(_ => ConfigureSelectedDeviceProfile(), () => ActiveEntry != null);
         RefreshEntries();
     }
 
     public void RefreshEntries(string? selectedAccountId = null)
     {
-        ContextEntry = null;
+        ContextEntry      =   null;
         selectedAccountId ??= SelectedEntry?.Account.ID;
-        if (string.IsNullOrWhiteSpace(selectedAccountId) && _accountManager.HasCurrentAccountSelection)
-            selectedAccountId = _accountManager.CurrentAccountId;
+        if (string.IsNullOrWhiteSpace(selectedAccountId) && accountManager.HasCurrentAccountSelection)
+            selectedAccountId = accountManager.CurrentAccountID;
 
         Entries.Clear();
 
-        foreach (var account in _accountManager.Accounts)
+        foreach (var account in accountManager.Accounts)
         {
             var entry = new AccountSwitcherEntry { Account = account };
 
@@ -142,11 +148,11 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
         Entries.Move(fromIndex, toIndex);
 
-        _accountManager.Accounts.Clear();
+        accountManager.Accounts.Clear();
         foreach (var entry in Entries)
-            _accountManager.Accounts.Add(entry.Account);
+            accountManager.Accounts.Add(entry.Account);
 
-        _accountManager.Save();
+        accountManager.Save();
         SelectedEntry = Entries[toIndex];
     }
 
@@ -162,7 +168,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
             var launcherPath = Paths.ResolveExecutablePath();
             var desktop      = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 
-            _shortcutService.CreateShortcut
+            shortcutService.CreateShortcut
             (
                 desktop,
                 $"XIVLauncherCN - {activeEntry.Account.UserName}",
@@ -174,7 +180,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            _dialogService.ShowMessage
+            dialogService.ShowMessage
             (
                 $"创建桌面快捷方式失败。\n{ex.Message}",
                 "XIVLauncherCN (Soil)",
@@ -191,7 +197,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
             return;
 
         var selectedAccountId = SelectedEntry?.Account.ID;
-        _accountManager.RemoveAccount(activeEntry.Account);
+        accountManager.RemoveAccount(activeEntry.Account);
         RefreshEntries(selectedAccountId == activeEntry.Account.ID ? null : selectedAccountId);
     }
 
@@ -201,9 +207,9 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         if (selectedEntry == null)
             return;
 
-        _requestClose?.Invoke();
+        requestClose?.Invoke();
 
-        if (!_dialogService.ShowProfilePictureInput(selectedEntry.Account, out var profileImagePath))
+        if (!dialogService.ShowProfilePictureInput(selectedEntry.Account, out var profileImagePath))
             return;
 
         var account = FindTrackedAccount(selectedEntry.Account);
@@ -213,7 +219,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         else
             AccountSwitcherEntry.SaveCustomProfileImage(account, profileImagePath);
 
-        _accountManager.Save();
+        accountManager.Save();
 
         RefreshEntries(SelectedEntry?.Account.ID);
     }
@@ -225,8 +231,8 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
             return;
 
         var account = FindTrackedAccount(selectedEntry.Account);
-        _requestClose?.Invoke();
-        var result = _dialogService.ShowTextInput
+        requestClose?.Invoke();
+        var result = dialogService.ShowTextInput
         (
             "请输入账号备注。留空时将显示原始账号名。",
             "设置备注",
@@ -238,7 +244,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
         var note = result.Trim();
         account.UserDefinedName = string.IsNullOrWhiteSpace(note) ? null! : note;
-        _accountManager.Save();
+        accountManager.Save();
 
         RefreshEntries(SelectedEntry?.Account.ID);
     }
@@ -258,8 +264,8 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
             return;
 
         var account = FindTrackedAccount(selectedEntry.Account);
-        _requestClose?.Invoke();
-        var changed = _dialogService.ShowAccountDeviceProfileSettings(account, _accountManager);
+        requestClose?.Invoke();
+        var changed = dialogService.ShowAccountDeviceProfileSettings(account, accountManager);
         if (changed)
             RefreshEntries(SelectedEntry?.Account.ID);
     }
@@ -331,11 +337,11 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         Directory.CreateDirectory(iconDirectory);
 
         var iconFileName = $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(entry.Account.ID)))}.ico";
-        var iconPath = Path.Combine(iconDirectory, iconFileName);
+        var iconPath     = Path.Combine(iconDirectory, iconFileName);
         SaveAsIcon(BitmapSourceToBitmap(bitmapSource), iconPath);
         return iconPath;
     }
 
     private XIVAccount FindTrackedAccount(XIVAccount account) =>
-        _accountManager.Accounts.First(existing => existing.ID == account.ID);
+        accountManager.Accounts.First(existing => existing.ID == account.ID);
 }

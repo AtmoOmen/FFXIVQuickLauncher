@@ -8,5 +8,5 @@ public sealed class DeviceProfilePresetStoreState
 
     public string SharedPresetId { get; init; } = string.Empty;
 
-    public List<DeviceProfilePreset> Presets { get; init; } = [];
+    public IReadOnlyList<DeviceProfilePreset> Presets { get; init; } = [];
 }

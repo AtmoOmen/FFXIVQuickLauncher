@@ -9,7 +9,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
-using Castle.Core.Internal;
 using Serilog;
 using SQLite;
 using XIVLauncher.Accounts.Cred;
@@ -20,58 +19,66 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Settings;
 using XIVLauncher.Windows;
-using Lock = System.Threading.Lock;
 
 namespace XIVLauncher.Accounts;
 
 public class AccountManager
 {
+    public const int DEFAULT_DEVICE_PROFILE_ROTATION_DAYS = 7;
+    
     public XIVAccount? CurrentAccount
     {
-        get => Accounts.Count > 1 ? Accounts.FirstOrDefault(a => a.ID == setting.CurrentAccountId)! : Accounts.FirstOrDefault()!;
-        set => setting.CurrentAccountId = value?.ID!;
+        get => Accounts.FirstOrDefault(account => account.ID == setting.CurrentAccountId) ?? Accounts.FirstOrDefault();
+        set => setting.CurrentAccountId = value?.ID ?? string.Empty;
     }
 
-    public ICredProvider CredProvider { get; private set; } = null!;
+    public ICredProvider CredProvider { get; private set; }
 
     public CredType CurrentCredType { get; private set; } = DEFAULT_CRED_TYPE;
+    
+    public ObservableCollection<XIVAccount> Accounts { get; } = [];
 
-    public string CurrentAccountId => setting.CurrentAccountId;
+    private SQLiteConnection Database
+    {
+        get
+        {
+            return field ?? throw new InvalidOperationException("数据库尚未初始化");
+        }
+        set;
+    }
 
-    public bool HasCurrentAccountSelection => !string.IsNullOrWhiteSpace(setting.CurrentAccountId);
+    public string CurrentAccountID => 
+        setting.CurrentAccountId;
 
-    public bool HasUnavailableSavedSecrets => unavailableSavedSecretAccountIds.Count != 0;
+    public bool HasCurrentAccountSelection => 
+        !string.IsNullOrWhiteSpace(setting.CurrentAccountId);
 
-    public const  int      DEFAULT_DEVICE_PROFILE_ROTATION_DAYS = 7;
-    private const CredType DEFAULT_CRED_TYPE                    = CredType.WindowsCredManager;
+    public bool HasUnavailableSavedSecrets => 
+        unavailableSavedSecretAccountIds.Count != 0;
+
+    private const CredType DEFAULT_CRED_TYPE = CredType.WindowsCredManager;
 
     private static readonly string DeviceProfilePresetStorePath  = Path.Combine(Paths.RoamingPath, "deviceProfilePresets.json");
     private static readonly string LegacySharedDeviceProfilePath = Path.Combine(Paths.RoamingPath, "sharedDeviceProfile.json");
 
     private static readonly JsonSerializerOptions DeviceProfilePresetStoreJsonOptions = new() { WriteIndented = true };
-
-    public ObservableCollection<XIVAccount> Accounts;
-
-    private static readonly Lock DeviceProfilePresetStoreSyncRoot = new();
-    private readonly        Lock syncRoot                         = new();
-
+    
     private readonly ILauncherSettingsV3 setting;
-
     private readonly CredData credData;
 
-    private static   DeviceProfilePresetStoreState? deviceProfilePresetStore;
-    private readonly HashSet<string>                unavailableSavedSecretAccountIds = [];
+    private DeviceProfilePresetStoreState? deviceProfilePresetStore;
 
-    private SQLiteConnection? db;
+    private readonly HashSet<string> unavailableSavedSecretAccountIds = [];
 
     public AccountManager(ILauncherSettingsV3 setting)
     {
-        Load();
-
         this.setting = setting;
 
         var credPath = Path.Combine(Paths.RoamingPath, "cred.json");
-        credData = new CredData("XIVLauncherCN", credPath);
+        credData     = new CredData("XIVLauncherCN", credPath);
+        CredProvider = GetCredProvider(DEFAULT_CRED_TYPE);
+
+        Load();
 
         Accounts.CollectionChanged += Accounts_CollectionChanged;
     }
@@ -79,15 +86,13 @@ public class AccountManager
     public static int NormalizeDeviceProfileRotationDays(int rotationDays) =>
         rotationDays < 1 ? DEFAULT_DEVICE_PROFILE_ROTATION_DAYS : rotationDays;
 
-    public async Task<string?> Encrypt(string text)
+    public async Task<string?> Encrypt(string? text)
     {
         try
         {
             if (text is null)
                 return null;
 
-            if (CredProvider == null)
-                throw new Exception("CredProvider is null");
             return await CredProvider.Encrypt(text);
         }
         catch (Exception ex)
@@ -105,15 +110,13 @@ public class AccountManager
         return null;
     }
 
-    public async Task<string> Decrypt(string text)
+    public async Task<string?> Decrypt(string? text)
     {
         try
         {
             if (text is null)
                 return null;
 
-            if (CredProvider == null)
-                throw new Exception("CredProvider is null");
             return await CredProvider.Decrypt(text);
         }
         catch (Exception ex)
@@ -139,7 +142,7 @@ public class AccountManager
 
     public async Task<CredTypeApplyResult> ChangeCredTypeAsync(CredType requestedType, bool isStartup = false)
     {
-        if (CredProvider != null && requestedType == CurrentCredType)
+        if (requestedType == CurrentCredType)
         {
             return new CredTypeApplyResult
             (
@@ -178,27 +181,13 @@ public class AccountManager
 
         try
         {
-            if (oldCred != null)
+            if (!ReferenceEquals(oldCred, newCred))
             {
                 var testText  = EncryptionHelper.GetRandomHexString(32);
                 var encrypted = await newCred.Encrypt(testText);
                 var decrypted = await newCred.Decrypt(encrypted);
                 if (testText != decrypted)
                     throw new Exception($"Cred type: {requestedType} test failed");
-            }
-
-            if (oldCred == null)
-            {
-                CurrentCredType = requestedType;
-                CredProvider    = newCred;
-
-                return new CredTypeApplyResult
-                (
-                    true,
-                    requestedType,
-                    requestedType,
-                    HasUnavailableSavedSecrets: HasUnavailableSavedSecrets
-                );
             }
 
             Log.Information
@@ -216,70 +205,11 @@ public class AccountManager
                     continue;
                 }
 
-                if (!string.IsNullOrWhiteSpace(item.SdoPassword))
-                {
-                    try
-                    {
-                        var password = await oldCred.Decrypt(item.SdoPassword);
-                        item.SdoPassword = await newCred.Encrypt(password);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "迁移账号 {AccountID} 的登录密码失败", item.ID);
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(item.SdoAutoLoginSessionKey))
-                {
-                    try
-                    {
-                        var sessionKey = await oldCred.Decrypt(item.SdoAutoLoginSessionKey);
-                        item.SdoAutoLoginSessionKey = await newCred.Encrypt(sessionKey);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "迁移账号 {AccountID} 的自动登录密钥失败", item.ID);
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(item.WeGameSIDSecret))
-                {
-                    try
-                    {
-                        var testSid = await oldCred.Decrypt(item.WeGameSIDSecret);
-                        item.WeGameSIDSecret = await newCred.Encrypt(testSid);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "迁移账号 {AccountID} 的 WeGame SID 失败", item.ID);
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(item.WeGameTokenSecret))
-                {
-                    try
-                    {
-                        var weGameTokenSecret = await oldCred.Decrypt(item.WeGameTokenSecret);
-                        item.WeGameTokenSecret = await newCred.Encrypt(weGameTokenSecret);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "迁移账号 {AccountID} 的 WeGame Token 失败", item.ID);
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(item.WeGameSessionID))
-                {
-                    try
-                    {
-                        var gameSessionID = await oldCred.Decrypt(item.WeGameSessionID);
-                        item.WeGameSessionID = await newCred.Encrypt(gameSessionID);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "迁移账号 {AccountID} 的游戏会话 ID 失败", item.ID);
-                    }
-                }
+                item.SdoPassword            = await ConvertSecretAsync(oldCred, newCred, item.SdoPassword,            item.ID, "登录密码")   ?? string.Empty;
+                item.SdoAutoLoginSessionKey = await ConvertSecretAsync(oldCred, newCred, item.SdoAutoLoginSessionKey, item.ID, "自动登录密钥") ?? string.Empty;
+                item.WeGameSIDSecret        = await ConvertSecretAsync(oldCred, newCred, item.WeGameSIDSecret,   item.ID, "WeGame SID");
+                item.WeGameTokenSecret      = await ConvertSecretAsync(oldCred, newCred, item.WeGameTokenSecret, item.ID, "WeGame Token");
+                item.WeGameSessionID        = await ConvertSecretAsync(oldCred, newCred, item.WeGameSessionID, item.ID, "游戏会话 ID") ?? string.Empty;
             }
 
             CurrentCredType = requestedType;
@@ -317,11 +247,11 @@ public class AccountManager
     }
 
     public bool HasUnavailableSecrets(XIVAccount? account) =>
-        account != null && unavailableSavedSecretAccountIds.Contains(account.ID);
+        account is not null && unavailableSavedSecretAccountIds.Contains(account.ID);
 
     public void AddAccount(XIVAccount account)
     {
-        if (account.UserName.IsNullOrEmpty() || account.ID.IsNullOrEmpty())
+        if (string.IsNullOrWhiteSpace(account.UserName) || string.IsNullOrWhiteSpace(account.ID))
             throw new Exception($"UserName:{account.UserName} ID:{account.ID} 不能为空");
 
         var existingAccount = Accounts.FirstOrDefault(a => a.Equals(account));
@@ -366,13 +296,10 @@ public class AccountManager
 
     public IReadOnlyList<DeviceProfilePreset> GetDeviceProfilePresets()
     {
-        lock (DeviceProfilePresetStoreSyncRoot)
-        {
-            var state = GetDeviceProfilePresetStoreState();
-            return state.Presets
-                        .OrderBy(preset => preset.DisplayName, StringComparer.Ordinal)
-                        .ToArray();
-        }
+        var state = GetDeviceProfilePresetStoreState();
+        return state.Presets
+                    .OrderBy(preset => preset.DisplayName, StringComparer.Ordinal)
+                    .ToArray();
     }
 
     public DeviceProfilePreset? FindDeviceProfilePreset(string? presetId)
@@ -380,18 +307,11 @@ public class AccountManager
         if (string.IsNullOrWhiteSpace(presetId))
             return null;
 
-        lock (DeviceProfilePresetStoreSyncRoot)
-            return FindPresetById(GetDeviceProfilePresetStoreState(), presetId);
+        return FindPresetById(GetDeviceProfilePresetStoreState(), presetId);
     }
 
-    public string GetSharedDeviceProfilePresetId() =>
-        GetSharedDeviceProfilePreset().Id;
-
-    public DeviceProfilePreset GetSharedDeviceProfilePreset()
-    {
-        lock (DeviceProfilePresetStoreSyncRoot)
-            return GetSharedDeviceProfilePreset(GetDeviceProfilePresetStoreState());
-    }
+    public DeviceProfilePreset GetSharedDeviceProfilePreset() =>
+        GetSharedDeviceProfilePreset(GetDeviceProfilePresetStoreState());
 
     public ResolvedDeviceProfile ResolveDeviceProfile(string? userName, XIVAccountType accountType)
     {
@@ -468,12 +388,6 @@ public class AccountManager
         );
     }
 
-    public long GetSharedDeviceProfileGeneratedUtcTicks() =>
-        GetSharedDeviceProfilePreset().GeneratedUtcTicks;
-
-    public DeviceProfileSnapshot GetSharedDeviceProfileSnapshot() =>
-        GetSharedDeviceProfilePreset().ToSnapshot();
-
     public void UpdateDeviceProfileSettings(XIVAccount account, bool dynamicEnabled, bool isDeviceProfileRotation, int rotationDays)
     {
         var trackedAccount = GetTrackedAccount(account);
@@ -498,29 +412,23 @@ public class AccountManager
 
     public DeviceProfilePreset SaveSharedDeviceProfileSelection(DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark)
     {
-        lock (DeviceProfilePresetStoreSyncRoot)
-        {
-            var state  = GetDeviceProfilePresetStoreState();
-            var preset = FindOrCreatePreset(state, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
+        var state  = GetDeviceProfilePresetStoreState();
+        var result = FindOrCreatePreset(state, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
 
-            if (!string.Equals(state.SharedPresetId, preset.Id, StringComparison.Ordinal))
+        PersistDeviceProfilePresetStoreState
+        (
+            new DeviceProfilePresetStoreState
             {
-                var updatedState = new DeviceProfilePresetStoreState
-                {
-                    Version        = state.Version,
-                    SharedPresetId = preset.Id,
-                    Presets        = state.Presets
-                };
-                PersistDeviceProfilePresetStoreState(updatedState);
-                return preset;
+                Version        = state.Version,
+                SharedPresetId = result.Preset.Id,
+                Presets        = result.State.Presets
             }
+        );
 
-            PersistDeviceProfilePresetStoreState(state);
-            return preset;
-        }
+        return result.Preset;
     }
 
-    public void ApplyResolvedDeviceProfile(XIVAccount account, ResolvedDeviceProfile resolvedDeviceProfile)
+    public static void ApplyResolvedDeviceProfile(XIVAccount account, ResolvedDeviceProfile resolvedDeviceProfile)
     {
         account.DeviceProfileDynamicEnabled = resolvedDeviceProfile.DynamicEnabled;
         account.IsDeviceProfileRotation     = resolvedDeviceProfile.IsRotationEnabled;
@@ -557,30 +465,35 @@ public class AccountManager
 
         if (!string.IsNullOrWhiteSpace(account.DeviceProfilePresetId))
         {
-            lock (DeviceProfilePresetStoreSyncRoot)
-            {
-                var state = GetDeviceProfilePresetStoreState();
+            var state = GetDeviceProfilePresetStoreState();
 
-                if (!string.Equals(state.SharedPresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)
-                    && Accounts.All(existing => !string.Equals(existing.DeviceProfilePresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)))
-                {
-                    state.Presets.RemoveAll(preset => string.Equals(preset.Id, account.DeviceProfilePresetId, StringComparison.Ordinal));
-                    PersistDeviceProfilePresetStoreState(state);
-                }
+            if (!string.Equals(state.SharedPresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)
+                && Accounts.All(existing => !string.Equals(existing.DeviceProfilePresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)))
+            {
+                var presets = state.Presets
+                                   .Where(preset => !string.Equals(preset.Id, account.DeviceProfilePresetId, StringComparison.Ordinal))
+                                   .ToList();
+
+                PersistDeviceProfilePresetStoreState
+                (
+                    new DeviceProfilePresetStoreState
+                    {
+                        Version        = state.Version,
+                        SharedPresetId = state.SharedPresetId,
+                        Presets        = presets
+                    }
+                );
             }
         }
 
-        lock (syncRoot)
-        {
-            db.RunInTransaction
-            (() =>
-                {
-                    var record = db.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
-                    if (record != null)
-                        db.Delete(record);
-                }
-            );
-        }
+        Database.RunInTransaction
+        (() =>
+            {
+                var record = Database.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
+                if (record != null)
+                    Database.Delete(record);
+            }
+        );
     }
 
     public void ClearCurrentAccount() =>
@@ -670,23 +583,17 @@ public class AccountManager
 
     public void Save(XIVAccount account)
     {
-        lock (syncRoot)
-        {
-            db.RunInTransaction
-            (() =>
-                {
-                    var record = db.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
+        Database.RunInTransaction
+        (() =>
+            {
+                var record = Database.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
 
-                    if (record == null)
-                        db.Insert(account);
-                    else
-                    {
-                        record = account;
-                        db.Update(record);
-                    }
-                }
-            );
-        }
+                if (record == null)
+                    Database.Insert(account);
+                else
+                    Database.Update(account);
+            }
+        );
     }
 
     public void Save()
@@ -697,12 +604,12 @@ public class AccountManager
 
     public void SetupDb()
     {
-        db = new SQLiteConnection
+        Database = new SQLiteConnection
         (
             DatabasePath,
             SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.FullMutex
         );
-        db.CreateTable<XIVAccount>();
+        Database.CreateTable<XIVAccount>();
         MigrateAccountsTable();
     }
 
@@ -722,12 +629,13 @@ public class AccountManager
             SetupDb();
         }
 
-        // If the file is corrupted, this will be null anyway
-        Accounts ??= new ObservableCollection<XIVAccount>(db.Table<XIVAccount>());
+        Accounts.Clear();
+        foreach (var account in Database.Table<XIVAccount>())
+            Accounts.Add(account);
 
         foreach (var account in Accounts.ToArray())
         {
-            if (account.UserName.IsNullOrEmpty() || account.ID.IsNullOrEmpty())
+            if (string.IsNullOrWhiteSpace(account.UserName) || string.IsNullOrWhiteSpace(account.ID))
                 Accounts.Remove(account);
         }
 
@@ -736,6 +644,27 @@ public class AccountManager
 
     private XIVAccount GetTrackedAccount(XIVAccount account) =>
         Accounts.FirstOrDefault(existing => existing.ID == account.ID) ?? account;
+
+    private static async Task<string?> ConvertSecretAsync(ICredProvider oldCred, ICredProvider newCred, string? secret, string accountId, string secretName)
+    {
+        if (string.IsNullOrWhiteSpace(secret))
+            return secret;
+
+        try
+        {
+            var plainText = await oldCred.Decrypt(secret);
+            if (plainText is null)
+                throw new InvalidOperationException($"账号 {accountId} 的 {secretName} 解密结果为空");
+
+            return await newCred.Encrypt(plainText)
+                   ?? throw new InvalidOperationException($"账号 {accountId} 的 {secretName} 加密结果为空");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "迁移账号 {AccountID} 的 {SecretName} 失败", accountId, secretName);
+            return secret;
+        }
+    }
 
     private static bool HasDeviceProfile(XIVAccount account) =>
         !string.IsNullOrWhiteSpace(account.DeviceProfileDeviceId)
@@ -786,8 +715,7 @@ public class AccountManager
 
     private void MigrateLegacyDeviceProfiles()
     {
-        lock (DeviceProfilePresetStoreSyncRoot)
-            _ = GetDeviceProfilePresetStoreState();
+        _ = GetDeviceProfilePresetStoreState();
 
         foreach (var account in Accounts)
         {
@@ -833,9 +761,9 @@ public class AccountManager
 
     private void MigrateAccountsTable()
     {
-        var columns = db!.Query<SQLiteTableColumn>("PRAGMA table_info(\"XIVAccount\")")
-                         .Select(column => column.name)
-                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var columns = Database.Query<SQLiteTableColumn>("PRAGMA table_info(\"XIVAccount\")")
+                              .Select(column => column.name)
+                              .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         EnsureColumn(columns, "DeviceProfileDeviceId",       "TEXT NOT NULL DEFAULT ''");
         EnsureColumn(columns, "DeviceProfileMacAddress",     "TEXT NOT NULL DEFAULT ''");
@@ -848,15 +776,15 @@ public class AccountManager
         EnsureColumn(columns, "WeGameTokenSecret",                  "TEXT");
 
         if (addedRotationColumn && columns.Contains("DeviceProfileRotationMode"))
-            db!.Execute("UPDATE \"XIVAccount\" SET \"IsDeviceProfileRotation\" = CASE WHEN \"DeviceProfileRotationMode\" = 0 THEN 1 ELSE 0 END");
+            Database.Execute("UPDATE \"XIVAccount\" SET \"IsDeviceProfileRotation\" = CASE WHEN \"DeviceProfileRotationMode\" = 0 THEN 1 ELSE 0 END");
     }
 
-    private bool EnsureColumn(ISet<string> columns, string columnName, string definition)
+    private bool EnsureColumn(HashSet<string> columns, string columnName, string definition)
     {
         if (columns.Contains(columnName))
             return false;
 
-        db!.Execute($"ALTER TABLE \"XIVAccount\" ADD COLUMN \"{columnName}\" {definition}");
+        Database.Execute($"ALTER TABLE \"XIVAccount\" ADD COLUMN \"{columnName}\" {definition}");
         columns.Add(columnName);
         return true;
     }
@@ -866,13 +794,13 @@ public class AccountManager
         && !string.IsNullOrWhiteSpace(snapshot.MacAddress)
         && !string.IsNullOrWhiteSpace(snapshot.HostName);
 
-    private static DeviceProfilePresetStoreState GetDeviceProfilePresetStoreState()
+    private DeviceProfilePresetStoreState GetDeviceProfilePresetStoreState()
     {
         deviceProfilePresetStore ??= LoadOrCreateDeviceProfilePresetStoreState();
-        return deviceProfilePresetStore;
+        return deviceProfilePresetStore ?? throw new InvalidOperationException("设备预设状态尚未初始化");
     }
 
-    private static DeviceProfilePresetStoreState LoadOrCreateDeviceProfilePresetStoreState()
+    private DeviceProfilePresetStoreState LoadOrCreateDeviceProfilePresetStoreState()
     {
         try
         {
@@ -884,6 +812,7 @@ public class AccountManager
 
                 if (normalized != null)
                 {
+                    deviceProfilePresetStore = normalized;
                     PersistDeviceProfilePresetStoreState(normalized);
                     return normalized;
                 }
@@ -903,6 +832,7 @@ public class AccountManager
             Presets        = [legacyPreset]
         };
 
+        deviceProfilePresetStore = state;
         PersistDeviceProfilePresetStoreState(state);
         TryDeleteLegacySharedDeviceProfileFile();
         return state;
@@ -910,7 +840,7 @@ public class AccountManager
 
     private static DeviceProfilePresetStoreState? NormalizeDeviceProfilePresetStoreState(DeviceProfilePresetStoreState? state)
     {
-        if (state == null)
+        if (state is null)
             return null;
 
         var presets        = new List<DeviceProfilePreset>(state.Presets.Count);
@@ -965,7 +895,7 @@ public class AccountManager
         {
             Version        = 1,
             SharedPresetId = sharedPresetId,
-            Presets        = presets
+            Presets        = presets.ToArray()
         };
     }
 
@@ -1011,7 +941,7 @@ public class AccountManager
         }
     }
 
-    private static void PersistDeviceProfilePresetStoreState(DeviceProfilePresetStoreState state)
+    private void PersistDeviceProfilePresetStoreState(DeviceProfilePresetStoreState state)
     {
         try
         {
@@ -1026,7 +956,7 @@ public class AccountManager
         }
     }
 
-    private static DeviceProfilePreset GetSharedDeviceProfilePreset(DeviceProfilePresetStoreState state)
+    private DeviceProfilePreset GetSharedDeviceProfilePreset(DeviceProfilePresetStoreState state)
     {
         var preset = FindPresetById(state, state.SharedPresetId);
         if (preset != null)
@@ -1038,7 +968,7 @@ public class AccountManager
             {
                 Version        = state.Version,
                 SharedPresetId = state.Presets[0].Id,
-                Presets        = state.Presets
+                Presets        = state.Presets.ToArray()
             };
 
             PersistDeviceProfilePresetStoreState(normalizedState);
@@ -1063,37 +993,48 @@ public class AccountManager
 
     private DeviceProfilePreset FindOrCreatePreset(DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark = null)
     {
-        lock (DeviceProfilePresetStoreSyncRoot)
-        {
-            var state  = GetDeviceProfilePresetStoreState();
-            var preset = FindOrCreatePreset(state, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
-            PersistDeviceProfilePresetStoreState(state);
-            return preset;
-        }
+        var state  = GetDeviceProfilePresetStoreState();
+        var result = FindOrCreatePreset(state, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
+        PersistDeviceProfilePresetStoreState(result.State);
+        return result.Preset;
     }
 
-    private static DeviceProfilePreset FindOrCreatePreset(DeviceProfilePresetStoreState state, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark = null)
+    private static (DeviceProfilePresetStoreState State, DeviceProfilePreset Preset) FindOrCreatePreset
+        (DeviceProfilePresetStoreState state, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark = null)
     {
-        var existingIndex = state.Presets.FindIndex(preset => preset.Matches(snapshot));
+        var presets       = state.Presets.ToList();
+        var existingIndex = presets.FindIndex(preset => preset.Matches(snapshot));
 
         if (existingIndex >= 0)
         {
-            var existing              = state.Presets[existingIndex];
+            var existing              = presets[existingIndex];
             var normalizedRemark      = remark == null ? existing.Remark : NormalizePresetRemark(remark);
             var updatedGeneratedTicks = Math.Max(existing.GeneratedUtcTicks, generatedUtcTicks);
 
             if (existing.GeneratedUtcTicks == updatedGeneratedTicks
                 && string.Equals(existing.Remark, normalizedRemark, StringComparison.Ordinal))
-                return existing;
+                return (state, existing);
 
             var updated = existing.WithGeneratedUtcTicks(updatedGeneratedTicks, normalizedRemark);
-            state.Presets[existingIndex] = updated;
-            return updated;
+            presets[existingIndex] = updated;
+            var updatedState = new DeviceProfilePresetStoreState
+            {
+                Version        = state.Version,
+                SharedPresetId = state.SharedPresetId,
+                Presets        = presets
+            };
+            return (updatedState, updated);
         }
 
         var created = CreatePreset(snapshot, generatedUtcTicks, remark);
-        state.Presets.Add(created);
-        return created;
+        presets.Add(created);
+        var createdState = new DeviceProfilePresetStoreState
+        {
+            Version        = state.Version,
+            SharedPresetId = state.SharedPresetId,
+            Presets        = presets
+        };
+        return (createdState, created);
     }
 
     private DeviceProfilePreset EnsureAccountDeviceProfilePreset(XIVAccount account, DeviceProfilePreset sharedPreset, DateTimeOffset nowUtc, ref bool isChanged)
