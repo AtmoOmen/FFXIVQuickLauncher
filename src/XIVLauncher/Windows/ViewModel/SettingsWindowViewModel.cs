@@ -371,7 +371,7 @@ public sealed class SettingsWindowViewModel : ViewModelBase
             await RefreshCredTypeOptionsAsync();
             _dialogService.ShowMessage
             (
-                credTypeApplyResult.UserMessage ?? $"切换到 {AccountManager.GetCredTypeDisplayName(requestedCredType)} 失败，请稍后重试。",
+                credTypeApplyResult.UserMessage ?? $"切换到 {requestedCredType.GetDisplayName()} 失败，请稍后重试。",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning,

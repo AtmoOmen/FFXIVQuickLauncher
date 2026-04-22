@@ -271,9 +271,9 @@ public class AccountManager
 
             var unsupportedMessage = requestedType == CredType.WindowsHello
                                          ? "当前设备不支持 Windows Hello，请改用系统凭据管理器。"
-                                         : $"当前设备不支持 {GetCredTypeDisplayName(requestedType)}。";
+                                         : $"当前设备不支持 {requestedType.GetDisplayName()}。";
 
-            Log.Warning("凭据类型 {CredType} 当前设备不可用", GetCredTypeDisplayName(requestedType));
+            Log.Warning("凭据类型 {CredType} 在当前设备不可用", requestedType.GetDisplayName());
 
             return new CredTypeApplyResult
             (
@@ -299,8 +299,8 @@ public class AccountManager
             Log.Information
             (
                 "开始切换自动登录加密方式：{OldCredType} -> {NewCredType}",
-                GetCredTypeDisplayName(previousCredType),
-                GetCredTypeDisplayName(requestedType)
+                previousCredType.GetDisplayName(),
+                requestedType.GetDisplayName()
             );
 
             foreach (var item in Accounts)
@@ -325,8 +325,8 @@ public class AccountManager
             Log.Information
             (
                 "自动登录加密方式切换完成：{OldCredType} -> {NewCredType}",
-                GetCredTypeDisplayName(previousCredType),
-                GetCredTypeDisplayName(requestedType)
+                previousCredType.GetDisplayName(),
+                requestedType.GetDisplayName()
             );
 
             return new CredTypeApplyResult
@@ -339,7 +339,7 @@ public class AccountManager
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "切换自动登录加密方式失败：{CredType}", GetCredTypeDisplayName(requestedType));
+            Log.Error(ex, "切换自动登录加密方式失败, 目标：{CredType}", requestedType.GetDisplayName());
 
             return new CredTypeApplyResult
             (
@@ -347,7 +347,7 @@ public class AccountManager
                 requestedType,
                 CurrentCredType,
                 HasUnavailableSavedSecrets: HasUnavailableSavedSecrets,
-                UserMessage: $"切换到 {GetCredTypeDisplayName(requestedType)} 失败，请稍后重试。"
+                UserMessage: $"切换到 {requestedType.GetDisplayName()} 失败，请稍后重试。"
             );
         }
     }
@@ -630,20 +630,6 @@ public class AccountManager
     /// </summary>
     public void ClearCurrentAccount() =>
         setting.CurrentAccountId = string.Empty;
-
-    /// <summary>
-    /// 获取凭据类型显示名称
-    /// </summary>
-    /// <param name="type">凭据类型</param>
-    /// <returns>显示名称</returns>
-    public static string GetCredTypeDisplayName(CredType type) =>
-        type switch
-        {
-            CredType.NoEncryption       => "无加密",
-            CredType.WindowsCredManager => "系统凭据管理器",
-            CredType.WindowsHello       => "Windows Hello",
-            _                           => type.ToString()
-        };
     
     private ResolvedDeviceProfile ResolveDeviceProfile(DeviceProfilePreset sharedPreset, XIVAccount? account, bool saveChanges)
     {
@@ -719,8 +705,8 @@ public class AccountManager
         Log.Warning
         (
             "当前设备不支持 {RequestedCredType}，已自动切换为 {FallbackCredType}，并关闭自动登录",
-            GetCredTypeDisplayName(requestedType),
-            GetCredTypeDisplayName(fallbackType)
+            requestedType.GetDisplayName(),
+            fallbackType.GetDisplayName()
         );
 
         return new CredTypeApplyResult
