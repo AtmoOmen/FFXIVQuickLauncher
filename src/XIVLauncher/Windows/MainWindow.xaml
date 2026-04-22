@@ -801,6 +801,7 @@
                                                                 Grid.Column="0"
                                                                 Content="登录"
                                                                 Command="{Binding LoginPage.StartLoginCommand}"
+                                                                IsEnabled="{Binding LoginPage.CanStartLogin}"
                                                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                                                 materialDesign:ButtonAssist.CornerRadius="18"
                                                                 materialDesign:ElevationAssist.Elevation="Dp2"

@@ -53,7 +53,7 @@ public sealed class LoginPageViewModel : ViewModelBase
         loginTypeOption  = LoginTypeOptions.First(x => x.LoginType == App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.Slide));
         ApplyLoginType(loginTypeOption.LoginType);
 
-        startLoginCommand       = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start),               () => !this.isBusyFunc());
+        startLoginCommand       = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start),               () => CanStartLogin);
         loginNoStartCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.UpdateOnly),          () => !this.isBusyFunc());
         loginNoDalamudCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutDalamud), () => !this.isBusyFunc());
         loginNoPluginsCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutPlugins), () => !this.isBusyFunc());
@@ -115,19 +115,35 @@ public sealed class LoginPageViewModel : ViewModelBase
 
             if (loginTypeOption.LoginType == LoginType.WeGameAuto)
                 ApplyWeGameSidMode();
+            OnPropertyChanged(nameof(CanStartLogin));
+            startLoginCommand.RaiseCanExecuteChanged();
         }
     }
 
     public string Username
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            OnPropertyChanged(nameof(CanStartLogin));
+            startLoginCommand.RaiseCanExecuteChanged();
+        }
     } = string.Empty;
 
     public string Password
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            OnPropertyChanged(nameof(CanStartLogin));
+            startLoginCommand.RaiseCanExecuteChanged();
+        }
     } = string.Empty;
 
     public LoginTypeOption LoginTypeOption
@@ -145,6 +161,8 @@ public sealed class LoginPageViewModel : ViewModelBase
                 Username = string.Empty;
             Password                       = string.Empty;
             ApplyLoginType(value.LoginType);
+            OnPropertyChanged(nameof(CanStartLogin));
+            startLoginCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -190,12 +208,14 @@ public sealed class LoginPageViewModel : ViewModelBase
         get;
         set
         {
-        if (!SetProperty(ref field, value))
-            return;
+            if (!SetProperty(ref field, value))
+                return;
 
             refreshQrCodeCommand.RaiseCanExecuteChanged();
         }
     }
+
+    public bool CanStartLogin => !isBusyFunc() && IsLoginInputComplete;
 
     public bool IsUsernameVisible
     {
@@ -212,7 +232,14 @@ public sealed class LoginPageViewModel : ViewModelBase
     public bool IsPasswordVisible
     {
         get;
-        private set => SetProperty(ref field, value);
+        private set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            OnPropertyChanged(nameof(CanStartLogin));
+            startLoginCommand.RaiseCanExecuteChanged();
+        }
     }
 
     public bool IsFastLoginVisible
@@ -285,9 +312,17 @@ public sealed class LoginPageViewModel : ViewModelBase
         injectModeSwitchCommand.RaiseCanExecuteChanged();
         backToMainPageCommand.RaiseCanExecuteChanged();
         fakeStartCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(nameof(CanStartLogin));
     }
     
     private LoginTypeOption loginTypeOption = null!;
+
+    private bool IsLoginInputComplete => loginTypeOption.LoginType switch
+    {
+        LoginType.QRCode => true,
+        LoginType.WeGameAuto => IsReadWegameInfo || !string.IsNullOrWhiteSpace(Username),
+        _ => !string.IsNullOrWhiteSpace(Username) && (!IsPasswordVisible || !string.IsNullOrWhiteSpace(Password)),
+    };
 
     private void ApplyLoginType(LoginType loginType)
     {
