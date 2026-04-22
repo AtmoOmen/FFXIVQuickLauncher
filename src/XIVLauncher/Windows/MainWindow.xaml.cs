@@ -37,8 +37,9 @@ public partial class MainWindow
 
     private const int CURRENT_VERSION_LEVEL = 2;
 
-    private readonly AccountManager accountManager;
-    private readonly Launcher       launcher;
+    private readonly AccountManager  accountManager;
+    private readonly Launcher        launcher;
+    private readonly AccountSwitcher accountSwitcher;
 
     private Timer?                               bannerChangeTimer;
     private ObservableCollection<BannerDotInfo>? bannerDotList;
@@ -58,6 +59,19 @@ public partial class MainWindow
         accountManager               =  Model.AccountManager;
         launcher                     =  Model.Launcher;
         Model.Settings.SettingsSaved += (_, _) => Task.Run(SetupHeadlines);
+
+        accountSwitcher = new AccountSwitcher(accountManager, this)
+        {
+            ShowInTaskbar = false,
+            ShowActivated = false
+        };
+
+        accountSwitcher.Closing += (s, ev) =>
+        {
+            ev.Cancel = true;
+            accountSwitcher.CloseWindow(false);
+        };
+        accountSwitcher.AccountSwitched += OnAccountSwitchedEventHandler;
 
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
@@ -376,10 +390,21 @@ public partial class MainWindow
 
     private void AccountSwitcherButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var switcher = new AccountSwitcher(accountManager, this)
+        if (accountSwitcher.Owner == null)
+            accountSwitcher.Owner = this;
+
+        if (accountSwitcher.IsVisible)
         {
-            ShowInTaskbar = false
-        };
+            accountSwitcher.CloseWindow(true);
+            return;
+        }
+
+        // Clear previous animations so manual assignments work
+        accountSwitcher.BeginAnimation(OpacityProperty, null);
+        accountSwitcher.BeginAnimation(MarginProperty,  null);
+
+        accountSwitcher.Opacity = 1;
+        accountSwitcher.Margin  = new Thickness(0);
 
         var locationFromScreen = AccountSwitcherButton.PointToScreen(new Point(0, 0));
         var source             = PresentationSource.FromVisual(this);
@@ -388,14 +413,31 @@ public partial class MainWindow
         {
             var targetPoints = source.CompositionTarget!.TransformFromDevice.Transform(locationFromScreen);
 
-            switcher.WindowStartupLocation = WindowStartupLocation.Manual;
-            switcher.Left                  = targetPoints.X - 15;
-            switcher.Top                   = targetPoints.Y - 15;
+            accountSwitcher.WindowStartupLocation = WindowStartupLocation.Manual;
+            accountSwitcher.Left                  = targetPoints.X - 15;
+            accountSwitcher.Top                   = targetPoints.Y - 15;
         }
 
-        switcher.AccountSwitched += OnAccountSwitchedEventHandler;
+        accountSwitcher.Show();
+    }
 
-        switcher.Show();
+    protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
+    {
+        base.OnPreviewMouseDown(e);
+
+        if (accountSwitcher.IsVisible)
+        {
+            if (e.OriginalSource is DependencyObject depObj && !AccountSwitcherButton.IsAncestorOf(depObj) && !Equals(e.OriginalSource, AccountSwitcherButton))
+                accountSwitcher.CloseWindow(true);
+        }
+    }
+
+    protected override void OnLocationChanged(EventArgs e)
+    {
+        base.OnLocationChanged(e);
+
+        if (accountSwitcher.IsVisible)
+            accountSwitcher.CloseWindow(false);
     }
 
     private void OnAccountSwitchedEventHandler(object? sender, XIVAccount e) =>

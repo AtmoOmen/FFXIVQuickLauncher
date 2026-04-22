@@ -113,7 +113,7 @@ public partial class AccountSwitcher
         CloseWindow(animate: true);
     }
 
-    private void CloseWindow(bool animate)
+    public void CloseWindow(bool animate)
     {
         if (closing)
             return;
@@ -122,7 +122,8 @@ public partial class AccountSwitcher
 
         if (!animate)
         {
-            Close();
+            Hide();
+            closing = false;
             return;
         }
 
@@ -147,7 +148,11 @@ public partial class AccountSwitcher
 
         storyboard.Children.Add(opacityAnimation);
         storyboard.Children.Add(marginAnimation);
-        storyboard.Completed += (_, _) => Close();
+        storyboard.Completed += (_, _) => 
+        {
+            Hide();
+            closing = false;
+        };
         storyboard.Begin();
     }
 
