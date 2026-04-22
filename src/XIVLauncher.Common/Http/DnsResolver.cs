@@ -148,6 +148,8 @@ internal static class DNSResolver
         {
             try
             {
+                AppendCandidates(candidates, seenAddresses, directAddresses, ConnectionCandidateSource.DirectDns);
+
                 var hijackAddresses = await GetHijackAddressesAsync().ConfigureAwait(false);
 
                 if (hijackAddresses.Count > 0)
@@ -160,8 +162,10 @@ internal static class DNSResolver
                 Log.Warning(ex, "解析 Cloudflare 劫持入口 {HijackCname} 失败", HIJACK_CNAME);
             }
         }
-
-        AppendCandidates(candidates, seenAddresses, directAddresses, ConnectionCandidateSource.DirectDns);
+        else
+        {
+            AppendCandidates(candidates, seenAddresses, directAddresses, ConnectionCandidateSource.DirectDns);
+        }
 
         var orderedCandidates = ConnectionTelemetryStore.SortCandidates(hostname, candidates);
 

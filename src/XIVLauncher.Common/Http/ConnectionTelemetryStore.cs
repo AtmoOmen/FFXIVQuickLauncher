@@ -66,7 +66,7 @@ internal static class ConnectionTelemetryStore
         long                now
     )
     {
-        var score = candidate.Source == ConnectionCandidateSource.HijackDns ? HIJACK_BASELINE_SCORE : DIRECT_BASELINE_SCORE;
+        var score = BASELINE_SCORE;
 
         if (preferredTarget.IsActive(now) && preferredTarget.Address?.Equals(candidate.Address) == true)
             score -= HOST_PREFERRED_BONUS;
@@ -157,9 +157,7 @@ internal static class ConnectionTelemetryStore
 
     #region Constants
 
-    private const long DIRECT_BASELINE_SCORE = 700;
-
-    private const long HIJACK_BASELINE_SCORE = 480;
+    private const long BASELINE_SCORE = 700;
 
     private const long HARD_FAILURE_PENALTY = 1_600;
 
