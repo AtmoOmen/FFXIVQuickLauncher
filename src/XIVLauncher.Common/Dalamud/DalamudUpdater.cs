@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -21,7 +22,7 @@ namespace XIVLauncher.Common.Dalamud;
 public class DalamudUpdater
 {
     public DirectoryInfo Runtime { get; }
-    
+
     public        DownloadState           State               { get; private set; } = DownloadState.Unknown;
     public        Exception?              EnsurementException { get; private set; }
     public        FileInfo?               RunnerOverride      { get; set; }
@@ -35,8 +36,11 @@ public class DalamudUpdater
         get => RunnerOverride ?? field;
         private set;
     }
-    
+
     private static string runtimeVersion = string.Empty;
+
+    private static readonly ConcurrentDictionary<string, (long Length, long LastWriteTimeUtcTicks, string Hash)> CachedFileHashes =
+        new(StringComparer.OrdinalIgnoreCase);
 
     private readonly DirectoryInfo addonDirectory;
     private readonly DirectoryInfo assetDirectory;
@@ -45,7 +49,7 @@ public class DalamudUpdater
     private readonly TimeSpan   defaultTimeout = TimeSpan.FromMinutes(1);
     private readonly HttpClient httpClient;
     private readonly HttpClient testHttpClient;
-    
+
     public DalamudUpdater
     (
         DirectoryInfo addonDirectory,
@@ -58,7 +62,7 @@ public class DalamudUpdater
         Runtime             = runtimeDirectory;
         this.assetDirectory = assetDirectory;
         this.githubToken    = githubToken;
-        httpClient = XLHttpClientFactory.Create(TimeSpan.FromSeconds(10), 50, DecompressionMethods.All);
+        httpClient          = XLHttpClientFactory.Create(TimeSpan.FromSeconds(10), 50, DecompressionMethods.All);
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
         if (!string.IsNullOrWhiteSpace(this.githubToken))
             httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
@@ -71,7 +75,7 @@ public class DalamudUpdater
     {
         Log.Information("[DUPDATE] 启动 Dalamud 更新器中...");
         State = DownloadState.Unknown;
-        
+
         Task.Run
         (async () =>
             {
@@ -108,13 +112,12 @@ public class DalamudUpdater
             Log.Information("[DUPDATE] 开始 Dalamud 更新进程");
 
             await InitVersionInfoAsync();
-            var paths = PreparePaths();
-            await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath);
+            var paths                  = PreparePaths();
+            var currentVersionVerified = await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath);
             await UpdateRuntimeAsync(paths.runtimePaths);
             await UpdateAssetsAsync();
 
-            // 最终验证
-            if (!CheckDalamudIntegrity(paths.currentVersionPath))
+            if (!currentVersionVerified && !CheckDalamudIntegrity(paths.currentVersionPath))
                 throw new DalamudIntegrityException("完整性验证最终失败");
 
             Runner = new FileInfo(Path.Combine(paths.currentVersionPath.FullName, "Dalamud.Injector.exe"));
@@ -169,14 +172,14 @@ public class DalamudUpdater
         return (addonPath, currentVersionPath, runtimePaths);
     }
 
-    private async Task UpdateDalamudCoreAsync(DirectoryInfo addonPath, DirectoryInfo currentVersionPath)
+    private async Task<bool> UpdateDalamudCoreAsync(DirectoryInfo addonPath, DirectoryInfo currentVersionPath)
     {
         Log.Information("[DUPDATE] 开始检查 Dalamud 本体完整性");
 
         if (currentVersionPath.Exists && CheckDalamudIntegrity(currentVersionPath))
         {
             Log.Information("[DUPDATE] Dalamud 本体完整性检查已通过，无需更新");
-            return;
+            return true;
         }
 
         Log.Information("[DUPDATE] Dalamud 本体完整性检查未通过, 开始更新");
@@ -191,6 +194,7 @@ public class DalamudUpdater
             CleanUpOld(addonPath, Version);
 
             Log.Information("[DUPDATE] Dalamud 本体更新完成");
+            return false;
         }
         catch (Exception ex)
         {
@@ -263,11 +267,19 @@ public class DalamudUpdater
 
     public static bool CheckDalamudIntegrity(DirectoryInfo addonPath)
     {
-        var files = addonPath.GetFiles();
-
         try
         {
-            if (!CanRead(files.First(x => x.Name == "Dalamud.Injector.exe")) || !CanRead(files.First(x => x.Name == "Dalamud.dll")) || !CanRead(files.First(x => x.Name == "ImGuiScene.dll")))
+            var injector   = new FileInfo(Path.Combine(addonPath.FullName, "Dalamud.Injector.exe"));
+            var dalamud    = new FileInfo(Path.Combine(addonPath.FullName, "Dalamud.dll"));
+            var imGuiScene = new FileInfo(Path.Combine(addonPath.FullName, "ImGuiScene.dll"));
+
+            if (!injector.Exists || !dalamud.Exists || !imGuiScene.Exists)
+            {
+                Log.Error("[DUPDATE] 缺少核心文件");
+                return false;
+            }
+
+            if (!CanRead(injector) || !CanRead(dalamud) || !CanRead(imGuiScene))
             {
                 Log.Error("[DUPDATE] 无法打开核心文件");
                 return false;
@@ -540,11 +552,31 @@ public class DalamudUpdater
     {
         try
         {
-            using var stream = File.OpenRead(path);
-            using var md5    = MD5.Create();
+            var fileInfo = new FileInfo(path);
+            fileInfo.Refresh();
 
-            var hashHash = BitConverter.ToString(md5.ComputeHash(stream)).ToUpperInvariant().Replace("-", string.Empty);
-            return hashHash;
+            var fileLength            = fileInfo.Length;
+            var lastWriteTimeUtcTicks = fileInfo.LastWriteTimeUtc.Ticks;
+
+            if (CachedFileHashes.TryGetValue(path, out var cachedFileHash) && cachedFileHash.Length == fileLength && cachedFileHash.LastWriteTimeUtcTicks == lastWriteTimeUtcTicks)
+                return cachedFileHash.Hash;
+
+            using var stream = fileInfo.Open
+            (
+                new FileStreamOptions
+                {
+                    Access     = FileAccess.Read,
+                    BufferSize = 128 * 1024,
+                    Mode       = FileMode.Open,
+                    Options    = FileOptions.SequentialScan,
+                    Share      = FileShare.ReadWrite | FileShare.Delete
+                }
+            );
+            using var md5 = MD5.Create();
+
+            var hash = Convert.ToHexString(md5.ComputeHash(stream));
+            CachedFileHashes[path] = (fileLength, lastWriteTimeUtcTicks, hash);
+            return hash;
         }
         catch (Exception e)
         {
@@ -691,7 +723,7 @@ public class DalamudUpdater
         Overlay!.ReportProgress(size, downloaded, progress);
 
     #endregion
-    
+
     public enum DownloadState
     {
         Unknown,
