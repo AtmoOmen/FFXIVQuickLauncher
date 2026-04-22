@@ -318,8 +318,13 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Text="游戏内超域传送" FontSize="15" />
-                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" Opacity="0.7" FontSize="12" TextWrapping="Wrap">
+                                    <TextBlock Foreground="{DynamicResource MaterialDesignBody}" 
+                                               Opacity="0.7" 
+                                               FontSize="12" 
+                                               TextWrapping="Wrap">
                                         <Run Text="额外支持游戏内超域传送, 需要同时安装并启用 DCTravelerX 插件" />
+                                        <LineBreak />
+                                        <Run Text="不支持 WeGame 渠道登录与手动注入的游戏"></Run>
                                     </TextBlock>
                                 </StackPanel>
                                 <ToggleButton Foreground="{DynamicResource MaterialDesignBody}" Grid.Column="1" IsChecked="{Binding EnableDcTravel}" Style="{StaticResource MaterialDesignSwitchToggleButton}" />

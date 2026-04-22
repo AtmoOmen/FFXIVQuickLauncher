@@ -8,7 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     Title="账户切换"
-    Width="280"
+    Width="320"
     SizeToContent="Height"
     AllowsTransparency="True"
     Background="Transparent"
@@ -26,25 +26,26 @@
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard>
                 <Storyboard>
-                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.15">
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25">
                         <DoubleAnimation.EasingFunction>
-                            <CubicEase EasingMode="EaseOut" />
+                            <QuarticEase EasingMode="EaseOut" />
                         </DoubleAnimation.EasingFunction>
                     </DoubleAnimation>
-                    <ThicknessAnimation Storyboard.TargetProperty="Margin" From="0,15,0,-15" To="0,0,0,0" Duration="0:0:0.25">
+                    <ThicknessAnimation Storyboard.TargetProperty="Margin" From="0,20,0,-20" To="0,0,0,0" Duration="0:0:0.4">
                         <ThicknessAnimation.EasingFunction>
-                            <CubicEase EasingMode="EaseOut" />
+                            <QuarticEase EasingMode="EaseOut" />
                         </ThicknessAnimation.EasingFunction>
                     </ThicknessAnimation>
                 </Storyboard>
             </BeginStoryboard>
         </EventTrigger>
     </Window.Triggers>
-    <Grid Margin="10,10,10,10">
+    <Grid Margin="16">
         <materialDesign:Card Background="{DynamicResource MaterialDesignPaper}" 
-                             UniformCornerRadius="8" 
+                             UniformCornerRadius="12" 
+                             materialDesign:ElevationAssist.Elevation="Dp4"
                              Margin="0">
-            <Grid Margin="12,12,12,12">
+            <Grid Margin="12,14,12,14">
                 <ListView
                     x:Name="AccountListView"
                     AllowDrop="True"
@@ -66,34 +67,51 @@
                                      Style="{StaticResource MaterialDesignContextMenu}">
                             <ContextMenu.Resources>
                                 <Style TargetType="{x:Type MenuItem}"
-                                       BasedOn="{StaticResource MaterialDesignMenuItem}" />
+                                       BasedOn="{StaticResource MaterialDesignMenuItem}">
+                                    <Setter Property="Height" Value="36" />
+                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+                                </Style>
                                 <Style TargetType="{x:Type Separator}"
-                                       BasedOn="{StaticResource MaterialDesignSeparator}" />
+                                       BasedOn="{StaticResource MaterialDesignSeparator}">
+                                    <Setter Property="Margin" Value="0,4" />
+                                </Style>
                             </ContextMenu.Resources>
                             <MenuItem
                                 Command="{Binding SetProfilePictureCommand}"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                Header="设置账号信息" />
+                                Header="设置账号信息">
+                                <MenuItem.Icon>
+                                    <materialDesign:PackIcon Kind="AccountEditOutline" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                             <MenuItem
                                 Command="{Binding ConfigureDeviceProfileCommand}"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                Header="设置设备信息" />
+                                Header="设置设备信息">
+                                <MenuItem.Icon>
+                                    <materialDesign:PackIcon Kind="Devices" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                             <Separator />
                             <MenuItem
                                 Command="{Binding CreateDesktopShortcutCommand}"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                Header="创建桌面快捷方式" />
+                                Header="创建桌面快捷方式">
+                                <MenuItem.Icon>
+                                    <materialDesign:PackIcon Kind="LinkVariant" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                             <Separator />
                             <MenuItem
-                                Foreground="{DynamicResource MaterialDesignBody}"
                                 Header="不保存密码"
                                 IsCheckable="True"
                                 IsChecked="{Binding IsSelectedAccountPasswordNotSaved, Mode=TwoWay}" />
                             <Separator />
                             <MenuItem
                                 Command="{Binding RemoveAccountCommand}"
-                                Foreground="{DynamicResource MaterialDesignBody}"
-                                Header="移除" />
+                                Foreground="#E57373"
+                                Header="移除">
+                                <MenuItem.Icon>
+                                    <materialDesign:PackIcon Kind="DeleteOutline" />
+                                </MenuItem.Icon>
+                            </MenuItem>
                         </ContextMenu>
                     </ListView.ContextMenu>
 
@@ -103,31 +121,63 @@
                             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                             <Setter Property="Background" Value="Transparent" />
                             <Setter Property="BorderBrush" Value="Transparent" />
-                            <Setter Property="BorderThickness" Value="1" />
-                            <Setter Property="Margin" Value="0,0,0,4" />
-                            <Setter Property="Padding" Value="8,6" />
-                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Setter Property="Margin" Value="0,0,0,6" />
+                            <Setter Property="Padding" Value="12,10" />
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="ListBoxItem">
-                                        <Border
-                                            x:Name="ItemBorder"
-                                            Padding="{TemplateBinding Padding}"
-                                            Background="{TemplateBinding Background}"
-                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                            BorderThickness="{TemplateBinding BorderThickness}"
-                                            CornerRadius="6">
-                                            <ContentPresenter
-                                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                        <Border x:Name="ItemBorder"
+                                                Background="Transparent"
+                                                BorderBrush="Transparent"
+                                                BorderThickness="0"
+                                                CornerRadius="10">
+                                            <Grid>
+                                                <Border x:Name="HoverBorder" Background="{DynamicResource PrimaryHueMidBrush}" Opacity="0" CornerRadius="10" />
+                                                <Border x:Name="SelectedBorder" Background="{DynamicResource PrimaryHueMidBrush}" Opacity="0" CornerRadius="10" />
+                                                
+                                                <Border x:Name="AccentBar" Width="4" Height="24" Background="{DynamicResource PrimaryHueMidBrush}" 
+                                                        HorizontalAlignment="Left" VerticalAlignment="Center" CornerRadius="2" Opacity="0" Margin="3,0,0,0" />
+                                                        
+                                                <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                            </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="ItemBorder" Property="Background" Value="#1A000000" />
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="HoverBorder" Storyboard.TargetProperty="Opacity" To="0.08" Duration="0:0:0.15" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="HoverBorder" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.ExitActions>
                                             </Trigger>
                                             <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="ItemBorder" Property="Background" Value="#26000000" />
-                                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}" />
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="SelectedBorder" Storyboard.TargetProperty="Opacity" To="0.12" Duration="0:0:0.15" />
+                                                            <DoubleAnimation Storyboard.TargetName="AccentBar" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="SelectedBorder" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
+                                                            <DoubleAnimation Storyboard.TargetName="AccentBar" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.ExitActions>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -145,19 +195,35 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <Border Width="38" Height="38" ClipToBounds="True" CornerRadius="6" Grid.Column="0">
-                                    <Image
-                                        Width="38"
-                                        Height="38"
-                                        Source="{Binding ProfileImage}"
-                                        Stretch="UniformToFill" />
-                                </Border>
+                                <Grid Grid.Column="0" Margin="4,0,0,0">
+                                    <Ellipse Width="42" Height="42">
+                                        <Ellipse.Fill>
+                                            <ImageBrush ImageSource="{Binding ProfileImage}" Stretch="UniformToFill" />
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                    <Ellipse Width="42" Height="42" Stroke="{DynamicResource MaterialDesignDivider}" StrokeThickness="1" Opacity="0.5" />
+                                </Grid>
                                 
-                                <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center"
-                                           Text="{Binding Account.DisplayName}" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                <StackPanel Grid.Column="1" Margin="14,0,10,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Account.DisplayName}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Account.UserName}" FontSize="12" Opacity="0.6" TextTrimming="CharacterEllipsis" Margin="0,2,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Account.UserDefinedName}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Account.UserDefinedName}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
 
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                    <materialDesign:PackIcon Height="18" Width="18" Margin="4,0,0,0" Opacity="0.7">
+                                    <materialDesign:PackIcon Height="18" Width="18" Margin="4,0,0,0" Opacity="0.5">
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
                                                 <Style.Triggers>
@@ -172,7 +238,7 @@
                                         </materialDesign:PackIcon.Style>
                                     </materialDesign:PackIcon>
 
-                                    <materialDesign:PackIcon Height="18" Width="18" Margin="4,0,0,0" Opacity="0.7">
+                                    <materialDesign:PackIcon Height="18" Width="18" Margin="4,0,0,0" Opacity="0.5">
                                         <materialDesign:PackIcon.Style>
                                             <Style TargetType="materialDesign:PackIcon">
                                                 <Style.Triggers>

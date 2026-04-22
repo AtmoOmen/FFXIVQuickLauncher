@@ -207,10 +207,8 @@ public partial class MainWindow : Window
         {
             PreserveWindowPosition.RestorePosition(this);
 
-            // Restore the size of the window to what we expect it to be
-            // There's no better way to do it that doesn't make me wanna off myself
-            Width  = 700;
-            Height = 420;
+            Width  = 780;
+            Height = 540;
         }
         catch (Exception ex)
         {
@@ -255,7 +253,6 @@ public partial class MainWindow : Window
                 bitmapImage.BeginInit();
                 bitmapImage.StreamSource = stream;
                 bitmapImage.CacheOption  = BitmapCacheOption.OnLoad;
-                bitmapImage.DecodePixelWidth = 400;
                 bitmapImage.EndInit();
                 bitmapImage.Freeze();
 

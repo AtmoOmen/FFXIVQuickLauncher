@@ -311,7 +311,7 @@ public sealed class LoginPageViewModel : ViewModelBase
 
         if (IsReadWegameInfo)
         {
-            UsernameHint          = "将从 WeGame 自动重新读取账号信息";
+            UsernameHint          = "将从 WeGame 重新读取账号信息";
             UsernameToolTip       = "将启动 WeGame 并读取当前启动账号信息";
             ReadWeGameInfoToolTip = "取消勾选后, 按输入的 SndaID 查找本地已保存账号信息并尝试登录";
             return;
