@@ -60,6 +60,7 @@ public class AccountManager
 
     private static readonly string DeviceProfilePresetStorePath  = Path.Combine(Paths.RoamingPath, "deviceProfilePresets.json");
     private static readonly string LegacySharedDeviceProfilePath = Path.Combine(Paths.RoamingPath, "sharedDeviceProfile.json");
+    private static readonly string DatabasePath                  = Path.Combine(Paths.RoamingPath, "accounts.db");
 
     private static readonly JsonSerializerOptions DeviceProfilePresetStoreJsonOptions = new() { WriteIndented = true };
     
@@ -83,9 +84,93 @@ public class AccountManager
         Accounts.CollectionChanged += Accounts_CollectionChanged;
     }
 
+    /// <summary>
+    /// 规范化设备预设轮换天数，保证值始终落在有效范围内
+    /// </summary>
+    /// <param name="rotationDays">待规范化的轮换天数</param>
+    /// <returns>有效的轮换天数</returns>
     public static int NormalizeDeviceProfileRotationDays(int rotationDays) =>
         rotationDays < 1 ? DEFAULT_DEVICE_PROFILE_ROTATION_DAYS : rotationDays;
+    
+    /// <summary>
+    /// 将单个账号写入数据库
+    /// </summary>
+    /// <param name="account">待保存账号</param>
+    public void Save(XIVAccount account)
+    {
+        Database.RunInTransaction
+        (() =>
+            {
+                var record = Database.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
 
+                if (record == null)
+                    Database.Insert(account);
+                else
+                    Database.Update(account);
+            }
+        );
+    }
+
+    /// <summary>
+    /// 将当前内存中的所有账号写入数据库
+    /// </summary>
+    public void Save()
+    {
+        foreach (var item in Accounts)
+            Save(item);
+    }
+
+    /// <summary>
+    /// 初始化数据库连接并执行表结构迁移
+    /// </summary>
+    public void SetupDb()
+    {
+        Database = new SQLiteConnection
+        (
+            DatabasePath,
+            SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.FullMutex
+        );
+        Database.CreateTable<XIVAccount>();
+        MigrateAccountsTable();
+    }
+
+    /// <summary>
+    /// 从磁盘加载账号数据并修复旧数据
+    /// </summary>
+    public void Load()
+    {
+        try
+        {
+            SetupDb();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to load VFS database, starting fresh");
+
+            if (File.Exists(DatabasePath))
+                File.Delete(DatabasePath);
+
+            SetupDb();
+        }
+
+        Accounts.Clear();
+        foreach (var account in Database.Table<XIVAccount>())
+            Accounts.Add(account);
+
+        foreach (var account in Accounts.ToArray())
+        {
+            if (string.IsNullOrWhiteSpace(account.UserName) || string.IsNullOrWhiteSpace(account.ID))
+                Accounts.Remove(account);
+        }
+
+        MigrateLegacyDeviceProfiles();
+    }
+
+    /// <summary>
+    /// 使用当前凭据提供程序加密文本
+    /// </summary>
+    /// <param name="text">待加密文本</param>
+    /// <returns>加密后的文本，失败时返回 <see langword="null"/></returns>
     public async Task<string?> Encrypt(string? text)
     {
         try
@@ -110,6 +195,11 @@ public class AccountManager
         return null;
     }
 
+    /// <summary>
+    /// 使用当前凭据提供程序解密文本
+    /// </summary>
+    /// <param name="text">待解密文本</param>
+    /// <returns>解密后的文本，失败时返回 <see langword="null"/></returns>
     public async Task<string?> Decrypt(string? text)
     {
         try
@@ -134,12 +224,28 @@ public class AccountManager
         return null;
     }
 
+    /// <summary>
+    /// 按启动阶段默认值初始化凭据提供程序
+    /// </summary>
+    /// <param name="requestedType">请求使用的凭据类型，允许为空</param>
+    /// <returns>实际应用结果</returns>
     public Task<CredTypeApplyResult> InitializeCredProviderAsync(CredType? requestedType) =>
         ChangeCredTypeAsync(requestedType.GetValueOrDefault(DEFAULT_CRED_TYPE), true);
 
+    /// <summary>
+    /// 判断指定凭据类型在当前设备上是否可用
+    /// </summary>
+    /// <param name="type">凭据类型</param>
+    /// <returns>可用则返回 <see langword="true"/></returns>
     public async Task<bool> IsCredTypeSupportedAsync(CredType type) =>
         await GetCredProvider(type).IsSupported();
 
+    /// <summary>
+    /// 切换自动登录使用的凭据类型
+    /// </summary>
+    /// <param name="requestedType">目标凭据类型</param>
+    /// <param name="isStartup">是否处于启动阶段</param>
+    /// <returns>切换结果</returns>
     public async Task<CredTypeApplyResult> ChangeCredTypeAsync(CredType requestedType, bool isStartup = false)
     {
         if (requestedType == CurrentCredType)
@@ -246,9 +352,18 @@ public class AccountManager
         }
     }
 
+    /// <summary>
+    /// 判断账号是否持有当前会话不可读取的旧密文
+    /// </summary>
+    /// <param name="account">账号对象</param>
+    /// <returns>存在不可用旧密文则返回 <see langword="true"/></returns>
     public bool HasUnavailableSecrets(XIVAccount? account) =>
         account is not null && unavailableSavedSecretAccountIds.Contains(account.ID);
 
+    /// <summary>
+    /// 添加账号或更新同一账号的现有信息
+    /// </summary>
+    /// <param name="account">待保存账号</param>
     public void AddAccount(XIVAccount account)
     {
         if (string.IsNullOrWhiteSpace(account.UserName) || string.IsNullOrWhiteSpace(account.ID))
@@ -284,6 +399,12 @@ public class AccountManager
         ClearUnavailableSecrets(account.ID);
     }
 
+    /// <summary>
+    /// 按用户名和账号类型查找账号
+    /// </summary>
+    /// <param name="userName">用户名</param>
+    /// <param name="accountType">账号类型</param>
+    /// <returns>匹配账号，不存在则返回 <see langword="null"/></returns>
     public XIVAccount? FindAccount(string? userName, XIVAccountType accountType)
     {
         if (string.IsNullOrWhiteSpace(userName))
@@ -294,6 +415,10 @@ public class AccountManager
         );
     }
 
+    /// <summary>
+    /// 获取设备预设列表，按显示名称升序排列
+    /// </summary>
+    /// <returns>只读预设列表</returns>
     public IReadOnlyList<DeviceProfilePreset> GetDeviceProfilePresets()
     {
         var state = GetDeviceProfilePresetStoreState();
@@ -302,6 +427,11 @@ public class AccountManager
                     .ToArray();
     }
 
+    /// <summary>
+    /// 按预设 ID 查找设备预设
+    /// </summary>
+    /// <param name="presetId">预设 ID</param>
+    /// <returns>匹配预设，不存在则返回 <see langword="null"/></returns>
     public DeviceProfilePreset? FindDeviceProfilePreset(string? presetId)
     {
         if (string.IsNullOrWhiteSpace(presetId))
@@ -310,9 +440,19 @@ public class AccountManager
         return FindPresetById(GetDeviceProfilePresetStoreState(), presetId);
     }
 
+    /// <summary>
+    /// 获取共享设备预设
+    /// </summary>
+    /// <returns>共享设备预设</returns>
     public DeviceProfilePreset GetSharedDeviceProfilePreset() =>
         GetSharedDeviceProfilePreset(GetDeviceProfilePresetStoreState());
 
+    /// <summary>
+    /// 按用户名和账号类型解析设备配置
+    /// </summary>
+    /// <param name="userName">用户名</param>
+    /// <param name="accountType">账号类型</param>
+    /// <returns>解析后的设备配置</returns>
     public ResolvedDeviceProfile ResolveDeviceProfile(string? userName, XIVAccountType accountType)
     {
         var sharedPreset = GetSharedDeviceProfilePreset();
@@ -321,6 +461,12 @@ public class AccountManager
         return ResolveDeviceProfile(sharedPreset, account, false);
     }
 
+    /// <summary>
+    /// 按账户解析设备配置
+    /// </summary>
+    /// <param name="account">账号</param>
+    /// <returns>解析后的设备配置</returns>
+    /// <exception cref="ArgumentNullException">传入的账号为空</exception>
     public ResolvedDeviceProfile ResolveDeviceProfile(XIVAccount account)
     {
         ArgumentNullException.ThrowIfNull(account);
@@ -331,7 +477,174 @@ public class AccountManager
 
         return ResolveDeviceProfile(sharedPreset, trackedAccount, isTrackedAccount);
     }
+    
+    /// <summary>
+    /// 更新账号的设备预设开关和轮换策略
+    /// </summary>
+    /// <param name="account">目标账号</param>
+    /// <param name="dynamicEnabled">是否启用动态设备预设</param>
+    /// <param name="isDeviceProfileRotation">是否启用轮换</param>
+    /// <param name="rotationDays">轮换周期天数</param>
+    public void UpdateDeviceProfileSettings(XIVAccount account, bool dynamicEnabled, bool isDeviceProfileRotation, int rotationDays)
+    {
+        var trackedAccount = GetTrackedAccount(account);
 
+        trackedAccount.DeviceProfileDynamicEnabled = dynamicEnabled;
+        trackedAccount.IsDeviceProfileRotation     = isDeviceProfileRotation;
+        trackedAccount.DeviceProfileRotationDays   = NormalizeDeviceProfileRotationDays(rotationDays);
+
+        Save(trackedAccount);
+    }
+
+    /// <summary>
+    /// 保存账号使用的设备预设选择
+    /// </summary>
+    /// <param name="account">目标账号</param>
+    /// <param name="snapshot">设备快照</param>
+    /// <param name="generatedUtcTicks">生成时间戳</param>
+    /// <param name="remark">备注</param>
+    /// <returns>实际保存的预设</returns>
+    public DeviceProfilePreset SaveDeviceProfileSelection(XIVAccount account, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark)
+    {
+        var trackedAccount = GetTrackedAccount(account);
+        var preset         = ApplyDeviceProfileSelection(trackedAccount, snapshot, generatedUtcTicks, remark);
+        Save(trackedAccount);
+        return preset;
+    }
+
+    /// <summary>
+    /// 将设备快照应用到账号，但不直接保存
+    /// </summary>
+    /// <param name="account">目标账号</param>
+    /// <param name="snapshot">设备快照</param>
+    /// <param name="generatedUtcTicks">生成时间戳</param>
+    /// <param name="remark">备注</param>
+    /// <returns>应用后的预设</returns>
+    public DeviceProfilePreset ApplyDeviceProfileSelection(XIVAccount account, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark) =>
+        AssignPresetToAccount(account, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
+
+    /// <summary>
+    /// 保存共享设备预设选择
+    /// </summary>
+    /// <param name="snapshot">设备快照</param>
+    /// <param name="generatedUtcTicks">生成时间戳</param>
+    /// <param name="remark">备注</param>
+    /// <returns>实际保存的预设</returns>
+    public DeviceProfilePreset SaveSharedDeviceProfileSelection(DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark)
+    {
+        var state  = GetDeviceProfilePresetStoreState();
+        var result = FindOrCreatePreset(state, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
+
+        PersistDeviceProfilePresetStoreState
+        (
+            new DeviceProfilePresetStoreState
+            {
+                Version        = state.Version,
+                SharedPresetId = result.Preset.Id,
+                Presets        = result.State.Presets
+            }
+        );
+
+        return result.Preset;
+    }
+
+    /// <summary>
+    /// 将解析后的设备配置回写到账号
+    /// </summary>
+    /// <param name="account">目标账号</param>
+    /// <param name="resolvedDeviceProfile">解析结果</param>
+    public static void ApplyResolvedDeviceProfile(XIVAccount account, ResolvedDeviceProfile resolvedDeviceProfile)
+    {
+        account.DeviceProfileDynamicEnabled = resolvedDeviceProfile.DynamicEnabled;
+        account.IsDeviceProfileRotation     = resolvedDeviceProfile.IsRotationEnabled;
+        account.DeviceProfileRotationDays   = NormalizeDeviceProfileRotationDays(resolvedDeviceProfile.RotationDays);
+
+        if (!resolvedDeviceProfile.DynamicEnabled)
+            return;
+
+        ClearLegacyDeviceProfileSnapshot(account);
+        account.DeviceProfilePresetId              = resolvedDeviceProfile.PresetId ?? string.Empty;
+        account.DeviceProfileLastGeneratedUtcTicks = resolvedDeviceProfile.LastGeneratedUtcTicks;
+    }
+
+    /// <summary>
+    /// 删除账号并清理关联数据
+    /// </summary>
+    /// <param name="account">待删除账号</param>
+    public void RemoveAccount(XIVAccount account)
+    {
+        account.SdoPassword       = string.Empty;
+        account.WeGameTokenSecret = null;
+        ClearUnavailableSecrets(account.ID);
+        Accounts.Remove(account);
+
+        if (string.Equals(setting.CurrentAccountId, account.ID, StringComparison.Ordinal))
+            setting.CurrentAccountId = string.Empty;
+
+        AccountSwitcherEntry.RemoveCustomProfileImage(account);
+
+        var profileIconPath = Path.Combine
+        (
+            Paths.RoamingPath,
+            "profileIcons",
+            $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(account.ID)))}.ico"
+        );
+        if (File.Exists(profileIconPath))
+            File.Delete(profileIconPath);
+
+        if (!string.IsNullOrWhiteSpace(account.DeviceProfilePresetId))
+        {
+            var state = GetDeviceProfilePresetStoreState();
+
+            if (!string.Equals(state.SharedPresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)
+                && Accounts.All(existing => !string.Equals(existing.DeviceProfilePresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)))
+            {
+                var presets = state.Presets
+                                   .Where(preset => !string.Equals(preset.Id, account.DeviceProfilePresetId, StringComparison.Ordinal))
+                                   .ToList();
+
+                PersistDeviceProfilePresetStoreState
+                (
+                    new DeviceProfilePresetStoreState
+                    {
+                        Version        = state.Version,
+                        SharedPresetId = state.SharedPresetId,
+                        Presets        = presets
+                    }
+                );
+            }
+        }
+
+        Database.RunInTransaction
+        (() =>
+            {
+                var record = Database.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
+                if (record != null)
+                    Database.Delete(record);
+            }
+        );
+    }
+
+    /// <summary>
+    /// 清空当前账号选择
+    /// </summary>
+    public void ClearCurrentAccount() =>
+        setting.CurrentAccountId = string.Empty;
+
+    /// <summary>
+    /// 获取凭据类型显示名称
+    /// </summary>
+    /// <param name="type">凭据类型</param>
+    /// <returns>显示名称</returns>
+    public static string GetCredTypeDisplayName(CredType type) =>
+        type switch
+        {
+            CredType.NoEncryption       => "无加密",
+            CredType.WindowsCredManager => "系统凭据管理器",
+            CredType.WindowsHello       => "Windows Hello",
+            _                           => type.ToString()
+        };
+    
     private ResolvedDeviceProfile ResolveDeviceProfile(DeviceProfilePreset sharedPreset, XIVAccount? account, bool saveChanges)
     {
         if (account == null)
@@ -387,126 +700,6 @@ public class AccountManager
             account.DeviceProfileLastGeneratedUtcTicks
         );
     }
-
-    public void UpdateDeviceProfileSettings(XIVAccount account, bool dynamicEnabled, bool isDeviceProfileRotation, int rotationDays)
-    {
-        var trackedAccount = GetTrackedAccount(account);
-
-        trackedAccount.DeviceProfileDynamicEnabled = dynamicEnabled;
-        trackedAccount.IsDeviceProfileRotation     = isDeviceProfileRotation;
-        trackedAccount.DeviceProfileRotationDays   = NormalizeDeviceProfileRotationDays(rotationDays);
-
-        Save(trackedAccount);
-    }
-
-    public DeviceProfilePreset SaveDeviceProfileSelection(XIVAccount account, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark)
-    {
-        var trackedAccount = GetTrackedAccount(account);
-        var preset         = ApplyDeviceProfileSelection(trackedAccount, snapshot, generatedUtcTicks, remark);
-        Save(trackedAccount);
-        return preset;
-    }
-
-    public DeviceProfilePreset ApplyDeviceProfileSelection(XIVAccount account, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark) =>
-        AssignPresetToAccount(account, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
-
-    public DeviceProfilePreset SaveSharedDeviceProfileSelection(DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark)
-    {
-        var state  = GetDeviceProfilePresetStoreState();
-        var result = FindOrCreatePreset(state, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
-
-        PersistDeviceProfilePresetStoreState
-        (
-            new DeviceProfilePresetStoreState
-            {
-                Version        = state.Version,
-                SharedPresetId = result.Preset.Id,
-                Presets        = result.State.Presets
-            }
-        );
-
-        return result.Preset;
-    }
-
-    public static void ApplyResolvedDeviceProfile(XIVAccount account, ResolvedDeviceProfile resolvedDeviceProfile)
-    {
-        account.DeviceProfileDynamicEnabled = resolvedDeviceProfile.DynamicEnabled;
-        account.IsDeviceProfileRotation     = resolvedDeviceProfile.IsRotationEnabled;
-        account.DeviceProfileRotationDays   = NormalizeDeviceProfileRotationDays(resolvedDeviceProfile.RotationDays);
-
-        if (!resolvedDeviceProfile.DynamicEnabled)
-            return;
-
-        ClearLegacyDeviceProfileSnapshot(account);
-        account.DeviceProfilePresetId              = resolvedDeviceProfile.PresetId ?? string.Empty;
-        account.DeviceProfileLastGeneratedUtcTicks = resolvedDeviceProfile.LastGeneratedUtcTicks;
-    }
-
-    public void RemoveAccount(XIVAccount account)
-    {
-        account.SdoPassword       = string.Empty;
-        account.WeGameTokenSecret = null;
-        ClearUnavailableSecrets(account.ID);
-        Accounts.Remove(account);
-
-        if (string.Equals(setting.CurrentAccountId, account.ID, StringComparison.Ordinal))
-            setting.CurrentAccountId = string.Empty;
-
-        AccountSwitcherEntry.RemoveCustomProfileImage(account);
-
-        var profileIconPath = Path.Combine
-        (
-            Paths.RoamingPath,
-            "profileIcons",
-            $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(account.ID)))}.ico"
-        );
-        if (File.Exists(profileIconPath))
-            File.Delete(profileIconPath);
-
-        if (!string.IsNullOrWhiteSpace(account.DeviceProfilePresetId))
-        {
-            var state = GetDeviceProfilePresetStoreState();
-
-            if (!string.Equals(state.SharedPresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)
-                && Accounts.All(existing => !string.Equals(existing.DeviceProfilePresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)))
-            {
-                var presets = state.Presets
-                                   .Where(preset => !string.Equals(preset.Id, account.DeviceProfilePresetId, StringComparison.Ordinal))
-                                   .ToList();
-
-                PersistDeviceProfilePresetStoreState
-                (
-                    new DeviceProfilePresetStoreState
-                    {
-                        Version        = state.Version,
-                        SharedPresetId = state.SharedPresetId,
-                        Presets        = presets
-                    }
-                );
-            }
-        }
-
-        Database.RunInTransaction
-        (() =>
-            {
-                var record = Database.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
-                if (record != null)
-                    Database.Delete(record);
-            }
-        );
-    }
-
-    public void ClearCurrentAccount() =>
-        setting.CurrentAccountId = string.Empty;
-
-    public static string GetCredTypeDisplayName(CredType type) =>
-        type switch
-        {
-            CredType.NoEncryption       => "无加密",
-            CredType.WindowsCredManager => "系统凭据管理器",
-            CredType.WindowsHello       => "Windows Hello",
-            _                           => type.ToString()
-        };
 
     private async Task<CredTypeApplyResult> ApplyStartupFallbackAsync(CredType requestedType)
     {
@@ -576,72 +769,7 @@ public class AccountManager
 
     private void Accounts_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         Save();
-
-    #region SaveLoad
-
-    private static readonly string DatabasePath = Path.Combine(Paths.RoamingPath, "accounts.db");
-
-    public void Save(XIVAccount account)
-    {
-        Database.RunInTransaction
-        (() =>
-            {
-                var record = Database.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
-
-                if (record == null)
-                    Database.Insert(account);
-                else
-                    Database.Update(account);
-            }
-        );
-    }
-
-    public void Save()
-    {
-        foreach (var item in Accounts)
-            Save(item);
-    }
-
-    public void SetupDb()
-    {
-        Database = new SQLiteConnection
-        (
-            DatabasePath,
-            SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.FullMutex
-        );
-        Database.CreateTable<XIVAccount>();
-        MigrateAccountsTable();
-    }
-
-    public void Load()
-    {
-        try
-        {
-            SetupDb();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to load VFS database, starting fresh");
-
-            if (File.Exists(DatabasePath))
-                File.Delete(DatabasePath);
-
-            SetupDb();
-        }
-
-        Accounts.Clear();
-        foreach (var account in Database.Table<XIVAccount>())
-            Accounts.Add(account);
-
-        foreach (var account in Accounts.ToArray())
-        {
-            if (string.IsNullOrWhiteSpace(account.UserName) || string.IsNullOrWhiteSpace(account.ID))
-                Accounts.Remove(account);
-        }
-
-        MigrateLegacyDeviceProfiles();
-    }
-
+    
     private XIVAccount GetTrackedAccount(XIVAccount account) =>
         Accounts.FirstOrDefault(existing => existing.ID == account.ID) ?? account;
 
@@ -1089,6 +1217,4 @@ public class AccountManager
 
     private static string NormalizePresetRemark(string? remark) =>
         remark?.Trim() ?? string.Empty;
-
-    #endregion
 }
