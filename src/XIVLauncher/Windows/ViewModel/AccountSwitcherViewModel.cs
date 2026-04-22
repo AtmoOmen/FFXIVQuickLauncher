@@ -59,19 +59,22 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     public bool IsSelectedAccountPasswordNotSaved
     {
-        get => ActiveEntry != null && !ActiveEntry.Account.AutoLogin;
+        get => ActiveEntry != null && !HasSavedSecret(ActiveEntry.Account);
         set
         {
             var activeEntry = ActiveEntry;
             if (activeEntry == null)
                 return;
 
-            var selectedAccountId = SelectedEntry?.Account.Id;
+            var selectedAccountId = SelectedEntry?.Account.ID;
             var account = FindTrackedAccount(activeEntry.Account);
             account.AutoLogin = !value;
 
             if (value)
-                account.Password = string.Empty;
+            {
+                account.SdoPassword = string.Empty;
+                account.WeGameTokenSecret = null;
+            }
 
             _accountManager.Save();
             RefreshEntries(selectedAccountId);
@@ -102,7 +105,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
     public void RefreshEntries(string? selectedAccountId = null)
     {
         ContextEntry = null;
-        selectedAccountId ??= SelectedEntry?.Account.Id;
+        selectedAccountId ??= SelectedEntry?.Account.ID;
         if (string.IsNullOrWhiteSpace(selectedAccountId) && _accountManager.HasCurrentAccountSelection)
             selectedAccountId = _accountManager.CurrentAccountId;
 
@@ -126,7 +129,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
         SelectedEntry = string.IsNullOrWhiteSpace(selectedAccountId)
                             ? null
-                            : Entries.FirstOrDefault(entry => entry.Account.Id == selectedAccountId);
+                            : Entries.FirstOrDefault(entry => entry.Account.ID == selectedAccountId);
     }
 
     public XIVAccount? SelectCurrentAccount() =>
@@ -166,7 +169,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
                 launcherPath,
                 $"使用“{activeEntry.Account.UserName}”账号启动 XIVLauncher。",
                 iconPath,
-                $"--account={activeEntry.Account.Id}"
+                $"--account={activeEntry.Account.ID}"
             );
         }
         catch (Exception ex)
@@ -187,9 +190,9 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         if (activeEntry == null)
             return;
 
-        var selectedAccountId = SelectedEntry?.Account.Id;
+        var selectedAccountId = SelectedEntry?.Account.ID;
         _accountManager.RemoveAccount(activeEntry.Account);
-        RefreshEntries(selectedAccountId == activeEntry.Account.Id ? null : selectedAccountId);
+        RefreshEntries(selectedAccountId == activeEntry.Account.ID ? null : selectedAccountId);
     }
 
     public void SetSelectedProfilePicture()
@@ -212,7 +215,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
         _accountManager.Save();
 
-        RefreshEntries(SelectedEntry?.Account.Id);
+        RefreshEntries(SelectedEntry?.Account.ID);
     }
 
     public void SetSelectedNote()
@@ -237,8 +240,16 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         account.UserDefinedName = string.IsNullOrWhiteSpace(note) ? null! : note;
         _accountManager.Save();
 
-        RefreshEntries(SelectedEntry?.Account.Id);
+        RefreshEntries(SelectedEntry?.Account.ID);
     }
+
+    private static bool HasSavedSecret(XIVAccount account) =>
+        account.AutoLogin
+        || !string.IsNullOrWhiteSpace(account.SdoPassword)
+        || !string.IsNullOrWhiteSpace(account.WeGameTokenSecret)
+        || !string.IsNullOrWhiteSpace(account.SdoAutoLoginSessionKey)
+        || !string.IsNullOrWhiteSpace(account.WeGameSIDSecret)
+        || !string.IsNullOrWhiteSpace(account.WeGameSessionID);
 
     public void ConfigureSelectedDeviceProfile()
     {
@@ -250,7 +261,7 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         _requestClose?.Invoke();
         var changed = _dialogService.ShowAccountDeviceProfileSettings(account, _accountManager);
         if (changed)
-            RefreshEntries(SelectedEntry?.Account.Id);
+            RefreshEntries(SelectedEntry?.Account.ID);
     }
 
     private static Bitmap BitmapSourceToBitmap(BitmapSource bitmapSource)
@@ -319,12 +330,12 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
         var iconDirectory = Path.Combine(Paths.RoamingPath, "profileIcons");
         Directory.CreateDirectory(iconDirectory);
 
-        var iconFileName = $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(entry.Account.Id)))}.ico";
+        var iconFileName = $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(entry.Account.ID)))}.ico";
         var iconPath = Path.Combine(iconDirectory, iconFileName);
         SaveAsIcon(BitmapSourceToBitmap(bitmapSource), iconPath);
         return iconPath;
     }
 
     private XIVAccount FindTrackedAccount(XIVAccount account) =>
-        _accountManager.Accounts.First(existing => existing.Id == account.Id);
+        _accountManager.Accounts.First(existing => existing.ID == account.ID);
 }

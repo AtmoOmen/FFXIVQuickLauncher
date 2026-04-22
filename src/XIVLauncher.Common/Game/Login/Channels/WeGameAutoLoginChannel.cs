@@ -3,12 +3,12 @@ using System.Threading.Tasks;
 
 namespace XIVLauncher.Common.Game.Login.Channels;
 
-public sealed class SIDLoginChannel
+public sealed class WeGameAutoLoginChannel
 (
     LoginChannelContext context
 ) : ILoginChannel
 {
-    public LoginType Type => LoginType.WeGameSID;
+    public LoginType Type => LoginType.WeGameAuto;
 
     public Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
@@ -18,7 +18,7 @@ public sealed class SIDLoginChannel
             SndaID       = request.Account,
             SessionID    = request.Secret,
             MaxExpansion = Constants.MaxExpansion,
-            LoginType    = LoginType.WeGameSID
+            LoginType    = LoginType.WeGameAuto
         };
 
         var result = new LoginResult

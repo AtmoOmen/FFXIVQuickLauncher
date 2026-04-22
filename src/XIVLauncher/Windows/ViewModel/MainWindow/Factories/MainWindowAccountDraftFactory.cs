@@ -9,8 +9,8 @@ public sealed class MainWindowAccountDraftFactory
     public static XIVAccount CreatePendingNewAccount(string loginAccount, string sndaId, XIVAccountType accountType, LoginArea? area) =>
         new()
         {
-            LoginAccount                = loginAccount,
-            SndaId                      = sndaId,
+            SdoLoginAccount             = loginAccount,
+            WeGameSndaID                = sndaId,
             AccountType                 = accountType,
             AreaName                    = area?.AreaName ?? string.Empty,
             DeviceProfilePresetId       = string.Empty,
@@ -22,8 +22,8 @@ public sealed class MainWindowAccountDraftFactory
     public static XIVAccount CreateIndependentDeviceProfileDraft(XIVAccount account) =>
         new()
         {
-            LoginAccount                       = account.LoginAccount,
-            SndaId                             = account.SndaId,
+            SdoLoginAccount                    = account.SdoLoginAccount,
+            WeGameSndaID                       = account.WeGameSndaID,
             AccountType                        = account.AccountType,
             AreaName                           = account.AreaName,
             UserDefinedName                    = account.UserDefinedName,

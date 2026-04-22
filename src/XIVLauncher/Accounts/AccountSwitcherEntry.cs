@@ -88,5 +88,5 @@ internal class AccountSwitcherEntry
         Path.Combine(Paths.RoamingPath, "profilePictures", "custom");
 
     private static string GetProfileImageFileKey(XIVAccount account) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(account.Id)));
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(account.ID)));
 }

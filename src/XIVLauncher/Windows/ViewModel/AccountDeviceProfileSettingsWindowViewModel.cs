@@ -170,7 +170,7 @@ internal sealed class AccountDeviceProfileSettingsWindowViewModel
 
     public void Load(XIVAccount targetAccount)
     {
-        account                       = accountManager.Accounts.First(existing => existing.Id == targetAccount.Id);
+        account                       = accountManager.Accounts.First(existing => existing.ID == targetAccount.ID);
         persistChangesToAccountManager = true;
 
         ApplyMode(false);

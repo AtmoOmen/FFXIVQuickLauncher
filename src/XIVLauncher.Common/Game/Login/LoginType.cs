@@ -20,14 +20,14 @@ public enum LoginType
     QRCode,
 
     /// <summary>
-    ///     WeGame 抓包登录
+    ///     WeGame 手动抓包登录
     /// </summary>
-    WeGameToken,
+    WeGameManual,
 
     /// <summary>
-    ///     WeGame SID 登录
+    ///     WeGame 自动读取登录
     /// </summary>
-    WeGameSID,
+    WeGameAuto,
 
     /// <summary>
     ///     自动登录
@@ -40,8 +40,7 @@ public static class LoginTypeExtensions
     public static XIVAccountType ToAccountType(this LoginType loginType) =>
         loginType switch
         {
-            LoginType.WeGameSID                                     => XIVAccountType.WeGameSID,
-            LoginType.WeGameToken                                   => XIVAccountType.WeGame,
+            LoginType.WeGameAuto or LoginType.WeGameManual          => XIVAccountType.WeGame,
             LoginType.Static or LoginType.Slide or LoginType.QRCode => XIVAccountType.Sdo,
             _                                                       => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
         };

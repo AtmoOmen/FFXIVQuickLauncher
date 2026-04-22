@@ -56,9 +56,9 @@ internal sealed class AccountProfileWindowViewModel : ViewModelBase
         AreaName           = $"大区: {account.AreaName}";
         AccountType = account.AccountType switch
         {
-            XIVAccountType.Sdo                                => "盛趣",
-            XIVAccountType.WeGame or XIVAccountType.WeGameSID => "WeGame",
-            _                                                 => "未知渠道"
+            XIVAccountType.Sdo    => "盛趣",
+            XIVAccountType.WeGame => "WeGame",
+            _                     => "未知渠道"
         };
 
         SelectedFilePath = AccountSwitcherEntry.TryGetCustomProfileImagePath(account, out var imagePath)

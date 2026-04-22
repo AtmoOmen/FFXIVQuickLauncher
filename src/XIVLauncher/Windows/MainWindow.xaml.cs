@@ -127,32 +127,49 @@ public partial class MainWindow
         {
             Log.Information("自动登录中...");
 
-            if (savedAccount.AccountType == XIVAccountType.WeGameSID)
+            if (savedAccount.AccountType == XIVAccountType.WeGame)
             {
-                Model.StartLogin
-                (
-                    LoginType.WeGameSID,
-                    savedAccount.UserName,
-                    string.Empty,
-                    Model.LoginPage.IsFastLogin,
-                    false,
-                    LoginAfterAction.Start
-                );
+                if (!string.IsNullOrWhiteSpace(savedAccount.WeGameTokenSecret))
+                {
+                    Model.StartLogin
+                    (
+                        LoginType.WeGameManual,
+                        savedAccount.UserName,
+                        string.Empty,
+                        Model.LoginPage.IsFastLogin,
+                        false,
+                        LoginAfterAction.Start
+                    );
+                    return;
+                }
+
+                if (!string.IsNullOrWhiteSpace(savedAccount.WeGameSIDSecret))
+                {
+                    Model.StartLogin
+                    (
+                        LoginType.WeGameAuto,
+                        savedAccount.UserName,
+                        string.Empty,
+                        Model.LoginPage.IsFastLogin,
+                        false,
+                        LoginAfterAction.Start
+                    );
+                    return;
+                }
             }
             else
             {
                 Model.StartLogin
                 (
                     LoginType.AutoLoginSession,
-                    savedAccount.LoginAccount,
-                    savedAccount.AutoLoginSessionKey,
+                    savedAccount.SdoLoginAccount,
+                    string.Empty,
                     Model.LoginPage.IsFastLogin,
                     Model.LoginPage.IsReadWegameInfo,
                     LoginAfterAction.Start
                 );
+                return;
             }
-
-            return;
         }
 
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || bool.Parse(Environment.GetEnvironmentVariable("XL_NOAUTOLOGIN") ?? "false"))
@@ -440,13 +457,13 @@ public partial class MainWindow
                 case XIVAccountType.Sdo:
                     var nextLoginType = currentLoginType is LoginType.Static or LoginType.Slide
                                             ? currentLoginType
-                                            : string.IsNullOrWhiteSpace(account.Password)
+                    : string.IsNullOrWhiteSpace(account.SdoPassword)
                                                 ? LoginType.Slide
                                                 : LoginType.Static;
 
                     Model.LoginPage.SelectLoginType(nextLoginType);
 
-                    if (nextLoginType == LoginType.Static && !string.IsNullOrWhiteSpace(account.Password))
+                    if (nextLoginType == LoginType.Static && !string.IsNullOrWhiteSpace(account.SdoPassword))
                     {
                         if (!hasUnavailableSecrets)
                         {
@@ -458,18 +475,17 @@ public partial class MainWindow
                     break;
 
                 case XIVAccountType.WeGame:
-                    if (currentLoginType != LoginType.WeGameToken)
-                        Model.LoginPage.SelectLoginType(LoginType.WeGameToken);
+                    var nextWeGameLoginType = !string.IsNullOrWhiteSpace(account.WeGameTokenSecret)
+                                                  ? LoginType.WeGameManual
+                                                  : LoginType.WeGameAuto;
 
-                    if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.AutoLoginSessionKey))
+                    if (currentLoginType != nextWeGameLoginType)
+                        Model.LoginPage.SelectLoginType(nextWeGameLoginType);
+
+                    if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.WeGameTokenSecret))
                         LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
-                    break;
-
-                case XIVAccountType.WeGameSID:
-                    if (currentLoginType != LoginType.WeGameSID)
-                        Model.LoginPage.SelectLoginType(LoginType.WeGameSID);
-
-                    Model.LoginPage.IsReadWegameInfo = false;
+                    else if (nextWeGameLoginType == LoginType.WeGameAuto)
+                        Model.LoginPage.IsReadWegameInfo = false;
                     break;
             }
 

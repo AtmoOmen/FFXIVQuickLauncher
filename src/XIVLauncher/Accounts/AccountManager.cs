@@ -26,39 +26,41 @@ namespace XIVLauncher.Accounts;
 
 public class AccountManager
 {
-    public const int DEFAULT_DEVICE_PROFILE_ROTATION_DAYS = 7;
-    private const CredType DEFAULT_CRED_TYPE = CredType.WindowsCredManager;
-
-    public ObservableCollection<XIVAccount> Accounts;
-
-    public XIVAccount CurrentAccount
+    public XIVAccount? CurrentAccount
     {
-        get => Accounts.Count > 1 ? Accounts.FirstOrDefault(a => a.Id == _setting.CurrentAccountId) : Accounts.FirstOrDefault();
-        set => _setting.CurrentAccountId = value.Id;
+        get => Accounts.Count > 1 ? Accounts.FirstOrDefault(a => a.ID == setting.CurrentAccountId)! : Accounts.FirstOrDefault()!;
+        set => setting.CurrentAccountId = value?.ID!;
     }
 
     public ICredProvider CredProvider { get; private set; } = null!;
 
     public CredType CurrentCredType { get; private set; } = DEFAULT_CRED_TYPE;
 
-    public string CurrentAccountId => _setting.CurrentAccountId;
+    public string CurrentAccountId => setting.CurrentAccountId;
 
-    public bool HasCurrentAccountSelection => !string.IsNullOrWhiteSpace(_setting.CurrentAccountId);
+    public bool HasCurrentAccountSelection => !string.IsNullOrWhiteSpace(setting.CurrentAccountId);
 
     public bool HasUnavailableSavedSecrets => unavailableSavedSecretAccountIds.Count != 0;
 
-    private static readonly string                DeviceProfilePresetStorePath        = Path.Combine(Paths.RoamingPath, "deviceProfilePresets.json");
-    private static readonly string                LegacySharedDeviceProfilePath       = Path.Combine(Paths.RoamingPath, "sharedDeviceProfile.json");
+    public const  int      DEFAULT_DEVICE_PROFILE_ROTATION_DAYS = 7;
+    private const CredType DEFAULT_CRED_TYPE                    = CredType.WindowsCredManager;
+
+    private static readonly string DeviceProfilePresetStorePath  = Path.Combine(Paths.RoamingPath, "deviceProfilePresets.json");
+    private static readonly string LegacySharedDeviceProfilePath = Path.Combine(Paths.RoamingPath, "sharedDeviceProfile.json");
+
     private static readonly JsonSerializerOptions DeviceProfilePresetStoreJsonOptions = new() { WriteIndented = true };
-    private static readonly Lock                  DeviceProfilePresetStoreSyncRoot    = new();
-    private readonly        object                syncRoot                            = new();
 
-    private readonly ILauncherSettingsV3 _setting;
+    public ObservableCollection<XIVAccount> Accounts;
 
-    private readonly CredData CredData;
+    private static readonly Lock DeviceProfilePresetStoreSyncRoot = new();
+    private readonly        Lock syncRoot                         = new();
 
-    private static DeviceProfilePresetStoreState? deviceProfilePresetStore;
-    private readonly HashSet<string> unavailableSavedSecretAccountIds = [];
+    private readonly ILauncherSettingsV3 setting;
+
+    private readonly CredData credData;
+
+    private static   DeviceProfilePresetStoreState? deviceProfilePresetStore;
+    private readonly HashSet<string>                unavailableSavedSecretAccountIds = [];
 
     private SQLiteConnection? db;
 
@@ -66,10 +68,10 @@ public class AccountManager
     {
         Load();
 
-        _setting = setting;
+        this.setting = setting;
 
         var credPath = Path.Combine(Paths.RoamingPath, "cred.json");
-        CredData = new CredData("XIVLauncherCN", credPath);
+        credData = new CredData("XIVLauncherCN", credPath);
 
         Accounts.CollectionChanged += Accounts_CollectionChanged;
     }
@@ -77,7 +79,7 @@ public class AccountManager
     public static int NormalizeDeviceProfileRotationDays(int rotationDays) =>
         rotationDays < 1 ? DEFAULT_DEVICE_PROFILE_ROTATION_DAYS : rotationDays;
 
-    public async Task<string> Encrypt(string text)
+    public async Task<string?> Encrypt(string text)
     {
         try
         {
@@ -210,59 +212,72 @@ public class AccountManager
             {
                 if (HasUnavailableSecrets(item))
                 {
-                    Log.Warning("账号 {AccountId} 存在当前会话不可读的旧密文，已跳过迁移", item.Id);
+                    Log.Warning("账号 {AccountID} 存在当前会话不可读的旧密文，已跳过迁移", item.ID);
                     continue;
                 }
 
-                if (!string.IsNullOrWhiteSpace(item.Password))
+                if (!string.IsNullOrWhiteSpace(item.SdoPassword))
                 {
                     try
                     {
-                        var password = await oldCred.Decrypt(item.Password);
-                        item.Password = await newCred.Encrypt(password);
+                        var password = await oldCred.Decrypt(item.SdoPassword);
+                        item.SdoPassword = await newCred.Encrypt(password);
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "迁移账号 {AccountId} 的登录密码失败", item.Id);
+                        Log.Error(ex, "迁移账号 {AccountID} 的登录密码失败", item.ID);
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(item.AutoLoginSessionKey))
+                if (!string.IsNullOrWhiteSpace(item.SdoAutoLoginSessionKey))
                 {
                     try
                     {
-                        var sessionKey = await oldCred.Decrypt(item.AutoLoginSessionKey);
-                        item.AutoLoginSessionKey = await newCred.Encrypt(sessionKey);
+                        var sessionKey = await oldCred.Decrypt(item.SdoAutoLoginSessionKey);
+                        item.SdoAutoLoginSessionKey = await newCred.Encrypt(sessionKey);
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "迁移账号 {AccountId} 的自动登录密钥失败", item.Id);
+                        Log.Error(ex, "迁移账号 {AccountID} 的自动登录密钥失败", item.ID);
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(item.TestSID))
+                if (!string.IsNullOrWhiteSpace(item.WeGameSIDSecret))
                 {
                     try
                     {
-                        var testSid = await oldCred.Decrypt(item.TestSID);
-                        item.TestSID = await newCred.Encrypt(testSid);
+                        var testSid = await oldCred.Decrypt(item.WeGameSIDSecret);
+                        item.WeGameSIDSecret = await newCred.Encrypt(testSid);
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "迁移账号 {AccountId} 的 WeGame SID 失败", item.Id);
+                        Log.Error(ex, "迁移账号 {AccountID} 的 WeGame SID 失败", item.ID);
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(item.NSessionId))
+                if (!string.IsNullOrWhiteSpace(item.WeGameTokenSecret))
                 {
                     try
                     {
-                        var nSessionId = await oldCred.Decrypt(item.NSessionId);
-                        item.NSessionId = await newCred.Encrypt(nSessionId);
+                        var weGameTokenSecret = await oldCred.Decrypt(item.WeGameTokenSecret);
+                        item.WeGameTokenSecret = await newCred.Encrypt(weGameTokenSecret);
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "迁移账号 {AccountId} 的 NSessionId 失败", item.Id);
+                        Log.Error(ex, "迁移账号 {AccountID} 的 WeGame Token 失败", item.ID);
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.WeGameSessionID))
+                {
+                    try
+                    {
+                        var gameSessionID = await oldCred.Decrypt(item.WeGameSessionID);
+                        item.WeGameSessionID = await newCred.Encrypt(gameSessionID);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "迁移账号 {AccountID} 的游戏会话 ID 失败", item.ID);
                     }
                 }
             }
@@ -302,27 +317,28 @@ public class AccountManager
     }
 
     public bool HasUnavailableSecrets(XIVAccount? account) =>
-        account != null && unavailableSavedSecretAccountIds.Contains(account.Id);
+        account != null && unavailableSavedSecretAccountIds.Contains(account.ID);
 
     public void AddAccount(XIVAccount account)
     {
-        if (account.UserName.IsNullOrEmpty() || account.Id.IsNullOrEmpty())
-            throw new Exception($"UserName:{account.UserName} Id:{account.Id} 不能为空");
+        if (account.UserName.IsNullOrEmpty() || account.ID.IsNullOrEmpty())
+            throw new Exception($"UserName:{account.UserName} ID:{account.ID} 不能为空");
 
         var existingAccount = Accounts.FirstOrDefault(a => a.Equals(account));
 
-        Log.Verbose($"existingAccount: {existingAccount?.Id}");
+        Log.Verbose($"existingAccount: {existingAccount?.ID}");
 
         if (existingAccount != null)
         {
             Log.Verbose("Updating account...");
-            existingAccount.Id                                 = account.Id;
-            existingAccount.Password                           = account.Password;
+            existingAccount.ID                                 = account.ID;
+            existingAccount.SdoPassword                        = account.SdoPassword;
             existingAccount.AutoLogin                          = account.AutoLogin;
-            existingAccount.AutoLoginSessionKey                = account.AutoLoginSessionKey;
-            existingAccount.TestSID                            = account.TestSID;
+            existingAccount.SdoAutoLoginSessionKey             = account.SdoAutoLoginSessionKey;
+            existingAccount.WeGameTokenSecret                  = account.WeGameTokenSecret;
+            existingAccount.WeGameSIDSecret                    = account.WeGameSIDSecret;
             existingAccount.AreaName                           = account.AreaName;
-            existingAccount.NSessionId                         = account.NSessionId;
+            existingAccount.WeGameSessionID                    = account.WeGameSessionID;
             existingAccount.DeviceProfileDeviceId              = account.DeviceProfileDeviceId;
             existingAccount.DeviceProfileMacAddress            = account.DeviceProfileMacAddress;
             existingAccount.DeviceProfileHostName              = account.DeviceProfileHostName;
@@ -335,7 +351,7 @@ public class AccountManager
         else
             Accounts.Add(account);
 
-        ClearUnavailableSecrets(account.Id);
+        ClearUnavailableSecrets(account.ID);
     }
 
     public XIVAccount? FindAccount(string? userName, XIVAccountType accountType)
@@ -365,9 +381,7 @@ public class AccountManager
             return null;
 
         lock (DeviceProfilePresetStoreSyncRoot)
-        {
             return FindPresetById(GetDeviceProfilePresetStoreState(), presetId);
-        }
     }
 
     public string GetSharedDeviceProfilePresetId() =>
@@ -376,15 +390,13 @@ public class AccountManager
     public DeviceProfilePreset GetSharedDeviceProfilePreset()
     {
         lock (DeviceProfilePresetStoreSyncRoot)
-        {
             return GetSharedDeviceProfilePreset(GetDeviceProfilePresetStoreState());
-        }
     }
 
     public ResolvedDeviceProfile ResolveDeviceProfile(string? userName, XIVAccountType accountType)
     {
         var sharedPreset = GetSharedDeviceProfilePreset();
-        var account = FindAccount(userName, accountType);
+        var account      = FindAccount(userName, accountType);
 
         return ResolveDeviceProfile(sharedPreset, account, false);
     }
@@ -393,9 +405,9 @@ public class AccountManager
     {
         ArgumentNullException.ThrowIfNull(account);
 
-        var sharedPreset    = GetSharedDeviceProfilePreset();
-        var trackedAccount  = GetTrackedAccount(account);
-        var isTrackedAccount = Accounts.Any(existing => existing.Id == trackedAccount.Id);
+        var sharedPreset     = GetSharedDeviceProfilePreset();
+        var trackedAccount   = GetTrackedAccount(account);
+        var isTrackedAccount = Accounts.Any(existing => existing.ID == trackedAccount.ID);
 
         return ResolveDeviceProfile(sharedPreset, trackedAccount, isTrackedAccount);
     }
@@ -403,6 +415,7 @@ public class AccountManager
     private ResolvedDeviceProfile ResolveDeviceProfile(DeviceProfilePreset sharedPreset, XIVAccount? account, bool saveChanges)
     {
         if (account == null)
+        {
             return new ResolvedDeviceProfile
             (
                 sharedPreset.ToSnapshot(),
@@ -412,6 +425,7 @@ public class AccountManager
                 DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
                 sharedPreset.GeneratedUtcTicks
             );
+        }
 
         var isChanged = NormalizeDeviceProfileSettings(account) || MigrateLegacyDeviceProfile(account);
 
@@ -431,7 +445,7 @@ public class AccountManager
             );
         }
 
-        var nowUtc       = DateTimeOffset.UtcNow;
+        var nowUtc        = DateTimeOffset.UtcNow;
         var accountPreset = EnsureAccountDeviceProfilePreset(account, sharedPreset, nowUtc, ref isChanged);
 
         if (ShouldRotateDeviceProfile(account, nowUtc))
@@ -474,7 +488,7 @@ public class AccountManager
     public DeviceProfilePreset SaveDeviceProfileSelection(XIVAccount account, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark)
     {
         var trackedAccount = GetTrackedAccount(account);
-        var preset = ApplyDeviceProfileSelection(trackedAccount, snapshot, generatedUtcTicks, remark);
+        var preset         = ApplyDeviceProfileSelection(trackedAccount, snapshot, generatedUtcTicks, remark);
         Save(trackedAccount);
         return preset;
     }
@@ -493,9 +507,9 @@ public class AccountManager
             {
                 var updatedState = new DeviceProfilePresetStoreState
                 {
-                    Version      = state.Version,
+                    Version        = state.Version,
                     SharedPresetId = preset.Id,
-                    Presets      = state.Presets
+                    Presets        = state.Presets
                 };
                 PersistDeviceProfilePresetStoreState(updatedState);
                 return preset;
@@ -522,12 +536,13 @@ public class AccountManager
 
     public void RemoveAccount(XIVAccount account)
     {
-        account.Password = string.Empty;
-        ClearUnavailableSecrets(account.Id);
+        account.SdoPassword       = string.Empty;
+        account.WeGameTokenSecret = null;
+        ClearUnavailableSecrets(account.ID);
         Accounts.Remove(account);
 
-        if (string.Equals(_setting.CurrentAccountId, account.Id, StringComparison.Ordinal))
-            _setting.CurrentAccountId = string.Empty;
+        if (string.Equals(setting.CurrentAccountId, account.ID, StringComparison.Ordinal))
+            setting.CurrentAccountId = string.Empty;
 
         AccountSwitcherEntry.RemoveCustomProfileImage(account);
 
@@ -535,7 +550,7 @@ public class AccountManager
         (
             Paths.RoamingPath,
             "profileIcons",
-            $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(account.Id)))}.ico"
+            $"{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(account.ID)))}.ico"
         );
         if (File.Exists(profileIconPath))
             File.Delete(profileIconPath);
@@ -545,6 +560,7 @@ public class AccountManager
             lock (DeviceProfilePresetStoreSyncRoot)
             {
                 var state = GetDeviceProfilePresetStoreState();
+
                 if (!string.Equals(state.SharedPresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)
                     && Accounts.All(existing => !string.Equals(existing.DeviceProfilePresetId, account.DeviceProfilePresetId, StringComparison.Ordinal)))
                 {
@@ -556,11 +572,10 @@ public class AccountManager
 
         lock (syncRoot)
         {
-
             db.RunInTransaction
             (() =>
                 {
-                    var record = db.Table<XIVAccount>().FirstOrDefault(a => a.Id == account.Id);
+                    var record = db.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
                     if (record != null)
                         db.Delete(record);
                 }
@@ -569,7 +584,7 @@ public class AccountManager
     }
 
     public void ClearCurrentAccount() =>
-        _setting.CurrentAccountId = string.Empty;
+        setting.CurrentAccountId = string.Empty;
 
     public static string GetCredTypeDisplayName(CredType type) =>
         type switch
@@ -584,8 +599,8 @@ public class AccountManager
     {
         const CredType fallbackType = DEFAULT_CRED_TYPE;
 
-        var fallbackCred       = GetCredProvider(fallbackType);
-        var fallbackSupported  = await fallbackCred.IsSupported();
+        var fallbackCred      = GetCredProvider(fallbackType);
+        var fallbackSupported = await fallbackCred.IsSupported();
         if (!fallbackSupported)
             throw new InvalidOperationException($"默认凭据类型 {fallbackType} 当前不可用");
 
@@ -593,7 +608,7 @@ public class AccountManager
         CurrentCredType = fallbackType;
         MarkUnavailableSecretsFromExistingAccounts();
 
-        var userMessage = "当前设备不支持 Windows Hello，已自动切换为系统凭据管理器，并关闭自动登录。此前保存的密码或自动登录凭据需要重新输入后再保存。";
+        const string USER_MESSAGE = "当前设备不支持 Windows Hello，已自动切换为系统凭据管理器，并关闭自动登录。此前保存的密码或自动登录凭据需要重新输入后再保存。";
 
         Log.Warning
         (
@@ -607,10 +622,10 @@ public class AccountManager
             true,
             requestedType,
             fallbackType,
-            WasFallbackApplied: true,
-            ShouldDisableAutoLogin: true,
-            HasUnavailableSavedSecrets: HasUnavailableSavedSecrets,
-            UserMessage: userMessage
+            true,
+            true,
+            HasUnavailableSavedSecrets,
+            USER_MESSAGE
         );
     }
 
@@ -619,7 +634,7 @@ public class AccountManager
         unavailableSavedSecretAccountIds.Clear();
 
         foreach (var account in Accounts.Where(HasStoredSecrets))
-            unavailableSavedSecretAccountIds.Add(account.Id);
+            unavailableSavedSecretAccountIds.Add(account.ID);
     }
 
     private void ClearUnavailableSecrets(string? accountId)
@@ -631,21 +646,22 @@ public class AccountManager
     }
 
     private static bool HasStoredSecrets(XIVAccount account) =>
-        !string.IsNullOrWhiteSpace(account.Password)
-        || !string.IsNullOrWhiteSpace(account.AutoLoginSessionKey)
-        || !string.IsNullOrWhiteSpace(account.TestSID)
-        || !string.IsNullOrWhiteSpace(account.NSessionId);
+        !string.IsNullOrWhiteSpace(account.SdoPassword)
+        || !string.IsNullOrWhiteSpace(account.SdoAutoLoginSessionKey)
+        || !string.IsNullOrWhiteSpace(account.WeGameTokenSecret)
+        || !string.IsNullOrWhiteSpace(account.WeGameSIDSecret)
+        || !string.IsNullOrWhiteSpace(account.WeGameSessionID);
 
     private ICredProvider GetCredProvider(CredType type) =>
         type switch
         {
-            CredType.WindowsCredManager => new CredentialManager(CredData),
-            CredType.WindowsHello       => new WindowsHello(CredData),
-            CredType.NoEncryption       => new NoCred(CredData),
+            CredType.WindowsCredManager => new CredentialManager(credData),
+            CredType.WindowsHello       => new WindowsHello(credData),
+            CredType.NoEncryption       => new NoCred(credData),
             _                           => throw new ArgumentOutOfRangeException(nameof(type), type, "未知的凭据类型")
         };
 
-    private void Accounts_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+    private void Accounts_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         Save();
 
     #region SaveLoad
@@ -656,11 +672,10 @@ public class AccountManager
     {
         lock (syncRoot)
         {
-
             db.RunInTransaction
             (() =>
                 {
-                    var record = db.Table<XIVAccount>().FirstOrDefault(a => a.Id == account.Id);
+                    var record = db.Table<XIVAccount>().FirstOrDefault(a => a.ID == account.ID);
 
                     if (record == null)
                         db.Insert(account);
@@ -705,7 +720,6 @@ public class AccountManager
                 File.Delete(DatabasePath);
 
             SetupDb();
-
         }
 
         // If the file is corrupted, this will be null anyway
@@ -713,7 +727,7 @@ public class AccountManager
 
         foreach (var account in Accounts.ToArray())
         {
-            if (account.UserName.IsNullOrEmpty() || account.Id.IsNullOrEmpty())
+            if (account.UserName.IsNullOrEmpty() || account.ID.IsNullOrEmpty())
                 Accounts.Remove(account);
         }
 
@@ -721,7 +735,7 @@ public class AccountManager
     }
 
     private XIVAccount GetTrackedAccount(XIVAccount account) =>
-        Accounts.FirstOrDefault(existing => existing.Id == account.Id) ?? account;
+        Accounts.FirstOrDefault(existing => existing.ID == account.ID) ?? account;
 
     private static bool HasDeviceProfile(XIVAccount account) =>
         !string.IsNullOrWhiteSpace(account.DeviceProfileDeviceId)
@@ -773,9 +787,7 @@ public class AccountManager
     private void MigrateLegacyDeviceProfiles()
     {
         lock (DeviceProfilePresetStoreSyncRoot)
-        {
             _ = GetDeviceProfilePresetStoreState();
-        }
 
         foreach (var account in Accounts)
         {
@@ -833,6 +845,7 @@ public class AccountManager
         var addedRotationColumn = EnsureColumn(columns, "IsDeviceProfileRotation", "INTEGER NOT NULL DEFAULT 1");
         EnsureColumn(columns, "DeviceProfileRotationDays",          $"INTEGER NOT NULL DEFAULT {DEFAULT_DEVICE_PROFILE_ROTATION_DAYS}");
         EnsureColumn(columns, "DeviceProfileLastGeneratedUtcTicks", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumn(columns, "WeGameTokenSecret",                  "TEXT");
 
         if (addedRotationColumn && columns.Contains("DeviceProfileRotationMode"))
             db!.Execute("UPDATE \"XIVAccount\" SET \"IsDeviceProfileRotation\" = CASE WHEN \"DeviceProfileRotationMode\" = 0 THEN 1 ELSE 0 END");
@@ -868,6 +881,7 @@ public class AccountManager
                 var json       = File.ReadAllText(DeviceProfilePresetStorePath, Encoding.UTF8);
                 var stored     = JsonSerializer.Deserialize<DeviceProfilePresetStoreState>(json, DeviceProfilePresetStoreJsonOptions);
                 var normalized = NormalizeDeviceProfilePresetStoreState(stored);
+
                 if (normalized != null)
                 {
                     PersistDeviceProfilePresetStoreState(normalized);
@@ -919,16 +933,15 @@ public class AccountManager
             };
 
             var existingIndex = presets.FindIndex(existing => existing.Matches(snapshot));
+
             if (existingIndex >= 0)
             {
-                var existing = presets[existingIndex];
+                var existing                = presets[existingIndex];
                 var mergedGeneratedUtcTicks = Math.Max(existing.GeneratedUtcTicks, normalizedPreset.GeneratedUtcTicks);
                 var mergedRemark            = string.IsNullOrWhiteSpace(existing.Remark) ? normalizedPreset.Remark : existing.Remark;
                 if (mergedGeneratedUtcTicks != existing.GeneratedUtcTicks
                     || !string.Equals(mergedRemark, existing.Remark, StringComparison.Ordinal))
-                {
                     presets[existingIndex] = existing.WithGeneratedUtcTicks(mergedGeneratedUtcTicks, mergedRemark);
-                }
 
                 if (string.Equals(state.SharedPresetId, preset.Id, StringComparison.Ordinal))
                     sharedPresetId = presets[existingIndex].Id;
@@ -950,9 +963,9 @@ public class AccountManager
 
         return new DeviceProfilePresetStoreState
         {
-            Version      = 1,
+            Version        = 1,
             SharedPresetId = sharedPresetId,
-            Presets      = presets
+            Presets        = presets
         };
     }
 
@@ -1023,9 +1036,9 @@ public class AccountManager
         {
             var normalizedState = new DeviceProfilePresetStoreState
             {
-                Version      = state.Version,
+                Version        = state.Version,
                 SharedPresetId = state.Presets[0].Id,
-                Presets      = state.Presets
+                Presets        = state.Presets
             };
 
             PersistDeviceProfilePresetStoreState(normalizedState);
@@ -1062,17 +1075,16 @@ public class AccountManager
     private static DeviceProfilePreset FindOrCreatePreset(DeviceProfilePresetStoreState state, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark = null)
     {
         var existingIndex = state.Presets.FindIndex(preset => preset.Matches(snapshot));
+
         if (existingIndex >= 0)
         {
-            var existing = state.Presets[existingIndex];
+            var existing              = state.Presets[existingIndex];
             var normalizedRemark      = remark == null ? existing.Remark : NormalizePresetRemark(remark);
             var updatedGeneratedTicks = Math.Max(existing.GeneratedUtcTicks, generatedUtcTicks);
 
             if (existing.GeneratedUtcTicks == updatedGeneratedTicks
                 && string.Equals(existing.Remark, normalizedRemark, StringComparison.Ordinal))
-            {
                 return existing;
-            }
 
             var updated = existing.WithGeneratedUtcTicks(updatedGeneratedTicks, normalizedRemark);
             state.Presets[existingIndex] = updated;
@@ -1102,7 +1114,7 @@ public class AccountManager
             return preset;
         }
 
-        preset = AssignPresetToAccount(account, sharedPreset.ToSnapshot(), nowUtc.UtcTicks);
+        preset    = AssignPresetToAccount(account, sharedPreset.ToSnapshot(), nowUtc.UtcTicks);
         isChanged = true;
         return preset;
     }

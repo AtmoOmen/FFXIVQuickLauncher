@@ -101,7 +101,7 @@ public sealed class LoginPageViewModel : ViewModelBase
             if (!SetProperty(ref field, value))
                 return;
 
-            if (loginTypeOption.LoginType == LoginType.WeGameSID)
+            if (loginTypeOption.LoginType == LoginType.WeGameAuto)
                 ApplyWeGameSidMode();
         }
     }
@@ -289,14 +289,14 @@ public sealed class LoginPageViewModel : ViewModelBase
                 FastLoginText     = "静态密码";
                 break;
 
-            case LoginType.WeGameToken:
+            case LoginType.WeGameManual:
                 IsPasswordVisible = true;
                 UsernameHint      = "SndaID";
                 UsernameToolTip   = "输入 WeGame 账号对应的 SndaID";
                 PasswordHint      = "登录令牌";
                 break;
 
-            case LoginType.WeGameSID:
+            case LoginType.WeGameAuto:
                 IsFastLoginVisible      = false;
                 IsReadWegameInfoVisible = true;
                 IsReadWegameInfo        = string.IsNullOrWhiteSpace(Username);

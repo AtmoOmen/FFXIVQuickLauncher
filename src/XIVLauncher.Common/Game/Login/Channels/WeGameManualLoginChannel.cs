@@ -3,12 +3,12 @@ using System.Threading.Tasks;
 
 namespace XIVLauncher.Common.Game.Login.Channels;
 
-public sealed class WeGameTokenLoginChannel
+public sealed class WeGameManualLoginChannel
 (
     LoginChannelContext context
 ) : ILoginChannel
 {
-    public LoginType Type => LoginType.WeGameToken;
+    public LoginType Type => LoginType.WeGameManual;
 
     private const int AUTO_LOGIN_KEEP_DAYS = 30;
 
@@ -19,6 +19,6 @@ public sealed class WeGameTokenLoginChannel
 
         context.BindDCTravelSessionRefresh(request.DCTravelClient, tgt, guid);
         var sessionId = await context.GetSessionIdAsync(tgt, guid).ConfigureAwait(false);
-        return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, request.AutoLogin ? autoLoginSessionKey : null, LoginType.WeGameToken);
+        return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, request.AutoLogin ? autoLoginSessionKey : null, LoginType.WeGameManual);
     }
 }

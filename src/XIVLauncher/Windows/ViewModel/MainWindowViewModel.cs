@@ -12,7 +12,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Threading;
 using Castle.Core.Internal;
 using Serilog;
@@ -34,7 +33,6 @@ using XIVLauncher.Common.Windows;
 using XIVLauncher.Game;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Support;
-using XIVLauncher.Windows;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel.MainWindow.Factories;
 using XIVLauncher.Windows.ViewModel.MainWindow.Pages;
@@ -79,13 +77,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     public MainWindowViewModel(Window window)
     {
-        Window                 = window;
-        Settings               = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
-        DalamudLauncherFactory = new DalamudLauncherFactory();
-        DialogProvider         = new MainWindowDialogProvider(window);
-        AccountDraftFactory    = new MainWindowAccountDraftFactory();
-        Launcher               = new();
-        GameLaunchService      = new GameLaunchService(window);
+        Window                       = window;
+        Settings                     = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
+        DalamudLauncherFactory       = new DalamudLauncherFactory();
+        DialogProvider               = new MainWindowDialogProvider(window);
+        AccountDraftFactory          = new MainWindowAccountDraftFactory();
+        Launcher                     = new();
+        GameLaunchService            = new GameLaunchService(window);
         AccountSwitcherButtonCommand = new SyncCommand(ExecuteAccountSwitcherButton);
         LoginPage = new LoginPageViewModel
         (
@@ -145,7 +143,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        AccountSwitcher.BeginAnimation(UIElement.OpacityProperty, null);
+        AccountSwitcher.BeginAnimation(UIElement.OpacityProperty,       null);
         AccountSwitcher.BeginAnimation(FrameworkElement.MarginProperty, null);
 
         AccountSwitcher.Opacity = 1;
@@ -301,7 +299,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 case LoginType.Static:
                     if (!inputPassword.IsNullOrEmpty())
                         secret = inputPassword;
-                    else if (!hasUnavailableSavedSecrets && savedAccount?.Password is { Length: > 0 } savedPassword)
+                    else if (!hasUnavailableSavedSecrets && savedAccount?.SdoPassword is { Length: > 0 } savedPassword)
                         secret = await AccountManager.Decrypt(savedPassword);
 
                     ArgumentException.ThrowIfNullOrEmpty(username, "静态登录用户名");
@@ -309,8 +307,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     finalLoginType = LoginType.Static;
                     break;
 
-                case LoginType.WeGameSID:
+                case LoginType.WeGameAuto:
                     doingAutoLogin = true;
+
                     if (readWeGameInfo)
                     {
                         var loginData = await ReadWeGameAccountInfoAsync();
@@ -341,7 +340,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             return;
                         }
 
-                        if (hasUnavailableSavedSecrets || string.IsNullOrWhiteSpace(savedAccount.TestSID))
+                        if (hasUnavailableSavedSecrets || string.IsNullOrWhiteSpace(savedAccount.WeGameSIDSecret))
                         {
                             CustomMessageBox.Show
                             (
@@ -354,32 +353,32 @@ public class MainWindowViewModel : INotifyPropertyChanged
                             return;
                         }
 
-                        secret = await AccountManager.Decrypt(savedAccount.TestSID);
+                        secret = await AccountManager.Decrypt(savedAccount.WeGameSIDSecret);
                     }
 
-                    finalLoginType = LoginType.WeGameSID;
+                    finalLoginType = LoginType.WeGameAuto;
                     savedAccount   = FindSavedAccount(finalLoginType, username);
                     accountType    = ResolveAccountType(finalLoginType, savedAccount);
                     break;
 
-                case LoginType.WeGameToken:
-                    if (!hasUnavailableSavedSecrets && inputPassword.IsNullOrEmpty() && savedAccount?.AutoLoginSessionKey is { Length: > 0 } autoLoginSessionKey)
+                case LoginType.WeGameManual:
+                    if (!hasUnavailableSavedSecrets && inputPassword.IsNullOrEmpty() && savedAccount?.WeGameTokenSecret is { Length: > 0 } weGameTokenSecret)
                     {
-                        secret         = await AccountManager.CredProvider.Decrypt(autoLoginSessionKey);
-                        finalLoginType = LoginType.AutoLoginSession;
+                        secret         = await AccountManager.CredProvider.Decrypt(weGameTokenSecret);
+                        finalLoginType = LoginType.WeGameManual;
                     }
 
                     if (secret.IsNullOrEmpty())
                     {
                         secret         = inputPassword;
-                        finalLoginType = LoginType.WeGameToken;
+                        finalLoginType = LoginType.WeGameManual;
                     }
 
                     ArgumentException.ThrowIfNullOrEmpty(secret, "WeGame 自动登录密钥");
                     break;
 
                 case LoginType.Slide:
-                    if (!hasUnavailableSavedSecrets && doingAutoLogin && savedAccount?.AutoLoginSessionKey is { Length: > 0 } slideAutoLoginSessionKey)
+                    if (!hasUnavailableSavedSecrets && doingAutoLogin && savedAccount?.SdoAutoLoginSessionKey is { Length: > 0 } slideAutoLoginSessionKey)
                     {
                         secret         = await AccountManager.Decrypt(slideAutoLoginSessionKey);
                         finalLoginType = LoginType.AutoLoginSession;
@@ -567,7 +566,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 var deviceProfileAccount = pendingNewAccount ?? savedAccount;
 
-                if (App.Settings.InGameAddonEnabled && loginType != LoginType.WeGameSID)
+                if (App.Settings.InGameAddonEnabled && loginType != LoginType.WeGameAuto)
                 {
                     Log.Information("[DCTravelListener] 正在开启监听用端口");
                     await dcTraveler.GetValidCookie();
@@ -581,9 +580,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 var accountToSave = new XIVAccount
                 {
-                    AutoLogin                          = loginType == LoginType.WeGameSID || doingAutoLogin,
-                    LoginAccount                       = oAuthLogin?.InputUserID!,
-                    SndaId                             = oAuthLogin?.SndaID!,
+                    AutoLogin                          = loginType == LoginType.WeGameAuto || doingAutoLogin,
+                    SdoLoginAccount                    = oAuthLogin?.InputUserID!,
+                    WeGameSndaID                       = oAuthLogin?.SndaID!,
                     AccountType                        = accountType,
                     AreaName                           = LoginPage.Area!.AreaName,
                     UserDefinedName                    = deviceProfileAccount?.UserDefinedName                    ?? null!,
@@ -596,10 +595,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 AccountManager.ApplyResolvedDeviceProfile(accountToSave, resolvedDeviceProfile);
 
-                if (doingAutoLogin && accountToSave.AccountType != XIVAccountType.WeGameSID)
+                if (doingAutoLogin && accountToSave.AccountType == XIVAccountType.Sdo)
                 {
                     if (!string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
-                        accountToSave.AutoLoginSessionKey = await AccountManager.Encrypt(oAuthLogin.AutoLoginSessionKey);
+                        accountToSave.SdoAutoLoginSessionKey = await AccountManager.Encrypt(oAuthLogin.AutoLoginSessionKey);
 
                     if (DCTravelListener != null && !string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
                     {
@@ -617,11 +616,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     }
 
                     if (finalLoginType == LoginType.Static)
-                        accountToSave.Password = await AccountManager.Encrypt(secret);
+                        accountToSave.SdoPassword = await AccountManager.Encrypt(secret);
                 }
 
-                if (accountToSave.AccountType == XIVAccountType.WeGameSID)
-                    accountToSave.TestSID = await AccountManager.Encrypt(secret);
+                if (finalLoginType == LoginType.WeGameAuto)
+                    accountToSave.WeGameSIDSecret = await AccountManager.Encrypt(secret);
+                else if (finalLoginType == LoginType.WeGameManual)
+                    accountToSave.WeGameTokenSecret = await AccountManager.Encrypt(secret);
 
                 accountToSave.GenerateID();
                 AccountManager.AddAccount(accountToSave);
@@ -836,7 +837,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                     if (account != null)
                     {
-                        account.AutoLoginSessionKey = string.Empty;
+                        account.SdoAutoLoginSessionKey = string.Empty;
                         AccountManager.Save(account);
                     }
                 }
@@ -1954,11 +1955,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private void SavePendingNewAccountWithoutSecrets(XIVAccount account)
     {
-        account.AutoLogin           = false;
-        account.AutoLoginSessionKey = string.Empty;
-        account.Password            = string.Empty;
-        account.TestSID             = null;
-        account.NSessionId          = string.Empty;
+        account.AutoLogin              = false;
+        account.SdoAutoLoginSessionKey = string.Empty;
+        account.WeGameTokenSecret      = null;
+        account.SdoPassword            = string.Empty;
+        account.WeGameSIDSecret        = null;
+        account.WeGameSessionID        = string.Empty;
         account.GenerateID();
         AccountManager.AddAccount(account);
         AccountManager.CurrentAccount = account;
@@ -1972,8 +1974,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (loginType == LoginType.AutoLoginSession)
         {
-            return AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.LoginAccount, username, StringComparison.Ordinal))
-                   ?? AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.UserName,  username, StringComparison.Ordinal));
+            return AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.SdoLoginAccount, username, StringComparison.Ordinal))
+                   ?? AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.UserName,     username, StringComparison.Ordinal));
         }
 
         return AccountManager.FindAccount(username, loginType.ToAccountType());
