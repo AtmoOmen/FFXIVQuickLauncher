@@ -65,17 +65,41 @@
             <!-- Card 2: Preset -->
             <materialDesign:Card Margin="0,0,0,16" UniformCornerRadius="8">
                 <StackPanel Margin="20">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                        <materialDesign:PackIcon Kind="FormatListBulleted" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                        <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold" Text="设备信息预设" />
-                    </StackPanel>
+                    <Grid Margin="0,0,0,24">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <materialDesign:PackIcon Kind="FormatListBulleted" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                            <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold" Text="设备信息预设" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,12,0"
+                                    Click="CreatePresetButton_OnClick" IsEnabled="{Binding CanSelectPreset}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Plus" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="新增" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    Click="DeletePresetButton_OnClick" IsEnabled="{Binding CanSelectPreset}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="DeleteOutline" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="删除" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
 
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        
+
                         <ComboBox Grid.Column="0" Margin="0,0,8,0"
                                   materialDesign:HintAssist.Hint="选择预设"
                                   Style="{StaticResource MaterialDesignOutlinedComboBox}"
@@ -84,7 +108,7 @@
                                   ItemsSource="{Binding Presets}"
                                   SelectedValue="{Binding SelectedPresetId, UpdateSourceTrigger=PropertyChanged}"
                                   SelectedValuePath="Id" />
-                                  
+
                         <TextBox Grid.Column="1" Margin="8,0,0,0"
                                  materialDesign:HintAssist.Hint="显示名称"
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}"

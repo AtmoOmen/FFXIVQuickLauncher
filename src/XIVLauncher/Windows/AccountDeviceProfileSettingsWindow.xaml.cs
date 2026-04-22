@@ -127,6 +127,47 @@ public partial class AccountDeviceProfileSettingsWindow
     private void ExportButton_OnClick(object sender, RoutedEventArgs e) =>
         ExecuteWithErrorHandling(ExportDeviceProfile, "导出设备信息失败。");
 
+    private void CreatePresetButton_OnClick(object sender, RoutedEventArgs e) =>
+        ExecuteWithErrorHandling(ViewModel.CreatePreset, "新增预设失败。");
+
+    private void DeletePresetButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(ViewModel.SelectedPresetId))
+        {
+            dialogService.ShowMessage
+            (
+                "请先选择要删除的预设。",
+                "设备信息设置",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                showHelpLinks: false,
+                showDiscordLink: false,
+                showReportLinks: false,
+                showOfficialLauncher: false,
+                parentWindow: this
+            );
+            return;
+        }
+
+        var result = dialogService.ShowMessage
+        (
+            $"确认删除当前选中的预设“{ViewModel.PresetRemark}”吗？",
+            "设备信息设置",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            showHelpLinks: false,
+            showDiscordLink: false,
+            showReportLinks: false,
+            showOfficialLauncher: false,
+            parentWindow: this
+        );
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        ExecuteWithErrorHandling(ViewModel.DeletePreset, "删除预设失败。");
+    }
+
     private void ConfirmButton_OnClick(object sender, RoutedEventArgs e)
     {
         try

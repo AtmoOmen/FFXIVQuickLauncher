@@ -549,6 +549,119 @@ public class AccountManager
     }
 
     /// <summary>
+    /// 保存共享设备预设选择，直接指定预设
+    /// </summary>
+    /// <param name="preset">目标预设</param>
+    /// <returns>实际保存的预设</returns>
+    public DeviceProfilePreset SaveSharedDeviceProfileSelection(DeviceProfilePreset preset)
+    {
+        var state = GetDeviceProfilePresetStoreState();
+        var found = FindPresetById(state, preset.Id) ?? throw new InvalidOperationException("目标预设不存在。");
+
+        PersistDeviceProfilePresetStoreState
+        (
+            new DeviceProfilePresetStoreState
+            {
+                Version        = state.Version,
+                SharedPresetId = found.Id,
+                Presets        = state.Presets
+            }
+        );
+
+        return found;
+    }
+
+    /// <summary>
+    /// 显式创建新的设备预设
+    /// </summary>
+    /// <param name="snapshot">设备快照</param>
+    /// <param name="generatedUtcTicks">生成时间戳</param>
+    /// <param name="remark">备注</param>
+    /// <returns>新建的预设</returns>
+    public DeviceProfilePreset CreateDeviceProfilePreset(DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? remark)
+    {
+        var state   = GetDeviceProfilePresetStoreState();
+        var created = CreatePreset(snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
+        var presets = state.Presets.ToList();
+        presets.Insert(0, created);
+
+        PersistDeviceProfilePresetStoreState
+        (
+            new DeviceProfilePresetStoreState
+            {
+                Version        = state.Version,
+                SharedPresetId = state.SharedPresetId,
+                Presets        = presets
+            }
+        );
+
+        return created;
+    }
+
+    /// <summary>
+    /// 删除设备预设
+    /// </summary>
+    /// <param name="presetId">预设 ID</param>
+    /// <returns>删除后应继续使用的预设</returns>
+    public DeviceProfilePreset DeleteDeviceProfilePreset(string presetId)
+    {
+        var state = GetDeviceProfilePresetStoreState();
+        var removedPreset = FindPresetById(state, presetId) ?? throw new InvalidOperationException("目标预设不存在。");
+        if (state.Presets.Count <= 1)
+            throw new InvalidOperationException("至少需要保留一个预设。");
+
+        var presets = state.Presets
+                           .Where(preset => !string.Equals(preset.Id, presetId, StringComparison.Ordinal))
+                           .ToList();
+
+        var replacementPreset = presets.FirstOrDefault(preset => preset.Matches(removedPreset.ToSnapshot()))
+                                ?? (string.Equals(state.SharedPresetId, presetId, StringComparison.Ordinal)
+                                        ? presets[0]
+                                        : FindPresetById(state, state.SharedPresetId) ?? presets[0]);
+
+        PersistDeviceProfilePresetStoreState
+        (
+            new DeviceProfilePresetStoreState
+            {
+                Version        = state.Version,
+                SharedPresetId = string.Equals(state.SharedPresetId, presetId, StringComparison.Ordinal)
+                                     ? replacementPreset.Id
+                                     : state.SharedPresetId,
+                Presets        = presets
+            }
+        );
+
+        foreach (var account in Accounts.Where(account => string.Equals(account.DeviceProfilePresetId, presetId, StringComparison.Ordinal)).ToArray())
+        {
+            account.DeviceProfilePresetId              = replacementPreset.Id;
+            account.DeviceProfileLastGeneratedUtcTicks = replacementPreset.GeneratedUtcTicks;
+            ClearLegacyDeviceProfileSnapshot(account);
+            Save(account);
+        }
+
+        return replacementPreset;
+    }
+
+    /// <summary>
+    /// 保存账号设备预设选择，直接指定预设
+    /// </summary>
+    /// <param name="account">目标账号</param>
+    /// <param name="preset">目标预设</param>
+    /// <returns>实际保存的预设</returns>
+    public DeviceProfilePreset SaveDeviceProfileSelection(XIVAccount account, DeviceProfilePreset preset)
+    {
+        var trackedAccount = GetTrackedAccount(account);
+        var found          = FindDeviceProfilePreset(preset.Id) ?? throw new InvalidOperationException("目标预设不存在。");
+
+        trackedAccount.DeviceProfilePresetId              = found.Id;
+        trackedAccount.DeviceProfileLastGeneratedUtcTicks = found.GeneratedUtcTicks;
+        ClearLegacyDeviceProfileSnapshot(trackedAccount);
+        Save(trackedAccount);
+
+        return found;
+    }
+
+    /// <summary>
     /// 将解析后的设备配置回写到账号
     /// </summary>
     /// <param name="account">目标账号</param>

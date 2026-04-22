@@ -322,6 +322,49 @@ internal sealed class AccountDeviceProfileSettingsWindowViewModel
         ApplyPreset(assignedPreset);
     }
 
+    public void CreatePreset()
+    {
+        var snapshot = CreateValidatedSnapshot();
+        var created  = accountManager.CreateDeviceProfilePreset(snapshot, GeneratedUtcTicks, PresetRemark);
+
+        LoadPresets();
+        ApplyPreset(created);
+
+        if (IsSharedMode)
+        {
+            accountManager.SaveSharedDeviceProfileSelection(created);
+        }
+        else if (account != null)
+        {
+            savedIndependentPreset = accountManager.SaveDeviceProfileSelection(account, created);
+        }
+
+        snapshotTouched = false;
+    }
+
+    public void DeletePreset()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedPresetId))
+            throw new InvalidOperationException("请先选择要删除的预设。");
+
+        var deletedPresetId = SelectedPresetId;
+        var replacement     = accountManager.DeleteDeviceProfilePreset(deletedPresetId);
+
+        LoadPresets();
+
+        if (IsSharedMode)
+        {
+            accountManager.SaveSharedDeviceProfileSelection(replacement);
+        }
+        else if (account != null)
+        {
+            savedIndependentPreset = accountManager.SaveDeviceProfileSelection(account, replacement);
+        }
+
+        ApplyPreset(replacement);
+        snapshotTouched = false;
+    }
+
     public void Import
     (
         bool   dynamicEnabled,
@@ -564,15 +607,27 @@ internal sealed class AccountDeviceProfileSettingsWindowViewModel
         if (!TryCreateCurrentSnapshot(out var snapshot))
         {
             selectedPresetSnapshot = null;
-            SetSelectedPresetId(string.Empty);
+            if (!isApplyingPresetSelection)
+                SetSelectedPresetId(string.Empty);
             return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(SelectedPresetId))
+        {
+            var selectedPreset = GetPreset(SelectedPresetId);
+            if (selectedPreset != null && selectedPreset.Matches(snapshot))
+            {
+                selectedPresetSnapshot = selectedPreset.ToSnapshot();
+                return;
+            }
         }
 
         var matchedPreset = Presets.FirstOrDefault(preset => preset.Matches(snapshot));
         if (matchedPreset == null)
         {
             selectedPresetSnapshot = null;
-            SetSelectedPresetId(string.Empty);
+            if (!isApplyingPresetSelection)
+                SetSelectedPresetId(string.Empty);
             return;
         }
 
