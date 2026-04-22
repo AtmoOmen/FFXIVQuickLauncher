@@ -63,7 +63,7 @@
                                 MouseUp="BannerCard_MouseUp">
                                 <Grid>
                                     <Image x:Name="BannerImage"
-                                           Stretch="UniformToFill"
+                                           Stretch="Fill"
                                            Source="pack://application:,,,/Resources/placeholder-news.png" />
                                 </Grid>
                             </materialDesign:Card>
