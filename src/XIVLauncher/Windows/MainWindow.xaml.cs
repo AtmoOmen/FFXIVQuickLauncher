@@ -9,10 +9,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
@@ -22,7 +21,6 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Http.Site;
-using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 using XIVLauncher.Xaml;
@@ -33,32 +31,32 @@ namespace XIVLauncher.Windows;
 /// <summary>
 ///     Interaction logic for MainWindow.xaml
 /// </summary>
-public partial class MainWindow : Window
+public partial class MainWindow
 {
     public MainWindowViewModel Model => (DataContext as MainWindowViewModel)!;
 
-    private const int           CURRENT_VERSION_LEVEL = 2;
-    
-    private readonly AccountManager _accountManager;
-    private readonly Launcher       _launcher;
+    private const int CURRENT_VERSION_LEVEL = 2;
 
-    private Timer         _bannerChangeTimer;
-    private Headlines     _headlines;
-    private Banner[]      _banners;
-    private BitmapImage[] _bannerBitmaps;
-    private int           _currentBannerIndex;
-    private bool          _everShown;
-    private bool          _suppressAccountSelectionTracking;
+    private readonly AccountManager accountManager;
+    private readonly Launcher       launcher;
 
-    private ObservableCollection<BannerDotInfo> _bannerDotList;
+    private Timer?                               bannerChangeTimer;
+    private ObservableCollection<BannerDotInfo>? bannerDotList;
+    private Headlines?                           headlines;
+    private Banner[]?                            banners;
+    private BitmapImage[]?                       bannerBitmaps;
+    private int                                  currentBannerIndex;
+
+    private bool everShown;
+    private bool suppressAccountSelectionTracking;
 
     public MainWindow()
     {
         InitializeComponent();
 
         DataContext                  =  new MainWindowViewModel(this);
-        _accountManager              =  Model.AccountManager;
-        _launcher                    =  Model.Launcher;
+        accountManager               =  Model.AccountManager;
+        launcher                     =  Model.Launcher;
         Model.Settings.SettingsSaved += (_, _) => Task.Run(SetupHeadlines);
 
         Closed  += Model.OnWindowClosed;
@@ -88,17 +86,7 @@ public partial class MainWindow : Window
             }
         };
 
-#if !XL_NOAUTOUPDATE
         Title += " v" + AppUtil.GetAssemblyVersion();
-#else
-        Title += " v" + AppUtil.GetAssemblyVersion();
-#endif
-
-#if !XL_NOAUTOUPDATE
-        if (EnvironmentSettings.IsDisableUpdates)
-        {
-        }
-#endif
     }
 
     public void Initialize()
@@ -107,8 +95,8 @@ public partial class MainWindow : Window
 
         Model.LoginPage.IsFastLogin = App.Settings.FastLogin;
 
-        var savedAccount = _accountManager.CurrentAccount;
-        var hasUnavailableSecrets = _accountManager.HasUnavailableSecrets(savedAccount);
+        var savedAccount          = accountManager.CurrentAccount;
+        var hasUnavailableSecrets = accountManager.HasUnavailableSecrets(savedAccount);
 
         if (App.GlobalIsDisableAutologin)
         {
@@ -181,13 +169,11 @@ public partial class MainWindow : Window
                     {
                         if (savedAccount != null)
                             SwitchAccount(savedAccount, false);
-                        ;
                     }
                 );
 
                 await SetupHeadlines();
                 Troubleshooting.LogTroubleshooting();
-                ;
             }
         );
 
@@ -198,7 +184,7 @@ public partial class MainWindow : Window
 
         ShowCredTypeRecoveryMessage();
 
-        _everShown = true;
+        everShown = true;
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -218,7 +204,7 @@ public partial class MainWindow : Window
 
     private async Task SetupServers()
     {
-        var areas = new LoginArea[1] { new() { AreaName = "获取大区失败", AreaID = "-1" } };
+        var areas = new LoginArea[] { new() { AreaName = "获取大区失败", AreaID = "-1" } };
         areas = await LoginArea.Get();
 
         Dispatcher.Invoke
@@ -234,18 +220,18 @@ public partial class MainWindow : Window
     {
         try
         {
-            _bannerChangeTimer?.Stop();
+            bannerChangeTimer?.Stop();
 
-            _headlines = await Headlines.GetHeadlinesAsync(_launcher)
-                                        .ConfigureAwait(false);
-            _banners = _headlines.Banner;
+            headlines = await Headlines.GetHeadlinesAsync(launcher)
+                                       .ConfigureAwait(false);
+            banners = headlines.Banner;
 
-            _bannerBitmaps = new BitmapImage[_banners.Length];
-            _bannerDotList = [];
+            bannerBitmaps = new BitmapImage[banners.Length];
+            bannerDotList = [];
 
-            for (var i = 0; i < _banners.Length; i++)
+            for (var i = 0; i < banners.Length; i++)
             {
-                var imageBytes = await _launcher.DownloadAsLauncher(_banners[i].LsbBanner.ToString());
+                var imageBytes = await launcher.DownloadAsLauncher(banners[i].LsbBanner.ToString());
 
                 using var stream = new MemoryStream(imageBytes);
 
@@ -256,32 +242,32 @@ public partial class MainWindow : Window
                 bitmapImage.EndInit();
                 bitmapImage.Freeze();
 
-                _bannerBitmaps[i] = bitmapImage;
-                _bannerDotList.Add(new() { Index = i });
+                bannerBitmaps[i] = bitmapImage;
+                bannerDotList.Add(new() { Index = i });
             }
 
-            _currentBannerIndex = 0;
-            SetBannerDotActiveState(_currentBannerIndex);
+            currentBannerIndex = 0;
+            SetBannerDotActiveState(currentBannerIndex);
 
             _ = Dispatcher.BeginInvoke
             (
                 new Action
                 (() =>
                     {
-                        BannerImage.Source    = _bannerBitmaps[_currentBannerIndex];
-                        BannerDot.ItemsSource = _bannerDotList;
+                        BannerImage.Source    = bannerBitmaps[currentBannerIndex];
+                        BannerDot.ItemsSource = bannerDotList;
                     }
                 )
             );
 
-            _bannerChangeTimer = new Timer { Interval = 5000 };
+            bannerChangeTimer = new Timer { Interval = 5000 };
 
-            _bannerChangeTimer.Elapsed += (_, _) => Dispatcher.BeginInvoke(new Action(ShowNextBanner), DispatcherPriority.Background);
+            bannerChangeTimer.Elapsed += (_, _) => Dispatcher.BeginInvoke(new Action(ShowNextBanner), DispatcherPriority.Background);
 
-            _bannerChangeTimer.AutoReset = true;
-            _bannerChangeTimer.Start();
+            bannerChangeTimer.AutoReset = true;
+            bannerChangeTimer.Start();
 
-            _ = Dispatcher.BeginInvoke(new Action(() => { NewsListView.ItemsSource = _headlines.News?.OrderByDescending(n => n.Date).ToList(); }));
+            _ = Dispatcher.BeginInvoke(new Action(() => { NewsListView.ItemsSource = headlines.News?.OrderByDescending(n => n.Date).ToList(); }));
         }
         catch (Exception ex)
         {
@@ -303,7 +289,7 @@ public partial class MainWindow : Window
         if (App.Settings.AddonList != null)
             App.Settings.AddonList = App.Settings.AddonList.Where(x => !string.IsNullOrEmpty(x.Addon.Path)).ToList();
 
-        App.Settings.AskBeforePatchInstall ??= true;
+        App.Settings.AskBeforePatchInstall                       ??= true;
         App.Settings.RequireDeviceProfileSetupForNewAccountLogin ??= false;
 
         App.Settings.DpiAwareness ??= DpiAwareness.Unaware;
@@ -359,7 +345,7 @@ public partial class MainWindow : Window
         if (e.ChangedButton != MouseButton.Left)
             return;
 
-        if (_headlines != null) Process.Start(new ProcessStartInfo(_banners[_currentBannerIndex].Link.ToString()) { UseShellExecute = true });
+        if (headlines != null) Process.Start(new ProcessStartInfo(banners![currentBannerIndex].Link.ToString()) { UseShellExecute = true });
     }
 
     private void NewsListView_OnMouseUp(object sender, MouseButtonEventArgs e)
@@ -374,9 +360,9 @@ public partial class MainWindow : Window
             Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
         else if (!string.IsNullOrEmpty(item.Id))
             Process.Start(new ProcessStartInfo(Links.SDO_NEWS_ARTICLE_BASE_URL + item.Id) { UseShellExecute = true });
-        
+
     }
-    
+
     private void Card_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter && e.Key != Key.Return)
@@ -390,7 +376,7 @@ public partial class MainWindow : Window
 
     private void AccountSwitcherButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var switcher = new AccountSwitcher(_accountManager, this)
+        var switcher = new AccountSwitcher(accountManager, this)
         {
             ShowInTaskbar = false
         };
@@ -417,28 +403,28 @@ public partial class MainWindow : Window
 
     private void SwitchAccount(XIVAccount account, bool saveAsCurrent)
     {
-        _suppressAccountSelectionTracking = true;
+        suppressAccountSelectionTracking = true;
 
         try
         {
             if (saveAsCurrent)
-                _accountManager.CurrentAccount = account;
+                accountManager.CurrentAccount = account;
 
-            var hasUnavailableSecrets = _accountManager.HasUnavailableSecrets(account);
+            var hasUnavailableSecrets = accountManager.HasUnavailableSecrets(account);
             var currentLoginType      = Model.LoginPage.LoginTypeOption.LoginType;
 
             Model.LoginPage.IsFastLogin = account.AutoLogin;
-            Model.LoginPage.Area        = Model.LoginPage.LoginAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
+            Model.LoginPage.Area        = Model.LoginPage.LoginAreas.FirstOrDefault(x => x.AreaName == account.AreaName)!;
             LoginPassword.Password      = string.Empty;
 
             switch (account.AccountType)
             {
                 case XIVAccountType.Sdo:
                     var nextLoginType = currentLoginType is LoginType.Static or LoginType.Slide
-                        ? currentLoginType
-                        : string.IsNullOrWhiteSpace(account.Password)
-                            ? LoginType.Slide
-                            : LoginType.Static;
+                                            ? currentLoginType
+                                            : string.IsNullOrWhiteSpace(account.Password)
+                                                ? LoginType.Slide
+                                                : LoginType.Static;
 
                     Model.LoginPage.SelectLoginType(nextLoginType);
 
@@ -473,30 +459,27 @@ public partial class MainWindow : Window
         }
         finally
         {
-            _suppressAccountSelectionTracking = false;
+            suppressAccountSelectionTracking = false;
         }
     }
 
-    private void LoginPassword_OnPasswordChanged(object sender, RoutedEventArgs e)
-    {
-        if (DataContext != null)
-            ((MainWindowViewModel)DataContext).LoginPage.Password = ((PasswordBox)sender).Password;
-    }
+    private void LoginPassword_OnPasswordChanged(object sender, RoutedEventArgs e) =>
+        ((MainWindowViewModel)DataContext)?.LoginPage.Password = ((PasswordBox)sender).Password;
 
     private void LoginUsername_OnTextChanged(object sender, TextChangedEventArgs e)
     {
-        if (_suppressAccountSelectionTracking)
+        if (suppressAccountSelectionTracking)
             return;
 
-        _accountManager.ClearCurrentAccount();
+        accountManager.ClearCurrentAccount();
     }
 
     private void LoginTypeSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_suppressAccountSelectionTracking || e.RemovedItems.Count == 0 || e.AddedItems.Count == 0)
+        if (suppressAccountSelectionTracking || e.RemovedItems.Count == 0 || e.AddedItems.Count == 0)
             return;
 
-        _accountManager.ClearCurrentAccount();
+        accountManager.ClearCurrentAccount();
     }
 
     private void ShowCredTypeRecoveryMessage()
@@ -522,65 +505,65 @@ public partial class MainWindow : Window
 
     private void RadioButton_MouseEnter(object sender, MouseEventArgs e)
     {
-        _bannerChangeTimer?.Stop();
+        bannerChangeTimer?.Stop();
 
         if (sender is RadioButton { DataContext: BannerDotInfo bannerDotInfo })
             SwitchBanner(bannerDotInfo.Index);
     }
 
     private void RadioButton_MouseLeave(object sender, MouseEventArgs e) =>
-        _bannerChangeTimer?.Start();
+        bannerChangeTimer?.Start();
 
     private void ShowNextBanner()
     {
-        if (_banners is not { Length: > 0 })
+        if (banners is not { Length: > 0 })
             return;
 
-        var nextBannerIndex = _currentBannerIndex + 1 > _banners.Length - 1
+        var nextBannerIndex = currentBannerIndex + 1 > banners.Length - 1
                                   ? 0
-                                  : _currentBannerIndex + 1;
+                                  : currentBannerIndex + 1;
 
         SwitchBanner(nextBannerIndex);
     }
 
     private void SwitchBanner(int bannerIndex)
     {
-        if (_bannerBitmaps == null || _bannerDotList == null)
+        if (bannerBitmaps == null || bannerDotList == null)
             return;
 
-        if (bannerIndex < 0 || bannerIndex >= _bannerBitmaps.Length || bannerIndex >= _bannerDotList.Count)
+        if (bannerIndex < 0 || bannerIndex >= bannerBitmaps.Length || bannerIndex >= bannerDotList.Count)
             return;
 
-        if (_currentBannerIndex == bannerIndex && BannerImage.Source == _bannerBitmaps[bannerIndex])
+        if (currentBannerIndex == bannerIndex && BannerImage.Source == bannerBitmaps[bannerIndex])
             return;
 
-        _currentBannerIndex = bannerIndex;
+        currentBannerIndex = bannerIndex;
         SetBannerDotActiveState(bannerIndex);
-        
+
         var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
-        var fadeIn = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200));
-        
+        var fadeIn  = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200));
+
         fadeOut.Completed += (s, e) =>
         {
-            BannerImage.Source = _bannerBitmaps[bannerIndex];
-            BannerImage.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            BannerImage.Source = bannerBitmaps[bannerIndex];
+            BannerImage.BeginAnimation(OpacityProperty, fadeIn);
         };
-        
-        BannerImage.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+
+        BannerImage.BeginAnimation(OpacityProperty, fadeOut);
     }
 
     private void SetBannerDotActiveState(int activeIndex)
     {
-        if (_bannerDotList == null)
+        if (bannerDotList == null)
             return;
 
-        for (var i = 0; i < _bannerDotList.Count; i++)
-            _bannerDotList[i].Active = i == activeIndex;
+        for (var i = 0; i < bannerDotList.Count; i++)
+            bannerDotList[i].Active = i == activeIndex;
     }
 
     private void MainWindow_OnClosing(object sender, CancelEventArgs e)
     {
-        if (!_everShown)
+        if (!everShown)
             return;
 
         try
@@ -604,7 +587,7 @@ public partial class MainWindow : Window
 
     private void PayPageButton_OnClick(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute = true });
-    
+
     private void ShoppingPageButton_OnClick(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true });
 
