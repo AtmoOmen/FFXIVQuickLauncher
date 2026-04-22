@@ -398,24 +398,88 @@
 
                                             <Grid Margin="24,0,24,0" VerticalAlignment="Center">
                                                 <StackPanel>
-                                                    <ProgressBar x:Name="ProgressBar"
-                                                                 Style="{StaticResource MaterialDesignCircularProgressBar}"
-                                                                 Value="0"
-                                                                 IsIndeterminate="{Binding IsLoggingIn}"
-                                                                 Height="48" Width="48"
-                                                                 Margin="0,0,0,16"
-                                                                 HorizontalAlignment="Center" />
+                                                    <Grid Margin="0,0,0,20" Width="80" Height="80" HorizontalAlignment="Center">
+                                                        <!-- Pulsing circle -->
+                                                        <Ellipse Fill="{DynamicResource PrimaryHueMidBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Width="48" Height="48">
+                                                            <Ellipse.Triggers>
+                                                                <EventTrigger RoutedEvent="Loaded">
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard RepeatBehavior="Forever">
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Width" From="48" To="80" Duration="0:0:1.5" AutoReverse="True">
+                                                                                <DoubleAnimation.EasingFunction>
+                                                                                    <SineEase EasingMode="EaseInOut" />
+                                                                                </DoubleAnimation.EasingFunction>
+                                                                            </DoubleAnimation>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Height" From="48" To="80" Duration="0:0:1.5" AutoReverse="True">
+                                                                                <DoubleAnimation.EasingFunction>
+                                                                                    <SineEase EasingMode="EaseInOut" />
+                                                                                </DoubleAnimation.EasingFunction>
+                                                                            </DoubleAnimation>
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.25" To="0.05" Duration="0:0:1.5" AutoReverse="True">
+                                                                                <DoubleAnimation.EasingFunction>
+                                                                                    <SineEase EasingMode="EaseInOut" />
+                                                                                </DoubleAnimation.EasingFunction>
+                                                                            </DoubleAnimation>
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </EventTrigger>
+                                                            </Ellipse.Triggers>
+                                                        </Ellipse>
+
+                                                        <ProgressBar x:Name="ProgressBar"
+                                                                     Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                                                     Value="0"
+                                                                     IsIndeterminate="{Binding IsLoggingIn}"
+                                                                     Height="52" Width="52"
+                                                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                                                        <materialDesign:PackIcon Kind="Login" 
+                                                                                 Width="24" Height="24" 
+                                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                                 Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                            <materialDesign:PackIcon.Triggers>
+                                                                <EventTrigger RoutedEvent="Loaded">
+                                                                    <BeginStoryboard>
+                                                                        <Storyboard RepeatBehavior="Forever">
+                                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.5" To="1.0" Duration="0:0:1.5" AutoReverse="True">
+                                                                                <DoubleAnimation.EasingFunction>
+                                                                                    <SineEase EasingMode="EaseInOut" />
+                                                                                </DoubleAnimation.EasingFunction>
+                                                                            </DoubleAnimation>
+                                                                        </Storyboard>
+                                                                    </BeginStoryboard>
+                                                                </EventTrigger>
+                                                            </materialDesign:PackIcon.Triggers>
+                                                        </materialDesign:PackIcon>
+                                                    </Grid>
+
                                                     <TextBlock Text="正在登录"
                                                                HorizontalAlignment="Center"
-                                                               FontSize="16"
-                                                               FontWeight="SemiBold"
+                                                               FontSize="18"
+                                                               FontWeight="Bold"
                                                                Margin="0,0,0,8" />
+                                                               
                                                     <TextBlock Text="{Binding LoginPage.LoginMessage}"
                                                                HorizontalAlignment="Center"
                                                                TextAlignment="Center"
                                                                TextWrapping="Wrap"
-                                                               Opacity="0.7"
-                                                               Margin="0,0,0,24" />
+                                                               FontSize="13"
+                                                               Margin="0,0,0,24">
+                                                        <TextBlock.Triggers>
+                                                            <EventTrigger RoutedEvent="Loaded">
+                                                                <BeginStoryboard>
+                                                                    <Storyboard RepeatBehavior="Forever">
+                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.4" To="0.9" Duration="0:0:1.5" AutoReverse="True">
+                                                                            <DoubleAnimation.EasingFunction>
+                                                                                <SineEase EasingMode="EaseInOut" />
+                                                                            </DoubleAnimation.EasingFunction>
+                                                                        </DoubleAnimation>
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </EventTrigger>
+                                                        </TextBlock.Triggers>
+                                                    </TextBlock>
+                                                    
                                                     <Button Content="取消"
                                                             Command="{Binding LoginPage.LoginCancelCommand}"
                                                             Style="{StaticResource MaterialDesignOutlinedButton}"
