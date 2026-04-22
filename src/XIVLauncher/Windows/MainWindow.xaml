@@ -72,7 +72,7 @@
                                     Grid.Column="0"
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Bottom"
-                                    Margin="0,0,12,12"
+                                    Margin="0,0,4,4"
                                     Background="Transparent">
                                 <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}">
                                     <ItemsControl.ItemsPanel>
@@ -87,7 +87,7 @@
                                                          Checked="BannerDot_OnChecked"
                                                          MouseEnter="RadioButton_MouseEnter"
                                                          MouseLeave="RadioButton_MouseLeave"
-                                                         Margin="2,0"
+                                                         Margin="0"
                                                          Cursor="Hand"
                                                          Style="{StaticResource {x:Type ToggleButton}}">
                                                 <RadioButton.Template>
