@@ -2,13 +2,12 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
-using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
@@ -16,7 +15,7 @@ namespace XIVLauncher.Windows;
 /// <summary>
 ///     Interaction logic for SettingsControl.xaml
 /// </summary>
-public partial class SettingsWindow : Window
+public partial class SettingsWindow
 {
     private SettingsWindowViewModel ViewModel => (SettingsWindowViewModel)DataContext;
 
@@ -25,7 +24,7 @@ public partial class SettingsWindow : Window
         viewModel.ReloadFromSettings();
 
         InitializeComponent();
-        DataContext = viewModel;
+        DataContext                            = viewModel;
         AddonListView.ContextMenu?.DataContext = viewModel;
 
         DiscordButton.Click += (_, _) => Process.Start(new ProcessStartInfo(Links.DISCORD_URL) { UseShellExecute = true });
@@ -36,7 +35,33 @@ public partial class SettingsWindow : Window
         if (!await ViewModel.SaveToSettingsAsync())
             return;
 
-        Close();
+        var storyboard = new Storyboard();
+
+        var fadeOut = new DoubleAnimation
+        {
+            From           = 1,
+            To             = 0,
+            Duration       = new Duration(TimeSpan.FromSeconds(0.15)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+
+        var slideDown = new DoubleAnimation
+        {
+            From           = 0,
+            To             = 15,
+            Duration       = new Duration(TimeSpan.FromSeconds(0.15)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+
+        Storyboard.SetTargetProperty(fadeOut,   new PropertyPath("Opacity"));
+        Storyboard.SetTargetProperty(slideDown, new PropertyPath("(UIElement.RenderTransform).(TranslateTransform.Y)"));
+
+        storyboard.Children.Add(fadeOut);
+        storyboard.Children.Add(slideDown);
+
+        storyboard.Completed += (s, args) => Close();
+
+        BeginStoryboard(storyboard);
     }
 
     private void AddonListView_OnMouseUp(object sender, MouseButtonEventArgs e)
