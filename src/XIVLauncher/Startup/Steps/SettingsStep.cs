@@ -57,7 +57,7 @@ public class SettingsStep
 
     private void SetupSettings(StartupContext context)
     {
-        context.Settings = new ConfigurationBuilder<ILauncherSettingsV3>()
+        context.Settings = new ConfigurationBuilder<ILauncherSettingsV4>()
                            .UseCommandLineArgs()
                            .UseJsonFile(Paths.GetConfigPath())
                            .UseTypeParser(new DirectoryInfoParser())
@@ -79,7 +79,7 @@ public class SettingsStep
 
             if (!string.IsNullOrEmpty(cmdLine.AccountName))
             {
-                context.Settings.CurrentAccountId = cmdLine.AccountName;
+                context.Settings.CurrentAccountID = cmdLine.AccountName;
                 Log.Verbose("账号覆盖: '{0}'", cmdLine.AccountName);
             }
 

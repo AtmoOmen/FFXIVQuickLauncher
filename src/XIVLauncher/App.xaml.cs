@@ -17,7 +17,7 @@ public partial class App
 
     public static StartupContext StartupContext { get; private set; } = null!;
 
-    public static ILauncherSettingsV3 Settings
+    public static ILauncherSettingsV4 Settings
     {
         get
         {

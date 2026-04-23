@@ -8,14 +8,12 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json.Linq;
-using XIVLauncher.Accounts;
 using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Addon.Implementations;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
-using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Util;
@@ -37,7 +35,7 @@ public sealed class SettingsWindowViewModel : ViewModelBase
     public ICommand IdentifyTokenCommand => identifyTokenCommand;
 
     public ICommand AddAddonCommand => addAddonCommand;
-    
+
     public ICommand RemoveSelectedAddonCommand => removeSelectedAddonCommand;
 
     public ICommand OpenGitHubCommand => openGitHubCommand;
@@ -45,7 +43,7 @@ public sealed class SettingsWindowViewModel : ViewModelBase
     public ICommand OpenBackupToolCommand => openBackupToolCommand;
 
     public ICommand OpenOriginalLauncherCommand => openOriginalLauncherCommand;
-    
+
     public ICommand OpenAdvancedSettingsCommand => openAdvancedSettingsCommand;
 
     private readonly AsyncCommand identifyTokenCommand;
@@ -256,7 +254,7 @@ public sealed class SettingsWindowViewModel : ViewModelBase
         get;
         set => SetProperty(ref field, value);
     } = "XIVLauncher";
-    
+
     public string CommitLabelText
     {
         get;
@@ -285,14 +283,14 @@ public sealed class SettingsWindowViewModel : ViewModelBase
                 .Select(pair => new GenericCombinedData<LauncherLanguage> { Display = pair.First, Value = pair.Second })
                 .ToList();
 
-        identifyTokenCommand          = new AsyncCommand(_ => IdentifyTokenAsync());
-        addAddonCommand               = new SyncCommand(_ => AddAddon());
-        editSelectedAddonCommand      = new SyncCommand(_ => EditSelectedAddon(),   () => CanEditSelectedAddon);
-        removeSelectedAddonCommand    = new SyncCommand(_ => RemoveSelectedAddon(), () => SelectedAddonEntry != null);
-        openGitHubCommand             = new SyncCommand(_ => OpenGitHub());
-        openBackupToolCommand         = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
-        openOriginalLauncherCommand   = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
-        openAdvancedSettingsCommand   = new SyncCommand(_ => OpenAdvancedSettings());
+        identifyTokenCommand        = new AsyncCommand(_ => IdentifyTokenAsync());
+        addAddonCommand             = new SyncCommand(_ => AddAddon());
+        editSelectedAddonCommand    = new SyncCommand(_ => EditSelectedAddon(),   () => CanEditSelectedAddon);
+        removeSelectedAddonCommand  = new SyncCommand(_ => RemoveSelectedAddon(), () => SelectedAddonEntry != null);
+        openGitHubCommand           = new SyncCommand(_ => OpenGitHub());
+        openBackupToolCommand       = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
+        openOriginalLauncherCommand = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
+        openAdvancedSettingsCommand = new SyncCommand(_ => OpenAdvancedSettings());
 
         InitializeCredTypeOptions();
         ReloadFromSettings();
@@ -316,11 +314,11 @@ public sealed class SettingsWindowViewModel : ViewModelBase
         PatchAcquisitionIndex                       = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
         DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMs;
         ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
-        UseEntryPointLoadMethod                     = App.Settings.InGameAddonLoadMethod != DalamudLoadMethod.DllInject;
-        EnableHooks                                 = App.Settings.InGameAddonEnabled;
+        UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod != DalamudLoadMethod.DllInject;
+        EnableHooks                                 = App.Settings.DalamudEnabled;
         EnableDcTravel                              = true;
         LaunchArgs                                  = App.Settings.AdditionalLaunchArgs ?? string.Empty;
-        DpiAwarenessIndex                           = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware);
+        DpiAwarenessIndex                           = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Aware);
         VersionLabelText                            = $"XIVLauncher - v{AppUtil.GetAssemblyVersion()}";
         CommitLabelText                             = $"{AppUtil.GetGitHash()}";
         SpeedLimitMb                                = (decimal)App.Settings.SpeedLimitBytes / BYTES_TO_MB;
@@ -346,25 +344,26 @@ public sealed class SettingsWindowViewModel : ViewModelBase
             return false;
         }
 
-        App.Settings.GamePath                = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
-        App.Settings.PatchPath               = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
-        App.Settings.LauncherLanguage        = LauncherLanguage.SimplifiedChinese;
-        App.Settings.AddonList               = AddonEntries.ToList();
-        App.Settings.AskBeforePatchInstall   = AskBeforePatching;
-        App.Settings.KeepPatches             = KeepPatches;
+        App.Settings.GamePath                                    = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
+        App.Settings.PatchPath                                   = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
+        App.Settings.LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
+        App.Settings.AddonList                                   = AddonEntries.ToList();
+        App.Settings.AskBeforePatchInstall                       = AskBeforePatching;
+        App.Settings.KeepPatches                                 = KeepPatches;
         App.Settings.RequireDeviceProfileSetupForNewAccountLogin = RequireDeviceProfileSetupForNewAccountLogin;
-        App.Settings.PatchAcquisitionMethod  = (AcquisitionMethod)PatchAcquisitionIndex;
-        App.Settings.InGameAddonEnabled      = EnableHooks;
-        App.Settings.DalamudInjectionDelayMs = DalamudInjectionDelayMs ?? 0;
-        App.Settings.ManualInjectDelayMs     = ManualInjectDelayMs ?? 0;
-        App.Settings.InGameAddonLoadMethod   = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
-        App.Settings.AdditionalLaunchArgs    = LaunchArgs;
-        App.Settings.DpiAwareness            = (DpiAwareness)DpiAwarenessIndex;
-        App.Settings.SpeedLimitBytes         = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
-        App.Settings.GitHubToken             = GitHubToken;
+        App.Settings.PatchAcquisitionMethod                      = (AcquisitionMethod)PatchAcquisitionIndex;
+        App.Settings.DalamudEnabled                              = EnableHooks;
+        App.Settings.DalamudInjectionDelayMs                     = DalamudInjectionDelayMs ?? 0;
+        App.Settings.ManualInjectDelayMs                         = ManualInjectDelayMs     ?? 0;
+        App.Settings.DalamudLoadMethod                           = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
+        App.Settings.AdditionalLaunchArgs                        = LaunchArgs;
+        App.Settings.DpiAwareness                                = (DpiAwareness)DpiAwarenessIndex;
+        App.Settings.SpeedLimitBytes                             = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
+        App.Settings.GitHubToken                                 = GitHubToken;
 
         var requestedCredType   = SelectedCredType;
         var credTypeApplyResult = await App.AccountManager.ChangeCredTypeAsync(requestedCredType);
+
         if (!credTypeApplyResult.Succeeded)
         {
             SelectedCredType = App.AccountManager.CurrentCredType;
@@ -639,9 +638,9 @@ public sealed class SettingsWindowViewModel : ViewModelBase
 
     private static IReadOnlyList<CredTypeOptionItem> BuildCredTypeOptions(bool isWindowsHelloSupported) =>
     [
-        new(CredType.NoEncryption,       "无加密（不推荐）",                                             true),
-        new(CredType.WindowsCredManager, "系统凭据管理器",                                               true),
-        new(CredType.WindowsHello,       isWindowsHelloSupported ? "Windows Hello" : "Windows Hello（当前设备不可用）", isWindowsHelloSupported)
+        new(CredType.NoEncryption, "无加密（不推荐）", true),
+        new(CredType.WindowsCredManager, "系统凭据管理器", true),
+        new(CredType.WindowsHello, isWindowsHelloSupported ? "Windows Hello" : "Windows Hello（当前设备不可用）", isWindowsHelloSupported)
     ];
 
     private void ReplaceAddonEntries(IEnumerable<AddonEntry> entries)

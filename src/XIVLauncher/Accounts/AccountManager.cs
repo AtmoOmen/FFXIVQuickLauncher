@@ -30,14 +30,14 @@ public class AccountManager
     {
         get
         {
-            var currentAccount = Accounts.FirstOrDefault(account => account.ID == setting.CurrentAccountId) ?? Accounts.FirstOrDefault();
+            var currentAccount = Accounts.FirstOrDefault(account => account.ID == setting.CurrentAccountID) ?? Accounts.FirstOrDefault();
 
-            if (currentAccount != null && !string.Equals(setting.CurrentAccountId, currentAccount.ID, StringComparison.Ordinal))
-                setting.CurrentAccountId = currentAccount.ID;
+            if (currentAccount != null && !string.Equals(setting.CurrentAccountID, currentAccount.ID, StringComparison.Ordinal))
+                setting.CurrentAccountID = currentAccount.ID;
 
             return currentAccount;
         }
-        set => setting.CurrentAccountId = value?.ID ?? string.Empty;
+        set => setting.CurrentAccountID = value?.ID ?? string.Empty;
     }
 
     public ICredProvider CredProvider { get; private set; }
@@ -56,10 +56,10 @@ public class AccountManager
     }
 
     public string CurrentAccountID => 
-        setting.CurrentAccountId;
+        setting.CurrentAccountID;
 
     public bool HasCurrentAccountSelection => 
-        !string.IsNullOrWhiteSpace(setting.CurrentAccountId);
+        !string.IsNullOrWhiteSpace(setting.CurrentAccountID);
 
     public bool HasUnavailableSavedSecrets => 
         unavailableSavedSecretAccountIds.Count != 0;
@@ -72,14 +72,14 @@ public class AccountManager
 
     private static readonly JsonSerializerOptions DeviceProfilePresetStoreJsonOptions = new() { WriteIndented = true };
     
-    private readonly ILauncherSettingsV3 setting;
+    private readonly ILauncherSettingsV4 setting;
     private readonly CredData credData;
 
     private DeviceProfilePresetStoreState? deviceProfilePresetStore;
 
     private readonly HashSet<string> unavailableSavedSecretAccountIds = [];
 
-    public AccountManager(ILauncherSettingsV3 setting)
+    public AccountManager(ILauncherSettingsV4 setting)
     {
         this.setting = setting;
 
@@ -699,8 +699,8 @@ public class AccountManager
         ClearUnavailableSecrets(account.ID);
         Accounts.Remove(account);
 
-        if (string.Equals(setting.CurrentAccountId, account.ID, StringComparison.Ordinal))
-            setting.CurrentAccountId = string.Empty;
+        if (string.Equals(setting.CurrentAccountID, account.ID, StringComparison.Ordinal))
+            setting.CurrentAccountID = string.Empty;
 
         AccountSwitcherEntry.RemoveCustomProfileImage(account);
 
@@ -750,7 +750,7 @@ public class AccountManager
     /// 清空当前账号选择
     /// </summary>
     public void ClearCurrentAccount() =>
-        setting.CurrentAccountId = string.Empty;
+        setting.CurrentAccountID = string.Empty;
     
     private ResolvedDeviceProfile ResolveDeviceProfile(DeviceProfilePreset sharedPreset, XIVAccount? account, bool saveChanges)
     {

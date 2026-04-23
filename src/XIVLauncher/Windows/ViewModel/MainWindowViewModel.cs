@@ -588,7 +588,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 var deviceProfileAccount = pendingNewAccount ?? savedAccount;
 
-                if (App.Settings.InGameAddonEnabled && loginType != LoginType.WeGameAuto)
+                if (App.Settings.DalamudEnabled && loginType != LoginType.WeGameAuto)
                 {
                     Log.Information("[DCTravelListener] 正在开启监听用端口");
                     await dcTraveler.GetValidCookie();
@@ -1347,7 +1347,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         var dalamudLauncher = DalamudLauncherFactory.Create
         (
             App.Settings.GamePath,
-            App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
+            App.Settings.DalamudLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
             noPlugins,
             noThird
         );
@@ -1355,7 +1355,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         var dalamudOk = false;
         EnsureDalamudCompatibility();
 
-        if (App.Settings.InGameAddonEnabled && !forceNoDalamud)
+        if (App.Settings.DalamudEnabled && !forceNoDalamud)
             dalamudOk = EnsureDalamudUpdate(dalamudLauncher, App.Settings.GamePath, false);
 
         var gameRunner = new WindowsGameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
@@ -1382,7 +1382,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             App.Settings.AdditionalLaunchArgs,
             App.Settings.GamePath,
             App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
-            App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware)
+            App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Aware)
         );
 
         Troubleshooting.LogTroubleshooting();

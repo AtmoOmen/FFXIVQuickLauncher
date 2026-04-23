@@ -81,7 +81,7 @@ internal sealed class FirstTimeSetupViewModel : ViewModelBase
             case 1:
                 App.Settings.GamePath           = new DirectoryInfo(GamePath);
                 App.Settings.Language           = ClientLanguage.ChineseSimplified;
-                App.Settings.InGameAddonEnabled = EnableDalamud;
+                App.Settings.DalamudEnabled = EnableDalamud;
                 App.Settings.AddonList          = [];
 
                 WasCompleted = true;

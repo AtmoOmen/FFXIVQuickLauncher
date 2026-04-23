@@ -92,14 +92,14 @@ public static class Troubleshooting
         var payload = new TroubleshootingPayload
         {
             When                  = DateTime.Now,
-            DalamudEnabled        = App.Settings.InGameAddonEnabled,
-            DalamudLoadMethod     = App.Settings.InGameAddonLoadMethod.GetValueOrDefault(),
+            DalamudEnabled        = App.Settings.DalamudEnabled,
+            DalamudLoadMethod     = App.Settings.DalamudLoadMethod.GetValueOrDefault(),
             DalamudInjectionDelay = App.Settings.DalamudInjectionDelayMs,
             EncryptArguments      = App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
             LauncherVersion       = AppUtil.GetAssemblyVersion()!,
             LauncherHash          = AppUtil.GetGitHash()!,
             Official              = AppUtil.GetBuildOrigin() == "AtmoOmen/FFXIVQuickLauncher",
-            DpiAwareness          = App.Settings.DpiAwareness.GetValueOrDefault(),
+            DpiAwareness          = App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Aware),
 
             ObservedGameVersion = ffxivVer,
             ObservedEx1Version  = ex1Ver,

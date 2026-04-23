@@ -607,7 +607,7 @@ public partial class CustomMessageBox : Window
 
             if (App.Settings != null)
             {
-                WithAppendDescription("\n启用 Dalamud: "          + App.Settings.InGameAddonEnabled)
+                WithAppendDescription("\n启用 Dalamud: "          + App.Settings.DalamudEnabled)
                     .WithAppendDescription("\n语言: "           + App.Settings.Language)
                     .WithAppendDescription("\n启动器语言: "   + App.Settings.LauncherLanguage)
                     .WithAppendDescription("\n游戏路径: "          + App.Settings.GamePath);

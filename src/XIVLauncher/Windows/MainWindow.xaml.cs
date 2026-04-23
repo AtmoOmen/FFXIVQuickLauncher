@@ -61,7 +61,7 @@ public partial class MainWindow
         launcher                     =  Model.Launcher;
         Model.Settings.SettingsSaved += (_, _) => _ = SetupHeadlines();
 
-        accountSwitcher = new AccountSwitcher(accountManager, this)
+        accountSwitcher = new AccountSwitcher(accountManager, null)
         {
             ShowInTaskbar = false,
             ShowActivated = false
@@ -184,6 +184,9 @@ public partial class MainWindow
         Dispatcher.Invoke
         (() =>
             {
+                if (areas.Length == 0)
+                    areas = new[] { new LoginArea { AreaName = "获取大区失败", AreaID = "-1" } };
+
                 Model.LoginPage.LoginAreas = [.. areas];
                 Model.LoginPage.Area       = Model.LoginPage.LoginAreas[0];
             }
@@ -251,7 +254,7 @@ public partial class MainWindow
         App.Settings.PatchAcquisitionMethod ??= AcquisitionMethod.Aria;
 
         // Set the default Dalamud injection method
-        App.Settings.InGameAddonLoadMethod ??= DalamudLoadMethod.EntryPoint;
+        App.Settings.DalamudLoadMethod ??= DalamudLoadMethod.EntryPoint;
 
         // Clean up invalid addons
         if (App.Settings.AddonList != null)
@@ -260,7 +263,7 @@ public partial class MainWindow
         App.Settings.AskBeforePatchInstall                       ??= true;
         App.Settings.RequireDeviceProfileSetupForNewAccountLogin ??= false;
 
-        App.Settings.DpiAwareness ??= DpiAwareness.Unaware;
+        App.Settings.DpiAwareness ??= DpiAwareness.Aware;
 
         App.Settings.TreatNonZeroExitCodeAsFailure ??= false;
         App.Settings.ExitLauncherAfterGameExit     ??= true;
@@ -375,9 +378,10 @@ public partial class MainWindow
 
             var hasUnavailableSecrets = accountManager.HasUnavailableSecrets(account);
             var currentLoginType      = Model.LoginPage.LoginTypeOption.LoginType;
+            var selectedArea          = Model.LoginPage.LoginAreas.FirstOrDefault(x => x.AreaName == account.AreaName);
 
             Model.LoginPage.IsFastLogin = account.AutoLogin;
-            Model.LoginPage.Area        = Model.LoginPage.LoginAreas.FirstOrDefault(x => x.AreaName == account.AreaName)!;
+            Model.LoginPage.Area        = selectedArea ?? Model.LoginPage.Area;
             LoginPassword.Password      = string.Empty;
 
             switch (account.AccountType)

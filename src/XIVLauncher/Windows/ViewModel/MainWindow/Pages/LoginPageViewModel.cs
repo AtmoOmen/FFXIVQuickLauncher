@@ -50,8 +50,10 @@ public sealed class LoginPageViewModel : ViewModelBase
         this.requestFakeStartAction      = requestFakeStartAction;
 
         LoginTypeOptions = [.. LoginTypeOption.Get()];
-        loginTypeOption  = LoginTypeOptions.First(x => x.LoginType == App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.Slide));
-        ApplyLoginType(loginTypeOption.LoginType);
+
+        var selectedLoginType = App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.Slide);
+        loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == selectedLoginType)
+                          ?? LoginTypeOptions.First(x => x.LoginType == LoginType.Slide);
 
         startLoginCommand       = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start),               () => CanStartLogin);
         loginNoStartCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.UpdateOnly),          () => !this.isBusyFunc());
@@ -65,6 +67,8 @@ public sealed class LoginPageViewModel : ViewModelBase
         injectModeSwitchCommand = new SyncCommand(_ => this.requestShowInjectPageAction(),    () => !this.isBusyFunc());
         backToMainPageCommand   = new SyncCommand(_ => this.requestBackToMainPageAction());
         fakeStartCommand        = new SyncCommand(_ => this.requestFakeStartAction(), () => !this.isBusyFunc());
+
+        ApplyLoginType(loginTypeOption.LoginType);
     }
 
     public ICommand StartLoginCommand => startLoginCommand;
