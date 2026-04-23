@@ -666,8 +666,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (await ProcessLoginResultAsync(loginResult, action).ConfigureAwait(false))
         {
-            if (App.Settings.ExitLauncherAfterGameExit ?? true)
+            if (App.Settings.ExitLauncherAfterGameExit ?? false)
                 Environment.Exit(0);
+
+            Activate();
         }
     }
 

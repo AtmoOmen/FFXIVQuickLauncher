@@ -8,12 +8,6 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public class AdvancedSettingsViewModel : INotifyPropertyChanged
 {
-    public bool ExitLauncherAfterGameExit
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
-
     public bool TreatNonZeroExitCodeAsFailure
     {
         get;
@@ -34,7 +28,6 @@ public class AdvancedSettingsViewModel : INotifyPropertyChanged
 
     public void Load()
     {
-        ExitLauncherAfterGameExit     = App.Settings.ExitLauncherAfterGameExit     ?? true;
         TreatNonZeroExitCodeAsFailure = App.Settings.TreatNonZeroExitCodeAsFailure ?? false;
         EnableSkipUpdate              = App.Settings.EnableSkipUpdate              ?? false;
         EnableVerboseLog              = LogInit.LevelSwitch.MinimumLevel == LogEventLevel.Verbose;
@@ -42,7 +35,6 @@ public class AdvancedSettingsViewModel : INotifyPropertyChanged
 
     public void Save()
     {
-        App.Settings.ExitLauncherAfterGameExit     = ExitLauncherAfterGameExit;
         App.Settings.TreatNonZeroExitCodeAsFailure = TreatNonZeroExitCodeAsFailure;
         App.Settings.EnableSkipUpdate              = EnableSkipUpdate;
         App.Settings.EnableVerboseLog              = EnableVerboseLog;

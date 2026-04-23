@@ -266,7 +266,7 @@ public partial class MainWindow
         App.Settings.DpiAwareness ??= DpiAwareness.Aware;
 
         App.Settings.TreatNonZeroExitCodeAsFailure ??= false;
-        App.Settings.ExitLauncherAfterGameExit     ??= true;
+        App.Settings.ExitLauncherAfterGameExit     ??= false;
 
         var versionLevel = App.Settings.VersionUpgradeLevel.GetValueOrDefault(0);
 

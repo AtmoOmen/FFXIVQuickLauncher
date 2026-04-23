@@ -351,6 +351,24 @@
                                              Text="{Binding LaunchArgs, UpdateSourceTrigger=PropertyChanged}"
                                              materialDesign:HintAssist.Hint="参数" />
                                 </Grid>
+                                
+                                <Grid Margin="0,0,0,24">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Text="游戏退出时软件也一并退出" FontSize="15"
+                                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                   Text="软件在游戏完全退出时, 一并结束自身进程, 若禁用, 则重新唤起主界面" FontSize="12" Opacity="0.7"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="1"
+                                                  IsChecked="{Binding ExitLauncherAfterGameExit}"
+                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                </Grid>
+                                
                             </StackPanel>
                         </materialDesign:Card>
 

@@ -116,6 +116,12 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         set => SetProperty(ref field, value);
     }
 
+    public bool ExitLauncherAfterGameExit
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
     public bool KeepPatches
     {
         get;
@@ -311,6 +317,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
         LauncherLanguageNoticeVisible               = false;
         AskBeforePatching                           = App.Settings.AskBeforePatchInstall                       ?? true;
+        ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherAfterGameExit                   ?? false;
         KeepPatches                                 = App.Settings.KeepPatches                                 ?? false;
         RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewAccountLogin ?? false;
         PatchAcquisitionIndex                       = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
@@ -351,6 +358,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         App.Settings.LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
         App.Settings.AddonList                                   = AddonEntries.ToList();
         App.Settings.AskBeforePatchInstall                       = AskBeforePatching;
+        App.Settings.ExitLauncherAfterGameExit                   = ExitLauncherAfterGameExit;
         App.Settings.KeepPatches                                 = KeepPatches;
         App.Settings.RequireDeviceProfileSetupForNewAccountLogin = RequireDeviceProfileSetupForNewAccountLogin;
         App.Settings.PatchAcquisitionMethod                      = (AcquisitionMethod)PatchAcquisitionIndex;
