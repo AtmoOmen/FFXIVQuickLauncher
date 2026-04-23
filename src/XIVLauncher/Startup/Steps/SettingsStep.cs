@@ -46,12 +46,7 @@ public class SettingsStep
             throw new InvalidOperationException(credTypeApplyResult.UserMessage ?? "自动登录加密方式初始化失败");
 
         if (credTypeApplyResult.WasFallbackApplied)
-        {
             context.Settings.CredType = credTypeApplyResult.AppliedCredType;
-
-            if (credTypeApplyResult.ShouldDisableAutoLogin)
-                context.Settings.AutologinEnabled = false;
-        }
     }
 
     private static void EnsureSettingsInitialized(StartupContext context)

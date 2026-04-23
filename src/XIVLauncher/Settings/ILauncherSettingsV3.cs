@@ -15,7 +15,6 @@ public interface ILauncherSettingsV3
     #region Launcher Setting
 
     DirectoryInfo      GamePath                      { get; set; }
-    bool               AutologinEnabled              { get; set; }
     List<AddonEntry>   AddonList                     { get; set; }
     string             AdditionalLaunchArgs          { get; set; }
     bool               InGameAddonEnabled            { get; set; }

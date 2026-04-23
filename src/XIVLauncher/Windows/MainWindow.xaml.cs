@@ -109,73 +109,6 @@ public partial class MainWindow
 
         Model.LoginPage.IsFastLogin = App.Settings.FastLogin;
 
-        var savedAccount          = accountManager.CurrentAccount;
-        var hasUnavailableSecrets = accountManager.HasUnavailableSecrets(savedAccount);
-
-        if (App.GlobalIsDisableAutologin)
-        {
-            Log.Information("Autologin was disabled globally, saving into settings...");
-            App.Settings.AutologinEnabled = false;
-        }
-
-        if (hasUnavailableSecrets && App.Settings.AutologinEnabled)
-        {
-            Log.Information("当前账号存在本会话不可读的旧密文，已禁用自动登录");
-            App.Settings.AutologinEnabled = false;
-        }
-
-        if (App.Settings.AutologinEnabled && savedAccount != null && !hasUnavailableSecrets && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-        {
-            Log.Information("自动登录中...");
-
-            if (savedAccount.AccountType == XIVAccountType.WeGame)
-            {
-                if (!string.IsNullOrWhiteSpace(savedAccount.WeGameTokenSecret))
-                {
-                    Model.StartLogin
-                    (
-                        LoginType.WeGameManual,
-                        savedAccount.UserName,
-                        string.Empty,
-                        Model.LoginPage.IsFastLogin,
-                        false,
-                        LoginAfterAction.Start
-                    );
-                    return;
-                }
-
-                if (!string.IsNullOrWhiteSpace(savedAccount.WeGameSIDSecret))
-                {
-                    Model.StartLogin
-                    (
-                        LoginType.WeGameAuto,
-                        savedAccount.UserName,
-                        string.Empty,
-                        Model.LoginPage.IsFastLogin,
-                        false,
-                        LoginAfterAction.Start
-                    );
-                    return;
-                }
-            }
-            else
-            {
-                Model.StartLogin
-                (
-                    LoginType.AutoLoginSession,
-                    savedAccount.SdoLoginAccount,
-                    string.Empty,
-                    Model.LoginPage.IsFastLogin,
-                    Model.LoginPage.IsReadWegameInfo,
-                    LoginAfterAction.Start
-                );
-                return;
-            }
-        }
-
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || bool.Parse(Environment.GetEnvironmentVariable("XL_NOAUTOLOGIN") ?? "false"))
-            App.Settings.AutologinEnabled = false;
-
         if (App.Settings.GamePath?.Exists != true)
         {
             var setup = new FirstTimeSetup();
@@ -194,11 +127,11 @@ public partial class MainWindow
         Task.Run
         (async () =>
             {
-                SetupServers().Wait();
+                await SetupServers().ConfigureAwait(false);
                 Dispatcher.Invoke
                 (() =>
                     {
-                        if (savedAccount != null)
+                        if (accountManager.CurrentAccount is { } savedAccount)
                             SwitchAccount(savedAccount, false);
                     }
                 );
@@ -292,7 +225,7 @@ public partial class MainWindow
                 new Action
                 (() =>
                     {
-                        currentBannerIndex   = 0;
+                        currentBannerIndex    = 0;
                         BannerImage.Source    = bannerBitmaps[currentBannerIndex];
                         BannerDot.ItemsSource = bannerDotList;
                         SetBannerDotActiveState(currentBannerIndex);
@@ -589,7 +522,7 @@ public partial class MainWindow
         if (bannerChangeTimer != null || bannerBitmaps is not { Length: > 0 })
             return;
 
-        bannerChangeTimer = new Timer { Interval = 5000, AutoReset = true };
+        bannerChangeTimer         =  new Timer { Interval = 5000, AutoReset = true };
         bannerChangeTimer.Elapsed += (_, _) => Dispatcher.BeginInvoke(new Action(ShowNextBanner), DispatcherPriority.Background);
         bannerChangeTimer.Start();
         isBannerRotationActive = true;

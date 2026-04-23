@@ -28,7 +28,15 @@ public class AccountManager
     
     public XIVAccount? CurrentAccount
     {
-        get => Accounts.FirstOrDefault(account => account.ID == setting.CurrentAccountId) ?? Accounts.FirstOrDefault();
+        get
+        {
+            var currentAccount = Accounts.FirstOrDefault(account => account.ID == setting.CurrentAccountId) ?? Accounts.FirstOrDefault();
+
+            if (currentAccount != null && !string.Equals(setting.CurrentAccountId, currentAccount.ID, StringComparison.Ordinal))
+                setting.CurrentAccountId = currentAccount.ID;
+
+            return currentAccount;
+        }
         set => setting.CurrentAccountId = value?.ID ?? string.Empty;
     }
 
@@ -827,7 +835,6 @@ public class AccountManager
             true,
             requestedType,
             fallbackType,
-            true,
             true,
             HasUnavailableSavedSecrets,
             USER_MESSAGE

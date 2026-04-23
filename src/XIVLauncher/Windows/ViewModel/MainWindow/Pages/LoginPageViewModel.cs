@@ -153,7 +153,7 @@ public sealed class LoginPageViewModel : ViewModelBase
         {
             var previousGroup = loginTypeOption?.Group;
 
-            if (!SetProperty(ref loginTypeOption, value))
+            if (!SetProperty(ref loginTypeOption!, value))
                 return;
 
             App.Settings.SelectedLoginType = value.LoginType;

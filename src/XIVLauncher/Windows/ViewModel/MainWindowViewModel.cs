@@ -293,8 +293,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
             return;
         }
 
-        if (!doingAutoLogin)
-            App.Settings.AutologinEnabled = LoginPage.IsAutoLogin;
         App.Settings.FastLogin = LoginPage.IsFastLogin;
 
         var         finalLoginType             = loginType;
@@ -469,7 +467,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             SetSdoAreaFunc = name =>
             {
-                App.AccountManager.CurrentAccount.AreaName = name;
+                App.AccountManager.CurrentAccount!.AreaName = name;
                 App.AccountManager.Save();
             }
         };
@@ -479,7 +477,17 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         while (true)
         {
-            var nextLoginResult = await LoginToGameAsync(finalLoginType, loginType, username, secret, loginAutoLogin, deviceProfileSnapshot, dcTraveler, action).ConfigureAwait(false);
+            var nextLoginResult = await LoginToGameAsync
+                                  (
+                                      finalLoginType,
+                                      loginType,
+                                      username,
+                                      secret!,
+                                      loginAutoLogin,
+                                      deviceProfileSnapshot,
+                                      dcTraveler,
+                                      action
+                                  ).ConfigureAwait(false);
             if (nextLoginResult == null)
                 return;
 
@@ -865,8 +873,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
                 return null;
             }
 
-            var disableAutoLogin = false;
-
             switch (ex)
             {
                 case IOException:
@@ -888,7 +894,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         return null;
                     }
 
-                    disableAutoLogin       = true;
                     LoginPage.LoginMessage = string.Empty;
 
                     if (string.IsNullOrWhiteSpace(oauthLoginException.OAuthErrorMessage))
@@ -918,19 +923,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
                 // Actual unexpected error; show error details
                 default:
-                    disableAutoLogin = true;
                     msgbox.WithShowNewGitHubIssue()
                           .WithAppendDescription(ex.ToString())
                           .WithAppendSettingsDescription("Login")
                           .WithAppendText("\n\n")
                           .WithAppendText("请检查登录信息, 并在稍后重试");
                     break;
-            }
-
-            if (disableAutoLogin && App.Settings.AutologinEnabled)
-            {
-                msgbox.WithAppendText("\n\n自动登录已被禁用");
-                App.Settings.AutologinEnabled = false;
             }
 
             msgbox.Show();

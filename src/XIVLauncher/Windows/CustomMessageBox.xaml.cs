@@ -425,10 +425,6 @@ public partial class CustomMessageBox : Window
                        .WithNoButtonText("退出");
             }
 
-            // When this happens we probably don't want them to run into it again, in case it's an issue with a moved game for example
-            if (App.Settings != null)
-                App.Settings.AutologinEnabled = false;
-
             return builder;
         }
 
@@ -603,23 +599,22 @@ public partial class CustomMessageBox : Window
 
         public Builder WithAppendSettingsDescription(string context)
         {
-            WithAppendDescription("\n\nVersion: "     + AppUtil.GetAssemblyVersion())
-                .WithAppendDescription("\nGit Hash: " + AppUtil.GetGitHash())
-                .WithAppendDescription("\nContext: "  + context)
-                .WithAppendDescription("\nOS: "       + Environment.OSVersion)
-                .WithAppendDescription("\n64bit? "    + Environment.Is64BitProcess);
+            WithAppendDescription("\n\n版本: "     + AppUtil.GetAssemblyVersion())
+                .WithAppendDescription("\nGit 哈希: " + AppUtil.GetGitHash())
+                .WithAppendDescription("\n上下文: "  + context)
+                .WithAppendDescription("\n操作系统: "       + Environment.OSVersion)
+                .WithAppendDescription("\n64 位: "    + Environment.Is64BitProcess);
 
             if (App.Settings != null)
             {
-                WithAppendDescription("\nAddons Enabled? "          + App.Settings.InGameAddonEnabled)
-                    .WithAppendDescription("\nAuto Login Enabled? " + App.Settings.AutologinEnabled)
-                    .WithAppendDescription("\nLanguage: "           + App.Settings.Language)
-                    .WithAppendDescription("\nLauncherLanguage: "   + App.Settings.LauncherLanguage)
-                    .WithAppendDescription("\nGame path: "          + App.Settings.GamePath);
+                WithAppendDescription("\n启用 Dalamud: "          + App.Settings.InGameAddonEnabled)
+                    .WithAppendDescription("\n语言: "           + App.Settings.Language)
+                    .WithAppendDescription("\n启动器语言: "   + App.Settings.LauncherLanguage)
+                    .WithAppendDescription("\n游戏路径: "          + App.Settings.GamePath);
             }
 
 #if DEBUG
-            WithAppendDescription("\nDebugging");
+            WithAppendDescription("\n[调试模式]");
 #endif
 
             return this;

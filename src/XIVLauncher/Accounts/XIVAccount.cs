@@ -57,11 +57,11 @@ public class XIVAccount : IEquatable<XIVAccount>
 
     /// <summary>盛趣自动登录会话密钥, 仅一键登录使用</summary>
     [Column("AutoLoginSessionKey")]
-    public string SdoAutoLoginSessionKey { get; set; } = null!;
+    public string? SdoAutoLoginSessionKey { get; set; }
 
     /// <summary>盛趣静态密码, 仅静态密码登录使用</summary>
     [Column("Password")]
-    public string SdoPassword { get; set; } = null!;
+    public string? SdoPassword { get; set; }
 
     /// <summary>WeGame 手动抓包令牌, 仅 WeGame 手动抓包渠道使用</summary>
     public string? WeGameTokenSecret { get; set; }
@@ -72,7 +72,7 @@ public class XIVAccount : IEquatable<XIVAccount>
 
     /// <summary>游戏会话 ID, 由自动读取登录渠道刷新</summary>
     [Column("NSessionId")]
-    public string WeGameSessionID { get; set; } = null!;
+    public string? WeGameSessionID { get; set; }
 
     #endregion
 

@@ -92,7 +92,6 @@ public static class Troubleshooting
         var payload = new TroubleshootingPayload
         {
             When                  = DateTime.Now,
-            IsAutoLogin           = App.Settings.AutologinEnabled,
             DalamudEnabled        = App.Settings.InGameAddonEnabled,
             DalamudLoadMethod     = App.Settings.InGameAddonLoadMethod.GetValueOrDefault(),
             DalamudInjectionDelay = App.Settings.DalamudInjectionDelayMs,
@@ -145,9 +144,7 @@ public static class Troubleshooting
     private class TroubleshootingPayload
     {
         public required DateTime When { get; set; }
-
-        public required bool IsAutoLogin { get; set; }
-
+        
         public required bool DalamudEnabled { get; set; }
 
         public required DalamudLoadMethod DalamudLoadMethod { get; set; }
