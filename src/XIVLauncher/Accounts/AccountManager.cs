@@ -161,8 +161,10 @@ public class AccountManager
             SetupDb();
         }
 
+        var storedAccounts = Database.Table<XIVAccount>().ToArray();
+
         Accounts.Clear();
-        foreach (var account in Database.Table<XIVAccount>())
+        foreach (var account in storedAccounts)
             Accounts.Add(account);
 
         foreach (var account in Accounts.ToArray())
@@ -951,7 +953,7 @@ public class AccountManager
     {
         _ = GetDeviceProfilePresetStoreState();
 
-        foreach (var account in Accounts)
+        foreach (var account in Accounts.ToArray())
         {
             if (!MigrateLegacyDeviceProfile(account))
                 continue;
