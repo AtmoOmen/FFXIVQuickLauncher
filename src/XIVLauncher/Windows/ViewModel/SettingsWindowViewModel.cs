@@ -172,7 +172,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     {
         get;
         set => SetProperty(ref field, value);
-    } = (int)DpiAwareness.Unaware;
+    } = (int)DPIAwareness.Unaware;
 
     public int PatchAcquisitionIndex
     {
@@ -316,18 +316,18 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 
         LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
         LauncherLanguageNoticeVisible               = false;
-        AskBeforePatching                           = App.Settings.AskBeforePatchInstall                       ?? true;
-        ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherAfterGameExit                   ?? false;
-        KeepPatches                                 = App.Settings.KeepPatches                                 ?? false;
-        RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewAccountLogin ?? false;
-        PatchAcquisitionIndex                       = (int)App.Settings.PatchAcquisitionMethod.GetValueOrDefault(AcquisitionMethod.Aria);
-        DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMs;
+        AskBeforePatching                           = App.Settings.AskBeforePatchInstall;
+        ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherWhenGameExit;
+        KeepPatches                                 = App.Settings.KeepPatches;
+        RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewLogin;
+        PatchAcquisitionIndex                       = (int)App.Settings.PatchAcquisitionMethod;
+        DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMS;
         ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
         UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod != DalamudLoadMethod.DllInject;
         EnableHooks                                 = App.Settings.DalamudEnabled;
         EnableDcTravel                              = true;
         LaunchArgs                                  = App.Settings.AdditionalLaunchArgs ?? string.Empty;
-        DpiAwarenessIndex                           = (int)App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Aware);
+        DpiAwarenessIndex                           = (int)App.Settings.DPIAwareness;
         VersionLabelText                            = $"XIVLauncher - v{AppUtil.GetAssemblyVersion()}";
         CommitLabelText                             = $"{AppUtil.GetGitHash()}";
         SpeedLimitMb                                = (decimal)App.Settings.SpeedLimitBytes / BYTES_TO_MB;
@@ -358,16 +358,16 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         App.Settings.LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
         App.Settings.AddonList                                   = AddonEntries.ToList();
         App.Settings.AskBeforePatchInstall                       = AskBeforePatching;
-        App.Settings.ExitLauncherAfterGameExit                   = ExitLauncherAfterGameExit;
+        App.Settings.ExitLauncherWhenGameExit                   = ExitLauncherAfterGameExit;
         App.Settings.KeepPatches                                 = KeepPatches;
-        App.Settings.RequireDeviceProfileSetupForNewAccountLogin = RequireDeviceProfileSetupForNewAccountLogin;
+        App.Settings.RequireDeviceProfileSetupForNewLogin = RequireDeviceProfileSetupForNewAccountLogin;
         App.Settings.PatchAcquisitionMethod                      = (AcquisitionMethod)PatchAcquisitionIndex;
         App.Settings.DalamudEnabled                              = EnableHooks;
-        App.Settings.DalamudInjectionDelayMs                     = DalamudInjectionDelayMs ?? 0;
+        App.Settings.DalamudInjectionDelayMS                     = DalamudInjectionDelayMs ?? 0;
         App.Settings.ManualInjectDelayMs                         = ManualInjectDelayMs     ?? 0;
         App.Settings.DalamudLoadMethod                           = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
         App.Settings.AdditionalLaunchArgs                        = LaunchArgs;
-        App.Settings.DpiAwareness                                = (DpiAwareness)DpiAwarenessIndex;
+        App.Settings.DPIAwareness                                = (DPIAwareness)DpiAwarenessIndex;
         App.Settings.SpeedLimitBytes                             = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
         App.Settings.GitHubToken                                 = GitHubToken;
 
@@ -392,6 +392,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 
         App.Settings.CredType = credTypeApplyResult.AppliedCredType;
         SelectedCredType      = credTypeApplyResult.AppliedCredType;
+        App.Settings.Save();
 
         SettingsSaved?.Invoke(this, EventArgs.Empty);
         return true;

@@ -28,8 +28,8 @@ public class AdvancedSettingsViewModel : INotifyPropertyChanged
 
     public void Load()
     {
-        TreatNonZeroExitCodeAsFailure = App.Settings.TreatNonZeroExitCodeAsFailure ?? false;
-        EnableSkipUpdate              = App.Settings.EnableSkipUpdate              ?? false;
+        TreatNonZeroExitCodeAsFailure = App.Settings.TreatNonZeroExitCodeAsFailure;
+        EnableSkipUpdate              = App.Settings.EnableSkipUpdate;
         EnableVerboseLog              = LogInit.LevelSwitch.MinimumLevel == LogEventLevel.Verbose;
     }
 

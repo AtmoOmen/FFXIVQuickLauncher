@@ -334,7 +334,7 @@
                                     </ComboBox>
                                 </Grid>
 
-                                <Grid>
+                                <Grid Margin="0,0,0,24">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" MinWidth="250" />
@@ -352,10 +352,10 @@
                                              materialDesign:HintAssist.Hint="参数" />
                                 </Grid>
                                 
-                                <Grid Margin="0,0,0,24">
+                                <Grid Margin="0,0,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" MinWidth="250" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                                         <TextBlock Text="游戏退出时软件也一并退出" FontSize="15"
@@ -365,6 +365,7 @@
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
                                     <ToggleButton Grid.Column="1"
+                                                  HorizontalAlignment="Right"
                                                   IsChecked="{Binding ExitLauncherAfterGameExit}"
                                                   Style="{StaticResource MaterialDesignSwitchToggleButton}" />
                                 </Grid>

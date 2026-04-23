@@ -22,6 +22,6 @@ public class CommonSettings : ISettings
     public         DirectoryInfo      GamePath                => App.Settings.GamePath;
     public         AcquisitionMethod? PatchAcquisitionMethod  => App.Settings.PatchAcquisitionMethod;
     public         long               SpeedLimitBytes         => App.Settings.SpeedLimitBytes;
-    public         int                DalamudInjectionDelayMs => (int)App.Settings.DalamudInjectionDelayMs;
+    public         int                DalamudInjectionDelayMs => (int)App.Settings.DalamudInjectionDelayMS;
     private static CommonSettings     instance;
 }

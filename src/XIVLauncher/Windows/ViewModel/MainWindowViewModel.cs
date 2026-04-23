@@ -13,7 +13,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
-using Castle.Core.Internal;
 using Serilog;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
@@ -294,6 +293,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
 
         App.Settings.FastLogin = LoginPage.IsFastLogin;
+        App.Settings.Save();
 
         var         finalLoginType             = loginType;
         var         secret                     = string.Empty;
@@ -309,7 +309,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             switch (loginType)
             {
                 case LoginType.Static:
-                    if (!inputPassword.IsNullOrEmpty())
+                    if (!string.IsNullOrEmpty(inputPassword))
                         secret = inputPassword;
                     else if (!hasUnavailableSavedSecrets && savedAccount?.SdoPassword is { Length: > 0 } savedPassword)
                         secret = await AccountManager.Decrypt(savedPassword);
@@ -328,7 +328,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         if (loginData == null)
                             return;
 
-                        if (loginData.SndaID.IsNullOrEmpty() || loginData.SessionId.IsNullOrEmpty())
+                        if (string.IsNullOrEmpty(loginData.SndaID) || string.IsNullOrEmpty(loginData.SessionId))
                             throw new Exception("获取WeGame登录信息失败");
                         username = loginData.SndaID;
                         secret   = loginData.SessionId;
@@ -374,13 +374,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     break;
 
                 case LoginType.WeGameManual:
-                    if (!hasUnavailableSavedSecrets && inputPassword.IsNullOrEmpty() && savedAccount?.WeGameTokenSecret is { Length: > 0 } weGameTokenSecret)
+                    if (!hasUnavailableSavedSecrets && string.IsNullOrEmpty(inputPassword) && savedAccount?.WeGameTokenSecret is { Length: > 0 } weGameTokenSecret)
                     {
                         secret         = await AccountManager.CredProvider.Decrypt(weGameTokenSecret);
                         finalLoginType = LoginType.WeGameManual;
                     }
 
-                    if (secret.IsNullOrEmpty())
+                    if (string.IsNullOrEmpty(secret))
                     {
                         secret         = inputPassword;
                         finalLoginType = LoginType.WeGameManual;
@@ -396,7 +396,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                         finalLoginType = LoginType.AutoLoginSession;
                     }
 
-                    if (secret.IsNullOrEmpty())
+                    if (string.IsNullOrEmpty(secret))
                         finalLoginType = LoginType.Slide;
                     ArgumentException.ThrowIfNullOrEmpty(username, "一键登录用户名");
                     break;
@@ -666,7 +666,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (await ProcessLoginResultAsync(loginResult, action).ConfigureAwait(false))
         {
-            if (App.Settings.ExitLauncherAfterGameExit ?? false)
+            if (App.Settings.ExitLauncherWhenGameExit)
                 Environment.Exit(0);
 
             Activate();
@@ -940,12 +940,12 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private bool ConfirmGamePatchInstall()
     {
-        if (!(App.Settings.AskBeforePatchInstall ?? true))
+        if (!App.Settings.AskBeforePatchInstall)
             return true;
 
         var selfPatchAsk = CustomMessageBox.Show
         (
-            "需要更新游戏才能继续游玩\n是否要下载更新文件并安装?",
+            "检测到新的游戏补丁\n是否下载更新文件并安装?",
             "XIVLauncherCN (Soil)",
             MessageBoxButton.YesNo,
             parentWindow: Window
@@ -1090,7 +1090,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             {
                 var oauthLogin = loginResult.OAuthLogin;
 
-                if (oauthLogin == null || oauthLogin.SessionID.IsNullOrEmpty() || oauthLogin.SndaID.IsNullOrEmpty())
+                if (oauthLogin == null || string.IsNullOrEmpty(oauthLogin.SessionID) || string.IsNullOrEmpty(oauthLogin.SndaID))
                 {
                     Log.Error("[MainWindow] SID 或 SNDAID 为空，取消登录");
                     CustomMessageBox.Show
@@ -1117,7 +1117,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
                     return false;
 
                 // 正常退出 / 重启
-                if (process.ExitCode is not (0 or 0x12345678) && (App.Settings.TreatNonZeroExitCodeAsFailure ?? false))
+                if (process.ExitCode is not (0 or 0x12345678) && App.Settings.TreatNonZeroExitCodeAsFailure)
                 {
                     var message = new CustomMessageBox.Builder()
                                   .WithTextFormatted
@@ -1349,7 +1349,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         var dalamudLauncher = DalamudLauncherFactory.Create
         (
             App.Settings.GamePath,
-            App.Settings.DalamudLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
+            App.Settings.DalamudLoadMethod,
             noPlugins,
             noThird
         );
@@ -1383,8 +1383,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
             Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
             App.Settings.AdditionalLaunchArgs,
             App.Settings.GamePath,
-            App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
-            App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Aware)
+            App.Settings.EncryptArgumentsV2,
+            App.Settings.DPIAwareness
         );
 
         Troubleshooting.LogTroubleshooting();
@@ -1753,11 +1753,11 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
     private async Task<bool> HandlePatchAsync(Repository repository, PatchListEntry[] pendingPatches, string sid)
     {
-        using var installer = new Common.Game.Patch.PatchInstaller(App.Settings.KeepPatches ?? false);
+        using var installer = new Common.Game.Patch.PatchInstaller(App.Settings.KeepPatches);
 
         var patcher = new PatchManager
         (
-            App.Settings.PatchAcquisitionMethod ?? AcquisitionMethod.Aria,
+            App.Settings.PatchAcquisitionMethod,
             App.Settings.SpeedLimitBytes,
             repository,
             pendingPatches,
@@ -1929,12 +1929,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         if (action == LoginAfterAction.Start)
             loginPage.LoginMessage = string.Empty;
 
-        if (loginPage.IsAutoLogin && !App.Settings.HasShownAutoLaunchDisclaimer.GetValueOrDefault(false))
-        {
-            DialogProvider.ShowAutoLoginDisclaimer();
-            App.Settings.HasShownAutoLaunchDisclaimer = true;
-        }
-
         if (GameHelpers.CheckIsGameOpen() && action == LoginAfterAction.Repair)
         {
             DialogProvider.ShowRepairBlockedMessage();
@@ -1962,8 +1956,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private void HideLoadingDialog() =>
         IsLoadingDialogOpen = false;
 
-    private bool ShouldRequireNewAccountDeviceProfileSetup(XIVAccount? savedAccount, LoginAfterAction action) =>
-        App.Settings.RequireDeviceProfileSetupForNewAccountLogin.GetValueOrDefault(false)
+    private static bool ShouldRequireNewAccountDeviceProfileSetup(XIVAccount? savedAccount, LoginAfterAction action) =>
+        App.Settings.RequireDeviceProfileSetupForNewLogin
         && savedAccount == null
         && action       != LoginAfterAction.UpdateOnly;
 

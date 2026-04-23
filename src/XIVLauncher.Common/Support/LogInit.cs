@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using CommandLine;
 using Serilog;
@@ -10,11 +9,11 @@ namespace XIVLauncher.Common.Support;
 
 public static class LogInit
 {
-    public static LoggingLevelSwitch LevelSwitch;
+    public static LoggingLevelSwitch? LevelSwitch { get; set; }
 
     public static void Setup(string defaultLogPath, string[] args)
     {
-        ParserResult<LogOptions> result = null;
+        ParserResult<LogOptions>? result = null;
 
         var parser = new Parser(c => { c.IgnoreUnknownArguments = true; });
         result = parser.ParseArguments<LogOptions>(args);
@@ -32,17 +31,16 @@ public static class LogInit
 #if DEBUG
         config.WriteTo.Debug();
 #endif
-        //config.MinimumLevel.Verbose();
         LevelSwitch = new LoggingLevelSwitch(GetDefaultLevel());
 
         config.Enrich.WithSensitiveDataMasking
         (o =>
             {
-                o.MaskingOperators = new List<IMaskingOperator>
-                {
+                o.MaskingOperators =
+                [
                     new SeEncryptedArgsMaskingOperator(),
                     new SeTestSidMaskingOperator()
-                };
+                ];
             }
         );
 
@@ -73,28 +71,18 @@ public static class LogInit
         public string? LogPath { get; set; }
     }
 
-    private class SeTestSidMaskingOperator : RegexMaskingOperator
+    private class SeTestSidMaskingOperator() : RegexMaskingOperator(TEST_SID_PATTERN, RegexOptions.IgnoreCase | RegexOptions.Compiled)
     {
         private const string TEST_SID_PATTERN =
-            "(?:DEV\\.TestSID=\\S+)|(ULS21-[a-z0-9]+)";
-
-        public SeTestSidMaskingOperator()
-            : base(TEST_SID_PATTERN, RegexOptions.IgnoreCase | RegexOptions.Compiled)
-        {
-        }
+            @"(?:DEV\.TestSID=\S+)|(ULS21-[a-z0-9]+)";
 
         protected override bool ShouldMaskInput(string input) =>
             input != "DEV.TestSID=0";
     }
 
-    private class SeEncryptedArgsMaskingOperator : RegexMaskingOperator
+    private class SeEncryptedArgsMaskingOperator() : RegexMaskingOperator(ENCRYPTED_ARGS_PATTERN, RegexOptions.IgnoreCase | RegexOptions.Compiled)
     {
         private const string ENCRYPTED_ARGS_PATTERN =
-            "(?:\\/\\/\\*\\*sqex[0-9]+\\S+\\/\\/)";
-
-        public SeEncryptedArgsMaskingOperator()
-            : base(ENCRYPTED_ARGS_PATTERN, RegexOptions.IgnoreCase | RegexOptions.Compiled)
-        {
-        }
+            @"(?:\/\/\*\*sqex[0-9]+\S+\/\/)";
     }
 }

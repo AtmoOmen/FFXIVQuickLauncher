@@ -38,7 +38,7 @@ public partial class Launcher
         string        additionalArguments,
         DirectoryInfo gamePath,
         bool          encryptArguments,
-        DpiAwareness  dpiAwareness
+        DPIAwareness  dpiAwareness
     )
     {
         Log.Information("[Launcher] 启动游戏 (参数: {AdditionalArguments})", additionalArguments);

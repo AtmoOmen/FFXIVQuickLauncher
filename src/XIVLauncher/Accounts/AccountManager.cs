@@ -72,14 +72,14 @@ public class AccountManager
 
     private static readonly JsonSerializerOptions DeviceProfilePresetStoreJsonOptions = new() { WriteIndented = true };
     
-    private readonly ILauncherSettingsV3 setting;
+    private readonly LauncherSettingsV3 setting;
     private readonly CredData credData;
 
     private DeviceProfilePresetStoreState? deviceProfilePresetStore;
 
     private readonly HashSet<string> unavailableSavedSecretAccountIds = [];
 
-    public AccountManager(ILauncherSettingsV3 setting)
+    public AccountManager(LauncherSettingsV3 setting)
     {
         this.setting = setting;
 

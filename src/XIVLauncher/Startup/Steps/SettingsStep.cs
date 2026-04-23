@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Config.Net;
 using Serilog;
 using Serilog.Events;
 using XIVLauncher.Accounts;
@@ -10,7 +9,6 @@ using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Support;
 using XIVLauncher.Settings;
-using XIVLauncher.Settings.Parsers;
 using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Startup.Steps;
@@ -47,6 +45,8 @@ public class SettingsStep
 
         if (credTypeApplyResult.WasFallbackApplied)
             context.Settings.CredType = credTypeApplyResult.AppliedCredType;
+
+        context.Settings.Save();
     }
 
     private static void EnsureSettingsInitialized(StartupContext context)
@@ -57,15 +57,9 @@ public class SettingsStep
 
     private void SetupSettings(StartupContext context)
     {
-        context.Settings = new ConfigurationBuilder<ILauncherSettingsV3>()
-                           .UseCommandLineArgs()
-                           .UseJsonFile(Paths.GetConfigPath())
-                           .UseTypeParser(new DirectoryInfoParser())
-                           .UseTypeParser(new AddonListParser())
-                           .UseTypeParser(new CommonJsonParser<PreserveWindowPosition.WindowPlacement>())
-                           .Build();
+        context.Settings = LoadSettings();
 
-        if (LogInit.LevelSwitch != null && context.Settings.EnableVerboseLog.GetValueOrDefault(false))
+        if (LogInit.LevelSwitch != null && context.Settings.EnableVerboseLog)
             LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
         context.Settings.EnableVerboseLog = false;
         if (LogInit.LevelSwitch != null)
@@ -91,4 +85,7 @@ public class SettingsStep
             Log.Error(ex, "无法应用命令行设置覆盖");
         }
     }
+
+    private static LauncherSettingsV3 LoadSettings() =>
+        LauncherSettingsV3.Load(Paths.GetConfigPath());
 }

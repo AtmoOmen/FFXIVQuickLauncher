@@ -8,7 +8,7 @@ namespace XIVLauncher.Startup;
 
 public class StartupContext
 {
-    public ILauncherSettingsV3 Settings              { get; set; } = null!;
+    public LauncherSettingsV3  Settings              { get; set; } = null!;
     public AccountManager      AccountManager        { get; set; } = null!;
     public DalamudUpdater      DalamudUpdater        { get; set; } = null!;
     public Dispatcher          Dispatcher            { get; set; } = null!;

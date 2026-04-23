@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
-    Title="XIVLauncher 设置向导"
+    Title="首次设置"
     Width="450"
     Background="{DynamicResource MaterialDesign.Brush.Background}"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
@@ -35,6 +35,7 @@
                         Margin="0,10,0,10"
                         HorizontalAlignment="Left"
                         VerticalAlignment="Top"
+                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                         Text="请选择游戏目录"
                         TextWrapping="Wrap" />
                     <components:FolderEntry

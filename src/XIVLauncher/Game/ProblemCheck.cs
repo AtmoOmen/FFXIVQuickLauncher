@@ -116,7 +116,7 @@ internal static class ProblemCheck
         dinput8.Refresh();
         dxgi.Refresh();
 
-        if ((d3d11.Exists || dinput8.Exists) && !App.Settings.HasComplainedAboutGShadeDxgi.GetValueOrDefault(false))
+        if ((d3d11.Exists || dinput8.Exists) && !App.Settings.HasComplainedAboutGShadeDXGI)
         {
             FileVersionInfo? d3d11Info   = null;
             FileVersionInfo? dinput8Info = null;
@@ -208,7 +208,7 @@ internal static class ProblemCheck
                     }
                 }
                 else
-                    App.Settings.HasComplainedAboutGShadeDxgi = true;
+                    App.Settings.HasComplainedAboutGShadeDXGI = true;
             }
         }
     }

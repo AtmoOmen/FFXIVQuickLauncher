@@ -14,7 +14,7 @@ namespace XIVLauncher.Common.Game;
 
 public static class NativeAclFix
 {
-    public static Process LaunchGame(string workingDir, string exePath, string arguments, IDictionary<string, string> envVars, DpiAwareness dpiAwareness, Action<Process> beforeResume)
+    public static Process LaunchGame(string workingDir, string exePath, string arguments, IDictionary<string, string> envVars, DPIAwareness dpiAwareness, Action<Process> beforeResume)
     {
         Process process = null;
 
@@ -73,8 +73,8 @@ public static class NativeAclFix
             var compat = "RunAsInvoker ";
             compat += dpiAwareness switch
             {
-                DpiAwareness.Aware   => "HighDPIAware",
-                DpiAwareness.Unaware => "DPIUnaware",
+                DPIAwareness.Aware   => "HighDPIAware",
+                DPIAwareness.Unaware => "DPIUnaware",
                 _                    => throw new ArgumentOutOfRangeException()
             };
             Environment.SetEnvironmentVariable("__COMPAT_LAYER", compat);

@@ -93,13 +93,13 @@ public static class Troubleshooting
         {
             When                  = DateTime.Now,
             DalamudEnabled        = App.Settings.DalamudEnabled,
-            DalamudLoadMethod     = App.Settings.DalamudLoadMethod.GetValueOrDefault(),
-            DalamudInjectionDelay = App.Settings.DalamudInjectionDelayMs,
-            EncryptArguments      = App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
+            DalamudLoadMethod     = App.Settings.DalamudLoadMethod,
+            DalamudInjectionDelay = App.Settings.DalamudInjectionDelayMS,
+            EncryptArguments      = App.Settings.EncryptArgumentsV2,
             LauncherVersion       = AppUtil.GetAssemblyVersion()!,
             LauncherHash          = AppUtil.GetGitHash()!,
             Official              = AppUtil.GetBuildOrigin() == "AtmoOmen/FFXIVQuickLauncher",
-            DpiAwareness          = App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Aware),
+            DpiAwareness          = App.Settings.DPIAwareness,
 
             ObservedGameVersion = ffxivVer,
             ObservedEx1Version  = ex1Ver,
@@ -159,7 +159,7 @@ public static class Troubleshooting
 
         public required bool Official { get; set; }
 
-        public required DpiAwareness DpiAwareness { get; set; }
+        public required DPIAwareness DpiAwareness { get; set; }
 
         public required string ObservedGameVersion { get; set; }
 

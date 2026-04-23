@@ -86,6 +86,7 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
                 App.Settings.Language       = ClientLanguage.ChineseSimplified;
                 App.Settings.DalamudEnabled = EnableDalamud;
                 App.Settings.AddonList      = [];
+                App.Settings.Save();
 
                 WasCompleted = true;
                 CloseRequested?.Invoke(this, EventArgs.Empty);

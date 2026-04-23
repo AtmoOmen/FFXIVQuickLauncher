@@ -54,8 +54,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 
         LoginTypeOptions = [.. LoginTypeOption.Get()];
 
-        var selectedLoginType = App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.Slide);
-        loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == selectedLoginType)
+        loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == App.Settings.SelectedLoginType)
                           ?? LoginTypeOptions.First(x => x.LoginType       == LoginType.Slide);
 
         startLoginCommand       = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start),               () => CanStartLogin);
@@ -99,12 +98,6 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     public ICommand FakeStartCommand => fakeStartCommand;
 
     public LoginTypeOption[] LoginTypeOptions { get; }
-
-    public bool IsAutoLogin
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
 
     public bool IsFastLogin
     {
@@ -320,7 +313,8 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     }
 
     private LoginTypeOption loginTypeOption = null!;
-    private bool            isApplyingLoginType;
+
+    private bool isApplyingLoginType;
 
     private bool IsLoginInputComplete => loginTypeOption.LoginType switch
     {

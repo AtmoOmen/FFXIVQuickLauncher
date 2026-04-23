@@ -250,25 +250,7 @@ public partial class MainWindow
 
     private static void SetDefaults()
     {
-        // Set the default patch acquisition method
-        App.Settings.PatchAcquisitionMethod ??= AcquisitionMethod.Aria;
-
-        // Set the default Dalamud injection method
-        App.Settings.DalamudLoadMethod ??= DalamudLoadMethod.EntryPoint;
-
-        // Clean up invalid addons
-        if (App.Settings.AddonList != null)
-            App.Settings.AddonList = App.Settings.AddonList.Where(x => !string.IsNullOrEmpty(x.Addon.Path)).ToList();
-
-        App.Settings.AskBeforePatchInstall                       ??= true;
-        App.Settings.RequireDeviceProfileSetupForNewAccountLogin ??= false;
-
-        App.Settings.DpiAwareness ??= DpiAwareness.Aware;
-
-        App.Settings.TreatNonZeroExitCodeAsFailure ??= false;
-        App.Settings.ExitLauncherAfterGameExit     ??= false;
-
-        var versionLevel = App.Settings.VersionUpgradeLevel.GetValueOrDefault(0);
+        var versionLevel = App.Settings.VersionUpgradeLevel;
 
         while (versionLevel < CURRENT_VERSION_LEVEL)
         {
@@ -285,7 +267,7 @@ public partial class MainWindow
 
                         if (hasRtss)
                         {
-                            App.Settings.DalamudInjectionDelayMs = 4000;
+                            App.Settings.DalamudInjectionDelayMS = 4000;
                             Log.Information("RTSS/SpecialK detected, setting delay");
                         }
                     }

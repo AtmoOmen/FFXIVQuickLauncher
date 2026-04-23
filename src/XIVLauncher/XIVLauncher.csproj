@@ -74,7 +74,6 @@
         <PackageReference Include="CalcBinding"/>
         <PackageReference Include="Konscious.Security.Cryptography.Argon2"/>
         <PackageReference Include="AdysTech.CredentialManager" />
-        <PackageReference Include="Config.Net.Json"/>
         <PackageReference Include="Downloader" />
         <PackageReference Include="Dragablz"/>
         <PackageReference Include="Extended.Wpf.Toolkit"/>
@@ -90,7 +89,6 @@
         <PackageReference Include="sqlite-net-pcl"/>
         <PackageReference Include="Stylet"/>
         <PackageReference Include="Velopack"/>
-        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -142,7 +142,7 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
 
     public void ReloadSettings()
     {
-        AutoInjectEnabled   = App.Settings.ManualInjectAutoInjectEnabled.GetValueOrDefault(false);
+        AutoInjectEnabled   = App.Settings.ManualInjectAutoInjectEnabled;
         ManualInjectDelayMs = App.Settings.ManualInjectDelayMs;
     }
 

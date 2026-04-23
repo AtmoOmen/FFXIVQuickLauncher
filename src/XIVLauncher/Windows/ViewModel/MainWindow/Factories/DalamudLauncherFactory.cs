@@ -19,7 +19,7 @@ public sealed class DalamudLauncherFactory
             new DirectoryInfo(Paths.RoamingPath),
             new DirectoryInfo(Paths.RoamingPath),
             ClientLanguage.ChineseSimplified,
-            (int)App.Settings.DalamudInjectionDelayMs,
+            (int)App.Settings.DalamudInjectionDelayMS,
             false,
             noPlugins,
             noThird,

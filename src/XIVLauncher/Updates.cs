@@ -14,7 +14,7 @@ namespace XIVLauncher;
 
 internal class Updates
 (
-    ILauncherSettingsV3 settings
+    LauncherSettingsV3 settings
 )
 {
     public async Task<bool> Run(bool downloadPrerelease, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)

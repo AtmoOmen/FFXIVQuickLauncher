@@ -16,7 +16,7 @@ public class WindowsGameRunner
     DirectoryInfo   dotnetRuntimePath
 ) : IGameRunner
 {
-    public Process Start(string path, string workingDirectory, string arguments, IDictionary<string, string> environment, DpiAwareness dpiAwareness)
+    public Process Start(string path, string workingDirectory, string arguments, IDictionary<string, string> environment, DPIAwareness dpiAwareness)
     {
         Log.Information($"Game Exe:{path}");
 
@@ -25,8 +25,8 @@ public class WindowsGameRunner
             var compat = "RunAsInvoker ";
             compat += dpiAwareness switch
             {
-                DpiAwareness.Aware   => "HighDPIAware",
-                DpiAwareness.Unaware => "DPIUnaware",
+                DPIAwareness.Aware   => "HighDPIAware",
+                DPIAwareness.Unaware => "DPIUnaware",
                 _                    => throw new ArgumentOutOfRangeException()
             };
             environment.Add("__COMPAT_LAYER", compat);
