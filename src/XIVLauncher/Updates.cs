@@ -102,7 +102,7 @@ internal class Updates
                 showOfficialLauncher: true
             );
 
-            if (settings.EnableSkipUpdate.GetValueOrDefault(false))
+            if (settings.EnableSkipUpdate)
             {
                 var result = CustomMessageBox.Show
                 (
