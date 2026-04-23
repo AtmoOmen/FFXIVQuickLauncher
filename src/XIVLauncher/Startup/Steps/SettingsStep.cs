@@ -57,7 +57,7 @@ public class SettingsStep
 
     private void SetupSettings(StartupContext context)
     {
-        context.Settings = new ConfigurationBuilder<ILauncherSettingsV4>()
+        context.Settings = new ConfigurationBuilder<ILauncherSettingsV3>()
                            .UseCommandLineArgs()
                            .UseJsonFile(Paths.GetConfigPath())
                            .UseTypeParser(new DirectoryInfoParser())

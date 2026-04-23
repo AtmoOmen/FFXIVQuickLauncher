@@ -10,7 +10,7 @@ using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Settings;
 
-public interface ILauncherSettingsV4
+public interface ILauncherSettingsV3
 {
     #region Launcher Setting
 
