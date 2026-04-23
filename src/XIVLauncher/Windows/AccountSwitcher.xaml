@@ -90,7 +90,7 @@
                                     <materialDesign:PackIcon Kind="Devices" />
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <Separator />
+                            <Separator Margin="0 8" />
                             <MenuItem
                                 Command="{Binding CreateDesktopShortcutCommand}"
                                 Header="创建桌面快捷方式">
@@ -98,12 +98,12 @@
                                     <materialDesign:PackIcon Kind="LinkVariant" />
                                 </MenuItem.Icon>
                             </MenuItem>
-                            <Separator />
+                            <Separator Margin="0 8" />
                             <MenuItem
                                 Header="不保存密码"
                                 IsCheckable="True"
                                 IsChecked="{Binding IsSelectedAccountPasswordNotSaved, Mode=TwoWay}" />
-                            <Separator />
+                            <Separator Margin="0 8" />
                             <MenuItem
                                 Command="{Binding RemoveAccountCommand}"
                                 Foreground="#E57373"
