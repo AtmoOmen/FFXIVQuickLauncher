@@ -5,47 +5,37 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Patch.V3;
 
 namespace XIVLauncher.Common.Game.Integrity;
 
 public static class IntegrityCheck
 {
-    private static readonly JsonSerializerOptions DefaultOption = new() { WriteIndented = true };
-
-    public static async Task<string> GenerateIntegrityAsync(IProgress<IntegrityCheckProgress> progress, DirectoryInfo gamePath)
-    {
-        var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress).ConfigureAwait(false);
-        SaveToJson(localIntegrity, out var path);
-        return path;
-    }
-
-    public static async Task<(IntegrityCheckCompareResult compareResult, string report, IntegrityCheckResult? remoteIntegrity)> CompareIntegrityAsync
+    public static async Task<IntegrityCheckCompareOutcome> CompareIntegrityAsync
     (
-        IProgress<IntegrityCheckProgress> progress,
+        IProgress<IntegrityCheckProgress>? progress,
         DirectoryInfo                     gamePath,
-        bool                              onlyIndex = false
+        bool                              onlyIndex = false,
+        CancellationToken                 cancellationToken = default
     )
     {
         IntegrityCheckResult remoteIntegrity;
 
         try
         {
-            remoteIntegrity = await DownloadIntegrityCheckForVersion().ConfigureAwait(false);
+            remoteIntegrity = await DownloadIntegrityCheckForVersion(cancellationToken).ConfigureAwait(false);
             var localVersion = Repository.Ffxiv.GetVer(gamePath);
             if (!string.Equals(localVersion, remoteIntegrity.GameVersion, StringComparison.Ordinal))
-                return (IntegrityCheckCompareResult.ReferenceNotFound, string.Empty, null);
+                return new IntegrityCheckCompareOutcome { CompareResult = IntegrityCheckCompareResult.ReferenceNotFound };
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            return (IntegrityCheckCompareResult.ReferenceFetchFailure, string.Empty, null);
+            return new IntegrityCheckCompareOutcome { CompareResult = IntegrityCheckCompareResult.ReferenceFetchFailure };
         }
 
-        var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex).ConfigureAwait(false);
+        var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex, cancellationToken).ConfigureAwait(false);
         var report         = string.Empty;
         var failed         = false;
 
@@ -80,7 +70,12 @@ public static class IntegrityCheck
             }
         }
 
-        return (failed ? IntegrityCheckCompareResult.Invalid : IntegrityCheckCompareResult.Valid, report, remoteIntegrity);
+        return new IntegrityCheckCompareOutcome
+        {
+            CompareResult  = failed ? IntegrityCheckCompareResult.Invalid : IntegrityCheckCompareResult.Valid,
+            Report         = report,
+            RemoteIntegrity = remoteIntegrity
+        };
     }
 
     public static async Task<Dictionary<string, V3VersionMappingEntry>> GetVersionMapping(CancellationToken cancellationToken = default)
@@ -113,10 +108,11 @@ public static class IntegrityCheck
     (
         DirectoryInfo                      gamePath,
         IProgress<IntegrityCheckProgress>? progress,
-        bool                               onlyIndex = false
+        bool                               onlyIndex = false,
+        CancellationToken                  cancellationToken = default
     )
     {
-        var files = CheckDirectory(gamePath, gamePath.FullName, progress, onlyIndex);
+        var files = CheckDirectory(gamePath, gamePath.FullName, progress, onlyIndex, cancellationToken);
         return Task.FromResult
         (
             new IntegrityCheckResult
@@ -133,16 +129,19 @@ public static class IntegrityCheck
         DirectoryInfo                      directory,
         string                             rootDirectory,
         IProgress<IntegrityCheckProgress>? progress,
-        bool                               onlyIndex = false
+        bool                               onlyIndex,
+        CancellationToken                  cancellationToken
     )
     {
         var filesToProcess = new List<FileInfo>();
         CollectFiles(directory, rootDirectory, onlyIndex, filesToProcess);
 
         var results = new ConcurrentDictionary<string, (string Hash, ulong Size)>();
+        var processedFileCount = 0;
         var options = new ParallelOptions
         {
-            MaxDegreeOfParallelism = Math.Min(Math.Max(Environment.ProcessorCount - 2, 1), 32)
+            MaxDegreeOfParallelism = Math.Min(Math.Max(Environment.ProcessorCount - 2, 1), 32),
+            CancellationToken      = cancellationToken
         };
 
         Parallel.ForEach
@@ -166,7 +165,16 @@ public static class IntegrityCheck
                     var hashString = Convert.ToHexString(hash);
 
                     results.TryAdd(relativePath, (hashString, (ulong)file.Length));
-                    progress?.Report(new() { CurrentFile = relativePath });
+                    progress?.Report
+                    (
+                        new IntegrityCheckProgress
+                        {
+                            CurrentFile        = relativePath,
+                            ProcessedFileCount = Interlocked.Increment(ref processedFileCount),
+                            TotalFileCount     = filesToProcess.Count,
+                            PhaseText          = "正在检查游戏文件完整性"
+                        }
+                    );
                 }
                 catch (IOException)
                 {
@@ -216,25 +224,5 @@ public static class IntegrityCheck
         if (!relative.StartsWith("\\", StringComparison.Ordinal))
             relative = "\\" + relative;
         return relative;
-    }
-
-    private static void SaveToJson(IntegrityCheckResult result, out string savedPath)
-    {
-        var jsonObject = new
-        {
-            result.Hashes,
-            result.GameVersion,
-            LastGameVersion = string.Empty
-        };
-
-        var json          = JsonSerializer.Serialize(jsonObject, DefaultOption);
-        var fileName      = $"{result.GameVersion}.json";
-        var directoryName = Path.Combine(Paths.RoamingPath, "gameHashes");
-        if (!Directory.Exists(directoryName))
-            Directory.CreateDirectory(directoryName);
-
-        var filePath = Path.Combine(directoryName, fileName);
-        File.WriteAllText(filePath, json);
-        savedPath = filePath;
     }
 }

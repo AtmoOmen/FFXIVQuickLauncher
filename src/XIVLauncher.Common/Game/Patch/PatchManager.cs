@@ -65,6 +65,8 @@ public class PatchManager
     private readonly Mutex downloadFinalizationLock = new();
 
     private bool hasError;
+    private bool cancelledByUser;
+    private string failureContext = string.Empty;
 
     public PatchManager
     (
@@ -159,14 +161,26 @@ public class PatchManager
 
         try
         {
-            await Task.WhenAll
-            (
-                new[]
-                {
-                    Task.Run(RunDownloadQueue, _cancelTokenSource.Token),
-                    Task.Run(RunApplyQueue,    _cancelTokenSource.Token)
-                }
-            ).ConfigureAwait(false);
+            try
+            {
+                await Task.WhenAll
+                (
+                    new[]
+                    {
+                        Task.Run(RunDownloadQueue, _cancelTokenSource.Token),
+                        Task.Run(RunApplyQueue,    _cancelTokenSource.Token)
+                    }
+                ).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (hasError)
+            {
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(failureContext) ? "补丁安装失败" : failureContext);
+            }
+
+            if (hasError)
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(failureContext) ? "补丁安装失败" : failureContext);
+
+            _cancelTokenSource.Token.ThrowIfCancellationRequested();
         }
         finally
         {
@@ -210,6 +224,16 @@ public class PatchManager
                 Log.Error(ex, "Could not cancel download.");
             }
         }
+    }
+
+    public void Cancel()
+    {
+        if (_cancelTokenSource.IsCancellationRequested)
+            return;
+
+        cancelledByUser = true;
+        _cancelTokenSource.Cancel();
+        CancelAllDownloads();
     }
 
     private static HashCheckResult CheckPatchValidity(PatchListEntry patchListEntry, FileInfo path)
@@ -284,6 +308,7 @@ public class PatchManager
 
     private async Task DownloadPatchAsync(PatchDownload download, int index)
     {
+        _cancelTokenSource.Token.ThrowIfCancellationRequested();
         var outFile = GetPatchFile(download.Patch);
 
         var realUrl = download.Patch.Url;
@@ -299,6 +324,8 @@ public class PatchManager
             Progresses[index] = download.Patch.Length;
             return;
         }
+
+        _cancelTokenSource.Token.ThrowIfCancellationRequested();
 
         PatchAcquisition acquisition;
 
@@ -330,8 +357,10 @@ public class PatchManager
                     return;
 
                 hasError = true;
+                failureContext = context;
 
                 CancelAllDownloads();
+                _cancelTokenSource.Cancel();
                 OnFail?.Invoke(download.Patch, context);
 
                 Task.Run(async () => await UnInitializeAcquisition(), new CancellationTokenSource(5000).Token).GetAwaiter().GetResult();
@@ -345,8 +374,6 @@ public class PatchManager
                     // This is fine. We will catch it next try.
                     Log.Error(ex, "Could not delete patch file");
                 }
-
-                Environment.Exit(0);
             }
 
             if (args == AcquisitionResult.Error)
@@ -360,7 +387,6 @@ public class PatchManager
             {
                 // Cancellation should not produce an error message, since it is always triggered by another error or the user.
                 Log.Error("Download cancelled for {0}", download.Patch.VersionId);
-
                 return;
             }
 
@@ -393,16 +419,19 @@ public class PatchManager
         DownloadServices[index] = acquisition;
 
         await acquisition.StartDownloadAsync(realUrl, outFile);
+        _cancelTokenSource.Token.ThrowIfCancellationRequested();
     }
 
     private void RunDownloadQueue()
     {
-        while (Downloads.Any(x => x.State == PatchState.Nothing))
+        while (!_cancelTokenSource.IsCancellationRequested && Downloads.Any(x => x.State == PatchState.Nothing))
         {
             Thread.Sleep(500);
+            _cancelTokenSource.Token.ThrowIfCancellationRequested();
 
             for (var i = 0; i < MAX_DOWNLOADS_AT_ONCE; i++)
             {
+                _cancelTokenSource.Token.ThrowIfCancellationRequested();
                 if (Slots[i] != SlotState.Done)
                     continue;
 
@@ -454,9 +483,10 @@ public class PatchManager
 
     private void RunApplyQueue()
     {
-        while (CurrentInstallIndex < Downloads.Count)
+        while (!_cancelTokenSource.IsCancellationRequested && CurrentInstallIndex < Downloads.Count)
         {
             Thread.Sleep(500);
+            _cancelTokenSource.Token.ThrowIfCancellationRequested();
 
             var toInstall = Downloads[CurrentInstallIndex];
 
@@ -471,12 +501,17 @@ public class PatchManager
 
             installer.StartInstall(gamePath, GetPatchFile(toInstall.Patch), toInstall.Patch);
 
-            while (installer.State != PatchInstaller.InstallerState.Ready)
+            while (installer.State == PatchInstaller.InstallerState.Busy)
                 Thread.Yield();
 
-            // TODO need to handle this better
             if (installer.State == PatchInstaller.InstallerState.Failed)
+            {
+                hasError       = true;
+                failureContext = "补丁安装器执行失败";
+                if (!cancelledByUser)
+                    _cancelTokenSource.Cancel();
                 return;
+            }
 
             Log.Information($"Patch at {CurrentInstallIndex} installed");
 

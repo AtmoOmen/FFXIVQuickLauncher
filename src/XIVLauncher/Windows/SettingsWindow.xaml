@@ -172,14 +172,6 @@
                                                Visibility="{Binding GamePathWarningVisibility}" />
                                 </Grid>
 
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Content="检查完整性" Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            ToolTip="对游戏文件执行完整性检查" Click="RunIntegrityCheck_OnClick"
-                                            IsEnabled="{Binding IsRunIntegrityCheckPossible}" Margin="0,0,16,0" />
-                                    <Button Content="生成哈希数据" Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            ToolTip="遍历游戏文件并生成 Hash 数据" Click="GenerateIntegrityCheck_OnClick"
-                                            IsEnabled="{Binding IsRunIntegrityCheckPossible}" />
-                                </StackPanel>
                             </StackPanel>
                         </materialDesign:Card>
 

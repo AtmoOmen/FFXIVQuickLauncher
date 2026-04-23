@@ -17,9 +17,6 @@ public class CommandLineOptions
     [Option("gen-localizable", Required = false, HelpText = "生成本地化文件")]
     public bool DoGenerateLocalizables { get; set; }
 
-    [Option("gen-integrity", Required = false, HelpText = "生成完整性校验文件, 请提供游戏路径")]
-    public string DoGenerateIntegrity { get; set; } = null!;
-
     [Option("account", Required = false, HelpText = "要使用的账号名称")]
     public string AccountName { get; set; } = null!;
 

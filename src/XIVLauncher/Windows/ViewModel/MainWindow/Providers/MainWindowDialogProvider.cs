@@ -16,24 +16,6 @@ public sealed class MainWindowDialogProvider
                         .Show();
     }
 
-    public void ShowRepairBlockedMessage()
-    {
-        CustomMessageBox.Builder
-                        .NewFrom("官方启动器或游戏正在运行中, 无法执行修复, 请关闭相关进程后重试")
-                        .WithImage(MessageBoxImage.Exclamation)
-                        .WithParentWindow(window)
-                        .Show();
-    }
-
-    public bool ConfirmRepairGame() =>
-        CustomMessageBox.Builder
-                        .NewFrom("XIVLauncher 将会搜寻任何与原版不一致的游戏文件并替换修复\n这可能导致使用 TexTools 安装的模组被还原\n持续时间可能较长, 请确认是否要继续?")
-                        .WithButtons(MessageBoxButton.YesNo)
-                        .WithImage(MessageBoxImage.Question)
-                        .WithParentWindow(window)
-                        .Show()
-        != MessageBoxResult.No;
-
     public MessageBoxResult PromptNewAccountDeviceProfileChoice() =>
         CustomMessageBox.Builder
                         .NewFrom("检测到新账号首次登录，需先确认本次使用的设备信息")

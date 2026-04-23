@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Serilog;
 using XIVLauncher.Common.Game.Login;
+using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Pages;
@@ -15,6 +16,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 {
     private readonly Func<bool>                                   isBusyFunc;
     private readonly Action<LoginPageViewModel, LoginAfterAction> requestLoginAction;
+    private readonly Action<GameClientFileTaskKind>               requestGameClientFileTaskAction;
     private readonly Action                                       requestCancelLoginAction;
     private readonly Action<LoginPageViewModel>                   requestRefreshQrCodeAction;
     private readonly Action                                       requestShowInjectPageAction;
@@ -27,6 +29,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     private readonly SyncCommand loginNoPluginsCommand;
     private readonly SyncCommand loginNoThirdCommand;
     private readonly SyncCommand loginRepairCommand;
+    private readonly SyncCommand runIntegrityCheckCommand;
     private readonly SyncCommand loginCancelCommand;
     private readonly SyncCommand loginForceQRCommand;
     private readonly SyncCommand refreshQrCodeCommand;
@@ -38,6 +41,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     (
         Func<bool>                                   isBusyFunc,
         Action<LoginPageViewModel, LoginAfterAction> requestLoginAction,
+        Action<GameClientFileTaskKind>               requestGameClientFileTaskAction,
         Action                                       requestCancelLoginAction,
         Action<LoginPageViewModel>                   requestRefreshQrCodeAction,
         Action                                       requestShowInjectPageAction,
@@ -47,6 +51,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     {
         this.isBusyFunc                  = isBusyFunc;
         this.requestLoginAction          = requestLoginAction;
+        this.requestGameClientFileTaskAction = requestGameClientFileTaskAction;
         this.requestCancelLoginAction    = requestCancelLoginAction;
         this.requestRefreshQrCodeAction  = requestRefreshQrCodeAction;
         this.requestShowInjectPageAction = requestShowInjectPageAction;
@@ -59,11 +64,12 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
                           ?? LoginTypeOptions.First(x => x.LoginType       == LoginType.Slide);
 
         startLoginCommand       = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start),               () => CanStartLogin);
-        loginNoStartCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.UpdateOnly),          () => !this.isBusyFunc());
+        loginNoStartCommand     = new SyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Update), () => !this.isBusyFunc());
         loginNoDalamudCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutDalamud), () => !this.isBusyFunc());
         loginNoPluginsCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutPlugins), () => !this.isBusyFunc());
         loginNoThirdCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutThird),   () => !this.isBusyFunc());
-        loginRepairCommand      = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Repair),              () => !this.isBusyFunc());
+        loginRepairCommand      = new SyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Repair), () => !this.isBusyFunc());
+        runIntegrityCheckCommand = new SyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.IntegrityCheck), () => !this.isBusyFunc());
         loginForceQRCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.ForceQR),             () => !this.isBusyFunc());
         loginCancelCommand      = new SyncCommand(_ => this.requestCancelLoginAction());
         refreshQrCodeCommand    = new SyncCommand(_ => this.requestRefreshQrCodeAction(this), () => !this.isBusyFunc() && IsQrCodeExpired);
@@ -85,6 +91,8 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     public ICommand LoginNoThirdCommand => loginNoThirdCommand;
 
     public ICommand LoginRepairCommand => loginRepairCommand;
+
+    public ICommand RunIntegrityCheckCommand => runIntegrityCheckCommand;
 
     public ICommand LoginCancelCommand => loginCancelCommand;
 
@@ -302,6 +310,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
         loginNoPluginsCommand.RaiseCanExecuteChanged();
         loginNoThirdCommand.RaiseCanExecuteChanged();
         loginRepairCommand.RaiseCanExecuteChanged();
+        runIntegrityCheckCommand.RaiseCanExecuteChanged();
         loginCancelCommand.RaiseCanExecuteChanged();
         loginForceQRCommand.RaiseCanExecuteChanged();
         refreshQrCodeCommand.RaiseCanExecuteChanged();

@@ -46,6 +46,10 @@ public static class PatchExecutionCoordinator
             await request.Patcher.PatchAsync(request.AriaLogFile).ConfigureAwait(false);
             return new PatchExecutionResult { Status = PatchExecutionStatus.Success };
         }
+        catch (OperationCanceledException)
+        {
+            return new PatchExecutionResult { Status = PatchExecutionStatus.CancelledByUser };
+        }
         catch (PatchInstallerException ex)
         {
             return new PatchExecutionResult { Status = PatchExecutionStatus.PatchInstallerError, Exception = ex };

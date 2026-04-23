@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.V3;
@@ -10,13 +11,13 @@ public class UpdateClient
     /// <summary>
     ///     检查游戏更新
     /// </summary>
-    public async Task<LoginResult> Check(LoginArea area, DirectoryInfo gamePath, bool forceBaseVersion)
+    public async Task<LoginResult> Check(LoginArea area, DirectoryInfo gamePath, bool forceBaseVersion, CancellationToken cancellationToken = default)
     {
         _ = area;
         var currentGameVersion = Repository.Ffxiv.GetVer(gamePath);
 
         using var metadataClient = new V3GamePatchMetadataClient();
-        var       updatePlan     = await metadataClient.BuildUpdatePlan(currentGameVersion, forceBaseVersion).ConfigureAwait(false);
+        var       updatePlan     = await metadataClient.BuildUpdatePlan(currentGameVersion, forceBaseVersion, cancellationToken).ConfigureAwait(false);
 
         return updatePlan == null
                    ? new LoginResult { PendingPatches = null, V3GameUpdatePlan = null, State       = LoginState.Ok, OAuthLogin             = null }

@@ -5,10 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using CommandLine;
-using Newtonsoft.Json;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game;
-using XIVLauncher.Common.Game.Integrity;
 
 namespace XIVLauncher.Startup.Steps;
 
@@ -48,9 +45,6 @@ public class CommandLineStep : IStartupStep
             if (cmdLine.NoAutoLogin)
                 context.IsDisableAutologin = true;
 
-            if (!string.IsNullOrEmpty(cmdLine.DoGenerateIntegrity))
-                GenerateIntegrity(cmdLine.DoGenerateIntegrity);
-
             if (cmdLine.DoGenerateLocalizables)
                 GenerateLocalizables();
 
@@ -66,17 +60,6 @@ public class CommandLineStep : IStartupStep
     }
 
     public CommandLineOptions GetOptions() => options;
-
-    private static void GenerateIntegrity(string path)
-    {
-        var result            = IntegrityCheck.RunIntegrityCheckAsync(new DirectoryInfo(path), null).GetAwaiter().GetResult();
-        var saveIntegrityPath = Path.Combine(Paths.RoamingPath, $"{result.GameVersion}.json");
-
-        File.WriteAllText(saveIntegrityPath, JsonConvert.SerializeObject(result));
-
-        MessageBox.Show($"已成功对 {result.Hashes.Count} 个文件进行哈希计算并保存到 {path}", "完成", MessageBoxButton.OK, MessageBoxImage.Asterisk);
-        Environment.Exit(0);
-    }
 
     private static void GenerateLocalizables()
     {

@@ -7,7 +7,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
@@ -53,47 +52,6 @@ public partial class SettingsWindow
 
         AddonListView.SelectedItem = listViewItem.DataContext;
         listViewItem.IsSelected    = true;
-    }
-
-    private async void RunIntegrityCheck_OnClick(object sender, RoutedEventArgs e) =>
-        await ExecuteIntegrityCheckAsync
-        (async progress =>
-            {
-                var result = await ViewModel.RunIntegrityCheckAsync(progress);
-                if (result != null)
-                    ViewModel.ShowIntegrityCheckResult(result);
-            }
-        );
-
-    private async void GenerateIntegrityCheck_OnClick(object sender, RoutedEventArgs e) =>
-        await ExecuteIntegrityCheckAsync
-        (async progress =>
-            {
-                var outputPath = await ViewModel.GenerateIntegrityCheckAsync(progress);
-                if (!string.IsNullOrWhiteSpace(outputPath))
-                    ViewModel.ShowGeneratedIntegrityCheckResult(outputPath);
-            }
-        );
-
-    private async Task ExecuteIntegrityCheckAsync(Func<IProgress<IntegrityCheckProgress>, Task> action)
-    {
-        var window   = new IntegrityCheckProgressWindow();
-        var progress = new Progress<IntegrityCheckProgress>();
-
-        progress.ProgressChanged += (_, checkProgress) => window.UpdateProgress(checkProgress);
-
-        window.Owner         = Owner;
-        window.ShowInTaskbar = false;
-
-        try
-        {
-            window.Show();
-            await action(progress);
-        }
-        finally
-        {
-            window.Close();
-        }
     }
 
     private void LicenseText_OnMouseUp(object sender, MouseButtonEventArgs e) =>

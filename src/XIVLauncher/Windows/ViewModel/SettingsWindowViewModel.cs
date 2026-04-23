@@ -16,7 +16,6 @@ using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Addon.Implementations;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
-using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
@@ -57,9 +56,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     private readonly SyncCommand  openOriginalLauncherCommand;
     private readonly SyncCommand  openAdvancedSettingsCommand;
 
-    public bool IsRunIntegrityCheckPossible =>
-        !string.IsNullOrWhiteSpace(GamePath) && Directory.Exists(GamePath);
-
     public bool CanEditSelectedAddon => SelectedAddonEntry?.Addon != null;
 
     public Visibility GamePathWarningVisibility =>
@@ -74,7 +70,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
                 return;
 
             RefreshGamePathWarning();
-            OnPropertyChanged(nameof(IsRunIntegrityCheckPossible));
             openBackupToolCommand.RaiseCanExecuteChanged();
             openOriginalLauncherCommand.RaiseCanExecuteChanged();
         }
@@ -534,89 +529,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     public void OpenSharedDeviceProfile() =>
         _dialogService.ShowSharedDeviceProfileSettings(App.AccountManager);
 
-    public async Task<IntegrityCheckCompareOutcome?> RunIntegrityCheckAsync(IProgress<IntegrityCheckProgress> progress)
-    {
-        var gamePath = ValidateGamePathForIntegrityCheck();
-        if (gamePath == null)
-            return null;
-
-        var result     = await IntegrityCheck.CompareIntegrityAsync(progress, gamePath);
-        var reportPath = Path.Combine(Paths.RoamingPath, "integrityreport.txt");
-        File.WriteAllText(reportPath, result.report);
-
-        return new IntegrityCheckCompareOutcome(result.compareResult, reportPath);
-    }
-
-    public async Task<string?> GenerateIntegrityCheckAsync(IProgress<IntegrityCheckProgress> progress)
-    {
-        var gamePath = ValidateGamePathForIntegrityCheck();
-        if (gamePath == null)
-            return null;
-
-        return await IntegrityCheck.GenerateIntegrityAsync(progress, gamePath);
-    }
-
-    public void ShowIntegrityCheckResult(IntegrityCheckCompareOutcome outcome)
-    {
-        switch (outcome.CompareResult)
-        {
-            case IntegrityCheckCompareResult.ReferenceNotFound:
-                _dialogService.ShowMessage("当前游戏版本还没有可用的参考报告，请稍后再试。", "XIVLauncherCN (Soil)");
-                return;
-
-            case IntegrityCheckCompareResult.ReferenceFetchFailure:
-                _dialogService.ShowMessage
-                (
-                    "下载完整性检查参考文件失败，请检查网络连接后重试。",
-                    "XIVLauncherCN (Soil)",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error
-                );
-                return;
-
-            case IntegrityCheckCompareResult.Invalid:
-                _dialogService.ShowMessage
-                (
-                    "检测到部分游戏文件可能已被修改或损坏。\n\n如果你使用了 TexTools 等模组工具，这通常是预期结果。\n\n如果没有使用模组，可以在登录按钮的右键菜单中选择“修复游戏”。",
-                    "XIVLauncherCN (Soil)",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Exclamation,
-                    showReportLinks: true
-                );
-                return;
-
-            case IntegrityCheckCompareResult.Valid:
-                _dialogService.ShowMessage("游戏安装完整。", "XIVLauncherCN (Soil)");
-                return;
-        }
-    }
-
-    public void ShowGeneratedIntegrityCheckResult(string outputPath) =>
-        _dialogService.ShowMessage
-        (
-            $"已完成游戏客户端 Hash 数据生成，文件保存在：\n{outputPath}",
-            "XIVLauncherCN (Soil)"
-        );
-
-    private DirectoryInfo? ValidateGamePathForIntegrityCheck()
-    {
-        if (string.IsNullOrWhiteSpace(GamePath))
-        {
-            _dialogService.ShowMessage("请先选择游戏目录。", "XIVLauncherCN (Soil)");
-            return null;
-        }
-
-        var gamePath = new DirectoryInfo(GamePath);
-
-        if (Repository.Ffxiv.IsBaseVer(gamePath))
-        {
-            _dialogService.ShowMessage("所选路径中没有检测到游戏安装，请先确认游戏目录。", "XIVLauncherCN (Soil)");
-            return null;
-        }
-
-        return gamePath;
-    }
-
     private void InitializeCredTypeOptions() =>
         ReplaceCredTypeOptions(BuildCredTypeOptions(true));
 
@@ -689,12 +601,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     }
 
     public event EventHandler? SettingsSaved;
-
-    public sealed record IntegrityCheckCompareOutcome
-    (
-        IntegrityCheckCompareResult CompareResult,
-        string                      ReportPath
-    );
 
     public sealed record CredTypeOptionItem
     (

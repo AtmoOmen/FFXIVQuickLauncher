@@ -159,9 +159,7 @@ public class PatchInstaller : IDisposable
             case PatcherIpcOpCode.InstallFailed:
                 State = InstallerState.Failed;
                 OnFail?.Invoke();
-
                 Stop();
-                Environment.Exit(0);
                 break;
 
             default:

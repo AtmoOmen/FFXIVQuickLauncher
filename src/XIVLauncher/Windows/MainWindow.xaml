@@ -821,6 +821,8 @@
                                                                               Command="{Binding LoginPage.LoginRepairCommand}" />
                                                                     <MenuItem Header="更新"
                                                                               Command="{Binding LoginPage.LoginNoStartCommand}" />
+                                                                    <MenuItem Header="完整性检查"
+                                                                              Command="{Binding LoginPage.RunIntegrityCheckCommand}" />
                                                                     <Separator Margin="0 8" />
                                                                     <MenuItem Header="其他启动方式">
                                                                         <MenuItem Header="无 Dalamud"

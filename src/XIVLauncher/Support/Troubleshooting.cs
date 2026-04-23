@@ -62,7 +62,7 @@ public static class Troubleshooting
             {
                 var result = IntegrityCheck.CompareIntegrityAsync(null!, gamePath, true).Result;
 
-                integrity = result.compareResult switch
+                integrity = result.CompareResult switch
                 {
                     IntegrityCheckCompareResult.ReferenceFetchFailure => TroubleshootingPayload.IndexIntegrityResult.ReferenceFetchFailure,
                     IntegrityCheckCompareResult.ReferenceNotFound     => TroubleshootingPayload.IndexIntegrityResult.ReferenceNotFound,
