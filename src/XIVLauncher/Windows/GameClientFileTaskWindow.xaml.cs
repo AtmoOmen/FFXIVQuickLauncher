@@ -5,8 +5,10 @@ using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
 
-public partial class GameClientFileTaskWindow : Window
+public partial class GameClientFileTaskWindow
 {
+    private bool isClosingAnimated;
+
     private GameClientFileTaskWindowViewModel ViewModel => (GameClientFileTaskWindowViewModel)DataContext;
 
     public GameClientFileTaskWindow(GameClientFileTaskWindowViewModel viewModel)
@@ -24,13 +26,33 @@ public partial class GameClientFileTaskWindow : Window
 
     private void GameClientFileTaskWindow_OnClosing(object sender, CancelEventArgs e)
     {
-        if (!ViewModel.IsRunning)
-        {
-            ViewModel.RequestClose();
+        if (isClosingAnimated)
             return;
-        }
 
         e.Cancel = true;
-        ViewModel.RequestClose();
+
+        if (ViewModel.IsRunning)
+        {
+            ViewModel.RequestClose();
+        }
+        else
+        {
+            ViewModel.RequestClose();
+            isClosingAnimated = true;
+            PlayCloseAnimationAndClose();
+        }
+    }
+
+    private void PlayCloseAnimationAndClose()
+    {
+        if (FindResource("WindowCloseAnimation") is System.Windows.Media.Animation.Storyboard storyboard)
+        {
+            storyboard.Completed += (s, ev) => Close();
+            storyboard.Begin(this);
+        }
+        else
+        {
+            Close();
+        }
     }
 }

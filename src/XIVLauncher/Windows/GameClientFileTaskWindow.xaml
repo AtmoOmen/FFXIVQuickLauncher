@@ -14,81 +14,253 @@
         AllowsTransparency="True"
         Background="Transparent"
         WindowStyle="None"
-        Width="360"
+        Width="440"
         SizeToContent="Height"
         Closing="GameClientFileTaskWindow_OnClosing"
         d:DataContext="{d:DesignInstance viewModel:GameClientFileTaskWindowViewModel}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        
+        <Storyboard x:Key="WindowLoadAnimation">
+            <DoubleAnimation Storyboard.TargetName="RootCard" 
+                             Storyboard.TargetProperty="Opacity" 
+                             From="0" To="1" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="RootCardTransform" 
+                             Storyboard.TargetProperty="Y" 
+                             From="30" To="0" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <Storyboard x:Key="WindowCloseAnimation">
+            <DoubleAnimation Storyboard.TargetName="RootCard" 
+                             Storyboard.TargetProperty="Opacity" 
+                             From="1" To="0" Duration="0:0:0.25">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="RootCardTransform" 
+                             Storyboard.TargetProperty="Y" 
+                             From="0" To="20" Duration="0:0:0.25">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
     </Window.Resources>
-    <Grid>
-        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" Margin="0,0,10,0">
-            <StackPanel Margin="16,16,16,16">
-                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                           FontSize="17"
-                           FontWeight="SemiBold"
-                           HorizontalAlignment="Center"
-                           Text="{Binding Title}" />
-                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                           Margin="0,10,0,0"
-                           TextAlignment="Center"
-                           Text="{Binding PhaseText}" />
-                <TextBlock Foreground="DarkGray"
-                           Margin="0,8,0,0"
-                           TextAlignment="Center"
-                           Text="{Binding DetailText}"
-                           TextWrapping="Wrap" />
-                <ProgressBar Margin="0,12,0,0"
-                             Height="5"
-                             Value="{Binding Progress, Mode=OneWay}"
-                             IsIndeterminate="{Binding IsProgressIndeterminate, Mode=OneWay}" />
-                <ItemsControl ItemsSource="{Binding Items, Mode=OneWay}" Margin="0,12,0,0">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Margin="0,0,0,8">
-                                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                           Text="{Binding Title}"
-                                           TextWrapping="Wrap" />
-                                <ProgressBar Margin="0,6,0,0"
-                                             Height="4"
-                                             Value="{Binding Progress, Mode=OneWay}"
-                                             IsIndeterminate="{Binding IsIndeterminate, Mode=OneWay}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                           Margin="0,4,0,0"
-                           TextAlignment="Center"
-                           Text="{Binding StatusText}"
-                           TextWrapping="Wrap" />
-                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                           Margin="0,2,0,0"
-                           TextAlignment="Center"
-                           Text="{Binding SpeedText}"
-                           TextWrapping="Wrap" />
-                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                           Margin="0,2,0,0"
-                           TextAlignment="Center"
-                           Text="{Binding EtaText}"
-                           TextWrapping="Wrap" />
-                <UniformGrid Margin="0,14,0,0" Rows="1" Columns="3">
-                    <Button Margin="0,0,8,0"
-                            Content="{Binding PrimaryButtonText}"
-                            Command="{Binding PrimaryButtonCommand}"
-                            IsEnabled="{Binding IsPrimaryButtonEnabled, Mode=OneWay}"
-                            Visibility="{Binding IsPrimaryButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <Button Margin="0,0,8,0"
-                            Content="{Binding SecondaryButtonText}"
+
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Grid Margin="16">
+        <materialDesign:Card x:Name="RootCard"
+                             Background="{DynamicResource MaterialDesign.Brush.Background}"
+                             UniformCornerRadius="16"
+                             Opacity="0"
+                             materialDesign:ElevationAssist.Elevation="Dp8">
+            <materialDesign:Card.RenderTransform>
+                <TranslateTransform x:Name="RootCardTransform" Y="30"/>
+            </materialDesign:Card.RenderTransform>
+
+            <Grid Margin="24">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /> <!-- Header -->
+                    <RowDefinition Height="Auto" /> <!-- Phase -->
+                    <RowDefinition Height="Auto" /> <!-- SubTasks -->
+                    <RowDefinition Height="Auto" /> <!-- Main Progress -->
+                    <RowDefinition Height="Auto" /> <!-- Metrics -->
+                    <RowDefinition Height="Auto" /> <!-- Actions -->
+                </Grid.RowDefinitions>
+
+                <!-- Header Area -->
+                <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <materialDesign:PackIcon Kind="CloudDownloadOutline"
+                                             Width="32" Height="32"
+                                             VerticalAlignment="Center"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                             Margin="0,0,16,0" />
+                    <TextBlock Grid.Column="1"
+                               Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               VerticalAlignment="Center"
+                               Text="{Binding Title}"
+                               FontWeight="Bold" />
+                </Grid>
+
+                <!-- Status & Phase Details -->
+                <StackPanel Grid.Row="1" Margin="0,0,0,16">
+                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                               Style="{StaticResource MaterialDesignSubtitle2TextBlock}"
+                               Text="{Binding PhaseText}"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                    
+                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                               Style="{StaticResource MaterialDesignBody2TextBlock}"
+                               Opacity="0.65"
+                               Margin="0,4,0,0"
+                               Text="{Binding DetailText}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <!-- Items (Sub-tasks) -->
+                <!-- Use ScrollViewer to prevent window from growing infinitely -->
+                <ScrollViewer Grid.Row="2" 
+                              MaxHeight="120" 
+                              VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Disabled"
+                              Margin="0,0,0,16">
+                    <!-- Invisible wrapper for dynamic height handling without jumping -->
+                    <ItemsControl ItemsSource="{Binding Items, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Text="{Binding Title}"
+                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                               Opacity="0.8"
+                                               Margin="0,0,0,4"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextWrapping="NoWrap" />
+                                    
+                                    <ProgressBar Grid.Row="1"
+                                                 Height="4"
+                                                 materialDesign:TransitionAssist.DisableTransitions="True"
+                                                 Value="{Binding Progress, Mode=OneWay}"
+                                                 IsIndeterminate="{Binding IsIndeterminate, Mode=OneWay}"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Secondary}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Main Progress -->
+                <Grid Grid.Row="3" Margin="0,0,0,12">
+                    <ProgressBar Height="6"
+                                 materialDesign:TransitionAssist.DisableTransitions="True"
+                                 Value="{Binding Progress, Mode=OneWay}"
+                                 IsIndeterminate="{Binding IsProgressIndeterminate, Mode=OneWay}" />
+                </Grid>
+
+                <!-- Metrics (Status, Speed, ETA) -->
+                <!-- Compact inline layout -->
+                <Grid Grid.Row="4" Margin="0,0,0,24">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusText}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding StatusText}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <materialDesign:PackIcon Kind="DataUsage" VerticalAlignment="Center" Width="16" Height="16" Opacity="0.6" Margin="0,0,6,0"/>
+                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                   Opacity="0.8"
+                                   TextTrimming="CharacterEllipsis"
+                                   Text="{Binding StatusText}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SpeedText}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SpeedText}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <materialDesign:PackIcon Kind="Speedometer" VerticalAlignment="Center" Width="16" Height="16" Opacity="0.6" Margin="0,0,6,0"/>
+                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                   Opacity="0.8"
+                                   Text="{Binding SpeedText}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EtaText}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding EtaText}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <materialDesign:PackIcon Kind="ClockOutline" VerticalAlignment="Center" Width="16" Height="16" Opacity="0.6" Margin="0,0,6,0"/>
+                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                   Opacity="0.8"
+                                   Text="{Binding EtaText}" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Actions -->
+                <StackPanel Grid.Row="5"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+                    <Button Content="{Binding SecondaryButtonText}"
                             Command="{Binding SecondaryButtonCommand}"
                             IsEnabled="{Binding IsSecondaryButtonEnabled, Mode=OneWay}"
-                            Visibility="{Binding IsSecondaryButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            Visibility="{Binding IsSecondaryButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Margin="12,0,0,0" />
+                            
                     <Button Content="{Binding CloseButtonText}"
                             Command="{Binding CloseButtonCommand}"
                             IsEnabled="{Binding IsCloseButtonEnabled, Mode=OneWay}"
-                            Visibility="{Binding IsCloseButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                </UniformGrid>
-            </StackPanel>
+                            Visibility="{Binding IsCloseButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Margin="12,0,0,0" />
+                            
+                    <Button Content="{Binding PrimaryButtonText}"
+                            Command="{Binding PrimaryButtonCommand}"
+                            IsEnabled="{Binding IsPrimaryButtonEnabled, Mode=OneWay}"
+                            Visibility="{Binding IsPrimaryButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Margin="12,0,0,0" />
+                </StackPanel>
+            </Grid>
         </materialDesign:Card>
     </Grid>
 </Window>
