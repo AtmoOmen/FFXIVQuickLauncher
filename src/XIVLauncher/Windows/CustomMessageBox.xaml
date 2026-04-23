@@ -7,102 +7,227 @@
     xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="XIVLauncher Error"
-    Width="Auto"
-    Height="Auto"
-    Background="{DynamicResource MaterialDesign.Brush.Background}"
+    MinWidth="600"
+    MaxWidth="850"
+    MinHeight="250"
+    Background="Transparent"
+    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+    WindowStyle="None"
+    AllowsTransparency="True"
     ResizeMode="NoResize"
     SizeToContent="WidthAndHeight"
     TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+    TextElement.FontWeight="Regular"
+    TextElement.FontSize="14"
+    TextOptions.TextFormattingMode="Ideal"
+    TextOptions.TextRenderingMode="Auto"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
-    <Grid MouseMove="CustomMessageBox_MouseMove">
-        <StackPanel
-            Orientation="Horizontal" Margin="10 10 10 50">
-            <materialDesign:PackIcon Kind="AlertOctagon" HorizontalAlignment="Stretch" VerticalAlignment="Top"
-                                     Width="30"
-                                     Height="30" Foreground="Red" Margin="0,0,10,0" x:Name="ErrorPackIcon" />
-            <StackPanel Orientation="Vertical" Width="540" MinHeight="100">
-                <Grid MinHeight="30">
-                    <TextBlock TextWrapping="Wrap" x:Name="MessageTextBlock" VerticalAlignment="Center">
-                        On the other hand, we denounce with righteous indignation and dislike men who are so beguiled and demoralized by the charms of pleasure of the moment, so blinded by desire, that they cannot foresee the pain and trouble that are bound to ensue;
-                        <LineBreak />
-                        <LineBreak />
-                        equal blame belongs to those who fail in their duty through weakness of will, which is the same as saying through shrinking from toil and pain. These cases are perfectly simple and easy to distinguish. In a free hour, when our power of choice is untrammelled and when nothing prevents our being able to do what we like best, every pleasure is to be welcomed and every pain avoided. But in certain circumstances and owing to the claims of duty or the obligations of business it will frequently occur that pleasures have to be repudiated and annoyances accepted. The wise man therefore always holds in these matters to this principle of selection: he rejects pleasures to secure other greater pleasures, or else he endures pains to avoid worse pains.
-                    </TextBlock>
+
+    <Window.Resources>
+        <Storyboard x:Key="WindowLoadAnimation">
+            <DoubleAnimation Storyboard.TargetName="RootBorder"
+                             Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="TranslateTransform"
+                             Storyboard.TargetProperty="Y"
+                             From="30" To="0" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+    </Window.Resources>
+
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Grid Margin="16">
+        <materialDesign:Card x:Name="RootBorder"
+                             Background="{DynamicResource MaterialDesign.Brush.Background}"
+                             UniformCornerRadius="16"
+                             Opacity="0"
+                             materialDesign:ElevationAssist.Elevation="Dp8">
+            <materialDesign:Card.RenderTransform>
+                <TranslateTransform x:Name="TranslateTransform" Y="30" />
+            </materialDesign:Card.RenderTransform>
+
+            <Grid MouseMove="CustomMessageBox_MouseMove" Margin="24">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid.ContextMenu>
+                    <ContextMenu Style="{StaticResource MaterialDesignContextMenu}">
+                        <ContextMenu.Resources>
+                            <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource MaterialDesignMenuItem}" />
+                        </ContextMenu.Resources>
+                        <MenuItem Header="复制 (_C)" Command="{Binding Path=CopyMessageTextCommand}">
+                            <MenuItem.Icon>
+                                <materialDesign:PackIcon Kind="ContentCopy" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </Grid.ContextMenu>
+
+                <!-- Header / Title Area -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <materialDesign:PackIcon x:Name="ErrorPackIcon"
+                                             Kind="AlertOctagon"
+                                             Width="32"
+                                             Height="32"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Error}"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,16,0" />
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <!-- Custom Title (previously on the window title bar) -->
+                        <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                                   FontSize="20"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Margin="0,0,0,12"
+                                   TextWrapping="Wrap" />
+
+                        <TextBlock x:Name="MessageTextBlock"
+                                   TextWrapping="Wrap"
+                                   FontSize="14"
+                                   LineHeight="24"
+                                   Opacity="0.85"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}">
+                            <!-- Content injected via code-behind -->
+                        </TextBlock>
+                    </StackPanel>
                 </Grid>
-                <RichTextBox Margin="0,10,0,0" Padding="4" AcceptsReturn="True" IsDocumentEnabled="True"
+
+                <!-- Details / Description Area (Stack Trace, Log) -->
+                <RichTextBox x:Name="DescriptionTextBox"
+                             Grid.Row="1"
+                             Margin="0,24,0,0"
+                             Padding="16"
+                             AcceptsReturn="True"
+                             IsDocumentEnabled="True"
                              IsReadOnly="True"
-                             VerticalScrollBarVisibility="Auto" SpellCheck.IsEnabled="False"
-                             materialDesign:HintAssist.Hint="Multiline text"
-                             MaxHeight="120" x:Name="DescriptionTextBox">
+                             VerticalScrollBarVisibility="Auto"
+                             SpellCheck.IsEnabled="False"
+                             materialDesign:HintAssist.Hint="详细错误日志与环境信息"
+                             MaxHeight="250"
+                             MinHeight="120"
+                             FontSize="13"
+                             FontFamily="Consolas, Courier New, monospace"
+                             Background="{DynamicResource MaterialDesign.Brush.Surface}"
+                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                             BorderThickness="1"
+                             BorderBrush="{DynamicResource MaterialDesign.Brush.Divider}">
                     <RichTextBox.Resources>
                         <Style TargetType="{x:Type Border}">
-                            <Setter Property="CornerRadius" Value="4" />
+                            <Setter Property="CornerRadius" Value="8" />
                         </Style>
                     </RichTextBox.Resources>
                 </RichTextBox>
-                <TextBox
-                    x:Name="InputTextBox"
-                    Margin="0,10,0,0"
-                    Padding="4,4,10,4"
-                    VerticalAlignment="Center"
-                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
-            </StackPanel>
-            <StackPanel.ContextMenu>
-                <ContextMenu Style="{StaticResource MaterialDesignContextMenu}">
-                    <ContextMenu.Resources>
-                        <Style TargetType="{x:Type MenuItem}"
-                               BasedOn="{StaticResource MaterialDesignMenuItem}" />
-                    </ContextMenu.Resources>
-                    <MenuItem Header="复制 (_C)" Command="{Binding Path=CopyMessageTextCommand}" />
-                </ContextMenu>
-            </StackPanel.ContextMenu>
-        </StackPanel>
 
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0 0 10 10">
-            <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
-                    x:Name="OfficialLauncherButton" Margin="5,0,0,0" Click="OfficialLauncherButton_Click">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="Launch" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="官方启动器" />
-                </StackPanel>
-            </Button>
-            <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
-                    x:Name="DiscordButton" Margin="5,0,0,0" Click="DiscordButton_Click">
-                <StackPanel Orientation="Horizontal">
-                    <mahIcon:PackIconSimpleIcons Kind="Discord" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="Discord" />
-                </StackPanel>
-            </Button>
-            <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
-                    x:Name="NewGitHubIssueButton" Margin="5,0,0,0" Click="NewGitHubIssueButton_OnClick">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="Github" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="GitHub" />
-                </StackPanel>
-            </Button>
-            <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
-                    x:Name="IntegrityReportButton" Margin="5,0,0,0" Click="IntegrityReportButton_Click">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="FileDocument" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="完整性报告" />
-                </StackPanel>
-            </Button>
-            <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
-                    x:Name="PackTroubleshooting" Margin="5,0,0,0" Click="PackTroubleshooting_OnClick"
-                    Visibility="{Binding PackTroubleshootingVisibility}">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="Bug" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="打包日志" />
-                </StackPanel>
-            </Button>
-            <Button x:Name="Button1" Margin="5,0,0,0" HorizontalAlignment="Right" Click="Button1_Click"
-                    Content="Button1" MinWidth="80" />
-            <Button x:Name="Button2" Margin="5,0,0,0" HorizontalAlignment="Right" Click="Button2_Click"
-                    Content="Button2" MinWidth="80" />
-            <Button x:Name="Button3" Margin="5,0,0,0" HorizontalAlignment="Right" Click="Button3_Click"
-                    Content="Button3" MinWidth="80" />
-        </StackPanel>
+                <!-- Input TextBox -->
+                <TextBox x:Name="InputTextBox"
+                         Grid.Row="2"
+                         Margin="0,24,0,0"
+                         Padding="16,14"
+                         VerticalAlignment="Center"
+                         Style="{DynamicResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:HintAssist.Hint="在此处输入内容"
+                         materialDesign:TextFieldAssist.HasClearButton="True"
+                         materialDesign:TextFieldAssist.UnderlineBrush="{DynamicResource MaterialDesign.Brush.Primary}"
+                         Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+
+                <!-- Actions Area -->
+                <Grid Grid.Row="3" Margin="0,36,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Secondary Tools -->
+                    <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <Button x:Name="OfficialLauncherButton" Style="{DynamicResource MaterialDesignFlatButton}"
+                                Margin="0,0,8,8" Click="OfficialLauncherButton_Click" ToolTip="启动官方启动器"
+                                Foreground="{DynamicResource MaterialDesign.Brush.Primary}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Launch" VerticalAlignment="Center" Width="18"
+                                                         Height="18" />
+                                <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="官方启动器"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="DiscordButton" Style="{DynamicResource MaterialDesignFlatButton}"
+                                Margin="0,0,8,8" Click="DiscordButton_Click" ToolTip="打开 Discord 获取帮助"
+                                Foreground="{DynamicResource MaterialDesign.Brush.Primary}">
+                            <StackPanel Orientation="Horizontal">
+                                <mahIcon:PackIconSimpleIcons Kind="Discord" VerticalAlignment="Center" Width="18"
+                                                             Height="18" />
+                                <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="Discord"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="NewGitHubIssueButton" Style="{DynamicResource MaterialDesignFlatButton}"
+                                Margin="0,0,8,8" Click="NewGitHubIssueButton_OnClick" ToolTip="在 GitHub 上报告问题"
+                                Foreground="{DynamicResource MaterialDesign.Brush.Primary}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Github" VerticalAlignment="Center" Width="18"
+                                                         Height="18" />
+                                <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="GitHub"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="IntegrityReportButton" Style="{DynamicResource MaterialDesignFlatButton}"
+                                Margin="0,0,8,8" Click="IntegrityReportButton_Click" ToolTip="查看文件完整性报告"
+                                Foreground="{DynamicResource MaterialDesign.Brush.Primary}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FileDocument" VerticalAlignment="Center" Width="18"
+                                                         Height="18" />
+                                <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="完整性报告"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="PackTroubleshooting" Style="{DynamicResource MaterialDesignFlatButton}"
+                                Margin="0,0,8,8" Click="PackTroubleshooting_OnClick"
+                                Visibility="{Binding PackTroubleshootingVisibility}" ToolTip="生成用于排查问题的打包日志"
+                                Foreground="{DynamicResource MaterialDesign.Brush.Primary}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Bug" VerticalAlignment="Center" Width="18" Height="18" />
+                                <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="打包日志"
+                                           FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+
+                    <!-- Right: Primary Actions -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
+                                VerticalAlignment="Bottom" Margin="0,0,0,8">
+                        <Button x:Name="Button3" Margin="12,0,0,0" MinWidth="100" Click="Button3_Click"
+                                Content="Button3" Style="{DynamicResource MaterialDesignOutlinedButton}" />
+                        <Button x:Name="Button2" Margin="12,0,0,0" MinWidth="100" Click="Button2_Click"
+                                Content="Button2" Style="{DynamicResource MaterialDesignOutlinedButton}" />
+                        <Button x:Name="Button1" Margin="12,0,0,0" MinWidth="100" Click="Button1_Click"
+                                Content="Button1" Style="{DynamicResource MaterialDesignRaisedButton}" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </materialDesign:Card>
     </Grid>
 </Window>

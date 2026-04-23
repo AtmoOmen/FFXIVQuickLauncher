@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,7 @@ using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using MaterialDesignThemes.Wpf;
 using Serilog;
@@ -24,19 +26,21 @@ namespace XIVLauncher.Windows;
 /// <summary>
 ///     Interaction logic for CustomMessageBox.xaml
 /// </summary>
-public partial class CustomMessageBox : Window
+public partial class CustomMessageBox
 {
-    public static string ErrorExplanation = "XIVLauncher 发生错误, 请查阅常见问题\n如果问题仍然存在, 请点击下方按钮在 GitHub 上报告此问题, 描述问题并复制文本框中的内容";
+    public const string ERROR_EXPLANATION = "XIVLauncher 发生错误, 请查阅常见问题\n如果问题仍然存在, 请点击下方按钮在 GitHub 上报告此问题, 描述问题并复制文本框中的内容";
 
     private readonly Builder _builder;
 
-    private CustomMessageBoxViewModel ViewModel => DataContext as CustomMessageBoxViewModel;
-    private MessageBoxResult          _result;
+    private CustomMessageBoxViewModel ViewModel => (DataContext as CustomMessageBoxViewModel)!;
+                                                       
+    private MessageBoxResult result;
+    private bool             isClosing;
 
     private CustomMessageBox(Builder builder)
     {
         _builder = builder;
-        _result  = _builder.CancelResult;
+        result  = _builder.CancelResult;
 
         InitializeComponent();
 
@@ -199,6 +203,8 @@ public partial class CustomMessageBox : Window
         NewGitHubIssueButton.Visibility   = builder.ShowNewGitHubIssue ? Visibility.Visible : Visibility.Collapsed;
 
         Topmost = builder.OverrideTopMostFromParentWindow ? builder.ParentWindow?.Topmost ?? builder.TopMost : builder.TopMost;
+
+        Closing += CustomMessageBox_Closing;
     }
 
     public static MessageBoxResult Show
@@ -211,7 +217,7 @@ public partial class CustomMessageBox : Window
         bool             showDiscordLink      = true,
         bool             showReportLinks      = false,
         bool             showOfficialLauncher = false,
-        Window           parentWindow         = null
+        Window           parentWindow         = null!
     )
     {
         return new Builder()
@@ -227,7 +233,7 @@ public partial class CustomMessageBox : Window
                .Show();
     }
 
-    public static bool AssertOrShowError(bool condition, string context, bool fatal = false, Window parentWindow = null)
+    public static bool AssertOrShowError(bool condition, string context, bool fatal = false, Window parentWindow = null!)
     {
         if (condition)
             return false;
@@ -297,13 +303,29 @@ public partial class CustomMessageBox : Window
 
     private void CustomMessageBox_MouseMove(object sender, MouseEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed && e.Source != DescriptionTextBox)
+        if (e.LeftButton == MouseButtonState.Pressed && !Equals(e.Source, DescriptionTextBox))
             DragMove();
+    }
+
+    private void CustomMessageBox_Closing(object? sender, CancelEventArgs e)
+    {
+        if (isClosing)
+            return;
+
+        e.Cancel   = true;
+        isClosing = true;
+
+        if (FindResource("WindowCloseAnimation") is Storyboard sb)
+        {
+            sb.Completed += (_, _) => Close();
+            sb.Begin(this);
+        }
+        else Close();
     }
 
     private void Button1_Click(object sender, RoutedEventArgs e)
     {
-        _result = _builder.Buttons switch
+        result = _builder.Buttons switch
         {
             MessageBoxButton.OK          => MessageBoxResult.OK,
             MessageBoxButton.OKCancel    => MessageBoxResult.OK,
@@ -318,7 +340,7 @@ public partial class CustomMessageBox : Window
 
     private void Button2_Click(object sender, RoutedEventArgs e)
     {
-        _result = _builder.Buttons switch
+        result = _builder.Buttons switch
         {
             MessageBoxButton.OKCancel    => MessageBoxResult.Cancel,
             MessageBoxButton.YesNoCancel => MessageBoxResult.No,
@@ -330,7 +352,7 @@ public partial class CustomMessageBox : Window
 
     private void Button3_Click(object sender, RoutedEventArgs e)
     {
-        _result = _builder.Buttons switch
+        result = _builder.Buttons switch
         {
             MessageBoxButton.YesNoCancel => MessageBoxResult.Cancel,
             _                            => throw new NotImplementedException()
@@ -408,7 +430,7 @@ public partial class CustomMessageBox : Window
         public static Builder NewFrom(Exception exc, string context, ExitOnCloseModes exitOnCloseMode = ExitOnCloseModes.DontExitOnClose)
         {
             var builder = new Builder()
-                          .WithText(ErrorExplanation)
+                          .WithText(ERROR_EXPLANATION)
                           .WithExitOnClose(exitOnCloseMode)
                           .WithImage(MessageBoxImage.Error)
                           .WithShowHelpLinks()
@@ -599,18 +621,18 @@ public partial class CustomMessageBox : Window
 
         public Builder WithAppendSettingsDescription(string context)
         {
-            WithAppendDescription("\n\n版本: "     + AppUtil.GetAssemblyVersion())
+            WithAppendDescription("\n\n版本: "        + AppUtil.GetAssemblyVersion())
                 .WithAppendDescription("\nGit 哈希: " + AppUtil.GetGitHash())
-                .WithAppendDescription("\n上下文: "  + context)
-                .WithAppendDescription("\n操作系统: "       + Environment.OSVersion)
-                .WithAppendDescription("\n64 位: "    + Environment.Is64BitProcess);
+                .WithAppendDescription("\n上下文: "    + context)
+                .WithAppendDescription("\n操作系统: "   + Environment.OSVersion)
+                .WithAppendDescription("\n64 位: "   + Environment.Is64BitProcess);
 
             if (App.Settings != null)
             {
-                WithAppendDescription("\n启用 Dalamud: "          + App.Settings.DalamudEnabled)
-                    .WithAppendDescription("\n语言: "           + App.Settings.Language)
-                    .WithAppendDescription("\n启动器语言: "   + App.Settings.LauncherLanguage)
-                    .WithAppendDescription("\n游戏路径: "          + App.Settings.GamePath);
+                WithAppendDescription("\n启用 Dalamud: " + App.Settings.DalamudEnabled)
+                    .WithAppendDescription("\n语言: "    + App.Settings.Language)
+                    .WithAppendDescription("\n启动器语言: " + App.Settings.LauncherLanguage)
+                    .WithAppendDescription("\n游戏路径: "  + App.Settings.GamePath);
             }
 
 #if DEBUG
@@ -652,7 +674,7 @@ public partial class CustomMessageBox : Window
 
             var res = new CustomMessageBox(this);
             res.ShowDialog();
-            return res._result;
+            return res.result;
         }
 
         public MessageBoxResult ShowInNewThread()
@@ -672,10 +694,7 @@ public partial class CustomMessageBox : Window
 
             if (ParentWindow != null)
             {
-                if (Dispatcher.CurrentDispatcher == ParentWindow.Dispatcher)
-                    result = ShowAssumingDispatcherThread();
-                else
-                    result = ParentWindow.Dispatcher.Invoke(ShowAssumingDispatcherThread);
+                result = Dispatcher.CurrentDispatcher == ParentWindow.Dispatcher ? ShowAssumingDispatcherThread() : ParentWindow.Dispatcher.Invoke(ShowAssumingDispatcherThread);
             }
             else
             {
@@ -689,7 +708,7 @@ public partial class CustomMessageBox : Window
             {
                 Log.CloseAndFlush();
                 if (result == MessageBoxResult.Yes)
-                    Process.Start(Process.GetCurrentProcess().MainModule.FileName, string.Join(" ", Environment.GetCommandLineArgs().Skip(1).Select(x => EncodeParameterArgument(x))));
+                    Process.Start(Process.GetCurrentProcess().MainModule!.FileName, string.Join(" ", Environment.GetCommandLineArgs().Skip(1).Select(x => EncodeParameterArgument(x))));
                 Environment.Exit(-1);
             }
 
