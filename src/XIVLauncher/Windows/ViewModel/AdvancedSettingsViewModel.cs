@@ -35,9 +35,16 @@ public class AdvancedSettingsViewModel : INotifyPropertyChanged
 
     public void Save()
     {
-        App.Settings.TreatNonZeroExitCodeAsFailure = TreatNonZeroExitCodeAsFailure;
-        App.Settings.EnableSkipUpdate              = EnableSkipUpdate;
-        App.Settings.EnableVerboseLog              = EnableVerboseLog;
+        App.Settings.Update
+        (
+            settings =>
+            {
+                settings.TreatNonZeroExitCodeAsFailure = TreatNonZeroExitCodeAsFailure;
+                settings.EnableSkipUpdate              = EnableSkipUpdate;
+                settings.EnableVerboseLog              = EnableVerboseLog;
+            }
+        );
+
         LogInit.LevelSwitch.MinimumLevel           = EnableVerboseLog ? LogEventLevel.Verbose : LogInit.GetDefaultLevel();
     }
 

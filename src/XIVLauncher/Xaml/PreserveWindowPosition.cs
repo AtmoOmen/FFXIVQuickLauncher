@@ -29,7 +29,6 @@ public static class PreserveWindowPosition
         var hwnd = new WindowInteropHelper(window).Handle;
         GetWindowPlacement(hwnd, out var wp);
         App.Settings.MainWindowPlacement = wp;
-        App.Settings.Save();
     }
 
     [DllImport("user32.dll")]

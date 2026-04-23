@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using Serilog;
 using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
@@ -20,9 +22,12 @@ namespace XIVLauncher.Settings;
 public sealed class LauncherSettingsV3
 {
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
+    private static readonly UTF8Encoding          Utf8WithoutBom = new(false);
 
     private string? configPath;
     private bool    suppressSave = true;
+    private int     batchUpdateDepth;
+    private bool    hasPendingSave;
 
     #region 游戏路径配置
 
@@ -344,17 +349,53 @@ public sealed class LauncherSettingsV3
     /// </summary>
     public static LauncherSettingsV3 Load(string configPath)
     {
-        if (!File.Exists(configPath))
+        if (TryLoadSettings(configPath, configPath, out var settings, out var configException))
+            return settings;
+
+        if (configException != null)
         {
-            var created = new LauncherSettingsV3();
-            created.Attach(configPath);
-            return created;
+            Log.Error(configException, "读取启动器配置失败: {ConfigPath}", configPath);
+
+            var brokenPath = MoveBrokenConfig(configPath);
+            if (!string.IsNullOrWhiteSpace(brokenPath))
+                Log.Warning("已隔离损坏配置文件: {BrokenPath}", brokenPath);
         }
 
-        var json     = File.ReadAllText(configPath, Encoding.UTF8);
-        var settings = JsonSerializer.Deserialize<LauncherSettingsV3>(json, JsonOptions) ?? new LauncherSettingsV3();
-        settings.Attach(configPath);
-        return settings;
+        var backupPath = GetBackupPath(configPath);
+        if (TryLoadSettings(backupPath, configPath, out settings, out var backupException))
+        {
+            Log.Warning("已从备份恢复启动器配置: {BackupPath}", backupPath);
+            settings.Save();
+            return settings;
+        }
+
+        if (backupException != null)
+            Log.Error(backupException, "读取启动器配置备份失败: {BackupPath}", backupPath);
+
+        return CreateDetachedSettings(configPath);
+    }
+
+    public void Update(Action<LauncherSettingsV3> updater)
+    {
+        ArgumentNullException.ThrowIfNull(updater);
+
+        batchUpdateDepth++;
+        var isCompleted = false;
+
+        try
+        {
+            updater(this);
+            isCompleted = true;
+        }
+        finally
+        {
+            batchUpdateDepth--;
+
+            if (batchUpdateDepth == 0 && !isCompleted)
+                hasPendingSave = false;
+            else if (batchUpdateDepth == 0 && hasPendingSave && isCompleted)
+                SaveCore();
+        }
     }
 
     /// <summary>
@@ -365,11 +406,13 @@ public sealed class LauncherSettingsV3
         if (string.IsNullOrWhiteSpace(configPath))
             return;
 
-        var directoryPath = Path.GetDirectoryName(configPath);
-        if (!string.IsNullOrWhiteSpace(directoryPath))
-            Directory.CreateDirectory(directoryPath);
+        if (batchUpdateDepth > 0)
+        {
+            hasPendingSave = true;
+            return;
+        }
 
-        File.WriteAllText(configPath, JsonSerializer.Serialize(this, JsonOptions), new UTF8Encoding(false));
+        SaveCore();
     }
 
     private void Attach(string path)
@@ -391,6 +434,75 @@ public sealed class LauncherSettingsV3
         return true;
     }
 
+    private static LauncherSettingsV3 CreateDetachedSettings(string configPath)
+    {
+        var settings = new LauncherSettingsV3();
+        settings.Attach(configPath);
+        return settings;
+    }
+
+    private static string GetBackupPath(string configPath) =>
+        configPath + ".bak";
+
+    private static bool TryLoadSettings
+    (
+        string                  sourcePath,
+        string                  attachPath,
+        out LauncherSettingsV3  settings,
+        out Exception?          exception
+    )
+    {
+        settings  = null!;
+        exception = null;
+
+        if (!File.Exists(sourcePath))
+            return false;
+
+        try
+        {
+            var json = File.ReadAllText(sourcePath, Encoding.UTF8);
+            settings = JsonSerializer.Deserialize<LauncherSettingsV3>(json, JsonOptions) ?? new LauncherSettingsV3();
+            settings.Attach(attachPath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            exception = ex;
+            return false;
+        }
+    }
+
+    private static string? MoveBrokenConfig(string configPath)
+    {
+        if (!File.Exists(configPath))
+            return null;
+
+        try
+        {
+            var brokenPath = $"{configPath}.broken-{DateTime.Now:yyyyMMddHHmmssfff}";
+            File.Move(configPath, brokenPath);
+            return brokenPath;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "隔离损坏配置文件失败: {ConfigPath}", configPath);
+            return null;
+        }
+    }
+
+    private static void TryDeleteTempFile(string tempPath)
+    {
+        try
+        {
+            if (File.Exists(tempPath))
+                File.Delete(tempPath);
+        }
+        catch
+        {
+            // ignored
+        }
+    }
+
     private static JsonSerializerOptions CreateJsonOptions()
     {
         var options = new JsonSerializerOptions
@@ -402,5 +514,37 @@ public sealed class LauncherSettingsV3
 
         options.Converters.Add(new DirectoryInfoJsonConverter());
         return options;
+    }
+
+    private void SaveCore()
+    {
+        if (string.IsNullOrWhiteSpace(configPath))
+            return;
+
+        var currentConfigPath = configPath;
+        var directoryPath     = Path.GetDirectoryName(currentConfigPath);
+        if (!string.IsNullOrWhiteSpace(directoryPath))
+            Directory.CreateDirectory(directoryPath);
+
+        var tempPath   = currentConfigPath + ".tmp";
+        var backupPath = GetBackupPath(currentConfigPath);
+        var json       = JsonSerializer.Serialize(this, JsonOptions);
+
+        try
+        {
+            File.WriteAllText(tempPath, json, Utf8WithoutBom);
+
+            if (File.Exists(currentConfigPath))
+                File.Replace(tempPath, currentConfigPath, backupPath, true);
+            else
+                File.Move(tempPath, currentConfigPath);
+
+            hasPendingSave = false;
+        }
+        catch
+        {
+            TryDeleteTempFile(tempPath);
+            throw;
+        }
     }
 }

@@ -293,7 +293,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
         }
 
         App.Settings.FastLogin = LoginPage.IsFastLogin;
-        App.Settings.Save();
 
         var         finalLoginType             = loginType;
         var         secret                     = string.Empty;

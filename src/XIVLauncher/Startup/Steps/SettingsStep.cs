@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
@@ -23,16 +22,7 @@ public class SettingsStep
 
     public async Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            SetupSettings(context);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "设置已损坏, 正在重置");
-            File.Delete(Paths.GetConfigPath());
-            SetupSettings(context);
-        }
+        SetupSettings(context);
 
         EnsureSettingsInitialized(context);
         context.AccountManager = new AccountManager(context.Settings);
@@ -61,7 +51,7 @@ public class SettingsStep
 
         if (LogInit.LevelSwitch != null && context.Settings.EnableVerboseLog)
             LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
-        context.Settings.EnableVerboseLog = false;
+
         if (LogInit.LevelSwitch != null)
             Log.Information("当前日志级别: {LevelSwitchMinimumLevel}", LogInit.LevelSwitch.MinimumLevel);
         else
@@ -70,15 +60,22 @@ public class SettingsStep
         try
         {
             var cmdLine = commandLineStep.GetOptions();
+            context.Settings.Update
+            (
+                settings =>
+                {
+                    settings.EnableVerboseLog = false;
 
-            if (!string.IsNullOrEmpty(cmdLine.AccountName))
-            {
-                context.Settings.CurrentAccountID = cmdLine.AccountName;
-                Log.Verbose("账号覆盖: '{0}'", cmdLine.AccountName);
-            }
+                    if (!string.IsNullOrEmpty(cmdLine.AccountName))
+                    {
+                        settings.CurrentAccountID = cmdLine.AccountName;
+                        Log.Verbose("账号覆盖: '{AccountName}'", cmdLine.AccountName);
+                    }
 
-            if (cmdLine.ClientLanguage != null)
-                context.Settings.Language = ClientLanguage.ChineseSimplified;
+                    if (cmdLine.ClientLanguage != null)
+                        settings.Language = ClientLanguage.ChineseSimplified;
+                }
+            );
         }
         catch (Exception ex)
         {

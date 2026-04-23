@@ -306,13 +306,10 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 
     public void ReloadFromSettings()
     {
+        var patchPath = Paths.ResolvePatchPath(App.Settings.PatchPath, Paths.RoamingPath);
+
         GamePath = App.Settings.GamePath?.FullName ?? string.Empty;
-
-        if (App.Settings.PatchPath is { Exists: false })
-            App.Settings.PatchPath = null!;
-
-        App.Settings.PatchPath ??= new DirectoryInfo(Path.Combine(Paths.RoamingPath, "patches"));
-        PatchPath              =   App.Settings.PatchPath?.FullName ?? string.Empty;
+        PatchPath = patchPath.FullName;
 
         LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
         LauncherLanguageNoticeVisible               = false;
@@ -353,23 +350,13 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        App.Settings.GamePath                                    = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
-        App.Settings.PatchPath                                   = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
-        App.Settings.LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
-        App.Settings.AddonList                                   = AddonEntries.ToList();
-        App.Settings.AskBeforePatchInstall                       = AskBeforePatching;
-        App.Settings.ExitLauncherWhenGameExit                   = ExitLauncherAfterGameExit;
-        App.Settings.KeepPatches                                 = KeepPatches;
-        App.Settings.RequireDeviceProfileSetupForNewLogin = RequireDeviceProfileSetupForNewAccountLogin;
-        App.Settings.PatchAcquisitionMethod                      = (AcquisitionMethod)PatchAcquisitionIndex;
-        App.Settings.DalamudEnabled                              = EnableHooks;
-        App.Settings.DalamudInjectionDelayMS                     = DalamudInjectionDelayMs ?? 0;
-        App.Settings.ManualInjectDelayMs                         = ManualInjectDelayMs     ?? 0;
-        App.Settings.DalamudLoadMethod                           = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
-        App.Settings.AdditionalLaunchArgs                        = LaunchArgs;
-        App.Settings.DPIAwareness                                = (DPIAwareness)DpiAwarenessIndex;
-        App.Settings.SpeedLimitBytes                             = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
-        App.Settings.GitHubToken                                 = GitHubToken;
+        var gamePath              = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
+        var patchPath             = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
+        var addonEntries          = AddonEntries.ToList();
+        var patchAcquisitionMethod = (AcquisitionMethod)PatchAcquisitionIndex;
+        var dalamudLoadMethod      = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
+        var dpiAwareness           = (DPIAwareness)DpiAwarenessIndex;
+        var speedLimitBytes        = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
 
         var requestedCredType   = SelectedCredType;
         var credTypeApplyResult = await App.AccountManager.ChangeCredTypeAsync(requestedCredType);
@@ -390,9 +377,32 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        App.Settings.CredType = credTypeApplyResult.AppliedCredType;
-        SelectedCredType      = credTypeApplyResult.AppliedCredType;
-        App.Settings.Save();
+        App.Settings.Update
+        (
+            settings =>
+            {
+                settings.GamePath                            = gamePath;
+                settings.PatchPath                           = patchPath;
+                settings.LauncherLanguage                    = LauncherLanguage.SimplifiedChinese;
+                settings.AddonList                           = addonEntries;
+                settings.AskBeforePatchInstall               = AskBeforePatching;
+                settings.ExitLauncherWhenGameExit            = ExitLauncherAfterGameExit;
+                settings.KeepPatches                         = KeepPatches;
+                settings.RequireDeviceProfileSetupForNewLogin = RequireDeviceProfileSetupForNewAccountLogin;
+                settings.PatchAcquisitionMethod              = patchAcquisitionMethod;
+                settings.DalamudEnabled                      = EnableHooks;
+                settings.DalamudInjectionDelayMS             = DalamudInjectionDelayMs ?? 0;
+                settings.ManualInjectDelayMs                 = ManualInjectDelayMs     ?? 0;
+                settings.DalamudLoadMethod                   = dalamudLoadMethod;
+                settings.AdditionalLaunchArgs                = LaunchArgs;
+                settings.DPIAwareness                        = dpiAwareness;
+                settings.SpeedLimitBytes                     = speedLimitBytes;
+                settings.GitHubToken                         = GitHubToken;
+                settings.CredType                            = credTypeApplyResult.AppliedCredType;
+            }
+        );
+
+        SelectedCredType = credTypeApplyResult.AppliedCredType;
 
         SettingsSaved?.Invoke(this, EventArgs.Empty);
         return true;

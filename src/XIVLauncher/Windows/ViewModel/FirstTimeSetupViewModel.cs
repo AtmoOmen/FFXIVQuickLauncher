@@ -82,11 +82,16 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
                 return true;
 
             case 1:
-                App.Settings.GamePath       = new DirectoryInfo(GamePath);
-                App.Settings.Language       = ClientLanguage.ChineseSimplified;
-                App.Settings.DalamudEnabled = EnableDalamud;
-                App.Settings.AddonList      = [];
-                App.Settings.Save();
+                App.Settings.Update
+                (
+                    settings =>
+                    {
+                        settings.GamePath       = new DirectoryInfo(GamePath);
+                        settings.Language       = ClientLanguage.ChineseSimplified;
+                        settings.DalamudEnabled = EnableDalamud;
+                        settings.AddonList      = [];
+                    }
+                );
 
                 WasCompleted = true;
                 CloseRequested?.Invoke(this, EventArgs.Empty);
