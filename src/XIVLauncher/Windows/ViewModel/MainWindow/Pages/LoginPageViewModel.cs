@@ -20,18 +20,19 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     private readonly Action                                       requestShowInjectPageAction;
     private readonly Action                                       requestBackToMainPageAction;
     private readonly Action                                       requestFakeStartAction;
-    private readonly SyncCommand                                  startLoginCommand;
-    private readonly SyncCommand                                  loginNoStartCommand;
-    private readonly SyncCommand                                  loginNoDalamudCommand;
-    private readonly SyncCommand                                  loginNoPluginsCommand;
-    private readonly SyncCommand                                  loginNoThirdCommand;
-    private readonly SyncCommand                                  loginRepairCommand;
-    private readonly SyncCommand                                  loginCancelCommand;
-    private readonly SyncCommand                                  loginForceQRCommand;
-    private readonly SyncCommand                                  refreshQrCodeCommand;
-    private readonly SyncCommand                                  injectModeSwitchCommand;
-    private readonly SyncCommand                                  backToMainPageCommand;
-    private readonly SyncCommand                                  fakeStartCommand;
+    
+    private readonly SyncCommand startLoginCommand;
+    private readonly SyncCommand loginNoStartCommand;
+    private readonly SyncCommand loginNoDalamudCommand;
+    private readonly SyncCommand loginNoPluginsCommand;
+    private readonly SyncCommand loginNoThirdCommand;
+    private readonly SyncCommand loginRepairCommand;
+    private readonly SyncCommand loginCancelCommand;
+    private readonly SyncCommand loginForceQRCommand;
+    private readonly SyncCommand refreshQrCodeCommand;
+    private readonly SyncCommand injectModeSwitchCommand;
+    private readonly SyncCommand backToMainPageCommand;
+    private readonly SyncCommand fakeStartCommand;
 
     public LoginPageViewModel
     (
@@ -86,8 +87,6 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     public ICommand LoginRepairCommand => loginRepairCommand;
 
     public ICommand LoginCancelCommand => loginCancelCommand;
-
-    public ICommand LoginForceQRCommand => loginForceQRCommand;
 
     public ICommand RefreshQrCodeCommand => refreshQrCodeCommand;
 
