@@ -1,8 +1,11 @@
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using XIVLauncher.Common.Addon.Implementations;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-public class GenericAddonSetupWindowViewModel : ViewModelBase
+public class GenericAddonSetupWindowViewModel : INotifyPropertyChanged
 {
     public bool CanKillAfterClose => !RunAsAdmin;
 
@@ -71,4 +74,19 @@ public class GenericAddonSetupWindowViewModel : ViewModelBase
             KillAfterClose = KillAfterClose
         };
     }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

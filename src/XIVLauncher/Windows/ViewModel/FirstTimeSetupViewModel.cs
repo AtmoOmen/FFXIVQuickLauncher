@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using XIVLauncher.Common;
@@ -10,7 +13,7 @@ using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal sealed class FirstTimeSetupViewModel : ViewModelBase
+internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
 {
     public ICommand NextCommand { get; }
 
@@ -79,10 +82,10 @@ internal sealed class FirstTimeSetupViewModel : ViewModelBase
                 return true;
 
             case 1:
-                App.Settings.GamePath           = new DirectoryInfo(GamePath);
-                App.Settings.Language           = ClientLanguage.ChineseSimplified;
+                App.Settings.GamePath       = new DirectoryInfo(GamePath);
+                App.Settings.Language       = ClientLanguage.ChineseSimplified;
                 App.Settings.DalamudEnabled = EnableDalamud;
-                App.Settings.AddonList          = [];
+                App.Settings.AddonList      = [];
 
                 WasCompleted = true;
                 CloseRequested?.Invoke(this, EventArgs.Empty);
@@ -152,4 +155,19 @@ internal sealed class FirstTimeSetupViewModel : ViewModelBase
     }
 
     public event EventHandler? CloseRequested;
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

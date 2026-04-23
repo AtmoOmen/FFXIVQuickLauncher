@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
@@ -16,7 +19,7 @@ using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal sealed class AccountSwitcherViewModel : ViewModelBase
+internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 {
     public ObservableCollection<AccountSwitcherEntry> Entries { get; } = [];
 
@@ -358,4 +361,19 @@ internal sealed class AccountSwitcherViewModel : ViewModelBase
 
     private XIVAccount FindTrackedAccount(XIVAccount account) =>
         accountManager.Accounts.First(existing => existing.ID == account.ID);
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

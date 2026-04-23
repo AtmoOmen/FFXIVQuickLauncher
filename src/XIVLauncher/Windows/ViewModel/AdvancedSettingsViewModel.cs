@@ -1,9 +1,12 @@
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using Serilog.Events;
 using XIVLauncher.Common.Support;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-public class AdvancedSettingsViewModel : ViewModelBase
+public class AdvancedSettingsViewModel : INotifyPropertyChanged
 {
     public bool ExitLauncherAfterGameExit
     {
@@ -45,4 +48,19 @@ public class AdvancedSettingsViewModel : ViewModelBase
         App.Settings.EnableVerboseLog              = EnableVerboseLog;
         LogInit.LevelSwitch.MinimumLevel           = EnableVerboseLog ? LogEventLevel.Verbose : LogInit.GetDefaultLevel();
     }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

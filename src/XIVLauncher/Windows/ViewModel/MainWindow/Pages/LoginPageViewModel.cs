@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Serilog;
@@ -8,7 +11,7 @@ using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Pages;
 
-public sealed class LoginPageViewModel : ViewModelBase
+public sealed class LoginPageViewModel : INotifyPropertyChanged
 {
     private readonly Func<bool>                                   isBusyFunc;
     private readonly Action<LoginPageViewModel, LoginAfterAction> requestLoginAction;
@@ -53,7 +56,7 @@ public sealed class LoginPageViewModel : ViewModelBase
 
         var selectedLoginType = App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.Slide);
         loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == selectedLoginType)
-                          ?? LoginTypeOptions.First(x => x.LoginType == LoginType.Slide);
+                          ?? LoginTypeOptions.First(x => x.LoginType       == LoginType.Slide);
 
         startLoginCommand       = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start),               () => CanStartLogin);
         loginNoStartCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.UpdateOnly),          () => !this.isBusyFunc());
@@ -117,10 +120,12 @@ public sealed class LoginPageViewModel : ViewModelBase
             if (!SetProperty(ref field, value))
                 return;
 
+            if (isApplyingLoginType)
+                return;
+
             if (loginTypeOption.LoginType == LoginType.WeGameAuto)
                 ApplyWeGameSidMode();
-            OnPropertyChanged(nameof(CanStartLogin));
-            startLoginCommand.RaiseCanExecuteChanged();
+            RefreshStartLoginState();
         }
     }
 
@@ -132,8 +137,8 @@ public sealed class LoginPageViewModel : ViewModelBase
             if (!SetProperty(ref field, value))
                 return;
 
-            OnPropertyChanged(nameof(CanStartLogin));
-            startLoginCommand.RaiseCanExecuteChanged();
+            if (!isApplyingLoginType)
+                RefreshStartLoginState();
         }
     } = string.Empty;
 
@@ -145,8 +150,8 @@ public sealed class LoginPageViewModel : ViewModelBase
             if (!SetProperty(ref field, value))
                 return;
 
-            OnPropertyChanged(nameof(CanStartLogin));
-            startLoginCommand.RaiseCanExecuteChanged();
+            if (!isApplyingLoginType)
+                RefreshStartLoginState();
         }
     } = string.Empty;
 
@@ -163,10 +168,8 @@ public sealed class LoginPageViewModel : ViewModelBase
             App.Settings.SelectedLoginType = value.LoginType;
             if (previousGroup.HasValue && previousGroup.Value != value.Group)
                 Username = string.Empty;
-            Password                       = string.Empty;
+            Password = string.Empty;
             ApplyLoginType(value.LoginType);
-            OnPropertyChanged(nameof(CanStartLogin));
-            startLoginCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -240,9 +243,6 @@ public sealed class LoginPageViewModel : ViewModelBase
         {
             if (!SetProperty(ref field, value))
                 return;
-
-            OnPropertyChanged(nameof(CanStartLogin));
-            startLoginCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -318,58 +318,76 @@ public sealed class LoginPageViewModel : ViewModelBase
         fakeStartCommand.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CanStartLogin));
     }
-    
+
     private LoginTypeOption loginTypeOption = null!;
+    private bool            isApplyingLoginType;
 
     private bool IsLoginInputComplete => loginTypeOption.LoginType switch
     {
-        LoginType.QRCode => true,
+        LoginType.QRCode     => true,
         LoginType.WeGameAuto => IsReadWegameInfo || !string.IsNullOrWhiteSpace(Username),
-        _ => !string.IsNullOrWhiteSpace(Username) && (!IsPasswordVisible || !string.IsNullOrWhiteSpace(Password)),
+        _                    => !string.IsNullOrWhiteSpace(Username) && (!IsPasswordVisible || !string.IsNullOrWhiteSpace(Password))
     };
 
     private void ApplyLoginType(LoginType loginType)
     {
-        IsUsernameVisible       = true;
-        IsUsernameEnabled       = true;
-        IsPasswordVisible       = false;
-        IsFastLoginVisible      = true;
-        IsReadWegameInfoVisible = false;
-        FastLoginText           = "快速登录";
-        UsernameHint            = "盛趣账号";
-        UsernameToolTip         = "输入盛趣账号";
-        PasswordHint            = "密码";
-        ReadWeGameInfoText      = "重新获取账号信息";
-        ReadWeGameInfoToolTip   = "勾选后将启动 WeGame 并读取当前启动账号信息";
+        isApplyingLoginType = true;
 
-        switch (loginType)
+        try
         {
-            case LoginType.Slide:
-                break;
+            IsUsernameVisible       = true;
+            IsUsernameEnabled       = true;
+            IsPasswordVisible       = false;
+            IsFastLoginVisible      = true;
+            IsReadWegameInfoVisible = false;
+            FastLoginText           = "快速登录";
+            UsernameHint            = "盛趣账号";
+            UsernameToolTip         = "输入盛趣账号";
+            PasswordHint            = "密码";
+            ReadWeGameInfoText      = "重新获取账号信息";
+            ReadWeGameInfoToolTip   = "勾选后将启动 WeGame 并读取当前启动账号信息";
 
-            case LoginType.QRCode:
-                IsUsernameVisible = false;
-                break;
+            switch (loginType)
+            {
+                case LoginType.Slide:
+                    break;
 
-            case LoginType.Static:
-                IsPasswordVisible = true;
-                FastLoginText     = "静态密码";
-                break;
+                case LoginType.QRCode:
+                    IsUsernameVisible = false;
+                    break;
 
-            case LoginType.WeGameManual:
-                IsPasswordVisible = true;
-                UsernameHint      = "SndaID";
-                UsernameToolTip   = "输入 WeGame 账号对应的 SndaID";
-                PasswordHint      = "登录令牌";
-                break;
+                case LoginType.Static:
+                    IsPasswordVisible = true;
+                    FastLoginText     = "静态密码";
+                    break;
 
-            case LoginType.WeGameAuto:
-                IsFastLoginVisible      = false;
-                IsReadWegameInfoVisible = true;
-                IsReadWegameInfo        = string.IsNullOrWhiteSpace(Username);
-                ApplyWeGameSidMode();
-                break;
+                case LoginType.WeGameManual:
+                    IsPasswordVisible = true;
+                    UsernameHint      = "SndaID";
+                    UsernameToolTip   = "输入 WeGame 账号对应的 SndaID";
+                    PasswordHint      = "登录令牌";
+                    break;
+
+                case LoginType.WeGameAuto:
+                    IsFastLoginVisible      = false;
+                    IsReadWegameInfoVisible = true;
+                    IsReadWegameInfo        = string.IsNullOrWhiteSpace(Username);
+                    ApplyWeGameSidMode();
+                    break;
+            }
         }
+        finally
+        {
+            isApplyingLoginType = false;
+        }
+
+        RefreshStartLoginState();
+    }
+
+    private void RefreshStartLoginState()
+    {
+        OnPropertyChanged(nameof(CanStartLogin));
+        startLoginCommand.RaiseCanExecuteChanged();
     }
 
     private void ApplyWeGameSidMode()
@@ -388,4 +406,19 @@ public sealed class LoginPageViewModel : ViewModelBase
         UsernameToolTip       = "输入 WeGame 账号对应的 SndaID";
         ReadWeGameInfoToolTip = "勾选后将启动 WeGame 并读取当前启动账号信息";
     }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

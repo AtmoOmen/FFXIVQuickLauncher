@@ -61,7 +61,7 @@ public partial class MainWindow
         launcher                     =  Model.Launcher;
         Model.Settings.SettingsSaved += (_, _) => _ = SetupHeadlines();
 
-        accountSwitcher = new AccountSwitcher(accountManager, null)
+        accountSwitcher = new AccountSwitcher(accountManager)
         {
             ShowInTaskbar = false,
             ShowActivated = false
@@ -185,7 +185,7 @@ public partial class MainWindow
         (() =>
             {
                 if (areas.Length == 0)
-                    areas = new[] { new LoginArea { AreaName = "获取大区失败", AreaID = "-1" } };
+                    areas = [new LoginArea { AreaName = "获取大区失败", AreaID = "-1" }];
 
                 Model.LoginPage.LoginAreas = [.. areas];
                 Model.LoginPage.Area       = Model.LoginPage.LoginAreas[0];

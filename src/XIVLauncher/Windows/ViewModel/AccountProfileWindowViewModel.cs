@@ -1,10 +1,13 @@
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common.Game;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal sealed class AccountProfileWindowViewModel : ViewModelBase
+internal sealed class AccountProfileWindowViewModel : INotifyPropertyChanged
 {
     private XIVAccount selectedAccount = null!;
 
@@ -44,7 +47,7 @@ internal sealed class AccountProfileWindowViewModel : ViewModelBase
         set => SetProperty(ref field, value);
     } = AccountSwitcherEntry.GetDefaultProfileImage();
 
-    public bool HasSelectedFile => 
+    public bool HasSelectedFile =>
         !string.IsNullOrWhiteSpace(SelectedFilePath);
 
     public void Load(XIVAccount account)
@@ -85,4 +88,19 @@ internal sealed class AccountProfileWindowViewModel : ViewModelBase
         SelectedFilePath = string.Empty;
         PreviewImage     = AccountSwitcherEntry.GetDefaultProfileImage();
     }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

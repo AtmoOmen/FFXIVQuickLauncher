@@ -4,13 +4,25 @@ using System.Runtime.CompilerServices;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal class UpdateLoadingDialogViewModel : INotifyPropertyChanged
+public class PatchProgressItemViewModel : INotifyPropertyChanged
 {
-    public string StatusText
+    public string Title
     {
         get;
         set => SetProperty(ref field, value);
-    } = "正在准备更新...";
+    } = "更新下载完成";
+
+    public double Progress
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
+    public bool IsIndeterminate
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

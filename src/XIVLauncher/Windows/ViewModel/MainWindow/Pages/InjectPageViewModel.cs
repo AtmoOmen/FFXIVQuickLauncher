@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,19 +16,19 @@ using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Pages;
 
-public sealed class InjectPageViewModel : ViewModelBase
+public sealed class InjectPageViewModel : INotifyPropertyChanged
 {
-    private readonly Window                   window;
-    private readonly GameLaunchService        gameLaunchService;
+    private readonly Window                  window;
+    private readonly GameLaunchService       gameLaunchService;
     private readonly SettingsWindowViewModel settings;
-    private readonly Func<bool>               isLoggingInFunc;
-    private readonly Action<string>           showLoadingDialogAction;
-    private readonly Action                   hideLoadingDialogAction;
-    private readonly Action                   activateWindowAction;
-    private readonly HashSet<int>             autoInjectAttemptedProcessIds = [];
-    private readonly SyncCommand              injectGameCommand;
-    private readonly SyncCommand              bringProcessForegroundCommand;
-    private readonly SyncCommand              returnToLoginPageCommand;
+    private readonly Func<bool>              isLoggingInFunc;
+    private readonly Action<string>          showLoadingDialogAction;
+    private readonly Action                  hideLoadingDialogAction;
+    private readonly Action                  activateWindowAction;
+    private readonly HashSet<int>            autoInjectAttemptedProcessIds = [];
+    private readonly SyncCommand             injectGameCommand;
+    private readonly SyncCommand             bringProcessForegroundCommand;
+    private readonly SyncCommand             returnToLoginPageCommand;
 
     private CancellationTokenSource? processRefreshCancelSource;
     private CancellationTokenSource? autoInjectDelayCancelSource;
@@ -35,14 +37,14 @@ public sealed class InjectPageViewModel : ViewModelBase
 
     public InjectPageViewModel
     (
-        Window                   window,
-        GameLaunchService        gameLaunchService,
+        Window                  window,
+        GameLaunchService       gameLaunchService,
         SettingsWindowViewModel settings,
-        Func<bool>               isLoggingInFunc,
-        Action<string>           showLoadingDialogAction,
-        Action                   hideLoadingDialogAction,
-        Action                   activateWindowAction,
-        Action                   requestReturnToLoginPageAction
+        Func<bool>              isLoggingInFunc,
+        Action<string>          showLoadingDialogAction,
+        Action                  hideLoadingDialogAction,
+        Action                  activateWindowAction,
+        Action                  requestReturnToLoginPageAction
     )
     {
         this.window                  = window;
@@ -436,6 +438,21 @@ public sealed class InjectPageViewModel : ViewModelBase
         FFXIVProcesses.Clear();
         SelectedProcess = null;
     }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     private bool          autoInjectEnabled;
     private decimal?      manualInjectDelayMs;

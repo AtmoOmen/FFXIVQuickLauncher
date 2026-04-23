@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows;
 using XIVLauncher.Accounts;
@@ -13,7 +16,7 @@ namespace XIVLauncher.Windows.ViewModel;
 internal sealed class AccountDeviceProfileWindowViewModel
 (
     AccountManager accountManager
-) : ViewModelBase
+) : INotifyPropertyChanged
 {
     private static readonly Regex DeviceIdPattern = new
     (
@@ -170,7 +173,7 @@ internal sealed class AccountDeviceProfileWindowViewModel
 
     public void Load(XIVAccount targetAccount)
     {
-        account                       = accountManager.Accounts.First(existing => existing.ID == targetAccount.ID);
+        account                        = accountManager.Accounts.First(existing => existing.ID == targetAccount.ID);
         persistChangesToAccountManager = true;
 
         ApplyMode(false);
@@ -200,7 +203,7 @@ internal sealed class AccountDeviceProfileWindowViewModel
 
     public void LoadTemporary(XIVAccount targetAccount)
     {
-        account                       = targetAccount;
+        account                        = targetAccount;
         persistChangesToAccountManager = false;
 
         ApplyMode(false);
@@ -230,7 +233,7 @@ internal sealed class AccountDeviceProfileWindowViewModel
 
     public void LoadShared()
     {
-        account = null;
+        account                        = null;
         persistChangesToAccountManager = true;
 
         ApplyMode(true);
@@ -304,14 +307,14 @@ internal sealed class AccountDeviceProfileWindowViewModel
 
         var assignedPreset = shouldRestoreSavedPreset
                                  ? SaveAccountDeviceProfileSelection
-                                   (
-                                       targetAccount,
-                                       savedIndependentPreset!.ToSnapshot(),
-                                       targetAccount.DeviceProfileLastGeneratedUtcTicks > 0
-                                           ? targetAccount.DeviceProfileLastGeneratedUtcTicks
-                                           : savedIndependentPreset.GeneratedUtcTicks,
-                                       PresetRemark
-                                   )
+                                 (
+                                     targetAccount,
+                                     savedIndependentPreset!.ToSnapshot(),
+                                     targetAccount.DeviceProfileLastGeneratedUtcTicks > 0
+                                         ? targetAccount.DeviceProfileLastGeneratedUtcTicks
+                                         : savedIndependentPreset.GeneratedUtcTicks,
+                                     PresetRemark
+                                 )
                                  : SaveAccountDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
 
         savedIndependentPreset = assignedPreset;
@@ -330,14 +333,8 @@ internal sealed class AccountDeviceProfileWindowViewModel
         LoadPresets();
         ApplyPreset(created);
 
-        if (IsSharedMode)
-        {
-            accountManager.SaveSharedDeviceProfileSelection(created);
-        }
-        else if (account != null)
-        {
-            savedIndependentPreset = accountManager.SaveDeviceProfileSelection(account, created);
-        }
+        if (IsSharedMode) accountManager.SaveSharedDeviceProfileSelection(created);
+        else if (account != null) savedIndependentPreset = accountManager.SaveDeviceProfileSelection(account, created);
 
         snapshotTouched = false;
     }
@@ -352,14 +349,8 @@ internal sealed class AccountDeviceProfileWindowViewModel
 
         LoadPresets();
 
-        if (IsSharedMode)
-        {
-            accountManager.SaveSharedDeviceProfileSelection(replacement);
-        }
-        else if (account != null)
-        {
-            savedIndependentPreset = accountManager.SaveDeviceProfileSelection(account, replacement);
-        }
+        if (IsSharedMode) accountManager.SaveSharedDeviceProfileSelection(replacement);
+        else if (account != null) savedIndependentPreset = accountManager.SaveDeviceProfileSelection(account, replacement);
 
         ApplyPreset(replacement);
         snapshotTouched = false;
@@ -556,6 +547,7 @@ internal sealed class AccountDeviceProfileWindowViewModel
     private void ApplySelectedPreset(string presetId)
     {
         var preset = GetPreset(presetId);
+
         if (preset == null)
         {
             selectedPresetSnapshot = null;
@@ -615,6 +607,7 @@ internal sealed class AccountDeviceProfileWindowViewModel
         if (!string.IsNullOrWhiteSpace(SelectedPresetId))
         {
             var selectedPreset = GetPreset(SelectedPresetId);
+
             if (selectedPreset != null && selectedPreset.Matches(snapshot))
             {
                 selectedPresetSnapshot = selectedPreset.ToSnapshot();
@@ -623,6 +616,7 @@ internal sealed class AccountDeviceProfileWindowViewModel
         }
 
         var matchedPreset = Presets.FirstOrDefault(preset => preset.Matches(snapshot));
+
         if (matchedPreset == null)
         {
             selectedPresetSnapshot = null;
@@ -698,4 +692,19 @@ internal sealed class AccountDeviceProfileWindowViewModel
         GeneratedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
         snapshotTouched   = true;
     }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

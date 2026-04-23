@@ -1,8 +1,11 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-public class PatchDownloadDialogViewModel : ViewModelBase
+public class PatchDownloadDialogViewModel : INotifyPropertyChanged
 {
     public ObservableCollection<PatchProgressItemViewModel> ProgressItems { get; } =
     [
@@ -45,25 +48,19 @@ public class PatchDownloadDialogViewModel : ViewModelBase
         ProgressItems[index].Progress        = percentage;
         ProgressItems[index].IsIndeterminate = indeterminate;
     }
-}
 
-public class PatchProgressItemViewModel : ViewModelBase
-{
-    public string Title
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
-        get;
-        set => SetProperty(ref field, value);
-    } = "更新下载完成";
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
 
-    public double Progress
-    {
-        get;
-        set => SetProperty(ref field, value);
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
     }
 
-    public bool IsIndeterminate
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }

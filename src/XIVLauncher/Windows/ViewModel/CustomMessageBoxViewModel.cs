@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -5,7 +8,7 @@ using MaterialDesignThemes.Wpf;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal class CustomMessageBoxViewModel : ViewModelBase
+internal class CustomMessageBoxViewModel : INotifyPropertyChanged
 {
     public ICommand? CopyMessageTextCommand { get; set; }
 
@@ -180,4 +183,19 @@ internal class CustomMessageBoxViewModel : ViewModelBase
                 break;
         }
     }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }
