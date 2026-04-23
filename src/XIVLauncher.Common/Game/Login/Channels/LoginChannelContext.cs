@@ -16,10 +16,6 @@ namespace XIVLauncher.Common.Game.Login.Channels;
 
 public sealed class LoginChannelContext
 {
-    private const string DEFAULT_APP_ID      = "100001900";
-    private const string GLOBAL_CAS_DOMAIN   = "cas.sdo.com";
-    private const string FALLBACK_CAS_DOMAIN = "n1.cas.sdo.com";
-
     private readonly HttpClient            loginHttpClient;
     private readonly CookieContainer       loginCookies;
     private readonly DeviceProfileSnapshot deviceProfile;
@@ -75,7 +71,7 @@ public sealed class LoginChannelContext
         string       endPoint,
         List<string> paras,
         string?      tgt   = null,
-        string       appId = DEFAULT_APP_ID
+        string       appId = SdoInfos.APP_ID
     ) =>
         GetJsonAsSdoClient(endPoint, paras, tgt, appId);
 
@@ -311,7 +307,7 @@ public sealed class LoginChannelContext
         string                endPoint,
         IReadOnlyList<string> paras,
         string?               tgt   = null,
-        string                appId = DEFAULT_APP_ID
+        string                appId = SdoInfos.APP_ID
     )
     {
         using var request = GetSdoHttpRequestMessage(method, endPoint, paras, tgt, appId);
@@ -324,7 +320,7 @@ public sealed class LoginChannelContext
         string                endPoint,
         IReadOnlyList<string> paras,
         string?               tgt   = null,
-        string                appId = DEFAULT_APP_ID
+        string                appId = SdoInfos.APP_ID
     )
     {
         var request = new HttpRequestMessage(method, BuildSdoRequestUri(endPoint, paras, appId));
@@ -334,7 +330,7 @@ public sealed class LoginChannelContext
             "User-Agent",
             "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; InfoPath.2; .NET CLR 2.0.50727; MS-RTC LM 8; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET CLR 1.1.4322; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)"
         );
-        request.Headers.AddWithoutValidation("Host", GLOBAL_CAS_DOMAIN);
+        request.Headers.AddWithoutValidation("Host", SdoInfos.GLOBAL_CAS_DOMAIN);
 
         if (endPoint is "ssoLogin.json" or "getPromotionInfo.json")
             request.Headers.AddWithoutValidation("Cookie", $"CASTGC={tgt}; CAS_LOGIN_STATE=1");
@@ -376,7 +372,7 @@ public sealed class LoginChannelContext
             ]
         );
 
-        var casDomain   = Volatile.Read(ref casDomainMode) == 0 ? GLOBAL_CAS_DOMAIN : FALLBACK_CAS_DOMAIN;
+        var casDomain   = Volatile.Read(ref casDomainMode) == 0 ? SdoInfos.GLOBAL_CAS_DOMAIN : SdoInfos.FALLBACK_CAS_DOMAIN;
         var requestPath = endPoint.StartsWith("/", StringComparison.Ordinal) ? endPoint : $"/authen/{endPoint}";
         var queryString = string.Join("&", allParas);
 
@@ -392,8 +388,8 @@ public sealed class LoginChannelContext
         if (Uri.TryCreate(captchaUrl, UriKind.Absolute, out var absoluteUri))
             return absoluteUri;
 
-        var casDomain = Volatile.Read(ref casDomainMode) == 0 ? GLOBAL_CAS_DOMAIN : FALLBACK_CAS_DOMAIN;
-        var requestPath = captchaUrl.StartsWith("/", StringComparison.Ordinal)
+        var casDomain = Volatile.Read(ref casDomainMode) == 0 ? SdoInfos.GLOBAL_CAS_DOMAIN : SdoInfos.FALLBACK_CAS_DOMAIN;
+        var requestPath = captchaUrl.StartsWith('/')
                               ? captchaUrl
                               : captchaUrl.StartsWith("authen/", StringComparison.Ordinal)
                                   ? $"/{captchaUrl}"
@@ -410,7 +406,7 @@ public sealed class LoginChannelContext
         string                endPoint,
         IReadOnlyList<string> paras,
         string?               tgt   = null,
-        string                appId = DEFAULT_APP_ID
+        string                appId = SdoInfos.APP_ID
     )
     {
         Exception? lastException = null;

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Serilog;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Http;
 
@@ -11,8 +12,6 @@ namespace XIVLauncher.Common.Game.DCTravel;
 
 public partial class DCTravelClient
 {
-    private const string APP_ID = "100001900";
-
     [HttpRpc]
     public async Task<string> RefreshGameSessionId()
     {
@@ -49,7 +48,7 @@ public partial class DCTravelClient
                    (
                        "api/orderserivce/queryGroupListTravelSource",
                        DCTravelAPIType.Travel,
-                       new Dictionary<string, string> { ["appId"] = APP_ID }
+                       new Dictionary<string, string> { ["appId"] = SdoInfos.APP_ID }
                    );
         EnsureResultCode(data, "QueryGroupListTravelSource");
         var areaList = DeserializeList<DCTravelArea>(data, "groupList", "QueryGroupListTravelSource");
@@ -68,7 +67,7 @@ public partial class DCTravelClient
                        DCTravelAPIType.Travel,
                        new Dictionary<string, string>
                        {
-                           ["appId"]   = APP_ID,
+                           ["appId"]   = SdoInfos.APP_ID,
                            ["areaId"]  = areaId.ToString(),
                            ["groupId"] = groupId.ToString()
                        }
@@ -90,7 +89,7 @@ public partial class DCTravelClient
                        DCTravelAPIType.Travel,
                        new Dictionary<string, string>
                        {
-                           ["appId"]   = APP_ID,
+                           ["appId"]   = SdoInfos.APP_ID,
                            ["areaId"]  = areaId.ToString(),
                            ["groupId"] = groupId.ToString()
                        }
@@ -126,7 +125,7 @@ public partial class DCTravelClient
                        DCTravelAPIType.Travel,
                        new Dictionary<string, string>
                        {
-                           ["appId"]            = APP_ID,
+                           ["appId"]            = SdoInfos.APP_ID,
                            ["migrationType"]    = "4",
                            ["isMigrationTimes"] = "1",
                            ["productId"]        = "1",
@@ -203,7 +202,7 @@ public partial class DCTravelClient
                        DCTravelAPIType.Order,
                        new Dictionary<string, string>
                        {
-                           ["appId"]     = APP_ID,
+                           ["appId"]     = SdoInfos.APP_ID,
                            ["pageIndex"] = pageIndex.ToString(),
                            ["pageNum"]   = "10"
                        }

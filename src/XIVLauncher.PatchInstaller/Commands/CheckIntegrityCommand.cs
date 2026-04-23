@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Patch.V3;
@@ -29,13 +30,13 @@ public class CheckIntegrityCommand
 
     private static readonly Option<string?> IntegrityFilePathOption = new("--integrity-file")
     {
-        Description = $"Path to integrity check file. Leave it empty to download from: {new Uri(V3GamePatchConstants.REMOTE_VERSION_URL).Host}",
+        Description = $"Path to integrity check file. Leave it empty to download from: {new Uri(SdoInfos.REMOTE_VERSION_URL).Host}",
         Aliases = { "-f" }
     };
 
     private static readonly Option<bool> IndexOnlyOption = new("--index-only")
     {
-        Description = $"Path to integrity check file. Leave it empty to download from: {new Uri(V3GamePatchConstants.REMOTE_VERSION_URL).Host}",
+        Description = $"Path to integrity check file. Leave it empty to download from: {new Uri(SdoInfos.REMOTE_VERSION_URL).Host}",
         Aliases = { "-i" }
     };
 

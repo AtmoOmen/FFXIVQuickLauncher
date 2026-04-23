@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Integrity;
 
 namespace XIVLauncher.Common.Game.Patch.V3;
@@ -51,7 +52,7 @@ public sealed class V3GamePatchMetadataClient : IDisposable
 
     public async Task<IntegrityCheckResult> DownloadIntegrityCheck(CancellationToken cancellationToken = default)
     {
-        var responseText   = await DownloadString(V3GamePatchConstants.CLIENT_ALL_FILES_LIST_URL, cancellationToken).ConfigureAwait(false);
+        var responseText   = await DownloadString(SdoInfos.CLIENT_ALL_FILES_LIST_URL, cancellationToken).ConfigureAwait(false);
         var integrityLines = responseText.Trim().Split();
         if (integrityLines.Length == 0)
             throw new InvalidDataException("未能解析 client_all_files_list.dat");
@@ -72,7 +73,7 @@ public sealed class V3GamePatchMetadataClient : IDisposable
             BaseUrl               = headerParts[0],
             DataVersion           = headerParts[2],
             GameVersion           = gameVersion,
-            LatestLocalVersionUrl = V3GamePatchConstants.LATEST_LOCAL_VERSION_FILE_URL
+            LatestLocalVersionUrl = SdoInfos.LATEST_LOCAL_VERSION_FILE_URL
         };
 
         for (var i = 1; i < integrityLines.Length; i++)
@@ -97,7 +98,7 @@ public sealed class V3GamePatchMetadataClient : IDisposable
     public async Task<Dictionary<string, V3VersionMappingEntry>> DownloadVersionMapping(CancellationToken cancellationToken = default)
     {
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var url       = $"{V3GamePatchConstants.VERSION_MAPPING_URL}?time={timestamp}";
+        var url       = $"{SdoInfos.VERSION_MAPPING_URL}?time={timestamp}";
         var json      = await DownloadString(url, cancellationToken).ConfigureAwait(false);
         return JsonSerializer.Deserialize<Dictionary<string, V3VersionMappingEntry>>(json, SerializerOptions)
                ?? throw new InvalidDataException("未能解析 V3 版本映射");
@@ -105,13 +106,13 @@ public sealed class V3GamePatchMetadataClient : IDisposable
 
     public async Task<V3RemoteVersion> DownloadRemoteVersion(CancellationToken cancellationToken = default)
     {
-        var json = await DownloadString(V3GamePatchConstants.REMOTE_VERSION_URL, cancellationToken).ConfigureAwait(false);
+        var json = await DownloadString(SdoInfos.REMOTE_VERSION_URL, cancellationToken).ConfigureAwait(false);
         return JsonSerializer.Deserialize<V3RemoteVersion>(json, SerializerOptions)
                ?? throw new InvalidDataException("未能解析 V3 远端版本信息");
     }
 
     public Task<string> DownloadLatestLocalVersionFile(CancellationToken cancellationToken = default) =>
-        DownloadString(V3GamePatchConstants.LATEST_LOCAL_VERSION_FILE_URL, cancellationToken);
+        DownloadString(SdoInfos.LATEST_LOCAL_VERSION_FILE_URL, cancellationToken);
 
     private static V3GameVersionArea GetTargetArea(V3RemoteVersion remoteVersion)
     {

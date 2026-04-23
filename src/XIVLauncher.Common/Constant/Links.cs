@@ -40,7 +40,7 @@ public static class Links
 
     public const string DC_TRAVEL_PAGE_URL = "https://ff14bjz.sdo.com/RegionKanTelepo";
 
-    public const string SDO_PAYMENT_URL = "https://pay.sdo.com/item/GWPAY-100001900/";
+    public const string SDO_PAYMENT_URL = $"https://pay.sdo.com/item/GWPAY-{SdoInfos.APP_ID}/";
 
     public const string SDO_SHOPPING_URL = "https://qu.sdo.com/game/1";
 

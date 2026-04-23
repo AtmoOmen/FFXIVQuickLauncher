@@ -47,7 +47,7 @@ public partial class Launcher
         var environment = new Dictionary<string, string>();
 
         var argumentBuilder = new ArgumentBuilder()
-                              .Append("-AppID",                     "100001900")
+                              .Append("-AppID",                     SdoInfos.APP_ID)
                               .Append("-AreaID",                    areaID)
                               .Append("Dev.LobbyHost01",            lobbyHost)
                               .Append("Dev.LobbyPort01",            "54994")
