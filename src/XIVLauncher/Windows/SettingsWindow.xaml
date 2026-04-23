@@ -484,7 +484,7 @@
                                     <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="启用 Dalamud"
                                                FontSize="15" />
                                     <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                               Text="启用后, 可在游戏内使用 /xlhelp 查看相关可用命令" Opacity="0.7" FontSize="12" />
+                                               Text="启用后, 可在游戏内使用 Dalamud 框架下的一系列增强功能与插件内容" Opacity="0.7" FontSize="12" />
                                 </StackPanel>
                                 <ToggleButton Grid.Column="1"
                                               x:Name="EnableHooksCheckBox" IsChecked="{Binding EnableHooks}"
