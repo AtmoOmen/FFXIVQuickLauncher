@@ -90,7 +90,7 @@
                             Padding="8"
                             Background="{DynamicResource MaterialDesignTextFieldBoxBackground}"
                             CornerRadius="8"
-                            BorderBrush="{DynamicResource MaterialDesign.Brush.Outline}"
+                            BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}"
                             BorderThickness="1">
                         <Image x:Name="CaptchaImage"
                                Height="110"

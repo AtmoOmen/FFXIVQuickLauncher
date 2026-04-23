@@ -47,12 +47,12 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Border" Property="Background"
-                                        Value="{DynamicResource MaterialDesign.Brush.Outline}" />
+                                        Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Border" Property="Background"
                                         Value="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidForegroundBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -90,7 +90,7 @@
 
         <!-- Sidebar -->
         <Border Background="{DynamicResource MaterialDesign.Brush.Background}"
-                BorderBrush="{DynamicResource MaterialDesign.Brush.Outline}" BorderThickness="0,0,1,0">
+                BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="0,0,1,0">
             <Grid>
                 <ListBox x:Name="SidebarMenu" Style="{StaticResource SidebarListBox}"
                          ItemContainerStyle="{StaticResource SidebarListBoxItem}" SelectedIndex="0"
@@ -134,9 +134,9 @@
                         Style="{StaticResource MaterialDesignRaisedButton}">
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="Check" Width="18" Height="18" VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource PrimaryHueMidForegroundBrush}" />
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
                         <TextBlock Text="保存并返回" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="14"
-                                   FontWeight="Medium" Foreground="{DynamicResource PrimaryHueMidForegroundBrush}" />
+                                   FontWeight="Medium" Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
                     </StackPanel>
                 </Button>
             </Grid>
@@ -693,7 +693,7 @@
                                     </WrapPanel>
 
                                     <Separator Margin="0,0,0,12"
-                                               Background="{DynamicResource MaterialDesign.Brush.Outline}" />
+                                               Background="{DynamicResource MaterialDesign.Brush.Card.Border}" />
 
                                     <Button Command="{Binding OpenAdvancedSettingsCommand}"
                                             Style="{DynamicResource MaterialDesignFlatButton}"

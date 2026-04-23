@@ -201,7 +201,7 @@
                                             <ImageBrush ImageSource="{Binding ProfileImage}" Stretch="UniformToFill" />
                                         </Ellipse.Fill>
                                     </Ellipse>
-                                    <Ellipse Width="42" Height="42" Stroke="{DynamicResource MaterialDesign.Brush.Outline}" StrokeThickness="1" Opacity="0.5" />
+                                    <Ellipse Width="42" Height="42" Stroke="{DynamicResource MaterialDesign.Brush.Card.Border}" StrokeThickness="1" Opacity="0.5" />
                                 </Grid>
                                 
                                 <StackPanel Grid.Column="1" Margin="14,0,10,0" VerticalAlignment="Center">

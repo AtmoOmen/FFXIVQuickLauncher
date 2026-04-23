@@ -540,7 +540,7 @@
                                                                                     VerticalAlignment="Center" />
                                                                             <Separator Grid.Column="1"
                                                                                     Margin="0,0,8,0"
-                                                                                    Background="{DynamicResource MaterialDesign.Brush.Outline}"
+                                                                                    Background="{DynamicResource MaterialDesign.Brush.Card.Border}"
                                                                                     VerticalAlignment="Center" />
                                                                         </Grid>
                                                                     </DataTemplate>
@@ -643,7 +643,7 @@
                                                                                     Background="Transparent"
                                                                                     CornerRadius="8"
                                                                                     BorderThickness="1"
-                                                                                    BorderBrush="{DynamicResource MaterialDesign.Brush.Outline}" />
+                                                                                    BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" />
                                                                                 <Border x:Name="ActiveBg"
                                                                                     Background="{DynamicResource MaterialDesign.Brush.Primary}"
                                                                                     CornerRadius="8" Opacity="0" />

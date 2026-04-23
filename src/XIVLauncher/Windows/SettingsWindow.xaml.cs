@@ -35,33 +35,7 @@ public partial class SettingsWindow
         if (!await ViewModel.SaveToSettingsAsync())
             return;
 
-        var storyboard = new Storyboard();
-
-        var fadeOut = new DoubleAnimation
-        {
-            From           = 1,
-            To             = 0,
-            Duration       = new Duration(TimeSpan.FromSeconds(0.15)),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-        };
-
-        var slideDown = new DoubleAnimation
-        {
-            From           = 0,
-            To             = 15,
-            Duration       = new Duration(TimeSpan.FromSeconds(0.15)),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-        };
-
-        Storyboard.SetTargetProperty(fadeOut,   new PropertyPath("Opacity"));
-        Storyboard.SetTargetProperty(slideDown, new PropertyPath("(UIElement.RenderTransform).(TranslateTransform.Y)"));
-
-        storyboard.Children.Add(fadeOut);
-        storyboard.Children.Add(slideDown);
-
-        storyboard.Completed += (s, args) => Close();
-
-        BeginStoryboard(storyboard);
+        Close();
     }
 
     private void AddonListView_OnMouseUp(object sender, MouseButtonEventArgs e)

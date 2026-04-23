@@ -206,7 +206,7 @@
         </StackPanel>
 
         <!-- Bottom Actions -->
-        <Border Grid.Row="1" Background="{DynamicResource MaterialDesign.Brush.Surface}" BorderBrush="{DynamicResource MaterialDesign.Brush.Outline}" BorderThickness="0,1,0,0" Padding="24,16">
+        <Border Grid.Row="1" Background="{DynamicResource MaterialDesign.Brush.Surface}" BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="0,1,0,0" Padding="24,16">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
