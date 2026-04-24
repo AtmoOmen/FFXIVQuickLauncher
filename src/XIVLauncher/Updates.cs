@@ -1,3 +1,4 @@
+#if !XL_NOAUTOUPDATE
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -19,9 +20,7 @@ internal class Updates
 {
     public async Task<bool> Run(bool downloadPrerelease, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)
     {
-#if XL_NOAUTOUPDATE
         return true;
-#else
         _ = downloadPrerelease;
 
         try
@@ -120,7 +119,6 @@ internal class Updates
             Environment.Exit(1);
             return false;
         }
-#endif
     }
 
     private static string GetUpdateFailureMessage(Exception exception)
@@ -143,3 +141,4 @@ internal class Updates
         return exception.Message;
     }
 }
+#endif
