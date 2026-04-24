@@ -13,8 +13,8 @@ public interface ICredProvider
     Task ClearCache();
 
     Task Unregister();
-#nullable enable
-    Task<string> Encrypt(string? text);
 
-    Task<string> Decrypt(string? text);
+    Task<string?> Encrypt(string? text);
+
+    Task<string?> Decrypt(string? text);
 }

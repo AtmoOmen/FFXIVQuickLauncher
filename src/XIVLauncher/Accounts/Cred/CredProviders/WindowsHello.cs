@@ -7,38 +7,25 @@ using Windows.Security.Cryptography;
 using Serilog;
 
 namespace XIVLauncher.Accounts.Cred.CredProviders;
-// https://github.com/timokoessler/2FAGuard/blob/6be544ed50b782493a30be9e9e2dcef719767e40/Guard.Core/Security/WindowsHello.cs
 
-public class WindowsHello : ICredProvider
+public class WindowsHello
+(
+    CredData cred
+) : ICredProvider
 {
-    private string CredName => $"{Cred.PackageName}-{Cred.Account}";
-
-    //private KeyCredentialRetrievalResult CachedCredResult;
-    private EncryptionHelper EncryptionHelper;
-    private CredData         Cred { get; init; }
-
-    public WindowsHello(CredData cred) =>
-        Cred = cred;
+    private string CredName => $"{cred.PackageName}-{cred.Account}";
 
     public string GetName() => "WindowsHello";
 
     public string GetDescription() => "使用生物识别身份验证加密，可以使用面部、虹膜或指纹（或 PIN 码）。";
 
-    public async Task<string?> Decrypt(string? text)
-    {
-        EncryptionHelper ??= await GetEncryptionHelper();
-        if (text == null)
-            return null;
-        return EncryptionHelper.DecryptString(text);
-    }
+    private EncryptionHelper? encryptionHelper;
 
-    public async Task<string?> Encrypt(string? text)
-    {
-        EncryptionHelper ??= await GetEncryptionHelper();
-        if (text == null)
-            return null;
-        return EncryptionHelper.EncryptString(text);
-    }
+    public async Task<string?> Decrypt(string? text) =>
+        text is null ? null : (await GetEncryptionHelper()).DecryptString(text);
+
+    public async Task<string?> Encrypt(string? text) =>
+        text is null ? null : (await GetEncryptionHelper()).EncryptString(text);
 
     public async Task<bool> IsSupported()
     {
@@ -55,90 +42,75 @@ public class WindowsHello : ICredProvider
     public async Task Unregister() =>
         await KeyCredentialManager.DeleteAsync(CredName);
 
-    public async Task<EncryptionHelper> GetEncryptionHelper()
+    public Task ClearCache()
     {
-        var credResult      = await GetCredResult();
-        var signedChallenge = await SignChallenge(Cred.PasswordProtectedKey, credResult);
-        return new EncryptionHelper(Encoding.UTF8.GetBytes(signedChallenge), Convert.FromBase64String(Cred.LoginSalt));
+        encryptionHelper = null;
+        return Task.CompletedTask;
     }
 
-    public async Task ClearCache() =>
-        EncryptionHelper = null;
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr FindWindow(string lpClassName, IntPtr ZeroOnly);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    private async Task<KeyCredentialRetrievalResult> GetCredResult()
+    public async Task<EncryptionHelper> GetEncryptionHelper()
     {
-        FocusSecurityPrompt();
+        if (encryptionHelper is not null)
+            return encryptionHelper;
+
+        _ = Task.Run
+        (async () =>
+            {
+                try
+                {
+                    for (var currentTry = 0; currentTry < MAX_FOCUS_TRIES; currentTry++)
+                    {
+                        var windowHandle = FindWindow(SECURITY_PROMPT_CLASS_NAME, IntPtr.Zero);
+
+                        if (windowHandle != IntPtr.Zero)
+                        {
+                            SetForegroundWindow(windowHandle);
+                            return;
+                        }
+
+                        await Task.Delay(FOCUS_RETRY_DELAY_MS);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning("Windows Hello 提示窗口聚焦失败: {Message}", ex.Message);
+                }
+            }
+        );
 
         var credResult = await KeyCredentialManager.OpenAsync(CredName);
         if (credResult.Status == KeyCredentialStatus.NotFound)
             credResult = await KeyCredentialManager.RequestCreateAsync(CredName, KeyCredentialCreationOption.FailIfExists);
-        //}
 
         if (credResult.Status != KeyCredentialStatus.Success)
-        {
-            throw new Exception
-            (
-                $"Failed to authenticate with Windows Hello: {credResult.Status}"
-            );
-        }
+            throw new InvalidOperationException($"Windows Hello 身份验证失败: {credResult.Status}");
 
-        return credResult;
-    }
-
-    private async Task<string> SignChallenge(string challenge, KeyCredentialRetrievalResult credResult)
-    {
         ArgumentNullException.ThrowIfNull(credResult.Credential);
-        var buffer = CryptographicBuffer.ConvertStringToBinary
-        (
-            challenge,
-            BinaryStringEncoding.Utf8
-        );
+        var buffer = CryptographicBuffer.ConvertStringToBinary(cred.PasswordProtectedKey, BinaryStringEncoding.Utf8);
         var result = await credResult.Credential.RequestSignAsync(buffer);
         if (result.Status != KeyCredentialStatus.Success)
-            throw new Exception($"Failed to sign Windows Hello challenge: {result.Status}");
+            throw new InvalidOperationException($"Windows Hello 签名失败: {result.Status}");
+
         var signedResult = CryptographicBuffer.EncodeToBase64String(result.Result);
+        if (string.IsNullOrEmpty(signedResult))
+            throw new InvalidOperationException("Windows Hello 签名结果为空");
 
-        if (signedResult == null || signedResult.Length == 0)
-        {
-            throw new Exception
-            (
-                "Failed to register with Windows Hello because the signed challenge is empty"
-            );
-        }
-
-        return signedResult;
+        encryptionHelper = new EncryptionHelper(Encoding.UTF8.GetBytes(signedResult), Convert.FromBase64String(cred.LoginSalt));
+        return encryptionHelper;
     }
 
-    private async void FocusSecurityPrompt()
-    {
-        const string className = "Credential Dialog Xaml Host";
-        const int    maxTries  = 3;
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindow(string className, IntPtr windowName);
 
-        try
-        {
-            for (var currentTry = 0; currentTry < maxTries; currentTry++)
-            {
-                var hwnd = FindWindow(className, IntPtr.Zero);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr windowHandle);
 
-                if (hwnd != IntPtr.Zero)
-                {
-                    SetForegroundWindow(hwnd);
-                    return; // Exit the loop if successfully found and focused the window
-                }
+    #region Constants
 
-                await Task.Delay(500); // Retry after a delay if the window is not found
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Logger.Warning("Failed to focus Windows Hello prompt {msg}", ex.Message);
-        }
-    }
+    private const int    FOCUS_RETRY_DELAY_MS       = 500;
+    private const int    MAX_FOCUS_TRIES            = 3;
+    private const string SECURITY_PROMPT_CLASS_NAME = "Credential Dialog Xaml Host";
+
+    #endregion
 }
