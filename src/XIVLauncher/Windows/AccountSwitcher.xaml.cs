@@ -22,7 +22,7 @@ public partial class AccountSwitcher
 
     private Point         dragStartPoint;
     private ListViewItem? draggedItem;
-    private bool          closing;
+    private bool          isHiding;
 
     public AccountSwitcher(AccountManager accountManager, Window? parentWindow = null)
     {
@@ -33,10 +33,12 @@ public partial class AccountSwitcher
             accountManager,
             new DialogService(parentWindow),
             new ShortcutService(),
-            () => CloseWindow(false)
+            () => HideWindow(false)
         );
 
         AccountListView.ContextMenu?.DataContext = DataContext;
+
+        IsVisibleChanged += OnIsVisibleChanged;
     }
 
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
@@ -64,64 +66,95 @@ public partial class AccountSwitcher
             return;
 
         AccountSwitched?.Invoke(this, selectedAccount);
-        CloseWindow(true);
+        HideWindow();
     }
 
     private void AccountSwitcher_OnDeactivated(object sender, EventArgs e)
     {
-        if (closing || AccountListView.ContextMenu?.IsOpen == true)
+        if (AccountListView.ContextMenu?.IsOpen == true || !IsVisible)
             return;
 
-        CloseWindow(true);
+        HideWindow();
     }
 
     public void RefreshSelectedAccount(string? selectedAccountId) =>
         ViewModel.RefreshEntries(selectedAccountId, false);
 
-    public void HideWindow()
+    public void HideWindow(bool animate = true)
     {
-        BeginAnimation(OpacityProperty, null);
-        BeginAnimation(MarginProperty,  null);
-        closing = false;
-        Hide();
-    }
-
-    public void CloseWindow(bool animate)
-    {
-        if (closing)
-            return;
-
-        closing = true;
-
         if (!animate)
         {
-            HideWindow();
+            isHiding = false;
+            Hide();
             return;
         }
 
-        var storyboard = new Storyboard();
-        var opacityAnimation = new DoubleAnimation
-        {
-            To             = 0,
-            Duration       = TimeSpan.FromSeconds(0.15),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-        Storyboard.SetTarget(opacityAnimation, this);
-        Storyboard.SetTargetProperty(opacityAnimation, new PropertyPath("Opacity"));
+        if (isHiding)
+            return;
 
-        var marginAnimation = new ThicknessAnimation
-        {
-            To             = new Thickness(0, 10, 0, -10),
-            Duration       = TimeSpan.FromSeconds(0.15),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-        };
-        Storyboard.SetTarget(marginAnimation, this);
-        Storyboard.SetTargetProperty(marginAnimation, new PropertyPath("Margin"));
+        isHiding = true;
 
-        storyboard.Children.Add(opacityAnimation);
-        storyboard.Children.Add(marginAnimation);
-        storyboard.Completed += (_, _) => { HideWindow(); };
-        storyboard.Begin();
+        var closeStoryboard = new Storyboard();
+
+        var opacityAnim = new DoubleAnimation(1, 0, TimeSpan.FromSeconds(0.25))
+        {
+            EasingFunction = new CircleEase { EasingMode = EasingMode.EaseIn }
+        };
+        Storyboard.SetTarget(opacityAnim, WindowAnimationLayer);
+        Storyboard.SetTargetProperty(opacityAnim, new PropertyPath(UIElement.OpacityProperty));
+
+        var yAnim = new DoubleAnimation(0, 12, TimeSpan.FromSeconds(0.25))
+        {
+            EasingFunction = new CircleEase { EasingMode = EasingMode.EaseIn }
+        };
+        Storyboard.SetTarget(yAnim, WindowAnimationLayerTransform);
+        Storyboard.SetTargetProperty(yAnim, new PropertyPath(TranslateTransform.YProperty));
+
+        closeStoryboard.Children.Add(opacityAnim);
+        closeStoryboard.Children.Add(yAnim);
+        closeStoryboard.Completed += (_, _) =>
+        {
+            WindowAnimationLayer.BeginAnimation(UIElement.OpacityProperty, null);
+            WindowAnimationLayerTransform.BeginAnimation(TranslateTransform.YProperty, null);
+            WindowAnimationLayer.Opacity = 0;
+            WindowAnimationLayerTransform.Y = 20;
+            Hide();
+        };
+        closeStoryboard.Begin();
+    }
+
+    private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (!(bool)e.NewValue)
+            return;
+
+        isHiding = false;
+
+        // Clear stale animation state from previous hide
+        WindowAnimationLayer.BeginAnimation(UIElement.OpacityProperty, null);
+        WindowAnimationLayerTransform.BeginAnimation(TranslateTransform.YProperty, null);
+        WindowAnimationLayer.Opacity = 0;
+        WindowAnimationLayerTransform.Y = 20;
+
+        var showStoryboard = new Storyboard();
+
+        var opacityAnim = new DoubleAnimation(0, 1, TimeSpan.FromSeconds(0.35))
+        {
+            EasingFunction = new CircleEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(opacityAnim, WindowAnimationLayer);
+        Storyboard.SetTargetProperty(opacityAnim, new PropertyPath(UIElement.OpacityProperty));
+
+        var yAnim = new DoubleAnimation(20, 0, TimeSpan.FromSeconds(0.45))
+        {
+            EasingFunction = new CircleEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(yAnim, WindowAnimationLayerTransform);
+        Storyboard.SetTargetProperty(yAnim, new PropertyPath(TranslateTransform.YProperty));
+
+        showStoryboard.Children.Add(opacityAnim);
+        showStoryboard.Children.Add(yAnim);
+        showStoryboard.Begin();
     }
 
     private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

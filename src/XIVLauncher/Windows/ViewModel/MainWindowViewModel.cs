@@ -120,7 +120,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public bool IsAccountSwitcherVisible => AccountSwitcher.IsVisible;
 
     public void CloseAccountSwitcher(bool animate) =>
-        AccountSwitcher.CloseWindow(animate);
+        AccountSwitcher.HideWindow(animate);
 
     #region 界面控制
 
@@ -142,15 +142,9 @@ public class MainWindowViewModel : INotifyPropertyChanged
 
         if (AccountSwitcher.IsVisible)
         {
-            AccountSwitcher.CloseWindow(true);
+            AccountSwitcher.HideWindow();
             return;
         }
-
-        AccountSwitcher.BeginAnimation(UIElement.OpacityProperty,       null);
-        AccountSwitcher.BeginAnimation(FrameworkElement.MarginProperty, null);
-
-        AccountSwitcher.Opacity = 1;
-        AccountSwitcher.Margin  = new Thickness(0);
 
         var locationFromScreen = accountSwitcherButton.PointToScreen(new Point(0, 0));
         var source             = PresentationSource.FromVisual(Window);

@@ -68,11 +68,6 @@ public partial class MainWindow
             ShowActivated = false
         };
 
-        accountSwitcher.Closing += (s, ev) =>
-        {
-            ev.Cancel = true;
-            accountSwitcher.CloseWindow(false);
-        };
         accountSwitcher.AccountSwitched += OnAccountSwitchedEventHandler;
         Model.AttachAccountSwitcher(accountSwitcher);
 
@@ -350,7 +345,7 @@ public partial class MainWindow
     protected override void OnStateChanged(EventArgs e)
     {
         if (WindowState == WindowState.Minimized)
-            accountSwitcher.HideWindow();
+            accountSwitcher.HideWindow(false);
 
         base.OnStateChanged(e);
     }
@@ -358,12 +353,14 @@ public partial class MainWindow
     protected override void OnDeactivated(EventArgs e)
     {
         base.OnDeactivated(e);
-        accountSwitcher.HideWindow();
+
+        if (!accountSwitcher.IsActive)
+            accountSwitcher.HideWindow(false);
     }
 
     private void HideMainWindow()
     {
-        accountSwitcher.HideWindow();
+        accountSwitcher.HideWindow(false);
         Hide();
     }
 

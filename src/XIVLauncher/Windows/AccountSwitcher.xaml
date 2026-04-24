@@ -23,12 +23,6 @@
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance viewModel:AccountSwitcherViewModel}">
     
-    <Window.Triggers>
-        <EventTrigger RoutedEvent="Window.Loaded">
-            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
-        </EventTrigger>
-    </Window.Triggers>
-    
     <Grid x:Name="WindowAnimationLayer" Margin="16" Opacity="0">
         <Grid.RenderTransform>
             <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
