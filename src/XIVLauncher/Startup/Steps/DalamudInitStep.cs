@@ -38,7 +38,7 @@ public class DalamudInitStep
             dalamudWindowThread.IsBackground = true;
             dalamudWindowThread.Start();
 
-            while (context.DalamudUpdater.Overlay == null)
+            while (context.DalamudUpdater.ShowLoadingCallback == null)
                 Thread.Yield();
 
             context.DalamudUpdater.Run();
@@ -54,9 +54,12 @@ public class DalamudInitStep
 
     private static void StartDalamudOverlayThread(StartupContext context)
     {
-        var overlay = new DalamudLoadingOverlay();
+        var overlay = new LoadingDialog("正在更新 Dalamud 框架...", true, true);
         overlay.Hide();
-        context.DalamudUpdater.Overlay = overlay;
+        context.DalamudUpdater.ShowLoadingCallback = overlay.ShowDialog;
+        context.DalamudUpdater.HideLoadingCallback = overlay.HideDialog;
+        context.DalamudUpdater.SetLoadingMessage = overlay.SetMessage;
+        context.DalamudUpdater.ReportLoadingProgress = overlay.ReportProgress;
 
         Dispatcher.Run();
     }

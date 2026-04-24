@@ -30,13 +30,13 @@ public class DalamudLauncher
         Log.Information("[HOOKS] DalamudLauncher::HoldForUpdate(gp:{0})", gamePathDir.FullName);
 
         if (updater.State != DalamudUpdater.DownloadState.Done)
-            updater.ShowOverlay();
+            updater.ShowLoading();
 
         while (updater.State != DalamudUpdater.DownloadState.Done)
         {
             if (updater.State == DalamudUpdater.DownloadState.NoIntegrity)
             {
-                updater.CloseOverlay();
+                updater.HideLoading();
                 throw new DalamudRunnerException("Dalamud 完整性检测或更新反复失败, 请检查你的本地网络环境", updater.EnsurementException?.InnerException);
             }
 
@@ -151,7 +151,7 @@ public class DalamudLauncher
 
         var process = runner.Run(updater.Runner, fakeLogin, noPlugin, noThirdPlugin, gameExe, gameArgs, environment, loadMethod, startInfo);
 
-        updater.CloseOverlay();
+        updater.HideLoading();
 
         if (loadMethod != DalamudLoadMethod.ACLonly)
             Log.Information("[HOOKS] Started dalamud!");

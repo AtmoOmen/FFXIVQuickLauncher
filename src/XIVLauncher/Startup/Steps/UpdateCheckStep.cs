@@ -20,7 +20,7 @@ public class UpdateCheckStep
 
     public FileInfo? DalamudRunnerOverride => commandLineStep.DalamudRunnerOverride;
 
-    private UpdateLoadingDialog? updateWindow;
+    private LoadingDialog? updateWindow;
 
     public async Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
     {

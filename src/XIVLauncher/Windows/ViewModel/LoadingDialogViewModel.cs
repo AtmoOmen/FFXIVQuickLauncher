@@ -4,15 +4,15 @@ using System.Runtime.CompilerServices;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal class DalamudLoadingOverlayViewModel : INotifyPropertyChanged
+internal class LoadingDialogViewModel : INotifyPropertyChanged
 {
-    public string UpdateText
+    public string HeaderText
     {
         get;
         set => SetProperty(ref field, value);
-    } = "正在更新 Dalamud 框架...";
+    } = "正在准备更新...";
 
-    public string ProgressText
+    public string DetailText
     {
         get;
         set => SetProperty(ref field, value);
@@ -29,6 +29,18 @@ internal class DalamudLoadingOverlayViewModel : INotifyPropertyChanged
         get;
         set => SetProperty(ref field, value);
     } = true;
+
+    public bool IsDetailTextVisible
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
+    public bool IsPercentageTextVisible
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
 
     public bool IsProgressIndeterminate
     {

@@ -1,0 +1,40 @@
+<Window x:Class="XIVLauncher.Windows.LoadingDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
+        mc:Ignorable="d"
+        Title="XIVLauncher Update" WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
+        TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStyle="None" Height="170.088" Width="269.186"
+        Loaded="LoadingDialog_OnLoaded" d:DataContext="{d:DesignInstance viewModel:LoadingDialogViewModel}">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
+
+    <Grid>
+        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" Height="149" Margin="0,0,10,0">
+            <StackPanel Margin="16,16,10,0">
+                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" HorizontalAlignment="Center"
+                           Text="{Binding HeaderText}" />
+
+                <ProgressBar IsIndeterminate="{Binding IsProgressIndeterminate}"
+                             Value="{Binding ProgressValue}"
+                             Visibility="{Binding IsProgressBarVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                             Margin="0,50,0,0" />
+
+                <TextBlock Foreground="DarkGray" Margin="0,16,0,0" TextAlignment="Center"
+                           Visibility="{Binding IsDetailTextVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                           Text="{Binding DetailText}" />
+                <TextBlock Foreground="DarkGray" Margin="0,4,0,0" TextAlignment="Center"
+                           Visibility="{Binding IsPercentageTextVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                           Text="{Binding PercentageText}" />
+            </StackPanel>
+        </materialDesign:Card>
+    </Grid>
+</Window>

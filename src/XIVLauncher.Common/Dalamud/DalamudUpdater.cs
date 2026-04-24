@@ -14,7 +14,6 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
-using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Dalamud;
@@ -27,7 +26,10 @@ public class DalamudUpdater
     public        Exception?              EnsurementException { get; private set; }
     public        FileInfo?               RunnerOverride      { get; set; }
     public        DirectoryInfo?          AssetDirectory      { get; private set; }
-    public        IDalamudLoadingOverlay? Overlay             { get; set; }
+    public        Action?                 ShowLoadingCallback { get; set; }
+    public        Action?                 HideLoadingCallback { get; set; }
+    public        Action<string>?         SetLoadingMessage   { get; set; }
+    public        Action<long?, long, double?>? ReportLoadingProgress { get; set; }
     public static string                  OnlineHash          { get; private set; } = string.Empty;
     public static string                  Version             { get; private set; } = string.Empty;
 
@@ -121,8 +123,8 @@ public class DalamudUpdater
                 throw new DalamudIntegrityException("完整性验证最终失败");
 
             Runner = new FileInfo(Path.Combine(paths.currentVersionPath.FullName, "Dalamud.Injector.exe"));
-            SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Starting);
-            ReportOverlayProgress(null, 0, null);
+            SetLoadingDetail("正在启动...");
+            ReportLoadingProgressCore(null, 0, null);
 
             Log.Information($"[DUPDATE] Dalamud {Version} ({OnlineHash}) 准备完毕");
         }
@@ -183,7 +185,7 @@ public class DalamudUpdater
         }
 
         Log.Information("[DUPDATE] Dalamud 本体完整性检查未通过, 开始更新");
-        SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud);
+        SetLoadingDetail("正在更新核心...");
 
         try
         {
@@ -224,7 +226,7 @@ public class DalamudUpdater
         }
 
         Log.Information("[DUPDATE] 需要更新 .NET 运行时: 本地={LocalVer}, 目标={RemoteVer}", localVersion, runtimeVersion);
-        SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Runtime);
+        SetLoadingDetail("正在更新依赖库...");
 
         try
         {
@@ -245,8 +247,8 @@ public class DalamudUpdater
     {
         Log.Information("[DUPDATE] 开始验证资源文件完整性");
 
-        SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Assets);
-        ReportOverlayProgress(null, 0, null);
+        SetLoadingDetail("正在更新资源文件...");
+        ReportLoadingProgressCore(null, 0, null);
 
         try
         {
@@ -607,7 +609,7 @@ public class DalamudUpdater
     public async Task DownloadFile(string url, string path, TimeSpan timeout)
     {
         using var downloader = new HttpClientDownloadWithProgress(url, path);
-        downloader.ProgressChanged += ReportOverlayProgress;
+        downloader.ProgressChanged += ReportLoadingProgressCore;
 
         await downloader.Download(timeout).ConfigureAwait(false);
     }
@@ -615,7 +617,7 @@ public class DalamudUpdater
     public async Task DownloadNuGet(string url, string path, TimeSpan timeout)
     {
         using var downloader = new HttpClientDownloadWithProgress(url, path);
-        downloader.ProgressChanged += ReportOverlayProgress;
+        downloader.ProgressChanged += ReportLoadingProgressCore;
 
         await downloader.Download(timeout, true).ConfigureAwait(false);
     }
@@ -710,17 +712,17 @@ public class DalamudUpdater
 
     #region UI
 
-    public void SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep progress) =>
-        Overlay!.SetStep(progress);
+    private void SetLoadingDetail(string message) =>
+        SetLoadingMessage?.Invoke(message);
 
-    public void ShowOverlay() =>
-        Overlay!.SetVisible();
+    public void ShowLoading() =>
+        ShowLoadingCallback?.Invoke();
 
-    public void CloseOverlay() =>
-        Overlay!.SetInvisible();
+    public void HideLoading() =>
+        HideLoadingCallback?.Invoke();
 
-    private void ReportOverlayProgress(long? size, long downloaded, double? progress) =>
-        Overlay!.ReportProgress(size, downloaded, progress);
+    private void ReportLoadingProgressCore(long? size, long downloaded, double? progress) =>
+        ReportLoadingProgress?.Invoke(size, downloaded, progress);
 
     #endregion
 
