@@ -77,20 +77,6 @@ internal static class DNSResolver
         }
     }
 
-    private static bool AreAllCloudflare(IReadOnlyList<IPAddress> addresses)
-    {
-        if (addresses.Count == 0)
-            return false;
-
-        foreach (var address in addresses)
-        {
-            if (!IsCloudflareIp(address))
-                return false;
-        }
-
-        return true;
-    }
-
     private static async Task<IReadOnlyList<IPAddress>> GetHijackAddressesAsync()
     {
         var snapshot = hijackCacheEntry;
@@ -144,7 +130,7 @@ internal static class DNSResolver
         var candidates    = new List<ConnectionCandidate>(directAddresses.Count + MAX_HIJACK_ADDRESS_COUNT);
         var seenAddresses = new HashSet<IPAddress>();
 
-        if (!hostname.Equals(HIJACK_CNAME, StringComparison.OrdinalIgnoreCase) && AreAllCloudflare(directAddresses))
+        if (hostname.Equals(HIJACK_TARGET_HOST, StringComparison.OrdinalIgnoreCase))
         {
             try
             {
@@ -242,6 +228,8 @@ internal static class DNSResolver
     private const int HIJACK_CACHE_SECONDS = 90;
 
     private const string HIJACK_CNAME = "cf.951886.xyz";
+
+    private const string HIJACK_TARGET_HOST = "gh.atmoomen.top";
 
     private const int HOST_CACHE_SECONDS = 75;
 
