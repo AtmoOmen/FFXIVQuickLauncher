@@ -23,7 +23,6 @@
     <ItemGroup>
         <Resource Include="Resources\*.*"/>
         <Resource Include="Resources\Fonts\*.ttf"/>
-        <EmbeddedResource Include="Resources\Loc\xl\*.json"/>
     </ItemGroup>
 
     <PropertyGroup>

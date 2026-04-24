@@ -10,7 +10,7 @@
 
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <TargetFrameworks>net10.0-windows</TargetFrameworks>
+        <TargetFramework>net10.0-windows</TargetFramework>
         <LangVersion>preview</LangVersion>
         <Deterministic>true</Deterministic>
         <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
