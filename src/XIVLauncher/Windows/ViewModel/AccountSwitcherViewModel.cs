@@ -125,11 +125,12 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         RefreshEntries();
     }
 
-    public void RefreshEntries(string? selectedAccountId = null)
+    public void RefreshEntries(string? selectedAccountId = null, bool useCurrentAccountSelection = true)
     {
         ContextEntry      =   null;
-        selectedAccountId ??= SelectedEntry?.Account.ID;
-        if (string.IsNullOrWhiteSpace(selectedAccountId) && accountManager.HasCurrentAccountSelection)
+        if (useCurrentAccountSelection)
+            selectedAccountId ??= SelectedEntry?.Account.ID;
+        if (string.IsNullOrWhiteSpace(selectedAccountId) && useCurrentAccountSelection && accountManager.HasCurrentAccountSelection)
             selectedAccountId = accountManager.CurrentAccountID;
 
         Entries.Clear();

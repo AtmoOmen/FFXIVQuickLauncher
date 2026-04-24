@@ -23,12 +23,10 @@ public partial class AccountSwitcher
     private Point         dragStartPoint;
     private ListViewItem? draggedItem;
     private bool          closing;
-    private Window?       trackedParentWindow;
 
     public AccountSwitcher(AccountManager accountManager, Window? parentWindow = null)
     {
         InitializeComponent();
-        trackedParentWindow = parentWindow;
 
         DataContext = new AccountSwitcherViewModel
         (
@@ -39,9 +37,6 @@ public partial class AccountSwitcher
         );
 
         AccountListView.ContextMenu?.DataContext = DataContext;
-
-        Loaded += (_, _) => ToggleParentWindowTracking(track: true);
-        Closed += (_, _) => ToggleParentWindowTracking(track: false);
     }
 
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
@@ -80,37 +75,15 @@ public partial class AccountSwitcher
         CloseWindow(animate: true);
     }
 
-    private void ToggleParentWindowTracking(bool track)
+    public void RefreshSelectedAccount(string? selectedAccountId) =>
+        ViewModel.RefreshEntries(selectedAccountId, useCurrentAccountSelection: false);
+
+    public void HideWindow()
     {
-        if (trackedParentWindow == null)
-            return;
-
-        if (track)
-        {
-            trackedParentWindow.StateChanged     += ParentWindow_OnStateChanged;
-            trackedParentWindow.IsVisibleChanged += ParentWindow_OnIsVisibleChanged;
-            return;
-        }
-
-        trackedParentWindow.StateChanged     -= ParentWindow_OnStateChanged;
-        trackedParentWindow.IsVisibleChanged -= ParentWindow_OnIsVisibleChanged;
-        trackedParentWindow                  =  null;
-    }
-
-    private void ParentWindow_OnStateChanged(object? sender, EventArgs e)
-    {
-        if (trackedParentWindow?.WindowState != WindowState.Minimized)
-            return;
-
-        CloseWindow(animate: true);
-    }
-
-    private void ParentWindow_OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
-    {
-        if (e.NewValue is not false)
-            return;
-
-        CloseWindow(animate: true);
+        BeginAnimation(UIElement.OpacityProperty,       null);
+        BeginAnimation(FrameworkElement.MarginProperty, null);
+        closing     = false;
+        Hide();
     }
 
     public void CloseWindow(bool animate)
@@ -122,8 +95,7 @@ public partial class AccountSwitcher
 
         if (!animate)
         {
-            Hide();
-            closing = false;
+            HideWindow();
             return;
         }
 
@@ -148,10 +120,9 @@ public partial class AccountSwitcher
 
         storyboard.Children.Add(opacityAnimation);
         storyboard.Children.Add(marginAnimation);
-        storyboard.Completed += (_, _) => 
+        storyboard.Completed += (_, _) =>
         {
-            Hide();
-            closing = false;
+            HideWindow();
         };
         storyboard.Begin();
     }

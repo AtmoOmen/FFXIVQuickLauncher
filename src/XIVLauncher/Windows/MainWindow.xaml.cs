@@ -62,7 +62,7 @@ public partial class MainWindow
         launcher                     =  Model.Launcher;
         Model.Settings.SettingsSaved += (_, _) => _ = SetupHeadlines();
 
-        accountSwitcher = new AccountSwitcher(accountManager)
+        accountSwitcher = new AccountSwitcher(accountManager, this)
         {
             ShowInTaskbar = false,
             ShowActivated = false
@@ -88,7 +88,7 @@ public partial class MainWindow
             }
         );
 
-        Model.Hide += () => Dispatcher.Invoke(Hide);
+        Model.Hide += () => Dispatcher.Invoke(HideMainWindow);
 
         Model.ReloadHeadlines += () => _ = SetupHeadlines();
 
@@ -347,6 +347,26 @@ public partial class MainWindow
             Model.CloseAccountSwitcher(false);
     }
 
+    protected override void OnStateChanged(EventArgs e)
+    {
+        if (WindowState == WindowState.Minimized)
+            accountSwitcher.HideWindow();
+
+        base.OnStateChanged(e);
+    }
+
+    protected override void OnDeactivated(EventArgs e)
+    {
+        base.OnDeactivated(e);
+        accountSwitcher.HideWindow();
+    }
+
+    private void HideMainWindow()
+    {
+        accountSwitcher.HideWindow();
+        Hide();
+    }
+
     private void OnAccountSwitchedEventHandler(object? sender, XIVAccount e) =>
         SwitchAccount(e, true);
 
@@ -360,51 +380,52 @@ public partial class MainWindow
                 accountManager.CurrentAccount = account;
 
             var hasUnavailableSecrets = accountManager.HasUnavailableSecrets(account);
-            var currentLoginType      = Model.LoginPage.LoginTypeOption.LoginType;
             var selectedArea          = Model.LoginPage.LoginAreas.FirstOrDefault(x => x.AreaName == account.AreaName);
 
             Model.LoginPage.IsFastLogin = account.AutoLogin;
             Model.LoginPage.Area        = selectedArea ?? Model.LoginPage.Area;
             LoginPassword.Password      = string.Empty;
+            Model.LoginPage.Password    = string.Empty;
 
             switch (account.AccountType)
             {
                 case XIVAccountType.Sdo:
-                    var nextLoginType = currentLoginType is LoginType.Static or LoginType.Slide
-                                            ? currentLoginType
-                                            : string.IsNullOrWhiteSpace(account.SdoPassword)
-                                                ? LoginType.Slide
-                                                : LoginType.Static;
+                    var nextLoginType = !hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.SdoPassword)
+                                            ? LoginType.Static
+                                            : LoginType.Slide;
 
                     Model.LoginPage.SelectLoginType(nextLoginType);
+                    Model.LoginPage.Username = account.UserName;
 
-                    if (nextLoginType == LoginType.Static && !string.IsNullOrWhiteSpace(account.SdoPassword))
+                    if (nextLoginType == LoginType.Static)
                     {
-                        if (!hasUnavailableSecrets)
-                        {
-                            // Make users happy by not showing their password
-                            LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
-                        }
+                        // Make users happy by not showing their password
+                        LoginPassword.Password   = MainWindowViewModel.PRESUDO_PASSWORD;
+                        Model.LoginPage.Password = MainWindowViewModel.PRESUDO_PASSWORD;
                     }
 
                     break;
 
                 case XIVAccountType.WeGame:
-                    var nextWeGameLoginType = !string.IsNullOrWhiteSpace(account.WeGameTokenSecret)
+                    var nextWeGameLoginType = !hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.WeGameTokenSecret)
                                                   ? LoginType.WeGameManual
                                                   : LoginType.WeGameAuto;
 
-                    if (currentLoginType != nextWeGameLoginType)
-                        Model.LoginPage.SelectLoginType(nextWeGameLoginType);
+                    Model.LoginPage.SelectLoginType(nextWeGameLoginType);
+                    Model.LoginPage.Username = account.UserName;
 
-                    if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.WeGameTokenSecret))
-                        LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
-                    else if (nextWeGameLoginType == LoginType.WeGameAuto)
+                    if (nextWeGameLoginType == LoginType.WeGameManual)
+                    {
+                        LoginPassword.Password   = MainWindowViewModel.PRESUDO_PASSWORD;
+                        Model.LoginPage.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                    }
+                    else
+                    {
                         Model.LoginPage.IsReadWegameInfo = false;
+                    }
+
                     break;
             }
-
-            Model.LoginPage.Username = account.UserName;
         }
         finally
         {
@@ -421,6 +442,7 @@ public partial class MainWindow
             return;
 
         accountManager.ClearCurrentAccount();
+        accountSwitcher.RefreshSelectedAccount(null);
     }
 
     private void LoginTypeSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -429,6 +451,7 @@ public partial class MainWindow
             return;
 
         accountManager.ClearCurrentAccount();
+        accountSwitcher.RefreshSelectedAccount(null);
     }
 
     private void ShowCredTypeRecoveryMessage()

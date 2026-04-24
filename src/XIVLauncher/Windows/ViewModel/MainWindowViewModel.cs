@@ -140,8 +140,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
     {
         var accountSwitcherButton = (FrameworkElement)parameter;
 
-        AccountSwitcher.Owner ??= Window;
-
         if (AccountSwitcher.IsVisible)
         {
             AccountSwitcher.CloseWindow(true);
