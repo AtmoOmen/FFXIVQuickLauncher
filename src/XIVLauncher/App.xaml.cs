@@ -50,7 +50,8 @@ public partial class App
 
     private StartupOrchestrator? orchestrator;
     private MainWindow?          mainWindow;
-    private bool                 isUseFullExceptionHandler;
+
+    private bool isUseFullExceptionHandler;
 
     #endregion
 
@@ -58,7 +59,6 @@ public partial class App
 
     public App()
     {
-#if !DEBUG
         try
         {
             AppDomain.CurrentDomain.UnhandledException += OnEarlyInitException;
@@ -68,7 +68,6 @@ public partial class App
         {
             // ignored
         }
-#endif
     }
 
     private async void App_OnStartup(object sender, StartupEventArgs e)
