@@ -5,84 +5,102 @@
     xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     Title="首次设置"
-    Width="450"
+    Width="500"
     Background="{DynamicResource MaterialDesign.Brush.Background}"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
     SizeToContent="Height"
     TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+    TextElement.FontWeight="Regular"
+    TextElement.FontSize="14"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance viewModel:FirstTimeSetupViewModel}">
-    <Grid>
-        <TabControl
-            x:Name="SetupTabControl"
-            Background="{DynamicResource MaterialDesign.Brush.Background}"
-            BorderThickness="0"
-            IsEnabled="True"
-            SelectedIndex="{Binding CurrentStepIndex}">
-            <TabControl.ItemContainerStyle>
-                <Style TargetType="{x:Type TabItem}">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                </Style>
-            </TabControl.ItemContainerStyle>
+    
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
+        </EventTrigger>
+    </Window.Triggers>
 
-            <TabItem Header="路径">
-                <StackPanel Margin="10,0,0,0">
-                    <TextBlock
-                        Margin="0,10,0,10"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                        Text="请选择游戏目录"
-                        TextWrapping="Wrap" />
-                    <components:FolderEntry
-                        Width="400"
-                        Margin="0,0,0,40"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Center"
-                        Description="选择文件夹"
-                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                        Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
-                    <Button
-                        Width="79"
-                        Margin="0,0,10,10"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Bottom"
-                        Command="{Binding NextCommand}"
-                        Content="下一步" />
-                </StackPanel>
-            </TabItem>
+    <Grid x:Name="WindowAnimationLayer" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
+        </Grid.RenderTransform>
+        
+        <Border Padding="24">
+            <TabControl
+                x:Name="SetupTabControl"
+                Background="Transparent"
+                BorderThickness="0"
+                Padding="0"
+                IsEnabled="True"
+                SelectedIndex="{Binding CurrentStepIndex}">
+                <TabControl.ItemContainerStyle>
+                    <Style TargetType="{x:Type TabItem}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                    </Style>
+                </TabControl.ItemContainerStyle>
 
-            <TabItem Header="Dalamud">
-                <Grid>
-                    <StackPanel Margin="10,10,10,0">
-                        <TextBlock
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Top"
+                <TabItem Header="路径">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                            <materialDesign:PackIcon Kind="FolderSearchOutline" Width="32" Height="32" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" 
+                                       Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                                       Text="请选择游戏目录" 
+                                       VerticalAlignment="Center" 
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+                        
+                        <components:FolderEntry
+                            Margin="0,0,0,32"
+                            Description="选择文件夹"
                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                            Text="是否启用 Dalamud？它会为游戏提供额外功能，例如聊天辅助、屏蔽骚扰消息和副本通知。"
-                            TextWrapping="Wrap" />
+                            Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <CheckBox
-                            Margin="0,25,0,50"
-                            HorizontalAlignment="Left"
-                            Content="启用 Dalamud"
-                            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                            IsChecked="{Binding EnableDalamud}" />
+                        <Button Width="100" HorizontalAlignment="Right" Command="{Binding NextCommand}" Content="下一步" />
                     </StackPanel>
+                </TabItem>
 
-                    <Button
-                        Width="79"
-                        Margin="0,0,10,10"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Bottom"
-                        Command="{Binding NextCommand}"
-                        Content="完成" />
-                </Grid>
-            </TabItem>
-        </TabControl>
+                <TabItem Header="Dalamud">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                            <materialDesign:PackIcon Kind="PuzzleOutline" Width="32" Height="32" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" 
+                                       Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                                       Text="配置 Dalamud"
+                                       VerticalAlignment="Center"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+
+                        <materialDesign:Card UniformCornerRadius="8" Margin="0,0,0,32">
+                            <StackPanel Margin="16">
+                                <TextBlock Text="Dalamud 是游戏内插件框架, 配合插件可以为游戏提供各种便利化功能" 
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,16"
+                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"/>
+                                <CheckBox Content="启用 Dalamud" 
+                                          Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                          IsChecked="{Binding EnableDalamud}" />
+                            </StackPanel>
+                        </materialDesign:Card>
+
+                        <Button Width="100" HorizontalAlignment="Right" Command="{Binding NextCommand}" Content="完成" />
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+        </Border>
     </Grid>
 </Window>

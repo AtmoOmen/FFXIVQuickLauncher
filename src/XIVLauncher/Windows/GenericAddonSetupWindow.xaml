@@ -5,65 +5,107 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
         xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
-        Title="配置自动启动项" Width="533.495"
+        Title="配置自动启动项" Width="550"
         SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
         Background="{DynamicResource MaterialDesign.Brush.Background}"
         d:DataContext="{d:DesignInstance viewModel:GenericAddonSetupWindowViewModel}">
-    <Grid Margin="10,10,10,10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0"
-                    Orientation="Vertical">
-            <TextBlock Text="文件路径"
-                       Margin="0,0,0,4" />
-            <components:FileEntry x:Name="PathEntry"
-                                  Description="Select an Addon file"
-                                  Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
-                                  Filters="EXE File, *.exe;Powershell Script, *.ps1;Shell Script, *.bat"
-                                  Width="400"
-                                  HorizontalAlignment="Left"
-                                  Margin="0,0,0,12" />
-            <TextBlock Text="命令行参数"
-                       Width="400"
-                       HorizontalAlignment="Left"
-                       Margin="0,0,0,4" />
-            <TextBox x:Name="CommandLineTextBox"
-                     Width="400"
-                     Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
-                     HorizontalAlignment="Left"
-                     Margin="0,0,0,12" />
-            <CheckBox x:Name="AdminCheckBox"
-                      Content="以管理员身份运行"
-                      Width="400"
-                      HorizontalAlignment="Left"
-                      IsChecked="{Binding RunAsAdmin}"
-                      Margin="0,0,0,8" />
-            <CheckBox x:Name="RunOnCloseCheckBox"
-                      Content="游戏结束时再运行"
-                      Width="400"
-                      HorizontalAlignment="Left"
-                      IsChecked="{Binding RunOnClose}"
-                      Margin="0,0,0,8" />
-            <CheckBox x:Name="KillCheckBox"
-                      Content="游戏结束时停止运行"
-                      Width="400"
-                      HorizontalAlignment="Left"
-                      IsEnabled="{Binding CanKillAfterClose}"
-                      IsChecked="{Binding KillAfterClose}" />
-        </StackPanel>
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <Style x:Key="AnimatedRaisedButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+                <Setter Property="RenderTransform">
+                    <Setter.Value>
+                        <ScaleTransform ScaleX="1" ScaleY="1" />
+                    </Setter.Value>
+                </Setter>
+                <Style.Triggers>
+                    <EventTrigger RoutedEvent="PreviewMouseDown">
+                        <BeginStoryboard Storyboard="{StaticResource ButtonPressedAnimation}" />
+                    </EventTrigger>
+                    <EventTrigger RoutedEvent="PreviewMouseUp">
+                        <BeginStoryboard Storyboard="{StaticResource ButtonReleasedAnimation}" />
+                    </EventTrigger>
+                    <EventTrigger RoutedEvent="MouseLeave">
+                        <BeginStoryboard Storyboard="{StaticResource ButtonReleasedAnimation}" />
+                    </EventTrigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+    
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
+        </EventTrigger>
+    </Window.Triggers>
 
-        <Button Grid.Row="1"
-                Content="确定"
-                Width="79"
-                HorizontalAlignment="Right"
-                Margin="0,12,0,0"
-                Click="NextButton_Click" />
+    <Grid x:Name="WindowAnimationLayer" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="WindowAnimationLayerTransform" />
+        </Grid.RenderTransform>
+        
+        <Grid Margin="32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       Text="应用程序"
+                       Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                       FontWeight="Medium"
+                       Margin="0,0,0,24" />
+
+            <StackPanel Grid.Row="1" Orientation="Vertical">
+                <components:FileEntry x:Name="PathEntry"
+                                      Description="文件路径"
+                                      Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
+                                      Filters="EXE File, *.exe;Powershell Script, *.ps1;Shell Script, *.bat"
+                                      Margin="0,0,0,16" />
+                
+                <TextBox x:Name="CommandLineTextBox"
+                         materialDesign:HintAssist.Hint="命令行参数"
+                         materialDesign:HintAssist.IsFloating="True"
+                         Style="{StaticResource MaterialDesignFloatingHintTextBox}"
+                         Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
+                         Margin="0,0,0,24" />
+                
+                <CheckBox x:Name="AdminCheckBox"
+                          Content="以管理员身份运行"
+                          IsChecked="{Binding RunAsAdmin}"
+                          Margin="0,0,0,12" />
+                
+                <CheckBox x:Name="RunOnCloseCheckBox"
+                          Content="游戏结束时再运行"
+                          IsChecked="{Binding RunOnClose}"
+                          Margin="0,0,0,12" />
+                
+                <CheckBox x:Name="KillCheckBox"
+                          Content="游戏结束时停止运行"
+                          IsEnabled="{Binding CanKillAfterClose}"
+                          IsChecked="{Binding KillAfterClose}"
+                          Margin="0,0,0,32" />
+            </StackPanel>
+
+            <Grid Grid.Row="2">
+                <Button Content="确定"
+                        Click="NextButton_Click"
+                        Width="100"
+                        HorizontalAlignment="Right"
+                        Style="{StaticResource AnimatedRaisedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="8" />
+            </Grid>
+        </Grid>
     </Grid>
 </Window>

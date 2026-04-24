@@ -360,7 +360,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 
                 case LoginType.Static:
                     IsPasswordVisible = true;
-                    FastLoginText     = "静态密码";
+                    FastLoginText     = "快速登录";
                     break;
 
                 case LoginType.WeGameManual:

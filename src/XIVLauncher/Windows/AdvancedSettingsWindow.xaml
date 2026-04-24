@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
         mc:Ignorable="d"
         Title="高级设置" SizeToContent="Height" Width="450"
@@ -10,36 +11,60 @@
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
         Background="{DynamicResource MaterialDesign.Brush.Background}"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="14"
         d:DataContext="{d:DesignInstance viewModel:AdvancedSettingsViewModel}">
-    <Grid>
-        <StackPanel Orientation="Vertical" Margin="10,20,0,50">
-            <CheckBox x:Name="TreatNonZeroExitCodeAsFailureCheckbox"
-                      Content="将非零退出码视为崩溃"
-                      HorizontalAlignment="Left"
-                      Margin="0,0,0,7"
-                      Foreground="DarkGray"
-                      ToolTip="开启后，发生异常退出时会自动重新打开 XIVLauncher 界面"
-                      IsChecked="{Binding TreatNonZeroExitCodeAsFailure}" />
-            <CheckBox x:Name="EnableVerboseLog"
-                      Content="将日志级别提升为 Verbose"
-                      HorizontalAlignment="Left"
-                      Margin="0,0,0,7"
-                      Foreground="DarkGray"
-                      ToolTip="开启后会输出更详细的日志，日志文件体积也会明显变大"
-                      IsChecked="{Binding EnableVerboseLog}" />
-            <CheckBox x:Name="EnableSkipUpdate"
-                      Content="跳过 XIVLauncher 更新"
-                      HorizontalAlignment="Left"
-                      Margin="0,0,0,7"
-                      Foreground="DarkGray"
-                      IsChecked="{Binding EnableSkipUpdate}" />
-        </StackPanel>
+        
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
+        </EventTrigger>
+    </Window.Triggers>
 
-        <Button Content="确认"
-                Width="79"
-                VerticalAlignment="Bottom"
-                HorizontalAlignment="Right"
-                Margin="0,0,10,10"
-                Click="CloseButton_OnClick" />
+    <Grid x:Name="WindowAnimationLayer" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
+        </Grid.RenderTransform>
+        
+        <Border Padding="24">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                    <materialDesign:PackIcon Kind="CogOutline" Width="32" Height="32" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="高级设置" VerticalAlignment="Center" FontWeight="SemiBold" />
+                </StackPanel>
+
+                <materialDesign:Card UniformCornerRadius="8" Margin="0,0,0,24">
+                    <StackPanel Margin="16">
+                        <CheckBox x:Name="TreatNonZeroExitCodeAsFailureCheckbox"
+                                  Content="将非零退出码视为崩溃"
+                                  Margin="0,0,0,12"
+                                  ToolTip="开启后，发生异常退出时会自动重新打开 XIVLauncher 界面"
+                                  IsChecked="{Binding TreatNonZeroExitCodeAsFailure}" />
+                        <CheckBox x:Name="EnableVerboseLog"
+                                  Content="将日志级别提升为 Verbose"
+                                  Margin="0,0,0,12"
+                                  ToolTip="开启后会输出更详细的日志，日志文件体积也会明显变大"
+                                  IsChecked="{Binding EnableVerboseLog}" />
+                        <CheckBox x:Name="EnableSkipUpdate"
+                                  Content="跳过 XIVLauncher 更新"
+                                  Margin="0,0,0,0"
+                                  IsChecked="{Binding EnableSkipUpdate}" />
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <Button Content="确认"
+                        Width="100"
+                        HorizontalAlignment="Right"
+                        Click="CloseButton_OnClick" />
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>

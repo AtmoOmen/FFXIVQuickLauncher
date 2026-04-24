@@ -11,31 +11,31 @@
         Background="Transparent"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico"
         ResizeMode="NoResize"
-        TextElement.FontWeight="Medium"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="14"
         TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
         mc:Ignorable="d">
+        
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
-            <BeginStoryboard>
-                <Storyboard>
-                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25">
-                        <DoubleAnimation.EasingFunction>
-                            <QuarticEase EasingMode="EaseOut" />
-                        </DoubleAnimation.EasingFunction>
-                    </DoubleAnimation>
-                    <ThicknessAnimation Storyboard.TargetProperty="Margin" From="0,20,0,-20" To="0,0,0,0" Duration="0:0:0.4">
-                        <ThicknessAnimation.EasingFunction>
-                            <QuarticEase EasingMode="EaseOut" />
-                        </ThicknessAnimation.EasingFunction>
-                    </ThicknessAnimation>
-                </Storyboard>
-            </BeginStoryboard>
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
         </EventTrigger>
     </Window.Triggers>
 
-    <Grid Margin="16">
+    <Grid Margin="16" x:Name="WindowAnimationLayer" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
+        </Grid.RenderTransform>
         <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" 
                              UniformCornerRadius="14" 
                              materialDesign:ElevationAssist.Elevation="Dp8"
@@ -55,7 +55,7 @@
                     <StackPanel Orientation="Horizontal" Margin="24,20,24,16" VerticalAlignment="Center">
                         <materialDesign:PackIcon Kind="ShieldCheckOutline" Width="24" Height="24" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                         <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}" 
-                                   FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
+                                   Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </StackPanel>
                     
                     <Button Grid.Column="1" Margin="0,0,16,0" 
@@ -81,8 +81,7 @@
                                Grid.Row="0"
                                Margin="0,0,0,16"
                                TextWrapping="Wrap"
-                               Opacity="0.8"
-                               FontSize="14" />
+                               Opacity="0.8" />
 
                     <!-- Captcha Image Area -->
                     <Border Grid.Row="1"

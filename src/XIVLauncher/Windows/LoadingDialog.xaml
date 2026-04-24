@@ -11,27 +11,42 @@
         TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
         AllowsTransparency="True"
         Background="Transparent"
-        WindowStyle="None" Height="170.088" Width="269.186"
+        TextElement.FontWeight="Regular"
+        TextElement.FontSize="14"
+        WindowStyle="None" Width="320" SizeToContent="Height"
         Loaded="LoadingDialog_OnLoaded" d:DataContext="{d:DesignInstance viewModel:LoadingDialogViewModel}">
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
     </Window.Resources>
+    
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
+        </EventTrigger>
+    </Window.Triggers>
 
-    <Grid>
-        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" Height="149" Margin="0,0,10,0">
-            <StackPanel Margin="16,16,10,0">
-                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" HorizontalAlignment="Center"
-                           Text="{Binding HeaderText}" />
+    <Grid Margin="16" x:Name="WindowAnimationLayer" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
+        </Grid.RenderTransform>
+        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" UniformCornerRadius="12" materialDesign:ElevationAssist.Elevation="Dp8">
+            <StackPanel Margin="24">
+                <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding HeaderText}" Margin="0,0,0,24" />
 
                 <ProgressBar IsIndeterminate="{Binding IsProgressIndeterminate}"
                              Value="{Binding ProgressValue}"
                              Visibility="{Binding IsProgressBarVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                             Margin="0,50,0,0" />
+                             Margin="0,0,0,16" />
 
-                <TextBlock Foreground="DarkGray" Margin="0,16,0,0" TextAlignment="Center"
+                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" TextAlignment="Center"
                            Visibility="{Binding IsDetailTextVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                           Text="{Binding DetailText}" />
-                <TextBlock Foreground="DarkGray" Margin="0,4,0,0" TextAlignment="Center"
+                           Text="{Binding DetailText}" Margin="0,0,0,4" />
+                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" TextAlignment="Center"
                            Visibility="{Binding IsPercentageTextVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                            Text="{Binding PercentageText}" />
             </StackPanel>
