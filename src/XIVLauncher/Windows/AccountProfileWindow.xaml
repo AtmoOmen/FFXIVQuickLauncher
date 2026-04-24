@@ -141,8 +141,7 @@
 
                     <TextBlock Text="头像" FontSize="14" FontWeight="Bold" Margin="0,0,0,8" />
                     <Border BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
-                        <TextBlock TextTrimming="CharacterEllipsis" 
-                                   ToolTip="{Binding SelectedFilePath}">
+                        <TextBlock TextTrimming="CharacterEllipsis">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Text" Value="{Binding SelectedFilePath}" />
@@ -151,6 +150,7 @@
                                         <DataTrigger Binding="{Binding HasSelectedFile}" Value="False">
                                             <Setter Property="Text" Value="(默认头像)" />
                                             <Setter Property="Opacity" Value="0.5" />
+                                            <Setter Property="ToolTip" Value="{Binding SelectedFilePath}"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
