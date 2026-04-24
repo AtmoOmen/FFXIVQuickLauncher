@@ -47,8 +47,9 @@ public partial class GameClientFileTaskWindow
     {
         if (FindResource("WindowCloseAnimation") is System.Windows.Media.Animation.Storyboard storyboard)
         {
-            storyboard.Completed += (s, ev) => Close();
-            storyboard.Begin(this);
+            var closeStoryboard = storyboard.Clone();
+            closeStoryboard.Completed += (s, ev) => Close();
+            closeStoryboard.Begin(this);
         }
         else
         {

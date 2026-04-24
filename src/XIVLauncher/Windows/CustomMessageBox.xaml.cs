@@ -315,10 +315,11 @@ public partial class CustomMessageBox
         e.Cancel   = true;
         isClosing = true;
 
-        if (FindResource("WindowCloseAnimation") is Storyboard sb)
+        if (FindResource("WindowCloseAnimation") is Storyboard storyboard)
         {
-            sb.Completed += (_, _) => Close();
-            sb.Begin(this);
+            var closeStoryboard = storyboard.Clone();
+            closeStoryboard.Completed += (_, _) => Close();
+            closeStoryboard.Begin(this);
         }
         else Close();
     }
