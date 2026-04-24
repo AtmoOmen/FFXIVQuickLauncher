@@ -10,7 +10,7 @@ using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Xaml;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow.Pages;
+namespace XIVLauncher.Windows.ViewModel.MainWindow;
 
 public sealed class LoginPageViewModel : INotifyPropertyChanged
 {

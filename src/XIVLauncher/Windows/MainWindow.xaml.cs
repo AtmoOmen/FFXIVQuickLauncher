@@ -23,6 +23,7 @@ using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
+using XIVLauncher.Windows.ViewModel.MainWindow.Models;
 using XIVLauncher.Xaml;
 using Timer = System.Timers.Timer;
 

@@ -14,7 +14,7 @@ using XIVLauncher.Common.Util;
 using XIVLauncher.Windows.ViewModel.MainWindow.Services;
 using XIVLauncher.Xaml;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow.Pages;
+namespace XIVLauncher.Windows.ViewModel.MainWindow;
 
 public sealed class InjectPageViewModel : INotifyPropertyChanged
 {
