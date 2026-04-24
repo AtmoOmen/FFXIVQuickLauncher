@@ -43,6 +43,23 @@
             </DoubleAnimation>
         </Storyboard>
 
+        <Storyboard x:Key="WindowCloseAnimation">
+            <DoubleAnimation Storyboard.TargetName="RootBorder"
+                             Storyboard.TargetProperty="Opacity"
+                             From="1" To="0" Duration="0:0:0.2">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="TranslateTransform"
+                             Storyboard.TargetProperty="Y"
+                             From="0" To="30" Duration="0:0:0.2">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
     </Window.Resources>
 
     <Window.Triggers>
