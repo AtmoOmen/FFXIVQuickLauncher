@@ -11,8 +11,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows.Input;
 using Serilog;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
@@ -43,7 +43,7 @@ using DCTravelClient = XIVLauncher.Common.Game.DCTravel.DCTravelClient;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-public class MainWindowViewModel : INotifyPropertyChanged
+internal class MainWindowViewModel : INotifyPropertyChanged
 {
     public const string PRESUDO_PASSWORD = "********假的密码********";
 
@@ -54,6 +54,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
     public InjectPageViewModel InjectPage { get; }
 
     public ICommand AccountSwitcherButtonCommand { get; }
+
+    public AccountSwitcherViewModel AccountSwitcher { get; }
 
     public Launcher          Launcher         { get; private set; }
     public AccountManager    AccountManager   { get; private set; } = App.AccountManager;
@@ -71,7 +73,6 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private MainWindowAccountDraftFactory AccountDraftFactory      { get; }
     private GameLaunchService             GameLaunchService        { get; }
     private GameClientFileTaskService     GameClientFileTaskService { get; }
-    private AccountSwitcher               AccountSwitcher          { get; set; } = null!;
     private CancellationTokenSource?      LoginCancelSource        { get; set; }
     private bool                          IsLoginCanceledByUser    { get; set; }
     private LoginCardType?                LoginCardAfterCompletion { get; set; }
@@ -86,6 +87,13 @@ public class MainWindowViewModel : INotifyPropertyChanged
         Launcher                     = new();
         GameLaunchService            = new GameLaunchService(window);
         GameClientFileTaskService    = new GameClientFileTaskService(window);
+        AccountSwitcher              = new AccountSwitcherViewModel
+        (
+            AccountManager,
+            new DialogService(window),
+            new ShortcutService(),
+            () => CloseAccountSwitcher(false)
+        );
         AccountSwitcherButtonCommand = new SyncCommand(ExecuteAccountSwitcherButton);
         LoginPage = new LoginPageViewModel
         (
@@ -114,13 +122,10 @@ public class MainWindowViewModel : INotifyPropertyChanged
         Settings.SettingsSaved += (_, _) => InjectPage.ReloadSettings();
     }
 
-    public void AttachAccountSwitcher(AccountSwitcher accountSwitcher) =>
-        AccountSwitcher = accountSwitcher;
-
-    public bool IsAccountSwitcherVisible => AccountSwitcher.IsVisible;
+    public bool IsAccountSwitcherVisible => IsAccountSwitcherOpen;
 
     public void CloseAccountSwitcher(bool animate) =>
-        AccountSwitcher.HideWindow(animate);
+        IsAccountSwitcherOpen = false;
 
     #region 界面控制
 
@@ -136,30 +141,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
             }
         );
 
-    private void ExecuteAccountSwitcherButton(object parameter)
-    {
-        var accountSwitcherButton = (FrameworkElement)parameter;
-
-        if (AccountSwitcher.IsVisible)
-        {
-            AccountSwitcher.HideWindow();
-            return;
-        }
-
-        var locationFromScreen = accountSwitcherButton.PointToScreen(new Point(0, 0));
-        var source             = PresentationSource.FromVisual(Window);
-
-        if (source != null)
-        {
-            var targetPoints = source.CompositionTarget!.TransformFromDevice.Transform(locationFromScreen);
-
-            AccountSwitcher.WindowStartupLocation = WindowStartupLocation.Manual;
-            AccountSwitcher.Left                  = targetPoints.X - 15;
-            AccountSwitcher.Top                   = targetPoints.Y - 15;
-        }
-
-        AccountSwitcher.Show();
-    }
+    private void ExecuteAccountSwitcherButton(object parameter) =>
+        IsAccountSwitcherOpen ^= true;
 
     #endregion
 
@@ -762,7 +745,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
             var gamePath = App.Settings.GamePath;
             return await Launcher.LoginClient.LoginWithPatchCheck
                    (
-                       _ => Launcher.UpdateClient.Check(LoginPage.Area, gamePath, action == LoginAfterAction.Repair),
+                       _ => Launcher.UpdateClient.Check(LoginPage.Area, gamePath, action == LoginAfterAction.Repair, loginCts.Token),
                        action == LoginAfterAction.UpdateOnly,
                        type,
                        fallbackLoginType,
@@ -1758,6 +1741,16 @@ public class MainWindowViewModel : INotifyPropertyChanged
         {
             field = value;
             OnPropertyChanged(nameof(IsLoadingDialogOpen));
+        }
+    }
+
+    public bool IsAccountSwitcherOpen
+    {
+        get;
+        set
+        {
+            field = value;
+            OnPropertyChanged(nameof(IsAccountSwitcherOpen));
         }
     }
 

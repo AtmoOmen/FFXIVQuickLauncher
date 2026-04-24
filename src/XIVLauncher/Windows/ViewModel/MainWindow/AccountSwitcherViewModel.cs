@@ -17,7 +17,7 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Xaml;
 
-namespace XIVLauncher.Windows.ViewModel;
+namespace XIVLauncher.Windows.ViewModel.MainWindow;
 
 internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 {
