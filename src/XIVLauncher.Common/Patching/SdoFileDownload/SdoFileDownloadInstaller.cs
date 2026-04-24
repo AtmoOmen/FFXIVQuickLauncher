@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
-using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Patching.Util;
 
@@ -21,21 +21,15 @@ public class SdoFileDownloadInstaller : IDisposable
 
     private readonly HttpClient                        client          = new();
     private readonly Lock                              progressSync    = new();
-    private readonly List<TargetFile>                  targets         = new();
+    private readonly List<TargetFile>                  targets         = [];
     private readonly ConcurrentDictionary<int, string> queuedDownloads = new();
 
-    private const string CDN_KEY = "EKUWRI5KXXAIDlQ0mBNLa7XkjU1JNFuL";
-    private const string APP_ID  = "100001900";
-    private       long   lastProgressTicks;
-    private       string downloadBaseUrl = null!;
-    private       string dataVersion     = null!;
-
-    #region Disposal
+    private long   lastProgressTicks;
+    private string downloadBaseUrl = null!;
+    private string dataVersion     = null!;
 
     public void Dispose() =>
         client.Dispose();
-
-    #endregion
 
     public void ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity)
     {
@@ -128,14 +122,14 @@ public class SdoFileDownloadInstaller : IDisposable
     {
         if (targetIndex < 0 || targetIndex >= targets.Count)
             throw new ArgumentOutOfRangeException(nameof(targetIndex));
-        Log.Information($"Queueing download for {targets[targetIndex].RelativePath}");
+        Log.Information("Queueing download for {RelativePath}", targets[targetIndex].RelativePath);
         queuedDownloads[targetIndex] = filePath;
     }
 
     public async Task Install(string gameRootPath, int concurrentCount, CancellationToken cancellationToken = default)
     {
         var queue = queuedDownloads.ToArray();
-        if (!queue.Any())
+        if (queue.Length == 0)
             return;
         long totalDownloadedBytes = 0;
         long totalContentBytes    = 0;
@@ -258,12 +252,9 @@ public class SdoFileDownloadInstaller : IDisposable
 
     private string GetFileKey(string filePath)
     {
-        using (var md5 = MD5.Create())
-        {
-            var inputBytes = Encoding.Unicode.GetBytes($"{APP_ID}_{dataVersion}_{filePath}");
-            var hashBytes  = md5.ComputeHash(inputBytes);
-            return BitConverter.ToString(hashBytes).Replace("-", "").ToUpper();
-        }
+        var inputBytes = Encoding.Unicode.GetBytes($"{SdoInfos.APP_ID}_{dataVersion}_{filePath}");
+        var hashBytes  = MD5.HashData(inputBytes);
+        return Convert.ToHexString(hashBytes).ToUpper();
     }
 
     private Uri GetDownloadUrl(string filePath)
@@ -276,13 +267,11 @@ public class SdoFileDownloadInstaller : IDisposable
         var timeStamp    = DateTimeOffset.Now.ToUnixTimeSeconds();
         var timeStampHex = timeStamp.ToString("x").ToLower();
 
-        using (var md5 = MD5.Create())
-        {
-            var inputBytes = Encoding.UTF8.GetBytes($"{CDN_KEY}{uriPath}{timeStampHex}");
-            var hashBytes  = md5.ComputeHash(inputBytes);
-            var cdnKey     = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-            return new Uri($"{uri.Scheme}://{uri.Host}/{cdnKey}/{timeStampHex}{uriPath}");
-        }
+        var inputBytes = Encoding.UTF8.GetBytes($"{SdoInfos.CDN_KEY}{uriPath}{timeStampHex}");
+        var hashBytes  = MD5.HashData(inputBytes);
+        var cdnKey     = Convert.ToHexStringLower(hashBytes);
+        return new Uri($"{uri.Scheme}://{uri.Host}/{cdnKey}/{timeStampHex}{uriPath}");
+
     }
 
     public enum InstallTaskState

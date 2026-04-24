@@ -3,6 +3,8 @@
 public static class SdoInfos
 {
     public const string APP_ID = "100001900";
+    
+    public const string CDN_KEY = "EKUWRI5KXXAIDlQ0mBNLa7XkjU1JNFuL";
 
     public const string GLOBAL_CAS_DOMAIN = "cas.sdo.com";
 
