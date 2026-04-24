@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 
 namespace XIVLauncher.Common.Patching.SdoFileDownload;
@@ -22,6 +21,6 @@ public interface ISdoFileDownloadInstaller : IDisposable, IInstaller
     Task WriteAllText(string filePath, string content, CancellationToken cancellationToken = default);
 
     event SdoFileDownloadInstaller.OnInstallProgressDelegate? OnInstallProgress;
-    
-    event SdoFileDownloadInstaller.OnVerifyProgressDelegate?  OnVerifyProgress;
+
+    event SdoFileDownloadInstaller.OnVerifyProgressDelegate? OnVerifyProgress;
 }

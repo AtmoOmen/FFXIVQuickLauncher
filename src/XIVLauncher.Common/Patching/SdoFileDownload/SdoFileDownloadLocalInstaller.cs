@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 
 namespace XIVLauncher.Common.Patching.SdoFileDownload;
@@ -18,8 +16,7 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
 
     public void Dispose()
     {
-        if (isDisposed)
-            throw new ObjectDisposedException(GetType().FullName);
+        ObjectDisposedException.ThrowIf(isDisposed, this);
 
         instance?.Dispose();
         instance   = null;
@@ -31,59 +28,46 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
         instance?.Dispose();
         instance = new()
         {
-            ProgressReportInterval = progressReportInterval.TotalMilliseconds > 0 ? (int)progressReportInterval.TotalMilliseconds : 250
+            ProgressReportInterval = progressReportInterval.TotalMilliseconds > 0 ? (int)progressReportInterval.TotalMilliseconds : DEFAULT_PROGRESS_REPORT_INTERVAL
         };
 
-        instance.OnInstallProgress += (index, progress, max,      state) => OnInstallProgress?.Invoke(index, progress, max, state);
-        instance.OnVerifyProgress  += (index, count,    progress, max) => OnVerifyProgress?.Invoke(index, count, progress, max);
+        instance.OnInstallProgress += OnInstanceInstallProgress;
+        instance.OnVerifyProgress  += OnInstanceVerifyProgress;
         instance.ConstructFromRemoteIntegrity(remoteIntegrity);
         return Task.CompletedTask;
     }
 
-    public async Task VerifyFiles(string gameRootPath, bool refine = false, int concurrentCount = 8, CancellationToken cancellationToken = default)
+    public Task VerifyFiles(string gameRootPath, bool refine = false, int concurrentCount = 8, CancellationToken cancellationToken = default)
     {
-        if (instance is null)
-            throw new InvalidOperationException("Installer is not initialized.");
-
         this.gameRootPath = gameRootPath;
-        await instance.VerifyFiles(gameRootPath, refine, concurrentCount, cancellationToken);
+        return GetInstance().VerifyFiles(gameRootPath, refine, concurrentCount, cancellationToken);
     }
 
     public Task QueueInstall(int targetIndex, string filePath, CancellationToken cancellationToken = default)
     {
-        if (instance is null)
-            throw new InvalidOperationException("Installer is not initialized.");
-
-        instance.QueueInstall(targetIndex, filePath);
+        GetInstance().QueueInstall(targetIndex, filePath);
         return Task.CompletedTask;
     }
 
-    public async Task Install(int concurrentCount = 8, CancellationToken cancellationToken = default)
-    {
-        if (instance is null)
-            throw new InvalidOperationException("Installer is not initialized.");
-        if (string.IsNullOrEmpty(gameRootPath))
-            throw new InvalidOperationException("VerifyFiles must run before Install to initialize game root path.");
-
-        await instance.Install(gameRootPath, concurrentCount, cancellationToken);
-    }
+    public Task Install(int concurrentCount = 8, CancellationToken cancellationToken = default) =>
+        GetInstance().Install(gameRootPath ?? throw new InvalidOperationException("VerifyFiles must run before Install to initialize game root path."), concurrentCount, cancellationToken);
 
     public Task<List<string>> GetBrokenFiles(CancellationToken cancellationToken = default) =>
-        instance is null ? throw new InvalidOperationException("Installer is not initialized.") : Task.FromResult(instance.GetBrokenFiles());
+        Task.FromResult(GetInstance().GetBrokenFiles());
 
     public Task MoveFile(string sourceFile, string targetFile, CancellationToken cancellationToken = default)
     {
-        var sourceParentDir = new DirectoryInfo(Path.GetDirectoryName(sourceFile) ?? throw new InvalidOperationException());
-        var targetParentDir = new DirectoryInfo
-            (Path.GetDirectoryName(targetFile.EndsWith('/') ? targetFile[..^1] : targetFile) ?? throw new InvalidOperationException());
-        targetParentDir.Create();
+        var sourceParentDir = Path.GetDirectoryName(sourceFile)                    ?? throw new InvalidOperationException();
+        var targetParentDir = Path.GetDirectoryName(targetFile.TrimEnd('/', '\\')) ?? throw new InvalidOperationException();
+
+        Directory.CreateDirectory(targetParentDir);
         if (File.Exists(sourceFile))
             File.Move(sourceFile, targetFile);
         else
             Directory.Move(sourceFile, targetFile);
 
-        if (sourceParentDir.GetFileSystemInfos().Length == 0)
-            sourceParentDir.Delete(false);
+        if (Directory.GetFileSystemEntries(sourceParentDir).Length == 0)
+            Directory.Delete(sourceParentDir);
 
         return Task.CompletedTask;
     }
@@ -98,16 +82,32 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
 
     public Task CreateDirectory(string dir, CancellationToken cancellationToken = default)
     {
-        new DirectoryInfo(dir).Create();
+        Directory.CreateDirectory(dir);
         return Task.CompletedTask;
     }
 
     public Task RemoveDirectory(string dir, bool recursive = false, CancellationToken cancellationToken = default)
     {
-        new DirectoryInfo(dir).Delete(recursive);
+        Directory.Delete(dir, recursive);
         return Task.CompletedTask;
     }
 
+    private SdoFileDownloadInstaller GetInstance() =>
+        instance ?? throw new InvalidOperationException("Installer is not initialized.");
+
+    private void OnInstanceInstallProgress(int index, long progress, long max, SdoFileDownloadInstaller.InstallTaskState state) =>
+        OnInstallProgress?.Invoke(index, progress, max, state);
+
+    private void OnInstanceVerifyProgress(int index, int count, long progress, long max) =>
+        OnVerifyProgress?.Invoke(index, count, progress, max);
+
     public event SdoFileDownloadInstaller.OnInstallProgressDelegate? OnInstallProgress;
-    public event SdoFileDownloadInstaller.OnVerifyProgressDelegate?  OnVerifyProgress;
+
+    public event SdoFileDownloadInstaller.OnVerifyProgressDelegate? OnVerifyProgress;
+
+    #region Constants
+
+    private const int DEFAULT_PROGRESS_REPORT_INTERVAL = 250;
+
+    #endregion
 }

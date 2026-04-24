@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using SharedMemory;
-using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Integrity;
 
 namespace XIVLauncher.Common.Patching.SdoFileDownload;
@@ -34,8 +34,8 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
             workerProcess.StartInfo.Verb            = asAdmin ? "runas" : "open";
             workerProcess.StartInfo.Arguments       = $"sdo-rpc {Environment.ProcessId} {rpcChannelName}";
 #if !DEBUG
-            this.workerProcess.StartInfo.CreateNoWindow = true;
-            this.workerProcess.StartInfo.WindowStyle    = ProcessWindowStyle.Hidden;
+            workerProcess.StartInfo.CreateNoWindow = true;
+            workerProcess.StartInfo.WindowStyle    = ProcessWindowStyle.Hidden;
 #endif
             workerProcess.Start();
         }
@@ -48,8 +48,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 
     public void Dispose()
     {
-        if (isDisposed)
-            throw new ObjectDisposedException(GetType().FullName);
+        ObjectDisposedException.ThrowIf(isDisposed, this);
 
         try
         {
@@ -76,6 +75,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         }
 
         subprocessBuffer.Dispose();
+        workerProcess?.Dispose();
         isDisposed = true;
     }
 
@@ -248,7 +248,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 
         if (cancellationToken.CanBeCanceled)
         {
-            tokenId = cancellationTokenCounter++;
+            tokenId = Interlocked.Increment(ref cancellationTokenCounter);
             cancellationToken.Register(() => _ = CancelRemoteTask(tokenId));
         }
 
@@ -266,7 +266,8 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         if (isDisposed)
             throw new OperationCanceledException();
 
-        var logPath = Path.Combine(Constant.Paths.RoamingPath, "patcher.log");
+        var logPath = Path.Combine(Paths.RoamingPath, "patcher.log");
+
         if (!response.Success)
         {
             if (workerProcess is { HasExited: true })

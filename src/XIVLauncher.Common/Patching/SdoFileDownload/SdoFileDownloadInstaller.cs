@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,112 +17,114 @@ namespace XIVLauncher.Common.Patching.SdoFileDownload;
 
 public class SdoFileDownloadInstaller : IDisposable
 {
-    public int ProgressReportInterval { get; set; } = 250;
+    public int ProgressReportInterval { get; set; } = DEFAULT_PROGRESS_REPORT_INTERVAL;
 
-    private readonly HttpClient                        client          = new();
-    private readonly Lock                              progressSync    = new();
-    private readonly List<TargetFile>                  targets         = [];
+    private readonly HttpClient client = new();
+    private readonly List<string> hashes = [];
     private readonly ConcurrentDictionary<int, string> queuedDownloads = new();
+    private readonly List<string> relativePaths = [];
+    private readonly List<bool> brokenStates = [];
+    private readonly List<ulong> sizes = [];
 
-    private long   lastProgressTicks;
+    private long lastProgressTimestamp;
     private string downloadBaseUrl = null!;
-    private string dataVersion     = null!;
+    private string dataVersion = null!;
 
     public void Dispose() =>
         client.Dispose();
 
     public void ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity)
     {
-        targets.Clear();
+        relativePaths.Clear();
+        hashes.Clear();
+        sizes.Clear();
+        brokenStates.Clear();
         queuedDownloads.Clear();
-        downloadBaseUrl = remoteIntegrity.BaseUrl     ?? throw new ArgumentException("Remote integrity must contain a download base URL.", nameof(remoteIntegrity));
-        dataVersion     = remoteIntegrity.DataVersion ?? throw new ArgumentException("Remote integrity must contain a data version.",      nameof(remoteIntegrity));
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("FF14v3autopatch");
+
+        downloadBaseUrl = remoteIntegrity.BaseUrl ?? throw new ArgumentException("Remote integrity must contain a download base URL.", nameof(remoteIntegrity));
+        dataVersion = remoteIntegrity.DataVersion ?? throw new ArgumentException("Remote integrity must contain a data version.", nameof(remoteIntegrity));
+
+        if (client.DefaultRequestHeaders.UserAgent.Count == 0)
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(USER_AGENT);
 
         foreach (var (relativePath, hash) in remoteIntegrity.Hashes)
         {
             if (string.IsNullOrWhiteSpace(relativePath))
                 continue;
 
-            targets.Add
-            (
-                new()
-                {
-                    RelativePath = relativePath,
-                    Hash         = hash ?? string.Empty,
-                    Size         = remoteIntegrity.Sizes is not null && remoteIntegrity.Sizes.TryGetValue(relativePath, out var size) ? size : 0
-                }
-            );
+            relativePaths.Add(relativePath);
+            hashes.Add(hash ?? string.Empty);
+            sizes.Add(remoteIntegrity.Sizes is not null && remoteIntegrity.Sizes.TryGetValue(relativePath, out var size) ? size : 0);
+            brokenStates.Add(false);
         }
     }
 
     public async Task VerifyFiles(string gameRootPath, bool refine = false, int concurrentCount = 8, CancellationToken cancellationToken = default)
     {
-        if (!targets.Any())
-            throw new InvalidOperationException("Installer is not initialized.");
+        EnsureInitialized();
 
-        var brokenCandidates = targets
-                               .Select((target, index) => new { target, index })
-                               .Where(x => !refine || x.target.IsBroken)
-                               .ToList();
+        var candidates = new List<int>(relativePaths.Count);
+        ulong totalSize = 0;
+        for (var index = 0; index < relativePaths.Count; index++)
+        {
+            if (refine && !brokenStates[index])
+                continue;
 
-        var  totalSize     = brokenCandidates.Aggregate(0UL, (acc, x) => acc + x.target.Size);
-        var  reportMax     = totalSize > long.MaxValue ? long.MaxValue : (long)totalSize;
-        long reportedSize  = 0;
-        var  reportedCount = 0;
+            candidates.Add(index);
+            totalSize += sizes[index];
+        }
+
+        var reportMax = GetReportSize(totalSize);
+        long reportedSize = 0;
+        var reportedCount = 0;
         var parallelOptions = new ParallelOptions
         {
             MaxDegreeOfParallelism = Math.Max(1, concurrentCount),
-            CancellationToken      = cancellationToken
+            CancellationToken = cancellationToken
         };
 
         await Parallel.ForEachAsync
         (
-            brokenCandidates,
+            candidates,
             parallelOptions,
-            async (candidate, ct) =>
+            async (targetIndex, ct) =>
             {
-                var localPath = GetLocalPath(gameRootPath, candidate.target.RelativePath);
-                var isBroken  = true;
+                var localPath = GetLocalPath(gameRootPath, relativePaths[targetIndex]);
                 Log.Information("Verifying file: {Path}", localPath);
 
+                var isBroken = true;
                 try
                 {
                     if (File.Exists(localPath))
                     {
                         var fileInfo = new FileInfo(localPath);
-
-                        if ((ulong)fileInfo.Length != candidate.target.Size)
-                            isBroken = true;
-                        else
+                        if ((ulong)fileInfo.Length == sizes[targetIndex])
                         {
                             var fileHash = await IntegrityCheck.GetFileMd5Hash(localPath, ct);
-                            isBroken = !string.Equals(fileHash, candidate.target.Hash, StringComparison.OrdinalIgnoreCase);
+                            isBroken = !string.Equals(fileHash, hashes[targetIndex], StringComparison.OrdinalIgnoreCase);
                         }
                     }
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
                     Log.Warning(ex, "Failed to verify file: {Path}", localPath);
-                    isBroken = true;
                 }
 
-                candidate.target.IsBroken = isBroken;
+                brokenStates[targetIndex] = isBroken;
 
-                var reportIndex     = Math.Min(candidate.index, int.MaxValue);
-                var currentFileSize = candidate.target.Size > long.MaxValue ? long.MaxValue : (long)candidate.target.Size;
-                var reportCurrent   = Interlocked.Add(ref reportedSize, currentFileSize);
-                var reportCount     = Interlocked.Increment(ref reportedCount);
-                ReportVerifyProgress(reportIndex, reportCount, reportCurrent, reportMax);
+                var reportCurrent = Interlocked.Add(ref reportedSize, GetReportSize(sizes[targetIndex]));
+                var reportCount = Interlocked.Increment(ref reportedCount);
+                ReportVerifyProgress(targetIndex, reportCount, reportCurrent, reportMax);
             }
         );
     }
 
     public void QueueInstall(int targetIndex, string filePath)
     {
-        if (targetIndex < 0 || targetIndex >= targets.Count)
+        if ((uint)targetIndex >= (uint)relativePaths.Count)
             throw new ArgumentOutOfRangeException(nameof(targetIndex));
-        Log.Information("Queueing download for {RelativePath}", targets[targetIndex].RelativePath);
+
+        Log.Information("Queueing download for {RelativePath}", relativePaths[targetIndex]);
         queuedDownloads[targetIndex] = filePath;
     }
 
@@ -131,74 +133,70 @@ public class SdoFileDownloadInstaller : IDisposable
         var queue = queuedDownloads.ToArray();
         if (queue.Length == 0)
             return;
-        long totalDownloadedBytes = 0;
-        long totalContentBytes    = 0;
 
-        var options = new ParallelOptions
+        long totalContentBytes = 0;
+        long totalDownloadedBytes = 0;
+        var parallelOptions = new ParallelOptions
         {
             MaxDegreeOfParallelism = Math.Max(1, concurrentCount),
-            CancellationToken      = cancellationToken
+            CancellationToken = cancellationToken
         };
 
         await Parallel.ForEachAsync
         (
             queue,
-            options,
+            parallelOptions,
             async (item, ct) =>
             {
-                var target         = targets[item.Key];
-                var targetFilePath = GetLocalPath(gameRootPath, target.RelativePath);
-                var targetDirPath  = Path.GetDirectoryName(targetFilePath) ?? throw new InvalidOperationException("Invalid target path");
-
+                var targetIndex = item.Key;
+                var relativePath = relativePaths[targetIndex];
+                var targetFilePath = GetLocalPath(gameRootPath, relativePath);
+                var targetDirPath = Path.GetDirectoryName(targetFilePath) ?? throw new InvalidOperationException("Invalid target path");
                 Directory.CreateDirectory(targetDirPath);
-                ReportInstallProgress(item.Key, 0, 0, InstallTaskState.Connecting);
+
+                ReportInstallProgress(targetIndex, 0, 0, InstallTaskState.Connecting);
                 var downloadUrl = GetDownloadUrl(item.Value);
-                Log.Information($"Downloading {target.RelativePath} from {downloadUrl}");
+                Log.Information("Downloading {RelativePath} from {DownloadUrl}", relativePath, downloadUrl);
+
                 using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
                 response.EnsureSuccessStatusCode();
 
-                var totalBytes               = response.Content.Headers.ContentLength ?? 0;
-                var currentTotalContentBytes = Interlocked.Add(ref totalContentBytes, totalBytes);
-                ReportInstallProgress(item.Key, Interlocked.Read(ref totalDownloadedBytes), currentTotalContentBytes, InstallTaskState.Downloading);
+                var contentLength = response.Content.Headers.ContentLength ?? 0;
+                ReportInstallProgress(targetIndex, Interlocked.Read(ref totalDownloadedBytes), Interlocked.Add(ref totalContentBytes, contentLength), InstallTaskState.Downloading);
 
-                var tempPath = targetFilePath + ".tmp";
+                var tempPath = string.Concat(targetFilePath, TEMP_EXTENSION);
                 var complete = false;
 
                 try
                 {
-                    await using (var source = await response.Content.ReadAsStreamAsync(ct))
-                    await using (var sink = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                    using (var buffer = ReusableByteBufferManager.GetBuffer())
-                    {
-                        while (true)
-                        {
-                            var read = await source.ReadAsync(buffer.Buffer, 0, buffer.Buffer.Length, ct);
-                            if (read <= 0)
-                                break;
+                    await using var source = await response.Content.ReadAsStreamAsync(ct);
+                    await using var sink = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    using var buffer = ReusableByteBufferManager.GetBuffer();
 
-                            await sink.WriteAsync(buffer.Buffer, 0, read, ct);
-                            var currentTotalDownloadedBytes = Interlocked.Add(ref totalDownloadedBytes, read);
-                            ReportInstallProgress(item.Key, currentTotalDownloadedBytes, Interlocked.Read(ref totalContentBytes), InstallTaskState.Downloading);
-                        }
+                    while (true)
+                    {
+                        var read = await source.ReadAsync(buffer.Buffer.AsMemory(0, buffer.Buffer.Length), ct);
+                        if (read == 0)
+                            break;
+
+                        await sink.WriteAsync(buffer.Buffer.AsMemory(0, read), ct);
+                        ReportInstallProgress(targetIndex, Interlocked.Add(ref totalDownloadedBytes, read), Interlocked.Read(ref totalContentBytes), InstallTaskState.Downloading);
                     }
 
-                    if (File.Exists(targetFilePath))
-                        File.Delete(targetFilePath);
-
-                    File.Move(tempPath, targetFilePath);
-                    complete        = true;
-                    target.IsBroken = false;
-                    ReportInstallProgress(item.Key, Interlocked.Read(ref totalDownloadedBytes), Interlocked.Read(ref totalContentBytes), InstallTaskState.Complete);
+                    File.Move(tempPath, targetFilePath, true);
+                    complete = true;
+                    brokenStates[targetIndex] = false;
+                    ReportInstallProgress(targetIndex, Interlocked.Read(ref totalDownloadedBytes), Interlocked.Read(ref totalContentBytes), InstallTaskState.Complete);
                 }
                 finally
                 {
-                    if (!complete && File.Exists(tempPath))
+                    if (!complete)
                     {
                         try
                         {
                             File.Delete(tempPath);
                         }
-                        catch (Exception ex)
+                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                         {
                             Log.Warning(ex, "Failed to delete temp file: {Path}", tempPath);
                         }
@@ -210,68 +208,69 @@ public class SdoFileDownloadInstaller : IDisposable
         queuedDownloads.Clear();
     }
 
-    public List<string> GetBrokenFiles() =>
-        targets
-            .Where(x => x.IsBroken)
-            .Select(x => x.RelativePath)
-            .ToList();
+    public List<string> GetBrokenFiles()
+    {
+        var brokenFiles = new List<string>();
+        for (var index = 0; index < brokenStates.Count; index++)
+        {
+            if (brokenStates[index])
+                brokenFiles.Add(relativePaths[index]);
+        }
+
+        return brokenFiles;
+    }
+
+    private static long GetReportSize(ulong size) =>
+        size > long.MaxValue ? long.MaxValue : (long)size;
 
     private static string GetLocalPath(string gameRootPath, string relativePath) =>
         Path.Combine(gameRootPath, relativePath.TrimStart('\\'));
 
     private void ReportVerifyProgress(int index, int count, long progress, long max)
     {
-        if (!ShouldReportProgress())
-            return;
-
-        OnVerifyProgress?.Invoke(index, count, progress, max);
+        if (ShouldReportProgress())
+            OnVerifyProgress?.Invoke(index, count, progress, max);
     }
 
     private void ReportInstallProgress(int index, long progress, long max, InstallTaskState state)
     {
-        if (state is InstallTaskState.Downloading && !ShouldReportProgress())
-            return;
-
-        OnInstallProgress?.Invoke(index, progress, max, state);
+        if (state is not InstallTaskState.Downloading || ShouldReportProgress())
+            OnInstallProgress?.Invoke(index, progress, max, state);
     }
 
     private bool ShouldReportProgress()
     {
-        var nowTicks = DateTime.UtcNow.Ticks;
+        var now = Stopwatch.GetTimestamp();
+        var interval = Stopwatch.Frequency * Math.Max(1, ProgressReportInterval) / 1000;
+        var previous = Interlocked.Read(ref lastProgressTimestamp);
 
-        lock (progressSync)
-        {
-            var minIntervalTicks = TimeSpan.FromMilliseconds(Math.Max(1, ProgressReportInterval)).Ticks;
-            if (nowTicks - lastProgressTicks < minIntervalTicks)
-                return false;
+        return now - previous >= interval && Interlocked.CompareExchange(ref lastProgressTimestamp, now, previous) == previous;
+    }
 
-            lastProgressTicks = nowTicks;
-            return true;
-        }
+    private void EnsureInitialized()
+    {
+        if (relativePaths.Count == 0)
+            throw new InvalidOperationException("Installer is not initialized.");
     }
 
     private string GetFileKey(string filePath)
     {
         var inputBytes = Encoding.Unicode.GetBytes($"{SdoInfos.APP_ID}_{dataVersion}_{filePath}");
-        var hashBytes  = MD5.HashData(inputBytes);
-        return Convert.ToHexString(hashBytes).ToUpper();
+        var hashBytes = MD5.HashData(inputBytes);
+        return Convert.ToHexString(hashBytes);
     }
 
     private Uri GetDownloadUrl(string filePath)
     {
         filePath = filePath.Replace(Path.DirectorySeparatorChar, '\\').TrimStart('\\');
-        var pathParts    = filePath.Split('\\');
-        var path         = string.Join("/", pathParts.Take(pathParts.Length - 1));
-        var uri          = new Uri($"{downloadBaseUrl}/{path}/{GetFileKey(filePath)}");
-        var uriPath      = uri.AbsolutePath;
-        var timeStamp    = DateTimeOffset.Now.ToUnixTimeSeconds();
-        var timeStampHex = timeStamp.ToString("x").ToLower();
+        var pathEnd = filePath.LastIndexOf('\\');
+        var directoryPath = pathEnd < 0 ? string.Empty : filePath[..pathEnd].Replace('\\', '/');
+        var uri = new Uri($"{downloadBaseUrl}/{directoryPath}/{GetFileKey(filePath)}");
+        var timeStampHex = DateTimeOffset.Now.ToUnixTimeSeconds().ToString("x");
+        var hashBytes = MD5.HashData(Encoding.UTF8.GetBytes($"{SdoInfos.CDN_KEY}{uri.AbsolutePath}{timeStampHex}"));
+        var cdnKey = Convert.ToHexStringLower(hashBytes);
 
-        var inputBytes = Encoding.UTF8.GetBytes($"{SdoInfos.CDN_KEY}{uriPath}{timeStampHex}");
-        var hashBytes  = MD5.HashData(inputBytes);
-        var cdnKey     = Convert.ToHexStringLower(hashBytes);
-        return new Uri($"{uri.Scheme}://{uri.Host}/{cdnKey}/{timeStampHex}{uriPath}");
-
+        return new($"{uri.Scheme}://{uri.Host}/{cdnKey}/{timeStampHex}{uri.AbsolutePath}");
     }
 
     public enum InstallTaskState
@@ -287,13 +286,15 @@ public class SdoFileDownloadInstaller : IDisposable
     public delegate void OnVerifyProgressDelegate(int index, int count, long progress, long max);
 
     public event OnInstallProgressDelegate? OnInstallProgress;
-    public event OnVerifyProgressDelegate?  OnVerifyProgress;
 
-    private class TargetFile
-    {
-        public string RelativePath { get; set; } = string.Empty;
-        public string Hash         { get; set; } = string.Empty;
-        public ulong  Size         { get; set; }
-        public bool   IsBroken     { get; set; }
-    }
+    public event OnVerifyProgressDelegate? OnVerifyProgress;
+
+    #region Constants
+
+    private const int DEFAULT_PROGRESS_REPORT_INTERVAL = 250;
+    private const int FILE_STREAM_BUFFER_SIZE = 131072;
+    private const string TEMP_EXTENSION = ".tmp";
+    private const string USER_AGENT = "FF14v3autopatch";
+
+    #endregion
 }
