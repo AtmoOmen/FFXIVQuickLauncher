@@ -42,11 +42,9 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         else
         {
             workerProcess = null;
-            Task.Run(() => new WorkerSubprocessBody(Process.GetCurrentProcess().Id, rpcChannelName).RunToDisposeSelf());
+            Task.Run(() => new WorkerSubprocessBody(Environment.ProcessId, rpcChannelName).RunToDisposeSelf());
         }
     }
-
-    #region Disposal
 
     public void Dispose()
     {
@@ -81,11 +79,9 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         isDisposed = true;
     }
 
-    #endregion
-
     public async Task ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity, TimeSpan progressReportInterval = default)
     {
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0;; attempt++)
         {
             var writer = GetRequestCreator(WorkerInboundOpcode.Construct);
             WriteIntegrityCheckResult(writer, remoteIntegrity);
@@ -178,7 +174,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 
     private static List<string> ReadStringList(BinaryReader reader)
     {
-        List<string> result = new();
+        List<string> result = [];
 
         for (int i = 0, count = reader.ReadInt32(); i < count; i++)
             result.Add(reader.ReadString());
@@ -270,11 +266,11 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         if (isDisposed)
             throw new OperationCanceledException();
 
-        var logPath = Path.Combine(XIVLauncher.Common.Constant.Paths.RoamingPath, "patcher.log");
+        var logPath = Path.Combine(Constant.Paths.RoamingPath, "patcher.log");
         if (!response.Success)
         {
-            if (workerProcess is { HasExited: true } exitedWorkerProcess)
-                throw new IOException($"远端修复进程在响应前退出，退出码 {exitedWorkerProcess.ExitCode}，可查看日志: {logPath}");
+            if (workerProcess is { HasExited: true })
+                throw new IOException($"远端修复进程在响应前退出，退出码 {workerProcess.ExitCode}，可查看日志: {logPath}");
 
             throw new TimeoutException($"远端修复进程未在 {timeoutMs} ms 内返回有效响应，可查看日志: {logPath}");
         }

@@ -22,5 +22,6 @@ public interface ISdoFileDownloadInstaller : IDisposable, IInstaller
     Task WriteAllText(string filePath, string content, CancellationToken cancellationToken = default);
 
     event SdoFileDownloadInstaller.OnInstallProgressDelegate? OnInstallProgress;
+    
     event SdoFileDownloadInstaller.OnVerifyProgressDelegate?  OnVerifyProgress;
 }

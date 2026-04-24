@@ -16,8 +16,6 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
     private SdoFileDownloadInstaller? instance;
     private string?                   gameRootPath;
 
-    #region Disposal
-
     public void Dispose()
     {
         if (isDisposed)
@@ -27,8 +25,6 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
         instance   = null;
         isDisposed = true;
     }
-
-    #endregion
 
     public Task ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity, TimeSpan progressReportInterval = default)
     {
@@ -72,26 +68,21 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
         await instance.Install(gameRootPath, concurrentCount, cancellationToken);
     }
 
-    public Task<List<string>> GetBrokenFiles(CancellationToken cancellationToken = default)
-    {
-        if (instance is null)
-            throw new InvalidOperationException("Installer is not initialized.");
-
-        return Task.FromResult(instance.GetBrokenFiles());
-    }
+    public Task<List<string>> GetBrokenFiles(CancellationToken cancellationToken = default) =>
+        instance is null ? throw new InvalidOperationException("Installer is not initialized.") : Task.FromResult(instance.GetBrokenFiles());
 
     public Task MoveFile(string sourceFile, string targetFile, CancellationToken cancellationToken = default)
     {
         var sourceParentDir = new DirectoryInfo(Path.GetDirectoryName(sourceFile) ?? throw new InvalidOperationException());
         var targetParentDir = new DirectoryInfo
-            (Path.GetDirectoryName(targetFile.EndsWith("/", StringComparison.Ordinal) ? targetFile.Substring(0, targetFile.Length - 1) : targetFile) ?? throw new InvalidOperationException());
+            (Path.GetDirectoryName(targetFile.EndsWith('/') ? targetFile[..^1] : targetFile) ?? throw new InvalidOperationException());
         targetParentDir.Create();
         if (File.Exists(sourceFile))
             File.Move(sourceFile, targetFile);
         else
             Directory.Move(sourceFile, targetFile);
 
-        if (!sourceParentDir.GetFileSystemInfos().Any())
+        if (sourceParentDir.GetFileSystemInfos().Length == 0)
             sourceParentDir.Delete(false);
 
         return Task.CompletedTask;
