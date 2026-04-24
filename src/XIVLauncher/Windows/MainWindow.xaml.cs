@@ -325,8 +325,11 @@ public partial class MainWindow
         if (!Model.IsAccountSwitcherVisible)
             return;
 
-        if (e.OriginalSource is DependencyObject depObj && !AccountSwitcherButton.IsAncestorOf(depObj) && !AccountSwitcherPopup.IsAncestorOf(depObj))
-            HideAccountSwitcherPopup(true);
+        if (IsAccountSwitcherContextMenuOpen())
+            return;
+
+        if (e.OriginalSource is DependencyObject depObj && !AccountSwitcherButton.IsAncestorOf(depObj) && !AccountSwitcherAnimationLayer.IsAncestorOf(depObj))
+            HideAccountSwitcherPopup();
     }
 
     protected override void OnLocationChanged(EventArgs e)
@@ -343,14 +346,6 @@ public partial class MainWindow
             HideAccountSwitcherPopup(false);
 
         base.OnStateChanged(e);
-    }
-
-    protected override void OnDeactivated(EventArgs e)
-    {
-        base.OnDeactivated(e);
-
-        if (AccountListView.ContextMenu?.IsOpen != true)
-            HideAccountSwitcherPopup(false);
     }
 
     private void HideMainWindow()
@@ -373,6 +368,9 @@ public partial class MainWindow
         return null;
     }
 
+    private bool IsAccountSwitcherContextMenuOpen() =>
+        AccountListView.ContextMenu?.IsOpen == true;
+
     private void AccountListView_OnMouseUp(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left)
@@ -384,7 +382,7 @@ public partial class MainWindow
             return;
 
         SwitchAccount(selectedAccount, true);
-        HideAccountSwitcherPopup(true);
+        HideAccountSwitcherPopup();
     }
 
     private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -393,8 +391,7 @@ public partial class MainWindow
         accountSwitcherDragStartPoint      = e.GetPosition(null);
         draggedAccountSwitcherItem         = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
 
-        if (draggedAccountSwitcherItem != null)
-            draggedAccountSwitcherItem.IsSelected = true;
+        draggedAccountSwitcherItem?.IsSelected = true;
     }
 
     private void AccountListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
