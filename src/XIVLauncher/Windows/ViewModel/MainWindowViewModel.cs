@@ -1615,7 +1615,7 @@ public class MainWindowViewModel : INotifyPropertyChanged
         StartLogin(loginPage.LoginTypeOption.LoginType, loginPage.Username, loginPage.Password, loginPage.IsFastLogin, loginPage.IsReadWegameInfo, action);
     }
 
-    private async void HandleGameClientFileTask(GameClientFileTaskKind kind)
+    private async Task HandleGameClientFileTask(GameClientFileTaskKind kind)
     {
         if (IsLoggingIn)
             return;

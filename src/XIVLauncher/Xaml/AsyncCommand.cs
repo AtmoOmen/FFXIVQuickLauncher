@@ -42,6 +42,9 @@ public class AsyncCommand
         }
     }
 
+    public void RaiseCanExecuteChanged() =>
+        canExecuteChanged?.Invoke(this, EventArgs.Empty);
+
     public event EventHandler? CanExecuteChanged
     {
         add => canExecuteChanged += value;

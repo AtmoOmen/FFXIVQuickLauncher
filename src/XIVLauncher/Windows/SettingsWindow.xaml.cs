@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.ViewModel;
 
@@ -31,10 +32,25 @@ public partial class SettingsWindow
 
     private async void AcceptButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!await ViewModel.SaveToSettingsAsync())
-            return;
+        try
+        {
+            if (!await ViewModel.SaveToSettingsAsync())
+                return;
 
-        Close();
+            Close();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "保存设置失败");
+            CustomMessageBox.Show
+            (
+                $"保存设置失败：{ex.Message}",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                parentWindow: this
+            );
+        }
     }
 
     private void AddonListView_OnMouseUp(object sender, MouseButtonEventArgs e)

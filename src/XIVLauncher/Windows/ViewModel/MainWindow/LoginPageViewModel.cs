@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Serilog;
@@ -16,32 +17,32 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 {
     private readonly Func<bool>                                   isBusyFunc;
     private readonly Action<LoginPageViewModel, LoginAfterAction> requestLoginAction;
-    private readonly Action<GameClientFileTaskKind>               requestGameClientFileTaskAction;
+    private readonly Func<GameClientFileTaskKind, Task>           requestGameClientFileTaskAction;
     private readonly Action                                       requestCancelLoginAction;
     private readonly Action<LoginPageViewModel>                   requestRefreshQrCodeAction;
     private readonly Action                                       requestShowInjectPageAction;
     private readonly Action                                       requestBackToMainPageAction;
     private readonly Action                                       requestFakeStartAction;
-    
-    private readonly SyncCommand startLoginCommand;
-    private readonly SyncCommand loginNoStartCommand;
-    private readonly SyncCommand loginNoDalamudCommand;
-    private readonly SyncCommand loginNoPluginsCommand;
-    private readonly SyncCommand loginNoThirdCommand;
-    private readonly SyncCommand loginRepairCommand;
-    private readonly SyncCommand runIntegrityCheckCommand;
-    private readonly SyncCommand loginCancelCommand;
-    private readonly SyncCommand loginForceQRCommand;
-    private readonly SyncCommand refreshQrCodeCommand;
-    private readonly SyncCommand injectModeSwitchCommand;
-    private readonly SyncCommand backToMainPageCommand;
-    private readonly SyncCommand fakeStartCommand;
+
+    private readonly SyncCommand  startLoginCommand;
+    private readonly AsyncCommand loginNoStartCommand;
+    private readonly SyncCommand  loginNoDalamudCommand;
+    private readonly SyncCommand  loginNoPluginsCommand;
+    private readonly SyncCommand  loginNoThirdCommand;
+    private readonly AsyncCommand loginRepairCommand;
+    private readonly AsyncCommand runIntegrityCheckCommand;
+    private readonly SyncCommand  loginCancelCommand;
+    private readonly SyncCommand  loginForceQRCommand;
+    private readonly SyncCommand  refreshQrCodeCommand;
+    private readonly SyncCommand  injectModeSwitchCommand;
+    private readonly SyncCommand  backToMainPageCommand;
+    private readonly SyncCommand  fakeStartCommand;
 
     public LoginPageViewModel
     (
         Func<bool>                                   isBusyFunc,
         Action<LoginPageViewModel, LoginAfterAction> requestLoginAction,
-        Action<GameClientFileTaskKind>               requestGameClientFileTaskAction,
+        Func<GameClientFileTaskKind, Task>           requestGameClientFileTaskAction,
         Action                                       requestCancelLoginAction,
         Action<LoginPageViewModel>                   requestRefreshQrCodeAction,
         Action                                       requestShowInjectPageAction,
@@ -49,33 +50,33 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
         Action                                       requestFakeStartAction
     )
     {
-        this.isBusyFunc                  = isBusyFunc;
-        this.requestLoginAction          = requestLoginAction;
+        this.isBusyFunc                      = isBusyFunc;
+        this.requestLoginAction              = requestLoginAction;
         this.requestGameClientFileTaskAction = requestGameClientFileTaskAction;
-        this.requestCancelLoginAction    = requestCancelLoginAction;
-        this.requestRefreshQrCodeAction  = requestRefreshQrCodeAction;
-        this.requestShowInjectPageAction = requestShowInjectPageAction;
-        this.requestBackToMainPageAction = requestBackToMainPageAction;
-        this.requestFakeStartAction      = requestFakeStartAction;
+        this.requestCancelLoginAction        = requestCancelLoginAction;
+        this.requestRefreshQrCodeAction      = requestRefreshQrCodeAction;
+        this.requestShowInjectPageAction     = requestShowInjectPageAction;
+        this.requestBackToMainPageAction     = requestBackToMainPageAction;
+        this.requestFakeStartAction          = requestFakeStartAction;
 
         LoginTypeOptions = [.. LoginTypeOption.Get()];
 
         loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == App.Settings.SelectedLoginType)
                           ?? LoginTypeOptions.First(x => x.LoginType       == LoginType.Slide);
 
-        startLoginCommand       = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start),               () => CanStartLogin);
-        loginNoStartCommand     = new SyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Update), () => !this.isBusyFunc());
-        loginNoDalamudCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutDalamud), () => !this.isBusyFunc());
-        loginNoPluginsCommand   = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutPlugins), () => !this.isBusyFunc());
-        loginNoThirdCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutThird),   () => !this.isBusyFunc());
-        loginRepairCommand      = new SyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Repair), () => !this.isBusyFunc());
-        runIntegrityCheckCommand = new SyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.IntegrityCheck), () => !this.isBusyFunc());
-        loginForceQRCommand     = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.ForceQR),             () => !this.isBusyFunc());
-        loginCancelCommand      = new SyncCommand(_ => this.requestCancelLoginAction());
-        refreshQrCodeCommand    = new SyncCommand(_ => this.requestRefreshQrCodeAction(this), () => !this.isBusyFunc() && IsQrCodeExpired);
-        injectModeSwitchCommand = new SyncCommand(_ => this.requestShowInjectPageAction(),    () => !this.isBusyFunc());
-        backToMainPageCommand   = new SyncCommand(_ => this.requestBackToMainPageAction());
-        fakeStartCommand        = new SyncCommand(_ => this.requestFakeStartAction(), () => !this.isBusyFunc());
+        startLoginCommand        = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start), () => CanStartLogin);
+        loginNoStartCommand      = new AsyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Update), () => !this.isBusyFunc());
+        loginNoDalamudCommand    = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutDalamud), () => !this.isBusyFunc());
+        loginNoPluginsCommand    = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutPlugins), () => !this.isBusyFunc());
+        loginNoThirdCommand      = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutThird),   () => !this.isBusyFunc());
+        loginRepairCommand       = new AsyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Repair),         () => !this.isBusyFunc());
+        runIntegrityCheckCommand = new AsyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.IntegrityCheck), () => !this.isBusyFunc());
+        loginForceQRCommand      = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.ForceQR), () => !this.isBusyFunc());
+        loginCancelCommand       = new SyncCommand(_ => this.requestCancelLoginAction());
+        refreshQrCodeCommand     = new SyncCommand(_ => this.requestRefreshQrCodeAction(this), () => !this.isBusyFunc() && IsQrCodeExpired);
+        injectModeSwitchCommand  = new SyncCommand(_ => this.requestShowInjectPageAction(),    () => !this.isBusyFunc());
+        backToMainPageCommand    = new SyncCommand(_ => this.requestBackToMainPageAction());
+        fakeStartCommand         = new SyncCommand(_ => this.requestFakeStartAction(), () => !this.isBusyFunc());
 
         ApplyLoginType(loginTypeOption.LoginType);
     }

@@ -81,8 +81,24 @@ public partial class CaptchaInputWindow : Window
     private void ConfirmButton_OnClick(object sender, RoutedEventArgs e) =>
         Confirm();
 
-    private async void RefreshButton_OnClick(object sender, RoutedEventArgs e) =>
-        await RefreshCaptchaAsync();
+    private async void RefreshButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await RefreshCaptchaAsync();
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Show
+            (
+                $"刷新验证码失败：{ex.Message}",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                parentWindow: this
+            );
+        }
+    }
 
     private void CancelButton_OnClick(object sender, RoutedEventArgs e) =>
         Cancel();
