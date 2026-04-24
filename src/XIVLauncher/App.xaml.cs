@@ -61,7 +61,7 @@ public partial class App
     {
         try
         {
-            AppDomain.CurrentDomain.UnhandledException += OnEarlyInitException;
+            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             TaskScheduler.UnobservedTaskException      += OnUnobservedTaskException;
         }
         catch
@@ -120,28 +120,30 @@ public partial class App
     {
         if (e.Observed) return;
 
-        OnEarlyInitException(sender, new UnhandledExceptionEventArgs(e.Exception, true));
+        OnUnhandledException(sender, new UnhandledExceptionEventArgs(e.Exception, true));
     }
 
-    private void OnEarlyInitException(object? sender, UnhandledExceptionEventArgs e)
+    private void OnUnhandledException(object? sender, UnhandledExceptionEventArgs e)
     {
         Dispatcher.Invoke
         (() =>
             {
-                Log.Error((Exception)e.ExceptionObject, "未处理的异常");
+                var exception = (Exception)e.ExceptionObject;
+                
+                Log.Error(exception, "未处理的异常");
 
                 if (isUseFullExceptionHandler)
                 {
                     CustomMessageBox.Builder
-                                    .NewFrom((Exception)e.ExceptionObject, "未处理", CustomMessageBox.ExitOnCloseModes.ExitOnClose)
-                                    .WithAppendText("\n\n初始化早期阶段发生错误, 请反馈此问题\n\n" + e.ExceptionObject)
+                                    .NewFrom(exception, "未处理", CustomMessageBox.ExitOnCloseModes.ExitOnClose)
+                                    .WithAppendText($"\n\n发生未处理的异常\n\n{exception.StackTrace}")
                                     .Show();
                 }
                 else
                 {
                     MessageBox.Show
                     (
-                        "初始化早期阶段发生错误, 请反馈此问题\n\n" + e.ExceptionObject,
+                        $"发生未处理的异常\n\n{exception.StackTrace}",
                         "XIVLauncher 错误",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error

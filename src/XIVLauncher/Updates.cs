@@ -69,7 +69,7 @@ internal class Updates
                     {
                         beforeShowChangelog?.Invoke();
                         changelogWindow.UpdateVersion(newRelease.TargetFullRelease.Version.ToString());
-                        changelogWindow.ChangeLogText.Text = changelog;
+                        changelogWindow.ChangeLogText.Markdown = changelog;
                         changelogWindow.ShowDialog();
                     }
                 );

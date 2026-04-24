@@ -4,11 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:mdxaml="clr-namespace:MdXaml;assembly=MdXaml"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
+    xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     mc:Ignorable="d"
     Title="更新日志"
-    Width="600"
+    Width="620"
     WindowStartupLocation="CenterScreen"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
@@ -17,7 +19,7 @@
     Background="{DynamicResource MaterialDesign.Brush.Background}"
     TextElement.FontWeight="Regular"
     TextElement.FontSize="14"
-    Topmost="True">
+    Topmost="True" d:DataContext="{d:DesignInstance viewModel:ChangeLogWindowViewModel}">
     
     <Window.Resources>
         <ResourceDictionary>
@@ -42,15 +44,26 @@
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
                     <materialDesign:PackIcon Kind="Globe" Width="32" Height="32" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="更新日志" VerticalAlignment="Center" FontWeight="SemiBold" />
+                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" 
+                               Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                               Text="更新日志" 
+                               VerticalAlignment="Center" 
+                               FontWeight="SemiBold" />
                 </StackPanel>
                 
-                <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto" Margin="0,0,0,24" Padding="0,0,16,0">
-                    <StackPanel>
-                        <TextBlock x:Name="UpdateNotice" TextWrapping="Wrap" Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="{Binding UpdateNotice}" Margin="0,0,0,16" />
-                        <TextBlock x:Name="ChangeLogText" TextWrapping="Wrap" Text="{Binding ChangeLogText}" />
-                    </StackPanel>
-                </ScrollViewer>
+                <Grid MaxHeight="400" Margin="0,0,0,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="UpdateNotice" TextWrapping="Wrap" Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="{Binding UpdateNotice}" Margin="0,0,0,16" />
+                    <mdxaml:MarkdownScrollViewer Grid.Row="1" 
+                                                 x:Name="ChangeLogText" 
+                                                 Markdown="{Binding ChangeLogText}" 
+                                                 MarkdownStyle="{StaticResource ChangeLogMarkdownStyle}" 
+                                                 ClickAction="SafetyOpenBrowser" 
+                                                 VerticalScrollBarVisibility="Hidden" />
+                </Grid>
 
                 <Grid>
                     <Grid.ColumnDefinitions>
