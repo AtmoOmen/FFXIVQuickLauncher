@@ -522,8 +522,6 @@ public class DalamudUpdater
                     Log.Error("[DUPDATE] 完整性检查失败: {0} ({1} - {2})", file, hash.Value, hashed);
                     return false;
                 }
-
-                Log.Verbose("[DUPDATE] 完整性检查通过: {0} ({1})", file, hashed);
             }
         }
         catch (Exception ex)
