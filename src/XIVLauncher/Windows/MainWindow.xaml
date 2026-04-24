@@ -511,6 +511,7 @@
                                                               SelectionChanged="LoginTypeSelection_OnSelectionChanged"
                                                               SelectedItem="{Binding LoginPage.LoginTypeOption}"
                                                               SelectedValuePath="LoginType"
+                                                              Tag="SelectionBox"
                                                               Margin="0,0,0,8">
                                                         <ComboBox.Resources>
                                                             <CollectionViewSource x:Key="LoginTypeOptionsView"
@@ -568,8 +569,8 @@
                                                                                         Value="0,0,0,0" />
                                                                                     <Style.Triggers>
                                                                                         <DataTrigger
-                                                                                            Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}, Path=IsEnabled, FallbackValue=False}"
-                                                                                            Value="True">
+                                                                                            Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=TemplatedParent.Tag}"
+                                                                                            Value="{x:Null}">
                                                                                             <Setter
                                                                                                 Property="Visibility"
                                                                                                 Value="Visible" />
@@ -593,8 +594,8 @@
                                                                                     Value="Collapsed" />
                                                                                 <Style.Triggers>
                                                                                     <DataTrigger
-                                                                                        Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}, Path=Tag, FallbackValue=SHOW}"
-                                                                                        Value="SHOW">
+                                                                                        Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=TemplatedParent.Tag}"
+                                                                                        Value="SelectionBox">
                                                                                         <Setter Property="Visibility"
                                                                                             Value="Visible" />
                                                                                     </DataTrigger>
