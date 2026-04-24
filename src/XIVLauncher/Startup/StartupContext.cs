@@ -8,12 +8,11 @@ namespace XIVLauncher.Startup;
 
 public class StartupContext
 {
-    public LauncherSettingsV3  Settings              { get; set; } = null!;
-    public AccountManager      AccountManager        { get; set; } = null!;
-    public DalamudUpdater      DalamudUpdater        { get; set; } = null!;
-    public Dispatcher          Dispatcher            { get; set; } = null!;
-    public bool                IsUpdateFinished      { get; set; }
-    public bool                IsRestartingForUpdate { get; set; }
-    public bool                IsDisableAutologin    { get; set; }
-    public CredTypeApplyResult? CredTypeApplyResult  { get; set; }
+    public LauncherSettingsV3   Settings              { get; set; } = null!;
+    public AccountManager       AccountManager        { get; set; } = null!;
+    public DalamudUpdater       DalamudUpdater        { get; set; } = null!;
+    public Dispatcher           Dispatcher            { get; set; } = null!;
+    public bool                 IsUpdateFinished      { get; set; }
+    public bool                 IsRestartingForUpdate { get; set; }
+    public CredTypeApplyResult? CredTypeApplyResult   { get; set; }
 }

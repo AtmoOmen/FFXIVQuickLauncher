@@ -44,12 +44,6 @@ public partial class App
         }
     }
 
-    public static bool GlobalIsDisableAutologin
-    {
-        get => StartupContext.IsDisableAutologin;
-        set => StartupContext.IsDisableAutologin = value;
-    }
-
     #endregion
 
     #region 字段

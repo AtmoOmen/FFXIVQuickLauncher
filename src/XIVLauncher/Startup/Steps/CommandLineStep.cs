@@ -14,7 +14,8 @@ public class CommandLineStep : IStartupStep
     public string Name  => "命令行解析";
     public int    Order => 15;
 
-    public  FileInfo?              DalamudRunnerOverride { get; private set; }
+    public FileInfo? DalamudRunnerOverride { get; private set; }
+
     private CommandLineOptions options = new();
 
     public Task ExecuteAsync(StartupContext context, CancellationToken cancellationToken = default)
@@ -41,9 +42,6 @@ public class CommandLineStep : IStartupStep
 
             if (!string.IsNullOrEmpty(cmdLine.RunnerOverride))
                 DalamudRunnerOverride = new FileInfo(cmdLine.RunnerOverride);
-
-            if (cmdLine.NoAutoLogin)
-                context.IsDisableAutologin = true;
 
             if (cmdLine.DoGenerateLocalizables)
                 GenerateLocalizables();

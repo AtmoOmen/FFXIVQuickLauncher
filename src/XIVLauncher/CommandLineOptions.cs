@@ -11,9 +11,6 @@ public class CommandLineOptions
     [Option("roamingPath", Required = false, HelpText = "用于覆盖 XIVLauncher 漫游路径的文件夹路径")]
     public string RoamingPath { get; set; } = null!;
 
-    [Option("noautologin", Required = false, HelpText = "禁用自动登录")]
-    public bool NoAutoLogin { get; set; }
-
     [Option("gen-localizable", Required = false, HelpText = "生成本地化文件")]
     public bool DoGenerateLocalizables { get; set; }
 
