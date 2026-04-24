@@ -26,7 +26,6 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
     private readonly SyncCommand createDesktopShortcutCommand;
     private readonly SyncCommand removeAccountCommand;
     private readonly SyncCommand setProfilePictureCommand;
-    private readonly SyncCommand setNoteCommand;
     private readonly SyncCommand configureDeviceProfileCommand;
 
     public ICommand CreateDesktopShortcutCommand => createDesktopShortcutCommand;
@@ -34,9 +33,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
     public ICommand RemoveAccountCommand => removeAccountCommand;
 
     public ICommand SetProfilePictureCommand => setProfilePictureCommand;
-
-    public ICommand SetNoteCommand => setNoteCommand;
-
+    
     public ICommand ConfigureDeviceProfileCommand => configureDeviceProfileCommand;
 
     public AccountSwitcherEntry? SelectedEntry
@@ -51,7 +48,6 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
             createDesktopShortcutCommand.RaiseCanExecuteChanged();
             removeAccountCommand.RaiseCanExecuteChanged();
             setProfilePictureCommand.RaiseCanExecuteChanged();
-            setNoteCommand.RaiseCanExecuteChanged();
             configureDeviceProfileCommand.RaiseCanExecuteChanged();
         }
     }
@@ -68,7 +64,6 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
             createDesktopShortcutCommand.RaiseCanExecuteChanged();
             removeAccountCommand.RaiseCanExecuteChanged();
             setProfilePictureCommand.RaiseCanExecuteChanged();
-            setNoteCommand.RaiseCanExecuteChanged();
             configureDeviceProfileCommand.RaiseCanExecuteChanged();
         }
     }
@@ -120,7 +115,6 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         createDesktopShortcutCommand  = new SyncCommand(_ => CreateDesktopShortcut(),          () => ActiveEntry != null);
         removeAccountCommand          = new SyncCommand(_ => RemoveSelectedAccount(),          () => ActiveEntry != null);
         setProfilePictureCommand      = new SyncCommand(_ => SetSelectedProfilePicture(),      () => ActiveEntry != null);
-        setNoteCommand                = new SyncCommand(_ => SetSelectedNote(),                () => ActiveEntry != null);
         configureDeviceProfileCommand = new SyncCommand(_ => ConfigureSelectedDeviceProfile(), () => ActiveEntry != null);
         RefreshEntries();
     }
@@ -241,32 +235,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 
         RefreshEntries(SelectedEntry?.Account.ID);
     }
-
-    public void SetSelectedNote()
-    {
-        var selectedEntry = ActiveEntry;
-        if (selectedEntry == null)
-            return;
-
-        var account = FindTrackedAccount(selectedEntry.Account);
-        requestClose?.Invoke();
-        var result = dialogService.ShowTextInput
-        (
-            "请输入账号备注。留空时将显示原始账号名。",
-            "设置备注",
-            account.UserDefinedName ?? string.Empty
-        );
-
-        if (result == null)
-            return;
-
-        var note = result.Trim();
-        account.UserDefinedName = string.IsNullOrWhiteSpace(note) ? null! : note;
-        accountManager.Save();
-
-        RefreshEntries(SelectedEntry?.Account.ID);
-    }
-
+    
     private static bool HasSavedSecret(XIVAccount account) =>
         account.AutoLogin
         || !string.IsNullOrWhiteSpace(account.SdoPassword)
