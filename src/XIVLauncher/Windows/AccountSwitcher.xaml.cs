@@ -33,7 +33,7 @@ public partial class AccountSwitcher
             accountManager,
             new DialogService(parentWindow),
             new ShortcutService(),
-            () => CloseWindow(animate: false)
+            () => CloseWindow(false)
         );
 
         AccountListView.ContextMenu?.DataContext = DataContext;
@@ -64,7 +64,7 @@ public partial class AccountSwitcher
             return;
 
         AccountSwitched?.Invoke(this, selectedAccount);
-        CloseWindow(animate: true);
+        CloseWindow(true);
     }
 
     private void AccountSwitcher_OnDeactivated(object sender, EventArgs e)
@@ -72,17 +72,17 @@ public partial class AccountSwitcher
         if (closing || AccountListView.ContextMenu?.IsOpen == true)
             return;
 
-        CloseWindow(animate: true);
+        CloseWindow(true);
     }
 
     public void RefreshSelectedAccount(string? selectedAccountId) =>
-        ViewModel.RefreshEntries(selectedAccountId, useCurrentAccountSelection: false);
+        ViewModel.RefreshEntries(selectedAccountId, false);
 
     public void HideWindow()
     {
-        BeginAnimation(UIElement.OpacityProperty,       null);
-        BeginAnimation(FrameworkElement.MarginProperty, null);
-        closing     = false;
+        BeginAnimation(OpacityProperty, null);
+        BeginAnimation(MarginProperty,  null);
+        closing = false;
         Hide();
     }
 
@@ -120,18 +120,15 @@ public partial class AccountSwitcher
 
         storyboard.Children.Add(opacityAnimation);
         storyboard.Children.Add(marginAnimation);
-        storyboard.Completed += (_, _) =>
-        {
-            HideWindow();
-        };
+        storyboard.Completed += (_, _) => { HideWindow(); };
         storyboard.Begin();
     }
 
     private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         ViewModel.ContextEntry = null;
-        dragStartPoint = e.GetPosition(null);
-        draggedItem    = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
+        dragStartPoint         = e.GetPosition(null);
+        draggedItem            = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
 
         draggedItem?.IsSelected = true;
     }
@@ -160,7 +157,7 @@ public partial class AccountSwitcher
             || FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not ListViewItem listViewItem
             || listView.ItemContainerGenerator.ItemFromContainer(listViewItem) is not AccountSwitcherEntry accountEntry
             || e.LeftButton != MouseButtonState.Pressed
-            || draggedItem == null)
+            || draggedItem  == null)
             return;
 
         if (Math.Abs(difference.X) <= SystemParameters.MinimumHorizontalDragDistance && Math.Abs(difference.Y) <= SystemParameters.MinimumVerticalDragDistance)
