@@ -38,7 +38,11 @@
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
                     <materialDesign:PackIcon Kind="CogOutline" Width="32" Height="32" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="高级设置" VerticalAlignment="Center" FontWeight="SemiBold" />
+                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" 
+                               Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                               Text="高级设置" 
+                               VerticalAlignment="Center" 
+                               FontWeight="SemiBold" />
                 </StackPanel>
 
                 <materialDesign:Card UniformCornerRadius="8" Margin="0,0,0,24">
