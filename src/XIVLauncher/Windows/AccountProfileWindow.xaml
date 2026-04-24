@@ -16,30 +16,15 @@
     WindowStartupLocation="CenterOwner"
     mc:Ignorable="d" d:DataContext="{d:DesignInstance viewModel:AccountProfileWindowViewModel}">
     
-    <Window.Resources>
-        <Storyboard x:Key="WindowLoadAnim">
-            <DoubleAnimation Storyboard.TargetName="RootGrid" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.35" >
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseOut" />
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="RootTranslate" Storyboard.TargetProperty="Y" From="20" To="0" Duration="0:0:0.35" >
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseOut" />
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
-    </Window.Resources>
-
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
-            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnim}" />
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
         </EventTrigger>
     </Window.Triggers>
 
-    <Grid x:Name="RootGrid" Opacity="0">
+    <Grid x:Name="WindowAnimationLayer" Opacity="0">
         <Grid.RenderTransform>
-            <TranslateTransform x:Name="RootTranslate" Y="20" />
+            <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
         </Grid.RenderTransform>
         
         <Grid Margin="28,24,28,24">
@@ -80,10 +65,10 @@
                     </Ellipse>
                     
                     <!-- 悬浮遮罩背景 -->
-                    <Ellipse x:Name="AvatarOverlay" Fill="#B2000000" Opacity="0" />
+                    <Ellipse x:Name="OverlayLayer" Fill="#B2000000" Opacity="0" />
                     
                     <!-- 悬浮遮罩内容 -->
-                    <StackPanel x:Name="AvatarOverlayText" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0" IsHitTestVisible="False">
+                    <StackPanel x:Name="OverlayContentLayer" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0" IsHitTestVisible="False">
                         <materialDesign:PackIcon Kind="Camera" Width="36" Height="36" Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,8"/>
                         <TextBlock Text="更换图片" Foreground="White" FontSize="13" FontWeight="Medium" HorizontalAlignment="Center" />
                     </StackPanel>
@@ -99,20 +84,10 @@
 
                     <Grid.Triggers>
                         <EventTrigger RoutedEvent="MouseEnter">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="AvatarOverlay" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
-                                    <DoubleAnimation Storyboard.TargetName="AvatarOverlayText" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
-                                </Storyboard>
-                            </BeginStoryboard>
+                            <BeginStoryboard Storyboard="{StaticResource OverlayFadeInAnimation}" />
                         </EventTrigger>
                         <EventTrigger RoutedEvent="MouseLeave">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="AvatarOverlay" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15" />
-                                    <DoubleAnimation Storyboard.TargetName="AvatarOverlayText" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15" />
-                                </Storyboard>
-                            </BeginStoryboard>
+                            <BeginStoryboard Storyboard="{StaticResource OverlayFadeOutAnimation}" />
                         </EventTrigger>
                     </Grid.Triggers>
                 </Grid>

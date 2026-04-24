@@ -20,40 +20,6 @@
         d:DataContext="{d:DesignInstance viewModel:GameClientFileTaskWindowViewModel}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        
-        <Storyboard x:Key="WindowLoadAnimation">
-            <DoubleAnimation Storyboard.TargetName="RootCard" 
-                             Storyboard.TargetProperty="Opacity" 
-                             From="0" To="1" Duration="0:0:0.4">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseOut"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="RootCardTransform" 
-                             Storyboard.TargetProperty="Y" 
-                             From="30" To="0" Duration="0:0:0.4">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseOut"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
-
-        <Storyboard x:Key="WindowCloseAnimation">
-            <DoubleAnimation Storyboard.TargetName="RootCard" 
-                             Storyboard.TargetProperty="Opacity" 
-                             From="1" To="0" Duration="0:0:0.25">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseIn"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="RootCardTransform" 
-                             Storyboard.TargetProperty="Y" 
-                             From="0" To="20" Duration="0:0:0.25">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseIn"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
     </Window.Resources>
 
     <Window.Triggers>
@@ -63,13 +29,13 @@
     </Window.Triggers>
 
     <Grid Margin="16">
-        <materialDesign:Card x:Name="RootCard"
+        <materialDesign:Card x:Name="WindowAnimationLayer"
                              Background="{DynamicResource MaterialDesign.Brush.Background}"
                              UniformCornerRadius="16"
                              Opacity="0"
                              materialDesign:ElevationAssist.Elevation="Dp8">
             <materialDesign:Card.RenderTransform>
-                <TranslateTransform x:Name="RootCardTransform" Y="30"/>
+                <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
             </materialDesign:Card.RenderTransform>
 
             <Grid Margin="24">

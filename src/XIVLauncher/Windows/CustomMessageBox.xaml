@@ -25,43 +25,6 @@
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
 
-    <Window.Resources>
-        <Storyboard x:Key="WindowLoadAnimation">
-            <DoubleAnimation Storyboard.TargetName="RootBorder"
-                             Storyboard.TargetProperty="Opacity"
-                             From="0" To="1" Duration="0:0:0.4">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseOut" />
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="TranslateTransform"
-                             Storyboard.TargetProperty="Y"
-                             From="30" To="0" Duration="0:0:0.4">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseOut" />
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
-
-        <Storyboard x:Key="WindowCloseAnimation">
-            <DoubleAnimation Storyboard.TargetName="RootBorder"
-                             Storyboard.TargetProperty="Opacity"
-                             From="1" To="0" Duration="0:0:0.2">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseIn" />
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-            <DoubleAnimation Storyboard.TargetName="TranslateTransform"
-                             Storyboard.TargetProperty="Y"
-                             From="0" To="30" Duration="0:0:0.2">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseIn" />
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
-
-    </Window.Resources>
-
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
@@ -69,13 +32,13 @@
     </Window.Triggers>
 
     <Grid Margin="16">
-        <materialDesign:Card x:Name="RootBorder"
+        <materialDesign:Card x:Name="WindowAnimationLayer"
                              Background="{DynamicResource MaterialDesign.Brush.Background}"
                              UniformCornerRadius="16"
                              Opacity="0"
                              materialDesign:ElevationAssist.Elevation="Dp8">
             <materialDesign:Card.RenderTransform>
-                <TranslateTransform x:Name="TranslateTransform" Y="30" />
+                <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
             </materialDesign:Card.RenderTransform>
 
             <Grid MouseMove="CustomMessageBox_MouseMove" Margin="24">

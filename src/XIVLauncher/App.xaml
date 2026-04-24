@@ -13,6 +13,8 @@
                 <ResourceDictionary Source="pack://application:,,,/Dragablz;component/Themes/materialdesign.xaml" />
                 
                 <ResourceDictionary Source="Xaml/Components/MaterialDesignOverrides.xaml" />
+                
+                <ResourceDictionary Source="Xaml/Components/WindowAnimations.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

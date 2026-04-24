@@ -24,23 +24,13 @@
     d:DataContext="{d:DesignInstance viewModel:AccountSwitcherViewModel}">
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
-            <BeginStoryboard>
-                <Storyboard>
-                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25">
-                        <DoubleAnimation.EasingFunction>
-                            <QuarticEase EasingMode="EaseOut" />
-                        </DoubleAnimation.EasingFunction>
-                    </DoubleAnimation>
-                    <ThicknessAnimation Storyboard.TargetProperty="Margin" From="0,20,0,-20" To="0,0,0,0" Duration="0:0:0.4">
-                        <ThicknessAnimation.EasingFunction>
-                            <QuarticEase EasingMode="EaseOut" />
-                        </ThicknessAnimation.EasingFunction>
-                    </ThicknessAnimation>
-                </Storyboard>
-            </BeginStoryboard>
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
         </EventTrigger>
     </Window.Triggers>
-    <Grid Margin="16">
+    <Grid x:Name="WindowAnimationLayer" Margin="16" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
+        </Grid.RenderTransform>
         <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" 
                              UniformCornerRadius="12" 
                              materialDesign:ElevationAssist.Elevation="Dp4"
@@ -133,10 +123,10 @@
                                                 BorderThickness="0"
                                                 CornerRadius="10">
                                             <Grid>
-                                                <Border x:Name="HoverBorder" Background="{DynamicResource MaterialDesign.Brush.Primary}" Opacity="0" CornerRadius="10" />
-                                                <Border x:Name="SelectedBorder" Background="{DynamicResource MaterialDesign.Brush.Primary}" Opacity="0" CornerRadius="10" />
+                                                <Border x:Name="HoverLayer" Background="{DynamicResource MaterialDesign.Brush.Primary}" Opacity="0" CornerRadius="10" />
+                                                <Border x:Name="SelectedLayer" Background="{DynamicResource MaterialDesign.Brush.Primary}" Opacity="0" CornerRadius="10" />
                                                 
-                                                <Border x:Name="AccentBar" Width="4" Height="24" Background="{DynamicResource MaterialDesign.Brush.Primary}" 
+                                                <Border x:Name="SelectedAccentLayer" Width="4" Height="24" Background="{DynamicResource MaterialDesign.Brush.Primary}" 
                                                         HorizontalAlignment="Left" VerticalAlignment="Center" CornerRadius="2" Opacity="0" Margin="3,0,0,0" />
                                                         
                                                 <ContentPresenter Margin="{TemplateBinding Padding}"
@@ -147,36 +137,18 @@
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Trigger.EnterActions>
-                                                    <BeginStoryboard>
-                                                        <Storyboard>
-                                                            <DoubleAnimation Storyboard.TargetName="HoverBorder" Storyboard.TargetProperty="Opacity" To="0.08" Duration="0:0:0.15" />
-                                                        </Storyboard>
-                                                    </BeginStoryboard>
+                                                    <BeginStoryboard Storyboard="{StaticResource ListItemHoverInAnimation}" />
                                                 </Trigger.EnterActions>
                                                 <Trigger.ExitActions>
-                                                    <BeginStoryboard>
-                                                        <Storyboard>
-                                                            <DoubleAnimation Storyboard.TargetName="HoverBorder" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
-                                                        </Storyboard>
-                                                    </BeginStoryboard>
+                                                    <BeginStoryboard Storyboard="{StaticResource ListItemHoverOutAnimation}" />
                                                 </Trigger.ExitActions>
                                             </Trigger>
                                             <Trigger Property="IsSelected" Value="True">
                                                 <Trigger.EnterActions>
-                                                    <BeginStoryboard>
-                                                        <Storyboard>
-                                                            <DoubleAnimation Storyboard.TargetName="SelectedBorder" Storyboard.TargetProperty="Opacity" To="0.12" Duration="0:0:0.15" />
-                                                            <DoubleAnimation Storyboard.TargetName="AccentBar" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15" />
-                                                        </Storyboard>
-                                                    </BeginStoryboard>
+                                                    <BeginStoryboard Storyboard="{StaticResource ListItemSelectedInAnimation}" />
                                                 </Trigger.EnterActions>
                                                 <Trigger.ExitActions>
-                                                    <BeginStoryboard>
-                                                        <Storyboard>
-                                                            <DoubleAnimation Storyboard.TargetName="SelectedBorder" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
-                                                            <DoubleAnimation Storyboard.TargetName="AccentBar" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.25" />
-                                                        </Storyboard>
-                                                    </BeginStoryboard>
+                                                    <BeginStoryboard Storyboard="{StaticResource ListItemSelectedOutAnimation}" />
                                                 </Trigger.ExitActions>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
