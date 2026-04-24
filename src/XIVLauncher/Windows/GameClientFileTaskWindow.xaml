@@ -210,6 +210,10 @@
                             IsEnabled="{Binding IsSecondaryButtonEnabled, Mode=OneWay}"
                             Visibility="{Binding IsSecondaryButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Style="{StaticResource MaterialDesignOutlinedButton}"
+                            materialDesign:ButtonAssist.CornerRadius="6"
+                            MinWidth="96"
+                            Height="36"
+                            Padding="16,0"
                             Margin="12,0,0,0" />
                             
                     <Button Content="{Binding CloseButtonText}"
@@ -217,6 +221,10 @@
                             IsEnabled="{Binding IsCloseButtonEnabled, Mode=OneWay}"
                             Visibility="{Binding IsCloseButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Style="{StaticResource MaterialDesignFlatButton}"
+                            materialDesign:ButtonAssist.CornerRadius="6"
+                            MinWidth="96"
+                            Height="36"
+                            Padding="16,0"
                             Margin="12,0,0,0" />
                             
                     <Button Content="{Binding PrimaryButtonText}"
@@ -224,6 +232,10 @@
                             IsEnabled="{Binding IsPrimaryButtonEnabled, Mode=OneWay}"
                             Visibility="{Binding IsPrimaryButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Style="{StaticResource MaterialDesignRaisedButton}"
+                            materialDesign:ButtonAssist.CornerRadius="6"
+                            MinWidth="96"
+                            Height="36"
+                            Padding="16,0"
                             Margin="12,0,0,0" />
                 </StackPanel>
             </Grid>

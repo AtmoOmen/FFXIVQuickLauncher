@@ -548,8 +548,6 @@ public sealed class GameClientFileTaskService
             PrimaryButtonText        = "启动游戏",
             IsPrimaryButtonVisible   = true,
             IsPrimaryButtonEnabled   = true,
-            IsSecondaryButtonVisible = true,
-            IsSecondaryButtonEnabled = true,
             CloseButtonText          = "关闭",
             IsCloseButtonVisible     = true,
             IsCloseButtonEnabled     = true
