@@ -20,7 +20,6 @@ internal class Updates
 {
     public async Task<bool> Run(bool downloadPrerelease, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)
     {
-        return true;
         _ = downloadPrerelease;
 
         try
@@ -121,24 +120,17 @@ internal class Updates
         }
     }
 
-    private static string GetUpdateFailureMessage(Exception exception)
-    {
-        if (exception is TimeoutException timeoutException)
-            return timeoutException.Message;
-
-        if (exception is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue)
+    private static string GetUpdateFailureMessage(Exception exception) =>
+        exception switch
         {
-            return (int)httpRequestException.StatusCode switch
+            TimeoutException timeoutException => timeoutException.Message,
+            HttpRequestException httpRequestException when httpRequestException.StatusCode.HasValue => (int)httpRequestException.StatusCode switch
             {
                 403 or 444 or 522 => $"更新源返回错误状态码 {(int)httpRequestException.StatusCode}。",
                 _                 => $"更新请求失败，状态码：{(int)httpRequestException.StatusCode}。"
-            };
-        }
-
-        if (exception is OperationCanceledException)
-            return "更新请求已被取消。";
-
-        return exception.Message;
-    }
+            },
+            OperationCanceledException => "更新请求已被取消。",
+            _                          => exception.Message
+        };
 }
 #endif
