@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
@@ -14,7 +15,7 @@ public static class HappyEyeballsCallback
 {
     public static async ValueTask<Stream> ConnectCallback(SocketsHttpConnectionContext context, CancellationToken token)
     {
-        var candidates = await DNSResolver.GetSortedAddressesAsync(context.DnsEndPoint.Host, token).ConfigureAwait(false);
+        var candidates = await DNSResolver.GetSortedAddressesAsync(context.DnsEndPoint.Host, context.DnsEndPoint.AddressFamily, token).ConfigureAwait(false);
 
         if (candidates.Count == 0)
             throw new SocketException((int)SocketError.HostNotFound);
@@ -27,7 +28,7 @@ public static class HappyEyeballsCallback
         for (var i = 0; i < candidates.Count; i++)
         {
             var candidate = candidates[i];
-            var attempt   = AttemptConnectionAsync(context.DnsEndPoint.Host, candidate, context.DnsEndPoint.Port, GetAttemptDelay(i), token, winnerCts.Token, attemptCts.Token);
+            var attempt   = AttemptConnectionAsync(context.DnsEndPoint.Host, candidate, context.DnsEndPoint.Port, GetAttemptDelay(candidates, i), token, winnerCts.Token, attemptCts.Token);
 
             ObserveAttemptFailure(attempt, context.DnsEndPoint.Host, candidate);
             attempts.Add(attempt);
@@ -63,7 +64,7 @@ public static class HappyEyeballsCallback
         attemptToken.ThrowIfCancellationRequested();
 
         var stopwatch = Stopwatch.StartNew();
-        var socket    = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+        var socket    = new Socket(candidate.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
 
         try
         {
@@ -101,12 +102,26 @@ public static class HappyEyeballsCallback
         }
     }
 
-    private static TimeSpan GetAttemptDelay(int index)
+    private static TimeSpan GetAttemptDelay(IReadOnlyList<ConnectionCandidate> candidates, int index)
     {
         if (index <= 0)
             return TimeSpan.Zero;
 
-        return TimeSpan.FromMilliseconds(FIRST_FALLBACK_DELAY_MS + (index - 1L) * ADDITIONAL_FALLBACK_DELAY_MS);
+        var candidate = candidates[index];
+        var previous  = candidates[index - 1];
+
+        if (IPAddress.IsLoopback(candidate.Address) || IPAddress.IsLoopback(previous.Address))
+            return TimeSpan.FromMilliseconds(LOCAL_FALLBACK_DELAY_MS + (index - 1L) * LOCAL_ADDITIONAL_FALLBACK_DELAY_MS);
+
+        var delayMs = FIRST_FALLBACK_DELAY_MS + (index - 1L) * ADDITIONAL_FALLBACK_DELAY_MS;
+
+        if (candidate.Source != previous.Source)
+            delayMs -= CROSS_SOURCE_ACCELERATION_MS;
+
+        if (candidate.Address.AddressFamily != previous.Address.AddressFamily)
+            delayMs -= CROSS_FAMILY_ACCELERATION_MS;
+
+        return TimeSpan.FromMilliseconds(Math.Max(MIN_FALLBACK_DELAY_MS, delayMs));
     }
 
     private static void ObserveAttemptFailure(Task<NetworkStream> attempt, string host, ConnectionCandidate candidate)
@@ -175,7 +190,17 @@ public static class HappyEyeballsCallback
 
     private const int ADDITIONAL_FALLBACK_DELAY_MS = 55;
 
+    private const int CROSS_FAMILY_ACCELERATION_MS = 12;
+
+    private const int CROSS_SOURCE_ACCELERATION_MS = 18;
+
     private const int FIRST_FALLBACK_DELAY_MS = 35;
+
+    private const int LOCAL_ADDITIONAL_FALLBACK_DELAY_MS = 8;
+
+    private const int LOCAL_FALLBACK_DELAY_MS = 8;
+
+    private const int MIN_FALLBACK_DELAY_MS = 5;
 
     #endregion
 }

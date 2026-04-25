@@ -17,7 +17,7 @@ public static class XLHttpClientFactory
         (
             new SocketsHttpHandler
             {
-                UseProxy                       = false,
+                UseProxy                       = true,
                 ConnectTimeout                 = connectTimeout,
                 MaxConnectionsPerServer        = maxConnectionsPerServer,
                 EnableMultipleHttp2Connections = true,

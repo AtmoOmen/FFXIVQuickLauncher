@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading;
 
 namespace XIVLauncher.Common.Http;
@@ -10,8 +11,12 @@ internal static class ConnectionTelemetryStore
 {
     private static readonly ConcurrentDictionary<ConnectionTargetKey, EndpointTelemetry> EndpointTelemetryByTarget = [];
 
+    private static readonly ConcurrentDictionary<ConnectionFamilyKey, EndpointTelemetry> FamilyTelemetryByTarget = [];
+
     private static readonly ConcurrentDictionary<string, PreferredTarget> PreferredTargetByHost =
         new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly ConcurrentDictionary<ConnectionSourceKey, EndpointTelemetry> SourceTelemetryByTarget = [];
 
     public static IReadOnlyList<ConnectionCandidate> SortCandidates(string host, IReadOnlyList<ConnectionCandidate> candidates)
     {
@@ -32,6 +37,14 @@ internal static class ConnectionTelemetryStore
         var key       = new ConnectionTargetKey(host, candidate.Address);
         var telemetry = EndpointTelemetryByTarget.GetOrAdd(key, static _ => new EndpointTelemetry());
         telemetry.RecordFailure();
+
+        var sourceKey       = new ConnectionSourceKey(host, candidate.Source);
+        var sourceTelemetry = SourceTelemetryByTarget.GetOrAdd(sourceKey, static _ => new EndpointTelemetry());
+        sourceTelemetry.RecordFailure();
+
+        var familyKey       = new ConnectionFamilyKey(host, candidate.Address.AddressFamily);
+        var familyTelemetry = FamilyTelemetryByTarget.GetOrAdd(familyKey, static _ => new EndpointTelemetry());
+        familyTelemetry.RecordFailure();
     }
 
     public static void ReportSuccess(string host, ConnectionCandidate candidate, TimeSpan latency)
@@ -40,7 +53,16 @@ internal static class ConnectionTelemetryStore
         var telemetry = EndpointTelemetryByTarget.GetOrAdd(key, static _ => new EndpointTelemetry());
 
         telemetry.RecordSuccess(latency);
-        PreferredTargetByHost[host] = new PreferredTarget(candidate.Address, Environment.TickCount64 + HOST_PREFERRED_TTL_MS);
+
+        var sourceKey       = new ConnectionSourceKey(host, candidate.Source);
+        var sourceTelemetry = SourceTelemetryByTarget.GetOrAdd(sourceKey, static _ => new EndpointTelemetry());
+        sourceTelemetry.RecordSuccess(latency);
+
+        var familyKey       = new ConnectionFamilyKey(host, candidate.Address.AddressFamily);
+        var familyTelemetry = FamilyTelemetryByTarget.GetOrAdd(familyKey, static _ => new EndpointTelemetry());
+        familyTelemetry.RecordSuccess(latency);
+
+        PreferredTargetByHost[host] = new PreferredTarget(candidate.Address, candidate.Source, candidate.Address.AddressFamily, Environment.TickCount64 + HOST_PREFERRED_TTL_MS);
     }
 
     private static int CompareCandidates
@@ -68,13 +90,32 @@ internal static class ConnectionTelemetryStore
     {
         var score = BASELINE_SCORE;
 
-        if (preferredTarget.IsActive(now) && preferredTarget.Address?.Equals(candidate.Address) == true)
-            score -= HOST_PREFERRED_BONUS;
-
         var key = new ConnectionTargetKey(host, candidate.Address);
 
+        var familyKey = new ConnectionFamilyKey(host, candidate.Address.AddressFamily);
+
+        if (FamilyTelemetryByTarget.TryGetValue(familyKey, out var familyTelemetry))
+            score = familyTelemetry.ApplyTo(score, now, FAMILY_LATENCY_PERCENT, FAMILY_TELEMETRY_PERCENT);
+
+        var sourceKey = new ConnectionSourceKey(host, candidate.Source);
+
+        if (SourceTelemetryByTarget.TryGetValue(sourceKey, out var sourceTelemetry))
+            score = sourceTelemetry.ApplyTo(score, now, SOURCE_LATENCY_PERCENT, SOURCE_TELEMETRY_PERCENT);
+
         if (EndpointTelemetryByTarget.TryGetValue(key, out var telemetry))
-            score = telemetry.ApplyTo(score, now);
+            score = telemetry.ApplyTo(score, now, ENDPOINT_LATENCY_PERCENT, ENDPOINT_TELEMETRY_PERCENT);
+
+        if (preferredTarget.IsActive(now))
+        {
+            if (preferredTarget.Address?.Equals(candidate.Address) == true)
+                score -= HOST_PREFERRED_BONUS;
+
+            if (preferredTarget.Source == candidate.Source)
+                score -= SOURCE_PREFERRED_BONUS;
+
+            if (preferredTarget.AddressFamily == candidate.Address.AddressFamily)
+                score -= FAMILY_PREFERRED_BONUS;
+        }
 
         return score;
     }
@@ -87,21 +128,21 @@ internal static class ConnectionTelemetryStore
         private long smoothedLatencyMs;
         private long successCount;
 
-        public long ApplyTo(long baselineScore, long now)
+        public long ApplyTo(long baselineScore, long now, long latencyPercent, long telemetryPercent)
         {
             var score = baselineScore;
 
             var latencyMs = Interlocked.Read(ref smoothedLatencyMs);
             if (latencyMs > 0)
-                score = latencyMs;
+                score = latencyMs * latencyPercent / PERCENT_SCALE;
 
             var successTicks = Interlocked.Read(ref lastSuccessTick);
             if (successTicks > 0 && now - successTicks <= RECENT_SUCCESS_WINDOW_MS)
-                score -= RECENT_SUCCESS_BONUS;
+                score -= RECENT_SUCCESS_BONUS * telemetryPercent / PERCENT_SCALE;
 
             var successes = Interlocked.Read(ref successCount);
             if (successes > 0)
-                score -= Math.Min(successes, MAX_SUCCESS_BONUS_STEPS) * SUCCESS_BONUS_STEP;
+                score -= Math.Min(successes, MAX_SUCCESS_BONUS_STEPS) * SUCCESS_BONUS_STEP * telemetryPercent / PERCENT_SCALE;
 
             var failureTicks = Interlocked.Read(ref lastFailureTick);
             var failures     = Interlocked.Read(ref consecutiveFailures);
@@ -112,10 +153,10 @@ internal static class ConnectionTelemetryStore
             var failureAge = now - failureTicks;
 
             if (failureAge <= HARD_FAILURE_WINDOW_MS)
-                return score + failures * HARD_FAILURE_PENALTY;
+                return score + failures * HARD_FAILURE_PENALTY * telemetryPercent / PERCENT_SCALE;
 
             if (failureAge <= SOFT_FAILURE_WINDOW_MS)
-                score += failures * SOFT_FAILURE_PENALTY;
+                score += failures * SOFT_FAILURE_PENALTY * telemetryPercent / PERCENT_SCALE;
 
             return score;
         }
@@ -147,17 +188,41 @@ internal static class ConnectionTelemetryStore
 
     private readonly record struct PreferredTarget
     (
-        IPAddress? Address,
-        long       ExpiresAtTick
+        IPAddress?                Address,
+        ConnectionCandidateSource Source,
+        AddressFamily             AddressFamily,
+        long                      ExpiresAtTick
     )
     {
         public bool IsActive(long now) =>
             Address != null && ExpiresAtTick >= now;
     }
 
+    private readonly record struct ConnectionFamilyKey
+    (
+        string        Host,
+        AddressFamily AddressFamily
+    );
+
+    private readonly record struct ConnectionSourceKey
+    (
+        string                    Host,
+        ConnectionCandidateSource Source
+    );
+
     #region Constants
 
     private const long BASELINE_SCORE = 700;
+
+    private const long ENDPOINT_LATENCY_PERCENT = 100;
+
+    private const long ENDPOINT_TELEMETRY_PERCENT = 100;
+
+    private const long FAMILY_LATENCY_PERCENT = 145;
+
+    private const long FAMILY_PREFERRED_BONUS = 130;
+
+    private const long FAMILY_TELEMETRY_PERCENT = 50;
 
     private const long HARD_FAILURE_PENALTY = 1_600;
 
@@ -177,6 +242,8 @@ internal static class ConnectionTelemetryStore
 
     private const long MIN_RECORDED_LATENCY_MS = 1;
 
+    private const long PERCENT_SCALE = 100;
+
     private const long RECENT_SUCCESS_BONUS = 220;
 
     private const long RECENT_SUCCESS_WINDOW_MS = 3 * 60 * 1000;
@@ -184,6 +251,12 @@ internal static class ConnectionTelemetryStore
     private const long SOFT_FAILURE_PENALTY = 600;
 
     private const long SOFT_FAILURE_WINDOW_MS = 5 * 60 * 1000;
+
+    private const long SOURCE_LATENCY_PERCENT = 125;
+
+    private const long SOURCE_PREFERRED_BONUS = 260;
+
+    private const long SOURCE_TELEMETRY_PERCENT = 65;
 
     private const long SUCCESS_BONUS_STEP = 20;
 

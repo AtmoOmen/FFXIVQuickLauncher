@@ -3,12 +3,12 @@ using System.Net;
 
 namespace XIVLauncher.Common.Http;
 
-internal readonly struct CloudflareIpv4Range
+internal readonly struct CloudflareIPV4Range
 {
     private readonly uint mask;
     private readonly uint network;
 
-    public CloudflareIpv4Range(IPAddress address, int prefixLength)
+    public CloudflareIPV4Range(IPAddress address, int prefixLength)
     {
         var bytes = address.GetAddressBytes();
 
