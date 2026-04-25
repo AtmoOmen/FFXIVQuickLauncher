@@ -38,6 +38,43 @@
         <Style x:Key="LoginActionSeparatorStyle"
                TargetType="{x:Type Separator}"
                BasedOn="{StaticResource MaterialDesignSeparator}" />
+        <Style x:Key="HeaderUtilityButtonStyle"
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource MaterialDesignIconForegroundButton}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Opacity" Value="0.86" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="1" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="SocialSiteButtonStyle"
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource MaterialDesignFlatButton}">
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+        </Style>
+        <Style x:Key="QuickLinkButtonStyle"
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="8" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+        </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Window.Resources>
 
@@ -293,80 +330,51 @@
 
                             <StackPanel Orientation="Horizontal"
                                         HorizontalAlignment="Left">
-                                <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                        Width="28"
-                                        Height="28"
-                                        Padding="4"
-                                        Focusable="False"
-                                        Cursor="Hand"
-                                        Tag="{x:Static constant:Links.SDO_BILIBILI_URL}"
-                                        Click="OpenExternalSiteButton_OnClick">
-                                    <mahIcon:PackIconSimpleIcons Width="16"
-                                                                 Height="16"
-                                                                 Kind="Bilibili"
-                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                <Button Style="{StaticResource HeaderUtilityButtonStyle}"
+                                        ToolTip="修复"
+                                        Command="{Binding LoginPage.LoginRepairCommand}">
+                                    <materialDesign:PackIcon Kind="Wrench"
+                                                             Width="20"
+                                                             Height="20"
+                                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                 </Button>
-                                <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                        Width="28"
-                                        Height="28"
-                                        Padding="4"
-                                        Focusable="False"
-                                        Cursor="Hand"
-                                        Tag="{x:Static constant:Links.SDO_XIAOHONGSHU_URL}"
-                                        Click="OpenExternalSiteButton_OnClick">
-                                    <mahIcon:PackIconSimpleIcons Width="16"
-                                                                 Height="16"
-                                                                 Kind="Xiaohongshu"
-                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+
+                                <Button Style="{StaticResource HeaderUtilityButtonStyle}"
+                                        ToolTip="完整性检查"
+                                        Command="{Binding LoginPage.RunIntegrityCheckCommand}">
+                                    <materialDesign:PackIcon Kind="ShieldCheck"
+                                                             Width="20"
+                                                             Height="20"
+                                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                 </Button>
-                                <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                        Width="28"
-                                        Height="28"
-                                        Padding="4"
-                                        Focusable="False"
-                                        Cursor="Hand"
-                                        Tag="{x:Static constant:Links.SDO_WEIBO_URL}"
-                                        Click="OpenExternalSiteButton_OnClick">
-                                    <mahIcon:PackIconSimpleIcons Width="16"
-                                                                 Height="16"
-                                                                 Kind="SinaWeibo"
-                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                
+                                <Button Style="{StaticResource HeaderUtilityButtonStyle}"
+                                        ToolTip="更新"
+                                        Command="{Binding LoginPage.LoginNoStartCommand}">
+                                    <materialDesign:PackIcon Kind="Update"
+                                                             Width="20"
+                                                             Height="20"
+                                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                 </Button>
-                                <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                        Width="28"
-                                        Height="28"
-                                        Padding="4"
-                                        Focusable="False"
-                                        Cursor="Hand"
-                                        Tag="{x:Static constant:Links.SDO_DOUYIN_URL}"
-                                        Click="OpenExternalSiteButton_OnClick">
-                                    <mahIcon:PackIconSimpleIcons Width="16"
-                                                                 Height="16"
-                                                                 Kind="TikTok"
-                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                </Button>
+                                
                             </StackPanel>
 
                             <StackPanel Grid.Column="1"
                                         Orientation="Horizontal"
                                         HorizontalAlignment="Left">
                                 <Button
-                                    Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                    Style="{StaticResource HeaderUtilityButtonStyle}"
                                     ToolTip="手动注入"
                                     Command="{Binding LoginPage.InjectModeSwitchCommand}"
-                                    Width="32" Height="32" Padding="4"
-                                    Focusable="False" Cursor="Hand"
                                     Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BoolToVis}}">
                                     <materialDesign:PackIcon Kind="Injection" Width="20" Height="20"
                                                              Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                 </Button>
 
                                 <Button
-                                    Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                    Style="{StaticResource HeaderUtilityButtonStyle}"
                                     ToolTip="软件设置"
-                                    Click="SettingsButton_OnClick"
-                                    Width="32" Height="32" Padding="4"
-                                    Focusable="False" Cursor="Hand">
+                                    Click="SettingsButton_OnClick">
                                     <materialDesign:PackIcon Kind="Gear" Width="20" Height="20"
                                                              Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                 </Button>
@@ -822,24 +830,15 @@
                                                             <Style TargetType="{x:Type Separator}"
                                                                    BasedOn="{StaticResource LoginActionSeparatorStyle}" />
                                                         </ContextMenu.Resources>
-                                                        <MenuItem Header="修复"
-                                                                  Command="{Binding LoginPage.LoginRepairCommand}" />
-                                                        <MenuItem Header="更新"
-                                                                  Command="{Binding LoginPage.LoginNoStartCommand}" />
-                                                        <MenuItem Header="完整性检查"
-                                                                  Command="{Binding LoginPage.RunIntegrityCheckCommand}" />
+                                                        <MenuItem Header="无 Dalamud"
+                                                                  Command="{Binding LoginPage.LoginNoDalamudCommand}" />
+                                                        <MenuItem Header="禁用插件"
+                                                                  Command="{Binding LoginPage.LoginNoPluginsCommand}" />
+                                                        <MenuItem Header="禁用第三方插件"
+                                                                  Command="{Binding LoginPage.LoginNoThirdCommand}" />
                                                         <Separator Margin="0 8" />
-                                                        <MenuItem Header="其他启动方式">
-                                                            <MenuItem Header="无 Dalamud"
-                                                                      Command="{Binding LoginPage.LoginNoDalamudCommand}" />
-                                                            <MenuItem Header="禁用插件"
-                                                                      Command="{Binding LoginPage.LoginNoPluginsCommand}" />
-                                                            <MenuItem Header="禁用第三方插件"
-                                                                      Command="{Binding LoginPage.LoginNoThirdCommand}" />
-                                                            <Separator Margin="0 8" />
-                                                            <MenuItem Header="调试用假启动"
-                                                                      Command="{Binding LoginPage.FakeStartCommand}" />
-                                                        </MenuItem>
+                                                        <MenuItem Header="调试用假启动"
+                                                                  Command="{Binding LoginPage.FakeStartCommand}" />
                                                     </ContextMenu>
                                                 </Button.ContextMenu>
                                             </Button>
@@ -1426,10 +1425,10 @@
                             </materialDesign:TransitionerSlide>
                         </materialDesign:Transitioner>
 
-                        <!-- Quick Links (Bottom) -->
-                        <Grid Grid.Row="2" Margin="16,0,16,12">
-                            <Grid.Style>
-                                <Style TargetType="Grid">
+                        <!-- 快捷入口 -->
+                        <StackPanel Grid.Row="2" Margin="16,0,16,12">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
                                         <DataTrigger
@@ -1439,86 +1438,153 @@
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </Grid.Style>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="8" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="6" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                            </StackPanel.Style>
 
-                            <!-- 超域传送 -->
-                            <Button Grid.Row="0" Grid.Column="0"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    materialDesign:ButtonAssist.CornerRadius="8"
-                                    Padding="0"
-                                    Height="30"
-                                    FontSize="12"
-                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                    Click="DCTravelPageButton_OnClick">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Rocket" Width="14" Height="14"
-                                                             Margin="0,0,4,0" VerticalAlignment="Center"
-                                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                    <TextBlock Text="超域传送" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                </StackPanel>
-                            </Button>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="6" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
 
-                            <!-- 购卡充值 -->
-                            <Button Grid.Row="0" Grid.Column="2"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    materialDesign:ButtonAssist.CornerRadius="8"
-                                    Padding="0"
-                                    Height="30"
-                                    FontSize="12"
-                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                    Click="PayPageButton_OnClick">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="ClockPlus" Width="14" Height="14"
-                                                             Margin="0,0,4,0" VerticalAlignment="Center"
-                                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                    <TextBlock Text="购卡充值" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                </StackPanel>
-                            </Button>
+                                <!-- 超域传送 -->
+                                <Button Grid.Row="0" Grid.Column="0"
+                                        Style="{StaticResource QuickLinkButtonStyle}"
+                                        Click="DCTravelPageButton_OnClick">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Rocket" Width="14" Height="14"
+                                                                 Margin="0,0,4,0" VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                        <TextBlock Text="超域传送" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
 
-                            <!-- 商城中心 -->
-                            <Button Grid.Row="2" Grid.Column="0"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    materialDesign:ButtonAssist.CornerRadius="8"
-                                    Padding="0"
-                                    Height="30"
-                                    FontSize="12"
-                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                    Click="ShoppingPageButton_OnClick">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Cart" Width="14" Height="14"
-                                                             Margin="0,0,4,0" VerticalAlignment="Center"
-                                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                    <TextBlock Text="商城中心" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                </StackPanel>
-                            </Button>
+                                <!-- 购卡充值 -->
+                                <Button Grid.Row="0" Grid.Column="2"
+                                        Style="{StaticResource QuickLinkButtonStyle}"
+                                        Click="PayPageButton_OnClick">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="ClockPlus" Width="14" Height="14"
+                                                                 Margin="0,0,4,0" VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                        <TextBlock Text="购卡充值" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
 
-                            <!-- 官方论坛 -->
-                            <Button Grid.Row="2" Grid.Column="2"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    materialDesign:ButtonAssist.CornerRadius="8"
-                                    Padding="0"
-                                    Height="30"
-                                    FontSize="12"
-                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                    Click="RisingStonePageButton_OnClick">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Forum" Width="14" Height="14"
-                                                             Margin="0,0,4,0" VerticalAlignment="Center"
-                                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                    <TextBlock Text="官方论坛" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
+                                <!-- 商城中心 -->
+                                <Button Grid.Row="2" Grid.Column="0"
+                                        Style="{StaticResource QuickLinkButtonStyle}"
+                                        Click="ShoppingPageButton_OnClick">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Cart" Width="14" Height="14"
+                                                                 Margin="0,0,4,0" VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                        <TextBlock Text="商城中心" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- 官方账号 -->
+                                <Button x:Name="OfficialAccountsButton"
+                                        Grid.Row="2"
+                                        Grid.Column="2"
+                                        Style="{StaticResource QuickLinkButtonStyle}">
+                                    <Button.Triggers>
+                                        <EventTrigger RoutedEvent="Button.Click">
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <BooleanAnimationUsingKeyFrames
+                                                        Storyboard.TargetName="OfficialAccountsPopup"
+                                                        Storyboard.TargetProperty="IsOpen">
+                                                        <DiscreteBooleanKeyFrame KeyTime="0:0:0" Value="True" />
+                                                    </BooleanAnimationUsingKeyFrames>
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Button.Triggers>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="AccountGroup" Width="14" Height="14"
+                                                                 Margin="0,0,4,0" VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                        <TextBlock Text="官方账号" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Popup x:Name="OfficialAccountsPopup"
+                                       Grid.Row="2"
+                                       Grid.Column="2"
+                                       AllowsTransparency="True"
+                                       Placement="Top"
+                                       PlacementTarget="{Binding ElementName=OfficialAccountsButton}"
+                                       PopupAnimation="None"
+                                       StaysOpen="False"
+                                       VerticalOffset="-6">
+                                    <materialDesign:Card
+                                        Background="{DynamicResource MaterialDesign.Brush.Background}"
+                                        UniformCornerRadius="8"
+                                        materialDesign:ElevationAssist.Elevation="Dp4">
+                                        <StackPanel Margin="4">
+                                            <Button Style="{StaticResource SocialSiteButtonStyle}"
+                                                    Tag="{x:Static constant:Links.SDO_DOUYIN_URL}"
+                                                    Click="OpenExternalSiteButton_OnClick">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <mahIcon:PackIconSimpleIcons Width="16"
+                                                                                 Height="16"
+                                                                                 Kind="TikTok"
+                                                                                 Margin="0,0,8,0"
+                                                                                 VerticalAlignment="Center"
+                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                    <TextBlock Text="抖音" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource SocialSiteButtonStyle}"
+                                                    Tag="{x:Static constant:Links.SDO_XIAOHONGSHU_URL}"
+                                                    Click="OpenExternalSiteButton_OnClick">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <mahIcon:PackIconSimpleIcons Width="16"
+                                                                                 Height="16"
+                                                                                 Kind="Xiaohongshu"
+                                                                                 Margin="0,0,8,0"
+                                                                                 VerticalAlignment="Center"
+                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                    <TextBlock Text="小红书" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource SocialSiteButtonStyle}"
+                                                    Tag="{x:Static constant:Links.SDO_WEIBO_URL}"
+                                                    Click="OpenExternalSiteButton_OnClick">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <mahIcon:PackIconSimpleIcons Width="16"
+                                                                                 Height="16"
+                                                                                 Kind="SinaWeibo"
+                                                                                 Margin="0,0,8,0"
+                                                                                 VerticalAlignment="Center"
+                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                    <TextBlock Text="微博" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource SocialSiteButtonStyle}"
+                                                    Tag="{x:Static constant:Links.SDO_BILIBILI_URL}"
+                                                    Click="OpenExternalSiteButton_OnClick">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <mahIcon:PackIconSimpleIcons Width="16"
+                                                                                 Height="16"
+                                                                                 Kind="Bilibili"
+                                                                                 Margin="0,0,8,0"
+                                                                                 VerticalAlignment="Center"
+                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                    <TextBlock Text="哔哩哔哩" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </materialDesign:Card>
+                                </Popup>
+                            </Grid>
+                        </StackPanel>
                     </Grid>
                 </materialDesign:Card>
             </Grid>
