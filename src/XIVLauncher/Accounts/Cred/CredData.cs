@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Serilog;
@@ -52,8 +53,12 @@ public class CredData
         LoginSalt            = EncryptionHelper.GenerateSalt();
         
         Log.Information("[Cred] Make new keys");
-        var text = JsonSerializer.Serialize(this);
-        File.WriteAllText(filename, text);
+        var directory = Path.GetDirectoryName(filename);
+        if (!string.IsNullOrWhiteSpace(directory))
+            Directory.CreateDirectory(directory);
+
+        var text = JsonSerializer.Serialize(this, CredDataJsonOptions);
+        File.WriteAllText(filename, text, new UTF8Encoding(false));
         
         Log.Information("[Cred] Save keys from {Filename}", filename);
     }
