@@ -33,21 +33,6 @@ public class LoginResponse
         [JsonProperty("pushMsgSessionKey")]
         public string PushMsgSessionKey = null!;
 
-        [JsonProperty("blackListStatus")]
-        public int? BlackListStatus;
-
-        [JsonProperty("pushMessageSwitchStatus")]
-        public int? PushMessageSwitchStatus;
-
-        [JsonProperty("appOnlineStatus")]
-        public int? AppOnlineStatus;
-
-        [JsonProperty("appVersionStatus")]
-        public int? AppVersionStatus;
-
-        [JsonProperty("appInstallStatus")]
-        public int? AppInstallStatus;
-
         [JsonProperty("dynamicKey")]
         public string DynamicKey = null!;
 

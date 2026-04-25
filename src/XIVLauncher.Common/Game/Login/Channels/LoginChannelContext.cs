@@ -227,38 +227,15 @@ public sealed class LoginChannelContext
         return (result.Data.Tgt, result.Data.AutoLoginSessionKey);
     }
 
-    public async Task CancelPushMessageLoginAsync(string pushMsgSessionKey) =>
-        _ = await GetJsonAsSdoClient("cancelPushMessageLogin.json", [$"pushMsgSessionKey={pushMsgSessionKey}"]).ConfigureAwait(false);
+    public async Task CancelPushMessageLoginAsync(string pushMSGSessionKey, string guid) =>
+        _ = await GetJsonAsSdoClient("cancelPushMessageLogin.json", [$"pushMsgSessionKey={pushMSGSessionKey}", $"guid={guid}"]).ConfigureAwait(false);
 
-    public async Task GetPushMessageStatusAsync(string account, string guid, bool autoLogin, int autoLoginKeepDays)
-    {
-        var result = await GetJsonAsSdoClient
-                     (
-                         "getPushMessageStatus.json",
-                         [$"inputUserId={account}", $"autoLoginKeepTime={autoLoginKeepDays}", $"autoLoginFlag={(autoLogin ? 1 : 0)}", $"guid={guid}"]
-                     ).ConfigureAwait(false);
-        if (result.ReturnCode != 0)
-            throw new LoginException(result.ReturnCode, result.Data.FailReason);
-
-        Log.Information
-        (
-            "[LoginChannelContext] 叨鱼状态:appInstall={AppInstallStatus}:appOnline={AppOnlineStatus}:appVersion={AppVersionStatus}:pushSwitch={PushMessageSwitchStatus}:blackList={BlackListStatus}",
-            result.Data.AppInstallStatus,
-            result.Data.AppOnlineStatus,
-            result.Data.AppVersionStatus,
-            result.Data.PushMessageSwitchStatus,
-            result.Data.BlackListStatus
-        );
-    }
-
-    public async Task<(string PushMsgSerialNum, string PushMsgSessionKey, CancellationTokenSource SlideExpiration)> SendPushMessageAsync(string account, string guid, int slideExpirationTime)
+    public async Task<(string PushMSGSerialNum, string PushMSGSessionKey, CancellationTokenSource SlideExpiration)> SendPushMessageAsync(string account, int slideExpirationTime)
     {
         var slideExpiration = new CancellationTokenSource();
         slideExpiration.CancelAfter(slideExpirationTime);
 
-        Log.Information("[LoginChannelContext] 发送叨鱼推送:appId={AppId}:scene={Scene}", SdoInfos.APP_ID, SdoInfos.LOGIN_SCENE);
-
-        var result = await GetJsonAsSdoClient("sendPushMessage.json", [$"inputUserId={account}", $"scene={SdoInfos.LOGIN_SCENE}", $"guid={guid}"]).ConfigureAwait(false);
+        var result = await GetJsonAsSdoClient("sendPushMessage.json", [$"inputUserId={account}"]).ConfigureAwait(false);
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
@@ -466,7 +443,7 @@ public sealed class LoginChannelContext
 
     private async Task<string> SsoLoginAsync(string tgt, string guid)
     {
-        var result = await GetJsonAsSdoClient("ssoLogin.json", [$"tgt={tgt}", $"scene={SdoInfos.LOGIN_SCENE}", $"guid={guid}"], tgt).ConfigureAwait(false);
+        var result = await GetJsonAsSdoClient("ssoLogin.json", [$"tgt={tgt}", $"guid={guid}"], tgt).ConfigureAwait(false);
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
