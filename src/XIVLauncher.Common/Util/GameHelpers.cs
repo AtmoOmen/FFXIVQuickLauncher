@@ -10,10 +10,11 @@ public static class GameHelpers
 {
     public static bool IsValidGamePath(string path)
     {
-        if (string.IsNullOrEmpty(path))
+        if (string.IsNullOrWhiteSpace(path))
             return false;
 
-        return Directory.Exists(Path.Combine(path, "game")) && Directory.Exists(Path.Combine(path, "sdo"));
+        var gamePath = new DirectoryInfo(path);
+        return File.Exists(Path.Combine(path, "game", "ffxiv_dx11.exe")) && !Repository.Ffxiv.IsBaseVer(gamePath);
     }
 
     public static bool CanMightNotBeInternationalClient(string path) =>
