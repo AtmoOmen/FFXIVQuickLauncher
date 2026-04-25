@@ -1,4 +1,4 @@
-﻿namespace XIVLauncher.Common.Game.Login;
+namespace XIVLauncher.Common.Game.Login;
 
 public enum LoginAfterAction
 {
@@ -6,8 +6,6 @@ public enum LoginAfterAction
     StartWithoutDalamud,
     StartWithoutPlugins,
     StartWithoutThird,
-    UpdateOnly,
-    Repair,
     CancelLogin,
     ForceQR
 }

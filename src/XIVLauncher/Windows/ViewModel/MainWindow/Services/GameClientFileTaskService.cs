@@ -13,7 +13,7 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch;
-using XIVLauncher.Common.Game.Patch.PatchList;
+using XIVLauncher.Common.Game.Update;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
 using XIVLauncher.Common.Util;
 using XIVLauncher.PlatformAbstractions;
@@ -26,7 +26,7 @@ public sealed class GameClientFileTaskService
     Window window
 )
 {
-    public async Task<GameClientFileTaskResult> RunAsync(GameClientFileTaskKind kind, Launcher launcher, LoginArea? area)
+    public async Task<GameClientFileTaskResult> RunAsync(GameClientFileTaskKind kind)
     {
         var viewModel = new GameClientFileTaskWindowViewModel();
         var dialog    = CreateWindow(viewModel);
@@ -34,7 +34,7 @@ public sealed class GameClientFileTaskService
         try
         {
             ShowWindow(dialog);
-            return await RunCoreAsync(viewModel, kind, launcher, area).ConfigureAwait(false);
+            return await RunCoreAsync(viewModel, kind).ConfigureAwait(false);
         }
         finally
         {
@@ -42,16 +42,16 @@ public sealed class GameClientFileTaskService
         }
     }
 
-    private async Task<GameClientFileTaskResult> RunCoreAsync(GameClientFileTaskWindowViewModel viewModel, GameClientFileTaskKind kind, Launcher launcher, LoginArea? area) =>
+    private async Task<GameClientFileTaskResult> RunCoreAsync(GameClientFileTaskWindowViewModel viewModel, GameClientFileTaskKind kind) =>
         kind switch
         {
-            GameClientFileTaskKind.Update         => await RunUpdateAsync(viewModel, launcher, area).ConfigureAwait(false),
+            GameClientFileTaskKind.Update         => await RunUpdateAsync(viewModel).ConfigureAwait(false),
             GameClientFileTaskKind.Repair         => await RunRepairAsync(viewModel).ConfigureAwait(false),
-            GameClientFileTaskKind.IntegrityCheck => await RunIntegrityCheckAsync(viewModel, launcher, area).ConfigureAwait(false),
+            GameClientFileTaskKind.IntegrityCheck => await RunIntegrityCheckAsync(viewModel).ConfigureAwait(false),
             _                                     => throw new ArgumentOutOfRangeException(nameof(kind), kind, "未知客户端文件任务类型")
         };
 
-    private async Task<GameClientFileTaskResult> RunUpdateAsync(GameClientFileTaskWindowViewModel viewModel, Launcher launcher, LoginArea? area)
+    private async Task<GameClientFileTaskResult> RunUpdateAsync(GameClientFileTaskWindowViewModel viewModel)
     {
         const string TITLE = "更新游戏文件";
 
@@ -70,7 +70,7 @@ public sealed class GameClientFileTaskService
 
         try
         {
-            loginResult = await launcher.UpdateClient.Check(area ?? new LoginArea(), gamePath, false, cancellationTokenSource.Token).ConfigureAwait(false);
+            loginResult = await UpdateClient.Check(gamePath, false, cancellationTokenSource.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -85,11 +85,7 @@ public sealed class GameClientFileTaskService
         if (loginResult.State != LoginState.NeedsPatchGame)
             return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "更新检查已完成", "当前没有待安装的更新内容"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
 
-        if (loginResult.V3GameUpdatePlan != null)
-            return await RunPatchVerifierAsync(viewModel, PatchVerifierMode.Update).ConfigureAwait(false);
-
-        var pendingPatches = PatchExecutionCoordinator.GetPendingPatchesForInstall(loginResult);
-        return await RunLegacyPatchAsync(viewModel, launcher, pendingPatches, loginResult.UniqueID ?? string.Empty).ConfigureAwait(false);
+        return await RunPatchVerifierAsync(viewModel, PatchVerifierMode.Update).ConfigureAwait(false);
     }
 
     private async Task<GameClientFileTaskResult> RunRepairAsync(GameClientFileTaskWindowViewModel viewModel)
@@ -108,7 +104,7 @@ public sealed class GameClientFileTaskService
         return await RunPatchVerifierAsync(viewModel, PatchVerifierMode.Repair).ConfigureAwait(false);
     }
 
-    private async Task<GameClientFileTaskResult> RunIntegrityCheckAsync(GameClientFileTaskWindowViewModel viewModel, Launcher launcher, LoginArea? area)
+    private async Task<GameClientFileTaskResult> RunIntegrityCheckAsync(GameClientFileTaskWindowViewModel viewModel)
     {
         const string TITLE = "检查游戏完整性";
 
@@ -262,182 +258,6 @@ public sealed class GameClientFileTaskService
             ApplySnapshot(viewModel, CreatePatchVerifierSnapshot(mode, verify));
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
         }
-    }
-
-    private async Task<GameClientFileTaskResult> RunLegacyPatchAsync(GameClientFileTaskWindowViewModel viewModel, Launcher launcher, PatchListEntry[] pendingPatches, string sid)
-    {
-        const string TITLE = "更新游戏文件";
-
-        using var installer = new Common.Game.Patch.PatchInstaller(App.Settings.KeepPatches);
-        var patcher = new PatchManager
-        (
-            App.Settings.PatchAcquisitionMethod,
-            App.Settings.SpeedLimitBytes,
-            Repository.Ffxiv,
-            pendingPatches,
-            App.Settings.GamePath,
-            App.Settings.PatchPath,
-            installer,
-            launcher,
-            sid
-        );
-
-        patcher.OnFail   += (_, _) => { };
-        installer.OnFail += () => { };
-
-        using var pollCancellationTokenSource = new CancellationTokenSource();
-        var       patcherBox                  = new StrongBox<PatchManager?>(patcher);
-        var       cancellationRequested       = false;
-
-        SetRunningHandler
-        (
-            viewModel,
-            () =>
-            {
-                if (cancellationRequested)
-                    return;
-
-                var currentPatcher = patcherBox.Value;
-                if (currentPatcher == null)
-                    return;
-
-                cancellationRequested = true;
-                currentPatcher.Cancel();
-                ApplySnapshot(viewModel, CreateDisabledCancelSnapshot(CreateLegacyPatchSnapshot(currentPatcher)));
-            }
-        );
-
-        var pollingTask = PollLegacyPatchAsync(viewModel, patcher, pollCancellationTokenSource.Token);
-        var result = await PatchExecutionCoordinator.ExecuteAsync
-                     (
-                         new PatchExecutionRequest
-                         {
-                             MutexName             = "XivLauncherIsPatching",
-                             Patcher               = patcher,
-                             AriaLogFile           = new FileInfo(Path.Combine(Paths.RoamingPath, "aria2.log")),
-                             IsGameOpen            = GameHelpers.CheckIsGameOpen,
-                             ContinueWhenGameOpen  = () => false,
-                             EnsureGameFilesClosed = () => AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以更新游戏")
-                         }
-                     ).ConfigureAwait(false);
-
-        pollCancellationTokenSource.Cancel();
-        await AwaitPollingTaskAsync(pollingTask).ConfigureAwait(false);
-
-        return result.Status switch
-        {
-            PatchExecutionStatus.Success => await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "游戏更新已完成", "所有更新内容已安装完成"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false),
-            PatchExecutionStatus.AlreadyRunning => await WaitForCloseAsync
-                                                       (viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait
-                                                       (false),
-            PatchExecutionStatus.CancelledByUser => await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消游戏更新"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false),
-            PatchExecutionStatus.PatchInstallerError => await WaitForCloseAsync
-                                                            (
-                                                                viewModel,
-                                                                CreateFailureSnapshot(TITLE, "无法正确启动补丁安装程序", result.Exception?.Message ?? string.Empty),
-                                                                GameClientFileTaskResultStatus.Failed
-                                                            )
-                                                            .ConfigureAwait(false),
-            PatchExecutionStatus.NotEnoughSpace => await WaitForCloseAsync
-                                                   (
-                                                       viewModel,
-                                                       CreateFailureSnapshot(TITLE, "磁盘空间不足, 无法安装更新文件", GetNotEnoughSpaceMessage(result.Exception as NotEnoughSpaceException)),
-                                                       GameClientFileTaskResultStatus.Failed
-                                                   ).ConfigureAwait(false),
-            _ => await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "安装更新文件失败", result.Exception?.Message ?? "未知错误"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false)
-        };
-    }
-
-    private async Task PollLegacyPatchAsync(GameClientFileTaskWindowViewModel viewModel, PatchManager patcher, CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            ApplySnapshot(viewModel, CreateLegacyPatchSnapshot(patcher));
-            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private static string GetNotEnoughSpaceMessage(NotEnoughSpaceException? exception)
-    {
-        if (exception == null)
-            return "请释放磁盘空间后重试";
-
-        var bytesRequired = APIHelper.BytesToString(exception.BytesRequired);
-        var bytesFree     = APIHelper.BytesToString(exception.BytesFree);
-
-        return exception.Kind switch
-        {
-            NotEnoughSpaceException.SpaceKind.Patches or NotEnoughSpaceException.SpaceKind.AllPatches => $"可在设置中更改下载位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
-            NotEnoughSpaceException.SpaceKind.Game                                                    => $"可在设置中更改游戏安装位置\n\n需要: {bytesRequired}\n可用: {bytesFree}",
-            _                                                                                         => $"需要: {bytesRequired}\n可用: {bytesFree}"
-        };
-    }
-
-    private GameClientFileTaskSnapshot CreateLegacyPatchSnapshot(PatchManager patcher)
-    {
-        var currentPatchIndex = patcher.Downloads.Count == 0 ? 0 : Math.Min(Math.Max(patcher.CurrentInstallIndex + 1, 1), patcher.Downloads.Count);
-        var items = Enumerable.Range(0, PatchManager.MAX_DOWNLOADS_AT_ONCE)
-                              .Select(index => CreateLegacyPatchItemSnapshot(patcher, index))
-                              .Where(item => item != null)
-                              .Cast<GameClientFileTaskItemSnapshot>()
-                              .ToArray();
-        var totalSpeed = patcher.Speeds.Sum();
-        var bytesLeft  = patcher.DownloadsDone ? 0 : Math.Max(patcher.AllDownloadsLength, 0);
-        var eta        = totalSpeed              <= 0 ? string.Empty : FormatEta(bytesLeft, totalSpeed);
-        var progress   = patcher.Downloads.Count == 0 ? 0 : 100.0 * patcher.CurrentInstallIndex / patcher.Downloads.Count;
-
-        return new GameClientFileTaskSnapshot
-        {
-            Title                   = "更新游戏文件",
-            PhaseText               = $"正在更新第 {currentPatchIndex}/{patcher.Downloads.Count} 个补丁",
-            DetailText              = patcher.IsInstallerBusy ? $"正在安装第 {currentPatchIndex} 个更新" : "正在等待下载完成",
-            Progress                = progress,
-            IsProgressIndeterminate = patcher.IsInstallerBusy,
-            StatusText              = $"剩余 {APIHelper.BytesToString(bytesLeft)}",
-            SpeedText               = totalSpeed <= 0 ? string.Empty : $"下载速度: {APIHelper.BytesToString(totalSpeed)}/s",
-            EtaText                 = eta,
-            Items                   = items,
-            PrimaryButtonText       = "取消",
-            IsPrimaryButtonVisible  = true,
-            IsPrimaryButtonEnabled  = true,
-            IsRunning               = true
-        };
-    }
-
-    private static GameClientFileTaskItemSnapshot? CreateLegacyPatchItemSnapshot(PatchManager patcher, int index)
-    {
-        var activePatch = patcher.Actives[index];
-
-        if (patcher.Slots[index] == PatchManager.SlotState.Done || activePatch == null)
-        {
-            if (!patcher.DownloadsDone && patcher.CurrentInstallIndex == 0)
-                return null;
-
-            return new GameClientFileTaskItemSnapshot
-            {
-                Title           = "更新下载完成",
-                Progress        = 100,
-                IsIndeterminate = false
-            };
-        }
-
-        if (patcher.Slots[index] == PatchManager.SlotState.Checking)
-        {
-            return new GameClientFileTaskItemSnapshot
-            {
-                Title           = $"{activePatch.Patch} (正在校验更新包)",
-                Progress        = 100,
-                IsIndeterminate = true
-            };
-        }
-
-        var progress = activePatch.Patch.Length == 0 ? 0 : Math.Round(100.0 * patcher.Progresses[index] / activePatch.Patch.Length, 1);
-        return new GameClientFileTaskItemSnapshot
-        {
-            Title           = $"{activePatch.Patch} ({progress:#0.0}%, {APIHelper.BytesToString(patcher.Speeds[index])}/s)",
-            Progress        = progress,
-            IsIndeterminate = false
-        };
     }
 
     private static GameClientFileTaskSnapshot CreatePatchVerifierSnapshot(PatchVerifierMode mode, PatchVerifier verify)
@@ -823,14 +643,5 @@ public sealed class GameClientFileTaskService
             return $"{remainingSeconds / 60:00}:{remainingSeconds % 60:00}";
 
         return $"{remainingSeconds / 60 / 60:00}:{remainingSeconds / 60 % 60:00}:{remainingSeconds % 60:00}";
-    }
-
-    private static string FormatEta(long remaining, double speed)
-    {
-        if (speed <= 0)
-            return string.Empty;
-
-        var eta = TimeSpan.FromSeconds(remaining / speed);
-        return APIHelper.GetTimeLeft(eta, ["预计剩余时间: {0} 天 {1} 小时 {2} 分 {3} 秒", "预计剩余时间: {0} 小时 {1} 分 {2} 秒", "预计剩余时间: {0} 分 {1} 秒", "预计剩余时间: {0} 秒"]);
     }
 }

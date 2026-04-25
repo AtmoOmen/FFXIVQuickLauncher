@@ -24,8 +24,7 @@ using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch;
-using XIVLauncher.Common.Game.Patch.Acquisition;
-using XIVLauncher.Common.Game.Patch.PatchList;
+using XIVLauncher.Common.Game.Update;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Common.Windows;
@@ -401,7 +400,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             throw;
         }
 
-        var requiresNewAccountDeviceProfileSetup   = ShouldRequireNewAccountDeviceProfileSetup(savedAccount, action);
+        var requiresNewAccountDeviceProfileSetup   = ShouldRequireNewAccountDeviceProfileSetup(savedAccount);
         var shouldRequestTemporaryAutoLoginSession = requiresNewAccountDeviceProfileSetup && loginType == LoginType.QRCode;
         var loginAutoLogin                         = doingAutoLogin || shouldRequestTemporaryAutoLoginSession;
 
@@ -463,9 +462,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                                       secret!,
                                       loginAutoLogin,
                                       deviceProfileSnapshot,
-                                      dcTraveler,
-                                      action
-                                  ).ConfigureAwait(false);
+                                      dcTraveler
+                                   ).ConfigureAwait(false);
             if (nextLoginResult == null)
                 return;
 
@@ -474,14 +472,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             loginResult.Areas = LoginPage.LoginAreas;
 
             if (!attemptedV3AutoUpdate
-                && action is not (LoginAfterAction.UpdateOnly or LoginAfterAction.Repair)
                 && loginResult.State            == LoginState.NeedsPatchGame
                 && loginResult.V3GameUpdatePlan != null)
             {
                 if (!ConfirmGamePatchInstall())
                     return;
 
-                if (!await InstallGamePatch(loginResult).ConfigureAwait(false))
+                if (!await InstallGamePatchAsync().ConfigureAwait(false))
                     return;
 
                 attemptedV3AutoUpdate = true;
@@ -539,8 +536,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                                             oAuthLogin.AutoLoginSessionKey,
                                             true,
                                             deviceProfileSnapshot,
-                                            dcTraveler,
-                                            action
+                                            dcTraveler
                                         ).ConfigureAwait(false);
                     if (reloginResult == null)
                         return;
@@ -557,78 +553,72 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             }
         }
 
-        if (loginResult.State == LoginState.NeedsPatchGame && action != LoginAfterAction.Repair)
-            action = LoginAfterAction.UpdateOnly;
-
-        if (action != LoginAfterAction.UpdateOnly)
+        if (loginResult.State == LoginState.Ok)
         {
-            if (loginResult.State == LoginState.Ok)
+            var deviceProfileAccount = pendingNewAccount ?? savedAccount;
+
+            if (App.Settings.DalamudEnabled && loginType != LoginType.WeGameAuto)
             {
-                var deviceProfileAccount = pendingNewAccount ?? savedAccount;
+                Log.Information("[DCTravelListener] 正在开启监听用端口");
+                await dcTraveler.GetValidCookie();
+                _ = dcTraveler.KeepCookieAlive();
 
-                if (App.Settings.DalamudEnabled && loginType != LoginType.WeGameAuto)
-                {
-                    Log.Information("[DCTravelListener] 正在开启监听用端口");
-                    await dcTraveler.GetValidCookie();
-                    _ = dcTraveler.KeepCookieAlive();
-
-                    loginResult.DCTravelPort = APIHelper.GetAvailablePort();
-                    DCTravelListener         = new(dcTraveler, loginResult.DCTravelPort, false);
-                    Log.Information("[DCTravelListener] 打开监听端口: {LoginResultDCTravelPort}", loginResult.DCTravelPort);
-                    _ = DCTravelListener.StartAsync();
-                }
-
-                var accountToSave = new XIVAccount
-                {
-                    AutoLogin                          = loginType == LoginType.WeGameAuto || doingAutoLogin,
-                    SdoLoginAccount                    = oAuthLogin?.InputUserID!,
-                    WeGameSndaID                       = oAuthLogin?.SndaID!,
-                    AccountType                        = accountType,
-                    AreaName                           = LoginPage.Area!.AreaName,
-                    UserDefinedName                    = deviceProfileAccount?.UserDefinedName                    ?? null!,
-                    DeviceProfilePresetId              = deviceProfileAccount?.DeviceProfilePresetId              ?? string.Empty,
-                    DeviceProfileDynamicEnabled        = deviceProfileAccount?.DeviceProfileDynamicEnabled        ?? false,
-                    IsDeviceProfileRotation            = deviceProfileAccount?.IsDeviceProfileRotation            ?? true,
-                    DeviceProfileRotationDays          = deviceProfileAccount?.DeviceProfileRotationDays          ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
-                    DeviceProfileLastGeneratedUtcTicks = deviceProfileAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0
-                };
-
-                AccountManager.ApplyResolvedDeviceProfile(accountToSave, resolvedDeviceProfile);
-
-                if (doingAutoLogin && accountToSave.AccountType == XIVAccountType.Sdo)
-                {
-                    if (!string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
-                        accountToSave.SdoAutoLoginSessionKey = await AccountManager.Encrypt(oAuthLogin.AutoLoginSessionKey);
-
-                    if (DCTravelListener != null && !string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
-                    {
-                        DCTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
-                        {
-                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey
-                                                 (
-                                                     username,
-                                                     oAuthLogin.AutoLoginSessionKey,
-                                                     DCTravelListener.DCTravelClient,
-                                                     deviceProfileSnapshot
-                                                 ).ConfigureAwait(false);
-                            return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
-                        };
-                    }
-
-                    if (finalLoginType == LoginType.Static)
-                        accountToSave.SdoPassword = await AccountManager.Encrypt(secret);
-                }
-
-                if (finalLoginType == LoginType.WeGameAuto)
-                    accountToSave.WeGameSIDSecret = await AccountManager.Encrypt(secret);
-                else if (finalLoginType == LoginType.WeGameManual)
-                    accountToSave.WeGameTokenSecret = await AccountManager.Encrypt(secret);
-
-                accountToSave.GenerateID();
-                AccountManager.AddAccount(accountToSave);
-                AccountManager.CurrentAccount = accountToSave;
-                AccountManager.Save();
+                loginResult.DCTravelPort = APIHelper.GetAvailablePort();
+                DCTravelListener         = new(dcTraveler, loginResult.DCTravelPort, false);
+                Log.Information("[DCTravelListener] 打开监听端口: {LoginResultDCTravelPort}", loginResult.DCTravelPort);
+                _ = DCTravelListener.StartAsync();
             }
+
+            var accountToSave = new XIVAccount
+            {
+                AutoLogin                          = loginType == LoginType.WeGameAuto || doingAutoLogin,
+                SdoLoginAccount                    = oAuthLogin?.InputUserID!,
+                WeGameSndaID                       = oAuthLogin?.SndaID!,
+                AccountType                        = accountType,
+                AreaName                           = LoginPage.Area!.AreaName,
+                UserDefinedName                    = deviceProfileAccount?.UserDefinedName                    ?? null!,
+                DeviceProfilePresetId              = deviceProfileAccount?.DeviceProfilePresetId              ?? string.Empty,
+                DeviceProfileDynamicEnabled        = deviceProfileAccount?.DeviceProfileDynamicEnabled        ?? false,
+                IsDeviceProfileRotation            = deviceProfileAccount?.IsDeviceProfileRotation            ?? true,
+                DeviceProfileRotationDays          = deviceProfileAccount?.DeviceProfileRotationDays          ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
+                DeviceProfileLastGeneratedUtcTicks = deviceProfileAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0
+            };
+
+            AccountManager.ApplyResolvedDeviceProfile(accountToSave, resolvedDeviceProfile);
+
+            if (doingAutoLogin && accountToSave.AccountType == XIVAccountType.Sdo)
+            {
+                if (!string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
+                    accountToSave.SdoAutoLoginSessionKey = await AccountManager.Encrypt(oAuthLogin.AutoLoginSessionKey);
+
+                if (DCTravelListener != null && !string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
+                {
+                    DCTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
+                    {
+                        var newLoginResult = await Launcher.LoginClient.LoginBySessionKey
+                                             (
+                                                 username,
+                                                 oAuthLogin.AutoLoginSessionKey,
+                                                 DCTravelListener.DCTravelClient,
+                                                 deviceProfileSnapshot
+                                             ).ConfigureAwait(false);
+                        return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
+                    };
+                }
+
+                if (finalLoginType == LoginType.Static)
+                    accountToSave.SdoPassword = await AccountManager.Encrypt(secret);
+            }
+
+            if (finalLoginType == LoginType.WeGameAuto)
+                accountToSave.WeGameSIDSecret = await AccountManager.Encrypt(secret);
+            else if (finalLoginType == LoginType.WeGameManual)
+                accountToSave.WeGameTokenSecret = await AccountManager.Encrypt(secret);
+
+            accountToSave.GenerateID();
+            AccountManager.AddAccount(accountToSave);
+            AccountManager.CurrentAccount = accountToSave;
+            AccountManager.Save();
         }
 
         Log.Information
@@ -716,8 +706,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         string                secret,
         bool                  autoLogin,
         DeviceProfileSnapshot deviceProfile,
-        DCTravelClient        dcTravelClient,
-        LoginAfterAction      action
+        DCTravelClient        dcTravelClient
     )
     {
         if (IsLoginCanceledByUser)
@@ -745,8 +734,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             var gamePath = App.Settings.GamePath;
             return await Launcher.LoginClient.LoginWithPatchCheck
                    (
-                       _ => Launcher.UpdateClient.Check(LoginPage.Area, gamePath, action == LoginAfterAction.Repair, loginCts.Token),
-                       action == LoginAfterAction.UpdateOnly,
+                       _ => UpdateClient.Check(gamePath, false, loginCts.Token),
                        type,
                        fallbackLoginType,
                        requestLoginType => LoginRequest.Create
@@ -976,67 +964,18 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 return false;
         }
 
-        if (action == LoginAfterAction.Repair)
-        {
-            try
-            {
-                if (loginResult.State == LoginState.NeedsPatchGame)
-                {
-                    if (!await RepairGame().ConfigureAwait(false))
-                        return false;
-
-                    loginResult.State = LoginState.Ok;
-                }
-                else
-                {
-                    CustomMessageBox.Show
-                    (
-                        "游戏服务器返回错误响应, 无法修复游戏",
-                        "XIVLauncherCN (Soil)",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error,
-                        parentWindow: Window
-                    );
-
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                CustomMessageBox.Builder.NewFrom(ex, "ProcessLoginResultAsync/Repair").WithParentWindow(Window).Show();
-
-                return false;
-            }
-        }
-
         if (loginResult.State == LoginState.NeedsPatchGame)
         {
             if (!ConfirmGamePatchInstall())
                 return false;
 
-            if (!await InstallGamePatch(loginResult).ConfigureAwait(false))
+            if (!await InstallGamePatchAsync().ConfigureAwait(false))
             {
                 Log.Error("patchSuccess != true");
                 return false;
             }
 
             loginResult.State = LoginState.Ok;
-        }
-
-        if (action == LoginAfterAction.UpdateOnly)
-        {
-            CustomMessageBox.Show
-            (
-                "更新检查已完成, 无剩余待安装更新内容",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information,
-                false,
-                false,
-                parentWindow: Window
-            );
-
-            return false;
         }
 
         if (loginResult.State == LoginState.NeedRetry)
@@ -1557,21 +1496,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<bool> RepairGame()
-    {
-        var result = await GameClientFileTaskService.RunAsync(GameClientFileTaskKind.Repair, Launcher, LoginPage.Area).ConfigureAwait(false);
-        return result.ShouldLaunchGame;
-    }
-
-    private Task<bool> InstallGamePatch(LoginResult loginResult)
-    {
-        _ = loginResult;
-        return InstallGamePatchAsync();
-    }
-
     private async Task<bool> InstallGamePatchAsync()
     {
-        var result = await GameClientFileTaskService.RunAsync(GameClientFileTaskKind.Update, Launcher, LoginPage.Area).ConfigureAwait(false);
+        var result = await GameClientFileTaskService.RunAsync(GameClientFileTaskKind.Update).ConfigureAwait(false);
         return result.Status == GameClientFileTaskResultStatus.Success;
     }
 
@@ -1604,7 +1531,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         try
         {
-            result = await GameClientFileTaskService.RunAsync(kind, Launcher, LoginPage.Area).ConfigureAwait(false);
+            result = await GameClientFileTaskService.RunAsync(kind).ConfigureAwait(false);
         }
         finally
         {
@@ -1649,10 +1576,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private void HideLoadingDialog() =>
         IsLoadingDialogOpen = false;
 
-    private static bool ShouldRequireNewAccountDeviceProfileSetup(XIVAccount? savedAccount, LoginAfterAction action) =>
+    private static bool ShouldRequireNewAccountDeviceProfileSetup(XIVAccount? savedAccount) =>
         App.Settings.RequireDeviceProfileSetupForNewLogin
-        && savedAccount == null
-        && action       != LoginAfterAction.UpdateOnly;
+        && savedAccount == null;
 
     private void SavePendingNewAccountWithoutSecrets(XIVAccount account)
     {

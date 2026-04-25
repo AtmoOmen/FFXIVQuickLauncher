@@ -43,7 +43,6 @@ public sealed class LoginClient
     public async Task<LoginResult> LoginWithPatchCheck
     (
         Func<CancellationToken, Task<LoginResult>> checkGameUpdateAsync,
-        bool                                       patchOnly,
         LoginType                                  loginType,
         LoginType                                  fallbackLoginType,
         Func<LoginType, LoginRequest>              requestFactory,
@@ -53,7 +52,7 @@ public sealed class LoginClient
         cancellationToken.ThrowIfCancellationRequested();
 
         var checkResult = await checkGameUpdateAsync(cancellationToken).ConfigureAwait(false);
-        if (checkResult.State == LoginState.NeedsPatchGame || patchOnly)
+        if (checkResult.State == LoginState.NeedsPatchGame)
             return checkResult;
 
         if (loginType == LoginType.AutoLoginSession)

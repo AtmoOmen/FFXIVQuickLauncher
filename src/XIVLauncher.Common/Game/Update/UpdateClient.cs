@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using XIVLauncher.Common.Game.Login;
@@ -6,14 +6,13 @@ using XIVLauncher.Common.Game.Patch.V3;
 
 namespace XIVLauncher.Common.Game.Update;
 
-public class UpdateClient
+public static class UpdateClient
 {
     /// <summary>
     ///     检查游戏更新
     /// </summary>
-    public async Task<LoginResult> Check(LoginArea area, DirectoryInfo gamePath, bool forceBaseVersion, CancellationToken cancellationToken = default)
+    public static async Task<LoginResult> Check(DirectoryInfo gamePath, bool forceBaseVersion, CancellationToken cancellationToken = default)
     {
-        _ = area;
         var currentGameVersion = Repository.Ffxiv.GetVer(gamePath);
 
         using var metadataClient = new V3GamePatchMetadataClient();

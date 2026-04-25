@@ -8,7 +8,6 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Encryption;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Common.Game.Update;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 
@@ -17,12 +16,8 @@ namespace XIVLauncher.Common.Game;
 public partial class Launcher
 {
     public LoginClient    LoginClient    { get; } = new();
-    public UpdateClient   UpdateClient   { get; }
     public RestartMonitor RestartMonitor { get; } = new();
     public HttpClient     MockHttpClient { get; } = new(new HttpClientHandler { UseCookies = true });
-
-    public Launcher() =>
-        UpdateClient = new();
 
     public FFXIVProcess? LaunchGame
     (
