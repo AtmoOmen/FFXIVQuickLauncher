@@ -83,8 +83,7 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
 
             case 1:
                 App.Settings.Update
-                (
-                    settings =>
+                (settings =>
                     {
                         settings.GamePath       = new DirectoryInfo(GamePath);
                         settings.Language       = ClientLanguage.ChineseSimplified;

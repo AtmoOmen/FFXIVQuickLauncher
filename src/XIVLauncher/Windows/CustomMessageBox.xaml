@@ -6,9 +6,11 @@
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:sys="clr-namespace:System.Windows;assembly=PresentationFramework"
     Title="XIVLauncher Error"
     MinWidth="600"
     MaxWidth="850"
+    MaxHeight="{Binding Source={x:Static sys:SystemParameters.WorkArea}, Path=Height}"
     MinHeight="250"
     Background="Transparent"
     Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
@@ -43,9 +45,7 @@
 
             <Grid MouseMove="CustomMessageBox_MouseMove" Margin="24">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
@@ -61,6 +61,16 @@
                         </MenuItem>
                     </ContextMenu>
                 </Grid.ContextMenu>
+
+                <ScrollViewer Grid.Row="0"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
                 <!-- Header / Title Area -->
                 <Grid Grid.Row="0">
@@ -134,9 +144,11 @@
                          materialDesign:TextFieldAssist.HasClearButton="True"
                          materialDesign:TextFieldAssist.UnderlineBrush="{DynamicResource MaterialDesign.Brush.Primary}"
                          Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                    </Grid>
+                </ScrollViewer>
 
                 <!-- Actions Area -->
-                <Grid Grid.Row="3" Margin="0,36,0,0">
+                <Grid Grid.Row="1" Margin="0,36,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
