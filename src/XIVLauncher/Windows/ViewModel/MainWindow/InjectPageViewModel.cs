@@ -222,6 +222,8 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
                     if (!gameLaunchService.InjectGameAndAddon(targetProcess.ProcessID))
                         return;
 
+                    gameLaunchService.StartAddonsUntilGameExit(targetProcess.ProcessID);
+
                     window.Dispatcher.Invoke(() => { targetProcess.HasInjected = true; });
 
                     if (isAutoInjection)

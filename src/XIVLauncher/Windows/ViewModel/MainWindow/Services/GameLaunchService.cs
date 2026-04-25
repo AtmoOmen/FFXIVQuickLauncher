@@ -1,9 +1,13 @@
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
+using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Windows;
@@ -17,6 +21,84 @@ public sealed class GameLaunchService
     Window window
 )
 {
+    private readonly ConcurrentDictionary<int, AddonManager> addonManagers = [];
+
+    public AddonManager? StartAddons(int gamePid)
+    {
+        var addonManager = new AddonManager();
+        if (!addonManagers.TryAdd(gamePid, addonManager))
+        {
+            Log.Information("附加程序已随游戏进程启动: {GamePid}", gamePid);
+            return null;
+        }
+
+        try
+        {
+            App.Settings.AddonList ??= [];
+
+            var addons = App.Settings.AddonList
+                                  .Where(entry => entry.IsEnabled && entry.Addon != null)
+                                  .Select(entry => entry.Addon)
+                                  .Cast<IAddon>()
+                                  .ToList();
+
+            addonManager.RunAddons(gamePid, addons);
+            return addonManager;
+        }
+        catch
+        {
+            StopAddons(gamePid, addonManager);
+            throw;
+        }
+    }
+
+    public void StopAddons(int gamePid, AddonManager? addonManager)
+    {
+        if (addonManager == null)
+            return;
+
+        if (!addonManagers.TryGetValue(gamePid, out var currentAddonManager) || !ReferenceEquals(currentAddonManager, addonManager))
+            return;
+
+        if (!addonManagers.TryRemove(gamePid, out _))
+            return;
+
+        addonManager.StopAddons();
+    }
+
+    public void StartAddonsUntilGameExit(int gamePid)
+    {
+        var addonManager = StartAddons(gamePid);
+        if (addonManager == null)
+            return;
+
+        _ = Task.Run
+        (
+            async () =>
+            {
+                try
+                {
+                    using var process = Process.GetProcessById(gamePid);
+                    await process.WaitForExitAsync().ConfigureAwait(false);
+                }
+                catch (ArgumentException)
+                {
+                }
+                catch (InvalidOperationException)
+                {
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "等待游戏进程退出时发生错误: {GamePid}", gamePid);
+                }
+                finally
+                {
+                    StopAddons(gamePid, addonManager);
+                }
+            }
+        );
+    }
+
     public bool InjectGameAndAddon(int gamePid, bool noThird = false, bool noPlugins = false)
     {
         var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;

@@ -2,7 +2,6 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using Serilog;
 
 namespace XIVLauncher.Common.Addon.Implementations;
@@ -33,10 +32,7 @@ public class GenericAddon : IRunnableAddon, INotifyAddonAfterClose
 
     public void GameClosed()
     {
-        if (RunOnClose)
-            Run(true);
-
-        if (!RunAsAdmin)
+        if (!RunAsAdmin && !RunOnClose && KillAfterClose)
         {
             try
             {
@@ -46,7 +42,7 @@ public class GenericAddon : IRunnableAddon, INotifyAddonAfterClose
                 if (_addonProcess.Handle == IntPtr.Zero)
                     return;
 
-                if (!_addonProcess.HasExited && KillAfterClose)
+                if (!_addonProcess.HasExited)
                 {
                     if (!_addonProcess.CloseMainWindow() || !_addonProcess.WaitForExit(1000))
                         _addonProcess.Kill();
@@ -59,6 +55,9 @@ public class GenericAddon : IRunnableAddon, INotifyAddonAfterClose
                 Log.Information(ex, "Could not kill addon process.");
             }
         }
+
+        if (RunOnClose)
+            Run(true);
     }
 
     private static string GetPowershell()
@@ -126,13 +125,6 @@ public class GenericAddon : IRunnableAddon, INotifyAddonAfterClose
 
     private void RunApp()
     {
-        // If there already is a process like this running - we don't need to spawn another one.
-        if (Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension(Path)).Any())
-        {
-            Log.Information("Addon {0} is already running.", Name);
-            return;
-        }
-
         _addonProcess = new Process
         {
             StartInfo =

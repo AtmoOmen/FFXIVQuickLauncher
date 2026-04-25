@@ -7,7 +7,7 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public class GenericAddonSetupWindowViewModel : INotifyPropertyChanged
 {
-    public bool CanKillAfterClose => !RunAsAdmin;
+    public bool CanKillAfterClose => !RunAsAdmin && !RunOnClose;
 
     public string Path
     {
@@ -39,7 +39,16 @@ public class GenericAddonSetupWindowViewModel : INotifyPropertyChanged
     public bool RunOnClose
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            if (value)
+                KillAfterClose = false;
+
+            OnPropertyChanged(nameof(CanKillAfterClose));
+        }
     }
 
     public bool KillAfterClose
@@ -71,7 +80,7 @@ public class GenericAddonSetupWindowViewModel : INotifyPropertyChanged
             CommandLine    = CommandLine,
             RunAsAdmin     = RunAsAdmin,
             RunOnClose     = RunOnClose,
-            KillAfterClose = KillAfterClose
+            KillAfterClose = !RunOnClose && KillAfterClose
         };
     }
 

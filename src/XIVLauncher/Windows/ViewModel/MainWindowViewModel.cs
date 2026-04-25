@@ -1313,15 +1313,11 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             return null;
         }
 
-        var addonMgr = new AddonManager();
+        AddonManager? addonMgr = null;
 
         try
         {
-            App.Settings.AddonList ??= [];
-
-            var addons = App.Settings.AddonList.Where(x => x.IsEnabled).Select(x => x.Addon).Cast<IAddon>().ToList();
-
-            addonMgr.RunAddons(launched.ProcessID, addons);
+            addonMgr = GameLaunchService.StartAddons(launched.ProcessID);
         }
         catch (Exception ex)
         {
@@ -1334,30 +1330,34 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
             IsLoggingIn = false;
 
-            addonMgr.StopAddons();
+            GameLaunchService.StopAddons(launched.ProcessID, addonMgr);
         }
 
         Log.Debug("等待游戏进程退出");
 
-        if (dalamudOk)
+        try
         {
-            await Launcher.RestartMonitor
-                          .MonitorAsync
-                          (
-                              launched,
-                              new RestartMonitor.RestartOptions(forceNoDalamud, noThird, noPlugins),
-                              options => StartGameAndAddon(loginResult, options.ForceNoDalamud, options.NoThirdPlugins, options.NoPlugins),
-                              LoginCancelSource?.Token ?? CancellationToken.None
-                          )
-                          .ConfigureAwait(false);
+            if (dalamudOk)
+            {
+                await Launcher.RestartMonitor
+                              .MonitorAsync
+                              (
+                                  launched,
+                                  new RestartMonitor.RestartOptions(forceNoDalamud, noThird, noPlugins),
+                                  options => StartGameAndAddon(loginResult, options.ForceNoDalamud, options.NoThirdPlugins, options.NoPlugins),
+                                  LoginCancelSource?.Token ?? CancellationToken.None
+                              )
+                              .ConfigureAwait(false);
+            }
+            else
+                await Task.Run(() => launched.UnderlyingProcess.WaitForExit()).ConfigureAwait(false);
         }
-        else
-            await Task.Run(() => launched.UnderlyingProcess.WaitForExit()).ConfigureAwait(false);
+        finally
+        {
+            GameLaunchService.StopAddons(launched.ProcessID, addonMgr);
+        }
 
         Log.Verbose("游戏进程已退出");
-
-        if (addonMgr.IsRunning)
-            addonMgr.StopAddons();
 
         try
         {
