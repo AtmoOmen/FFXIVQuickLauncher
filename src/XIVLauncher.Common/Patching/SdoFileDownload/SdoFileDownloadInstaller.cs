@@ -169,18 +169,20 @@ public class SdoFileDownloadInstaller : IDisposable
 
                 try
                 {
-                    await using var source = await response.Content.ReadAsStreamAsync(ct);
-                    await using var sink = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan);
-                    using var buffer = ReusableByteBufferManager.GetBuffer();
-
-                    while (true)
                     {
-                        var read = await source.ReadAsync(buffer.Buffer.AsMemory(0, buffer.Buffer.Length), ct);
-                        if (read == 0)
-                            break;
+                        await using var source = await response.Content.ReadAsStreamAsync(ct);
+                        await using var sink = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                        using var buffer = ReusableByteBufferManager.GetBuffer();
 
-                        await sink.WriteAsync(buffer.Buffer.AsMemory(0, read), ct);
-                        ReportInstallProgress(targetIndex, Interlocked.Add(ref totalDownloadedBytes, read), Interlocked.Read(ref totalContentBytes), InstallTaskState.Downloading);
+                        while (true)
+                        {
+                            var read = await source.ReadAsync(buffer.Buffer.AsMemory(0, buffer.Buffer.Length), ct);
+                            if (read == 0)
+                                break;
+
+                            await sink.WriteAsync(buffer.Buffer.AsMemory(0, read), ct);
+                            ReportInstallProgress(targetIndex, Interlocked.Add(ref totalDownloadedBytes, read), Interlocked.Read(ref totalContentBytes), InstallTaskState.Downloading);
+                        }
                     }
 
                     File.Move(tempPath, targetFilePath, true);
