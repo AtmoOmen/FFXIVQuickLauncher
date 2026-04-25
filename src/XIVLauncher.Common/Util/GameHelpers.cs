@@ -16,16 +16,8 @@ public static class GameHelpers
         return Directory.Exists(Path.Combine(path, "game")) && Directory.Exists(Path.Combine(path, "sdo"));
     }
 
-    public static bool CanMightNotBeInternationalClient(string path)
-    {
-        if (Directory.Exists(Path.Combine(path, "sdo")))
-            return true;
-
-        if (File.Exists(Path.Combine(path, "boot", "FFXIV_Boot.exe")))
-            return true;
-
-        return false;
-    }
+    public static bool CanMightNotBeInternationalClient(string path) =>
+        Directory.Exists(Path.Combine(path, "sdo")) || File.Exists(Path.Combine(path, "boot", "FFXIV_Boot.exe"));
 
     public static bool LetChoosePath(string path)
     {
@@ -33,17 +25,12 @@ public static class GameHelpers
             return true;
 
         var di = new DirectoryInfo(path);
+        return di.Name switch
+        {
+            "game" or "boot" or "sqpack" => false,
+            _                            => true
+        };
 
-        if (di.Name == "game")
-            return false;
-
-        if (di.Name == "boot")
-            return false;
-
-        if (di.Name == "sqpack")
-            return false;
-
-        return true;
     }
 
     public static FileInfo GetOfficialLauncherPath(DirectoryInfo gamePath) => new
@@ -87,11 +74,9 @@ public static class GameHelpers
         return false;
     }
 
-    public static string ToMangledSeBase64(byte[] input)
-    {
-        return Convert.ToBase64String(input)
-                      .Replace('+', '-')
-                      .Replace('/', '_')
-                      .Replace('=', '*');
-    }
+    public static string ToMangledSeBase64(byte[] input) =>
+        Convert.ToBase64String(input)
+               .Replace('+', '-')
+               .Replace('/', '_')
+               .Replace('=', '*');
 }
