@@ -13,11 +13,6 @@ internal static class ConnectionTelemetryStore
 
     private static readonly ConcurrentDictionary<ConnectionFamilyKey, EndpointTelemetry> FamilyTelemetryByTarget = [];
 
-    private static readonly ConcurrentDictionary<string, PreferredTarget> PreferredTargetByHost =
-        new(StringComparer.OrdinalIgnoreCase);
-
-    private static readonly ConcurrentDictionary<ConnectionSourceKey, EndpointTelemetry> SourceTelemetryByTarget = [];
-
     public static IReadOnlyList<ConnectionCandidate> SortCandidates(string host, IReadOnlyList<ConnectionCandidate> candidates)
     {
         if (candidates.Count <= 1)
@@ -26,9 +21,7 @@ internal static class ConnectionTelemetryStore
         var ordered = new List<ConnectionCandidate>(candidates);
         var now     = Environment.TickCount64;
 
-        PreferredTargetByHost.TryGetValue(host, out var preferredTarget);
-
-        ordered.Sort((left, right) => CompareCandidates(host, left, right, preferredTarget, now));
+        ordered.Sort((left, right) => CompareCandidates(host, left, right, now));
         return ordered;
     }
 
@@ -38,13 +31,10 @@ internal static class ConnectionTelemetryStore
         var telemetry = EndpointTelemetryByTarget.GetOrAdd(key, static _ => new EndpointTelemetry());
         telemetry.RecordFailure();
 
-        var sourceKey       = new ConnectionSourceKey(host, candidate.Source);
-        var sourceTelemetry = SourceTelemetryByTarget.GetOrAdd(sourceKey, static _ => new EndpointTelemetry());
-        sourceTelemetry.RecordFailure();
-
         var familyKey       = new ConnectionFamilyKey(host, candidate.Address.AddressFamily);
         var familyTelemetry = FamilyTelemetryByTarget.GetOrAdd(familyKey, static _ => new EndpointTelemetry());
         familyTelemetry.RecordFailure();
+
     }
 
     public static void ReportSuccess(string host, ConnectionCandidate candidate, TimeSpan latency)
@@ -54,15 +44,10 @@ internal static class ConnectionTelemetryStore
 
         telemetry.RecordSuccess(latency);
 
-        var sourceKey       = new ConnectionSourceKey(host, candidate.Source);
-        var sourceTelemetry = SourceTelemetryByTarget.GetOrAdd(sourceKey, static _ => new EndpointTelemetry());
-        sourceTelemetry.RecordSuccess(latency);
-
         var familyKey       = new ConnectionFamilyKey(host, candidate.Address.AddressFamily);
         var familyTelemetry = FamilyTelemetryByTarget.GetOrAdd(familyKey, static _ => new EndpointTelemetry());
         familyTelemetry.RecordSuccess(latency);
 
-        PreferredTargetByHost[host] = new PreferredTarget(candidate.Address, candidate.Source, candidate.Address.AddressFamily, Environment.TickCount64 + HOST_PREFERRED_TTL_MS);
     }
 
     private static int CompareCandidates
@@ -70,12 +55,11 @@ internal static class ConnectionTelemetryStore
         string              host,
         ConnectionCandidate left,
         ConnectionCandidate right,
-        PreferredTarget     preferredTarget,
         long                now
     )
     {
-        var leftScore  = GetScore(host, left,  preferredTarget, now);
-        var rightScore = GetScore(host, right, preferredTarget, now);
+        var leftScore  = GetScore(host, left,  now);
+        var rightScore = GetScore(host, right, now);
 
         return leftScore != rightScore ? leftScore.CompareTo(rightScore) : left.OriginalIndex.CompareTo(right.OriginalIndex);
     }
@@ -84,7 +68,6 @@ internal static class ConnectionTelemetryStore
     (
         string              host,
         ConnectionCandidate candidate,
-        PreferredTarget     preferredTarget,
         long                now
     )
     {
@@ -97,25 +80,8 @@ internal static class ConnectionTelemetryStore
         if (FamilyTelemetryByTarget.TryGetValue(familyKey, out var familyTelemetry))
             score = familyTelemetry.ApplyTo(score, now, FAMILY_LATENCY_PERCENT, FAMILY_TELEMETRY_PERCENT);
 
-        var sourceKey = new ConnectionSourceKey(host, candidate.Source);
-
-        if (SourceTelemetryByTarget.TryGetValue(sourceKey, out var sourceTelemetry))
-            score = sourceTelemetry.ApplyTo(score, now, SOURCE_LATENCY_PERCENT, SOURCE_TELEMETRY_PERCENT);
-
         if (EndpointTelemetryByTarget.TryGetValue(key, out var telemetry))
             score = telemetry.ApplyTo(score, now, ENDPOINT_LATENCY_PERCENT, ENDPOINT_TELEMETRY_PERCENT);
-
-        if (preferredTarget.IsActive(now))
-        {
-            if (preferredTarget.Address?.Equals(candidate.Address) == true)
-                score -= HOST_PREFERRED_BONUS;
-
-            if (preferredTarget.Source == candidate.Source)
-                score -= SOURCE_PREFERRED_BONUS;
-
-            if (preferredTarget.AddressFamily == candidate.Address.AddressFamily)
-                score -= FAMILY_PREFERRED_BONUS;
-        }
 
         return score;
     }
@@ -186,28 +152,10 @@ internal static class ConnectionTelemetryStore
         }
     }
 
-    private readonly record struct PreferredTarget
-    (
-        IPAddress?                Address,
-        ConnectionCandidateSource Source,
-        AddressFamily             AddressFamily,
-        long                      ExpiresAtTick
-    )
-    {
-        public bool IsActive(long now) =>
-            Address != null && ExpiresAtTick >= now;
-    }
-
     private readonly record struct ConnectionFamilyKey
     (
         string        Host,
         AddressFamily AddressFamily
-    );
-
-    private readonly record struct ConnectionSourceKey
-    (
-        string                    Host,
-        ConnectionCandidateSource Source
     );
 
     #region Constants
@@ -220,17 +168,11 @@ internal static class ConnectionTelemetryStore
 
     private const long FAMILY_LATENCY_PERCENT = 145;
 
-    private const long FAMILY_PREFERRED_BONUS = 130;
-
     private const long FAMILY_TELEMETRY_PERCENT = 50;
 
     private const long HARD_FAILURE_PENALTY = 1_600;
 
     private const long HARD_FAILURE_WINDOW_MS = 60_000;
-
-    private const long HOST_PREFERRED_BONUS = 900;
-
-    private const long HOST_PREFERRED_TTL_MS = 10 * 60 * 1000;
 
     private const long LATENCY_SMOOTHING_DIVISOR = 10;
 
@@ -251,12 +193,6 @@ internal static class ConnectionTelemetryStore
     private const long SOFT_FAILURE_PENALTY = 600;
 
     private const long SOFT_FAILURE_WINDOW_MS = 5 * 60 * 1000;
-
-    private const long SOURCE_LATENCY_PERCENT = 125;
-
-    private const long SOURCE_PREFERRED_BONUS = 260;
-
-    private const long SOURCE_TELEMETRY_PERCENT = 65;
 
     private const long SUCCESS_BONUS_STEP = 20;
 

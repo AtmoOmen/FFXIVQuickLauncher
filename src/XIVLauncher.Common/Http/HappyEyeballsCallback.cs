@@ -28,7 +28,8 @@ public static class HappyEyeballsCallback
         for (var i = 0; i < candidates.Count; i++)
         {
             var candidate = candidates[i];
-            var attempt   = AttemptConnectionAsync(context.DnsEndPoint.Host, candidate, context.DnsEndPoint.Port, GetAttemptDelay(candidates, i), token, winnerCts.Token, attemptCts.Token);
+            var delay     = GetAttemptDelay(candidates, i);
+            var attempt   = AttemptConnectionAsync(context.DnsEndPoint.Host, candidate, context.DnsEndPoint.Port, delay, token, winnerCts.Token, attemptCts.Token);
 
             ObserveAttemptFailure(attempt, context.DnsEndPoint.Host, candidate);
             attempts.Add(attempt);
@@ -115,8 +116,10 @@ public static class HappyEyeballsCallback
 
         var delayMs = FIRST_FALLBACK_DELAY_MS + (index - 1L) * ADDITIONAL_FALLBACK_DELAY_MS;
 
-        if (candidate.Source != previous.Source)
+        if (previous.Source == ConnectionCandidateSource.DirectDns && candidate.Source == ConnectionCandidateSource.CloudflareRange)
             delayMs -= CROSS_SOURCE_ACCELERATION_MS;
+        else if (previous.Source == ConnectionCandidateSource.CloudflareRange && candidate.Source == ConnectionCandidateSource.DirectDns)
+            delayMs += CROSS_SOURCE_FALLBACK_DELAY_MS;
 
         if (candidate.Address.AddressFamily != previous.Address.AddressFamily)
             delayMs -= CROSS_FAMILY_ACCELERATION_MS;
@@ -193,6 +196,8 @@ public static class HappyEyeballsCallback
     private const int CROSS_FAMILY_ACCELERATION_MS = 12;
 
     private const int CROSS_SOURCE_ACCELERATION_MS = 18;
+
+    private const int CROSS_SOURCE_FALLBACK_DELAY_MS = 140;
 
     private const int FIRST_FALLBACK_DELAY_MS = 35;
 

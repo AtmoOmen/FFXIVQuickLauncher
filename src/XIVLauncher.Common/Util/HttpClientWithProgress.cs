@@ -12,14 +12,27 @@ using XIVLauncher.Common.Http;
 
 namespace XIVLauncher.Common.Util;
 
-public class HttpClientDownloadWithProgress
-(
-    string downloadUrl,
-    string destinationFilePath
-) : IDisposable
+public class HttpClientDownloadWithProgress : IDisposable
 {
-    private int        parallelParts = 32;
-    private HttpClient httpClient;
+    private readonly HttpClient httpClient;
+    private readonly string     downloadUrl;
+    private readonly string     destinationFilePath;
+    
+    private int parallelParts = 32;
+
+    public HttpClientDownloadWithProgress
+    (
+        string downloadUrl,
+        string destinationFilePath
+    )
+    {
+        this.downloadUrl         = downloadUrl;
+        this.destinationFilePath = destinationFilePath;
+
+        httpClient         = XLHttpClientFactory.Create(TimeSpan.FromSeconds(5), 20, DecompressionMethods.All);
+        httpClient.Timeout = TimeSpan.FromMinutes(10);
+        httpClient.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
+    }
 
     #region Disposal
 
@@ -28,15 +41,10 @@ public class HttpClientDownloadWithProgress
 
     #endregion
 
-    public async Task Download(TimeSpan? timeout = null, bool isNuGet = false)
+    public async Task Download(bool isNuGet = false)
     {
-        timeout       ??= TimeSpan.FromMinutes(10);
-        parallelParts =   Math.Clamp(Environment.ProcessorCount / 2, 4, 12);
-        Log.Information("[DUPDATE] 下载线程数: {0}", parallelParts);
-
-        httpClient = XLHttpClientFactory.Create(TimeSpan.FromSeconds(5), 20, DecompressionMethods.All);
-        httpClient.Timeout = timeout.Value;
-        httpClient.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
+        parallelParts = Environment.ProcessorCount;
+        Log.Information("[DUPDATE] 下载线程数: {0}", Environment.ProcessorCount);
 
         var probeTotalSize = await ProbeRangeSupport(isNuGet).ConfigureAwait(false);
 
@@ -325,5 +333,5 @@ public class HttpClientDownloadWithProgress
 
     public delegate void ProgressChangedHandler(long? totalFileSize, long totalBytesDownloaded, double? progressPercentage);
 
-    public event ProgressChangedHandler ProgressChanged;
+    public event ProgressChangedHandler? ProgressChanged;
 }

@@ -156,7 +156,7 @@ public class AssetManager
             try
             {
                 Log.Information("[DASSET] 正在下载 {0} 至 {1}...", url, path);
-                await updater.DownloadFile(url, path, TimeSpan.FromMinutes(4)).ConfigureAwait(false);
+                await updater.DownloadFile(url, path).ConfigureAwait(false);
                 return true;
             }
             catch (Exception ex)

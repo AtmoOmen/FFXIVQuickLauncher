@@ -403,7 +403,7 @@ public class DalamudUpdater
 
                 if (fileName != "latest.7z") continue;
 
-                await DownloadFile($"{downloadUrl}", downloadPath, defaultTimeout).ConfigureAwait(false);
+                await DownloadFile($"{downloadUrl}", downloadPath).ConfigureAwait(false);
                 PlatformHelpers.Unzip7ZAsset(downloadPath, addonPath.FullName);
                 File.Delete(downloadPath);
                 break;
@@ -457,13 +457,13 @@ public class DalamudUpdater
             // 下载 .NET 运行时
             Log.Verbose("[DUPDATE] 正在下载 .NET 运行时 v{Version}...", version);
             var dotnetVersion = version.Split('.')[0];
-            await DownloadNuGet(dotnetUrl, downloadPath, defaultTimeout).ConfigureAwait(false);
+            await DownloadNuGet(dotnetUrl, downloadPath).ConfigureAwait(false);
             ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version), "runtimes/win-x64/native/");
             ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version), $"runtimes/win-x64/lib/net{dotnetVersion}.0/");
 
             // 下载 Windows Desktop 运行时
             Log.Verbose("[DUPDATE] 正在下载 .NET 桌面运行时 v{Version}...", version);
-            await DownloadNuGet(desktopUrl, downloadPath, defaultTimeout).ConfigureAwait(false);
+            await DownloadNuGet(desktopUrl, downloadPath).ConfigureAwait(false);
             ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", version), "runtimes/win-x64/native/");
             ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", version), $"runtimes/win-x64/lib/net{dotnetVersion}.0/");
 
@@ -604,20 +604,20 @@ public class DalamudUpdater
         }
     }
 
-    public async Task DownloadFile(string url, string path, TimeSpan timeout)
+    public async Task DownloadFile(string url, string path)
     {
         using var downloader = new HttpClientDownloadWithProgress(url, path);
         downloader.ProgressChanged += ReportLoadingProgressCore;
 
-        await downloader.Download(timeout).ConfigureAwait(false);
+        await downloader.Download().ConfigureAwait(false);
     }
 
-    public async Task DownloadNuGet(string url, string path, TimeSpan timeout)
+    public async Task DownloadNuGet(string url, string path)
     {
         using var downloader = new HttpClientDownloadWithProgress(url, path);
         downloader.ProgressChanged += ReportLoadingProgressCore;
 
-        await downloader.Download(timeout, true).ConfigureAwait(false);
+        await downloader.Download(true).ConfigureAwait(false);
     }
 
     public static void ExtractSpecificDirectory(string zipPath, string extractPath, string directoryToExtract)

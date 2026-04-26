@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
@@ -14,7 +15,7 @@ internal static class DNSResolver
     private static readonly ConcurrentDictionary<string, CacheEntry> CachedCandidatesByHost =
         new(StringComparer.OrdinalIgnoreCase);
 
-    private static readonly CloudflareIPV4Range[] CloudflareIpv4Ranges =
+    private static readonly CloudflareIPv4Range[] CloudflareIPv4Ranges =
     [
         new(IPAddress.Parse("173.245.48.0"), 20),
         new(IPAddress.Parse("103.21.244.0"), 22),
@@ -33,7 +34,7 @@ internal static class DNSResolver
         new(IPAddress.Parse("131.0.72.0"), 22)
     ];
 
-    private static readonly CloudflareIPV6Range[] CloudflareIpv6Ranges =
+    private static readonly CloudflareIPv6Range[] CloudflareIPv6Ranges =
     [
         new(IPAddress.Parse("2400:cb00::"), 32),
         new(IPAddress.Parse("2606:4700::"), 32),
@@ -44,17 +45,18 @@ internal static class DNSResolver
         new(IPAddress.Parse("2c0f:f248::"), 32)
     ];
 
+    private static readonly IReadOnlyList<IPAddress> CloudflareCandidateAddresses = CreateCloudflareCandidateAddresses();
+
+    private static readonly ConcurrentDictionary<string, string> LastLoggedCandidateSignaturesByHost =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private static readonly ConcurrentDictionary<string, Task<CacheEntry>> PendingResolutionsByHost =
         new(StringComparer.OrdinalIgnoreCase);
 
-    private static HijackCacheEntry? hijackCacheEntry;
-
-    private static Task<HijackCacheEntry>? pendingHijackResolution;
-
     public static async Task<IReadOnlyList<ConnectionCandidate>> GetSortedAddressesAsync(string hostname, AddressFamily addressFamily, CancellationToken token)
     {
-        if (TryGetCachedCandidates(hostname, addressFamily, out var cachedCandidates))
-            return cachedCandidates;
+        if (TryGetCachedCandidates(hostname, out var cachedCandidates))
+            return PrepareCandidates(hostname, cachedCandidates, addressFamily);
 
         var task = PendingResolutionsByHost.GetOrAdd(hostname, static host => ResolveCandidatesAsync(host));
 
@@ -62,7 +64,7 @@ internal static class DNSResolver
         {
             var cacheEntry = await task.WaitAsync(token).ConfigureAwait(false);
             CachedCandidatesByHost[hostname] = cacheEntry;
-            return FilterCandidates(cacheEntry.Candidates, addressFamily);
+            return PrepareCandidates(hostname, cacheEntry.Candidates, addressFamily);
         }
         finally
         {
@@ -73,10 +75,10 @@ internal static class DNSResolver
 
     private static void AppendCandidates
     (
-        List<ConnectionCandidate>  candidates,
-        HashSet<IPAddress>         seenAddresses,
-        IReadOnlyList<IPAddress>   addresses,
-        ConnectionCandidateSource  source
+        List<ConnectionCandidate> candidates,
+        HashSet<IPAddress>        seenAddresses,
+        IReadOnlyList<IPAddress>  addresses,
+        ConnectionCandidateSource source
     )
     {
         foreach (var address in addresses)
@@ -88,33 +90,17 @@ internal static class DNSResolver
         }
     }
 
-    private static async Task<IReadOnlyList<IPAddress>> GetHijackAddressesAsync()
+    private static IReadOnlyList<IPAddress> CreateCloudflareCandidateAddresses()
     {
-        var snapshot = hijackCacheEntry;
+        var addresses = new List<IPAddress>(CloudflareIPv4Ranges.Length + CloudflareIPv6Ranges.Length);
 
-        if (snapshot is { } cachedEntry && cachedEntry.ExpiresAt > DateTimeOffset.UtcNow)
-            return cachedEntry.Addresses;
+        for (var i = 0; i < CloudflareIPv4Ranges.Length; i++)
+            addresses.Add(CloudflareIPv4Ranges[i].GetCandidateAddress());
 
-        var pendingTask = pendingHijackResolution;
+        for (var i = 0; i < CloudflareIPv6Ranges.Length; i++)
+            addresses.Add(CloudflareIPv6Ranges[i].GetCandidateAddress());
 
-        if (pendingTask == null || pendingTask.IsCompleted)
-        {
-            var createdTask = ResolveHijackAddressesAsync();
-            var originalTask = Interlocked.CompareExchange(ref pendingHijackResolution, createdTask, pendingTask);
-            pendingTask = originalTask ?? createdTask;
-        }
-
-        try
-        {
-            var resolvedEntry = await pendingTask.ConfigureAwait(false);
-            hijackCacheEntry = resolvedEntry;
-            return resolvedEntry.Addresses;
-        }
-        finally
-        {
-            if (pendingTask.IsCompleted)
-                _ = Interlocked.CompareExchange(ref pendingHijackResolution, null, pendingTask);
-        }
+        return addresses;
     }
 
     private static IReadOnlyList<ConnectionCandidate> FilterCandidates(IReadOnlyList<ConnectionCandidate> candidates, AddressFamily addressFamily)
@@ -124,10 +110,8 @@ internal static class DNSResolver
 
         var filteredCandidates = new List<ConnectionCandidate>(candidates.Count);
 
-        for (var i = 0; i < candidates.Count; i++)
+        foreach (var candidate in candidates)
         {
-            var candidate = candidates[i];
-
             if (candidate.Address.AddressFamily == addressFamily)
                 filteredCandidates.Add(candidate);
         }
@@ -135,185 +119,49 @@ internal static class DNSResolver
         return filteredCandidates;
     }
 
-    private static bool IsCloudflareIp(IPAddress address)
-    {
-        if (address.AddressFamily == AddressFamily.InterNetwork)
-        {
-            for (var i = 0; i < CloudflareIpv4Ranges.Length; i++)
-            {
-                if (CloudflareIpv4Ranges[i].Contains(address))
-                    return true;
-            }
-
-            return false;
-        }
-
-        if (address.AddressFamily != AddressFamily.InterNetworkV6)
-            return false;
-
-        for (var i = 0; i < CloudflareIpv6Ranges.Length; i++)
-        {
-            if (CloudflareIpv6Ranges[i].Contains(address))
-                return true;
-        }
-
-        return false;
-    }
-
     private static async Task<CacheEntry> ResolveCandidatesAsync(string hostname)
     {
-        var hijackAddressesTask = hostname.Equals(HIJACK_TARGET_HOST, StringComparison.OrdinalIgnoreCase) ? GetHijackAddressesAsync() : null;
-        var directAddressesTask = ResolveAddressesAsync(hostname);
-        var cacheSeconds        = HOST_CACHE_SECONDS;
-        IReadOnlyList<IPAddress> directAddresses;
+        var isCloudflareTarget = hostname.Equals(CLOUDFLARE_TARGET_HOST, StringComparison.OrdinalIgnoreCase);
+        var directAddresses    = await ResolveDirectAddressesAsync(hostname, isCloudflareTarget).ConfigureAwait(false);
 
-        try
-        {
-            directAddresses = hijackAddressesTask == null
-                                  ? await directAddressesTask.ConfigureAwait(false)
-                                  : await directAddressesTask.WaitAsync(TimeSpan.FromMilliseconds(DIRECT_RESOLVE_WAIT_MS)).ConfigureAwait(false);
-        }
-        catch (TimeoutException) when (hijackAddressesTask != null)
-        {
-            cacheSeconds = DNS_PENDING_HOST_CACHE_SECONDS;
-
-            _ = directAddressesTask.ContinueWith
-            (
-                static completedTask =>
-                {
-                    if (completedTask.Exception is { } exception)
-                        Log.Verbose(exception.Flatten(), "{Host} 直连地址后台解析失败", HIJACK_TARGET_HOST);
-                },
-                CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default
-            );
-
-            Log.Verbose("{Host} 直连地址解析仍在进行, 先尝试 Cloudflare 劫持入口", hostname);
-
-            if (await Task.WhenAny(directAddressesTask, hijackAddressesTask).ConfigureAwait(false) == directAddressesTask)
-            {
-                try
-                {
-                    directAddresses = await directAddressesTask.ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "解析 {Host} 直连地址失败, 尝试 Cloudflare 劫持入口", hostname);
-                    directAddresses = [];
-                }
-            }
-            else
-            {
-                if (hijackAddressesTask.IsCompletedSuccessfully)
-                {
-                    directAddresses = [];
-                }
-                else
-                {
-                    try
-                    {
-                        directAddresses = await directAddressesTask.ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "解析 {Host} 直连地址失败, 尝试 Cloudflare 劫持入口", hostname);
-                        directAddresses = [];
-                    }
-                }
-            }
-        }
-        catch (Exception ex) when (hijackAddressesTask != null)
-        {
-            Log.Warning(ex, "解析 {Host} 直连地址失败, 尝试 Cloudflare 劫持入口", hostname);
-            directAddresses = [];
-        }
-
-        if (directAddresses.Count == 0 && hijackAddressesTask == null)
+        if (directAddresses.Count == 0 && !isCloudflareTarget)
             throw new SocketException((int)SocketError.HostNotFound);
 
-        var candidates    = new List<ConnectionCandidate>(directAddresses.Count + MAX_HIJACK_ADDRESS_COUNT);
+        var capacity      = directAddresses.Count + (isCloudflareTarget ? CloudflareCandidateAddresses.Count : 0);
+        var candidates    = new List<ConnectionCandidate>(capacity);
         var seenAddresses = new HashSet<IPAddress>();
 
-        if (directAddresses.Count > 0)
-            AppendCandidates(candidates, seenAddresses, directAddresses, ConnectionCandidateSource.DirectDns);
+        AppendCandidates(candidates, seenAddresses, directAddresses, ConnectionCandidateSource.DirectDns);
 
-        if (hijackAddressesTask != null)
-        {
-            try
-            {
-                var hijackAddresses = directAddresses.Count == 0
-                                          ? await hijackAddressesTask.ConfigureAwait(false)
-                                          : await hijackAddressesTask.WaitAsync(TimeSpan.FromMilliseconds(HIJACK_RESOLVE_WAIT_MS)).ConfigureAwait(false);
-
-                if (hijackAddresses.Count > 0)
-                    AppendCandidates(candidates, seenAddresses, hijackAddresses, ConnectionCandidateSource.HijackDns);
-                else
-                    Log.Warning("Cloudflare 劫持入口 {HijackCname} 未返回可用 IP 地址", HIJACK_CNAME);
-            }
-            catch (TimeoutException)
-            {
-                cacheSeconds = HIJACK_PENDING_HOST_CACHE_SECONDS;
-
-                _ = hijackAddressesTask.ContinueWith
-                (
-                    static completedTask =>
-                    {
-                        if (completedTask.Exception is { } exception)
-                            Log.Verbose(exception.Flatten(), "Cloudflare 劫持入口 {HijackCname} 后台解析失败", HIJACK_CNAME);
-                    },
-                    CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-                    TaskScheduler.Default
-                );
-
-                Log.Verbose("Cloudflare 劫持入口 {HijackCname} 解析仍在进行, 先使用直连候选", HIJACK_CNAME);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "解析 Cloudflare 劫持入口 {HijackCname} 失败", HIJACK_CNAME);
-            }
-        }
+        if (isCloudflareTarget)
+            AppendCandidates(candidates, seenAddresses, CloudflareCandidateAddresses, ConnectionCandidateSource.CloudflareRange);
 
         if (candidates.Count == 0)
             throw new SocketException((int)SocketError.HostNotFound);
 
-        var orderedCandidates = ConnectionTelemetryStore.SortCandidates(hostname, candidates);
+        Log.Verbose
+        (
+            "DNS 解析 {Host}: DirectDns={DirectCount}, CloudflareRange={CloudflareCount}, Total={TotalCount}",
+            hostname,
+            directAddresses.Count,
+            isCloudflareTarget ? CloudflareCandidateAddresses.Count : 0,
+            candidates.Count
+        );
 
-        return new CacheEntry(orderedCandidates, DateTimeOffset.UtcNow.AddSeconds(cacheSeconds));
+        return new CacheEntry(candidates, DateTimeOffset.UtcNow.AddSeconds(HOST_CACHE_SECONDS));
     }
 
-    private static async Task<HijackCacheEntry> ResolveHijackAddressesAsync()
+    private static async Task<IReadOnlyList<IPAddress>> ResolveDirectAddressesAsync(string hostname, bool allowCloudflareFallback)
     {
-        var resolvedAddresses = await ResolveAddressesAsync(HIJACK_CNAME).ConfigureAwait(false);
-        var ipv4Addresses     = new List<IPAddress>(Math.Min(resolvedAddresses.Count, MAX_HIJACK_ADDRESS_COUNT));
-        var ipv6Addresses     = new List<IPAddress>(Math.Min(resolvedAddresses.Count, MAX_HIJACK_ADDRESS_COUNT));
-
-        for (var i = 0; i < resolvedAddresses.Count; i++)
+        try
         {
-            var address = resolvedAddresses[i];
-
-            if (!IsCloudflareIp(address))
-                continue;
-
-            if (address.AddressFamily == AddressFamily.InterNetwork && ipv4Addresses.Count < MAX_HIJACK_ADDRESS_COUNT)
-                ipv4Addresses.Add(address);
-            else if (address.AddressFamily == AddressFamily.InterNetworkV6 && ipv6Addresses.Count < MAX_HIJACK_ADDRESS_COUNT)
-                ipv6Addresses.Add(address);
+            return await ResolveAddressesAsync(hostname).ConfigureAwait(false);
         }
-
-        var filteredAddresses = new List<IPAddress>(Math.Min(ipv4Addresses.Count + ipv6Addresses.Count, MAX_HIJACK_ADDRESS_COUNT));
-
-        for (var i = 0; filteredAddresses.Count < MAX_HIJACK_ADDRESS_COUNT && (i < ipv4Addresses.Count || i < ipv6Addresses.Count); i++)
+        catch (Exception ex) when (allowCloudflareFallback)
         {
-            if (i < ipv4Addresses.Count)
-                filteredAddresses.Add(ipv4Addresses[i]);
-
-            if (filteredAddresses.Count < MAX_HIJACK_ADDRESS_COUNT && i < ipv6Addresses.Count)
-                filteredAddresses.Add(ipv6Addresses[i]);
+            Log.Warning(ex, "解析 {Host} 直连地址失败, 尝试 Cloudflare 网段候选", hostname);
+            return [];
         }
-
-        return new HijackCacheEntry(filteredAddresses, DateTimeOffset.UtcNow.AddSeconds(HIJACK_CACHE_SECONDS));
     }
 
     private static async Task<IReadOnlyList<IPAddress>> ResolveAddressesAsync(string hostname)
@@ -324,13 +172,13 @@ internal static class DNSResolver
         if (hostname.Equals("localhost", StringComparison.OrdinalIgnoreCase) || hostname.Equals("localhost.", StringComparison.OrdinalIgnoreCase))
             return [IPAddress.Loopback, IPAddress.IPv6Loopback];
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(DNS_RESOLVE_TIMEOUT_SECONDS));
-        var resolvedAddresses = await Dns.GetHostAddressesAsync(hostname, cts.Token).ConfigureAwait(false);
+        using var cts               = new CancellationTokenSource(TimeSpan.FromSeconds(DNS_RESOLVE_TIMEOUT_SECONDS));
+        var       resolvedAddresses = await Dns.GetHostAddressesAsync(hostname, cts.Token).ConfigureAwait(false);
 
         if (resolvedAddresses.Length == 0)
             return [];
 
-        var uniqueAddresses = new HashSet<IPAddress>();
+        var uniqueAddresses  = new HashSet<IPAddress>();
         var orderedAddresses = new List<IPAddress>(resolvedAddresses.Length);
 
         foreach (var address in resolvedAddresses)
@@ -347,11 +195,81 @@ internal static class DNSResolver
         return orderedAddresses;
     }
 
-    private static bool TryGetCachedCandidates(string hostname, AddressFamily addressFamily, out IReadOnlyList<ConnectionCandidate> candidates)
+    private static IReadOnlyList<ConnectionCandidate> PrepareCandidates(string hostname, IReadOnlyList<ConnectionCandidate> cachedCandidates, AddressFamily addressFamily)
+    {
+        var filteredCandidates = FilterCandidates(cachedCandidates, addressFamily);
+        var orderedCandidates  = ConnectionTelemetryStore.SortCandidates(hostname, filteredCandidates);
+        var selectedCandidates = orderedCandidates;
+
+        if (orderedCandidates.Count > MAX_CONNECTION_CANDIDATE_COUNT)
+        {
+            var selected = new List<ConnectionCandidate>(MAX_CONNECTION_CANDIDATE_COUNT);
+
+            for (var i = 0; i < MAX_CONNECTION_CANDIDATE_COUNT; i++)
+                selected.Add(orderedCandidates[i]);
+
+            for (var i = 0; i < orderedCandidates.Count; i++)
+            {
+                var candidate = orderedCandidates[i];
+
+                if (candidate.Source != ConnectionCandidateSource.DirectDns || selected.Contains(candidate))
+                    continue;
+
+                for (var replaceIndex = selected.Count - 1; replaceIndex >= 0; replaceIndex--)
+                {
+                    if (selected[replaceIndex].Source == ConnectionCandidateSource.DirectDns)
+                        continue;
+
+                    selected[replaceIndex] = candidate;
+                    break;
+                }
+            }
+
+            selectedCandidates = selected;
+        }
+
+        if (Log.IsEnabled(Serilog.Events.LogEventLevel.Verbose))
+        {
+            var candidateText = new StringBuilder(selectedCandidates.Count * 32);
+
+            for (var i = 0; i < selectedCandidates.Count; i++)
+            {
+                if (i > 0)
+                    candidateText.Append(", ");
+
+                var candidate = selectedCandidates[i];
+                candidateText.Append(candidate.Address);
+                candidateText.Append('[');
+                candidateText.Append(candidate.Source);
+                candidateText.Append(']');
+            }
+
+            var signature = candidateText.ToString();
+            var logKey    = string.Concat(hostname, "|", (int)addressFamily);
+
+            if (!LastLoggedCandidateSignaturesByHost.TryGetValue(logKey, out var lastSignature) || lastSignature != signature)
+            {
+                LastLoggedCandidateSignaturesByHost[logKey] = signature;
+
+                Log.Verbose
+                (
+                    "DNS 候选排序 {Host}: Total={TotalCount}, Selected={SelectedCount}, Top={TopCandidates}",
+                    hostname,
+                    filteredCandidates.Count,
+                    selectedCandidates.Count,
+                    signature
+                );
+            }
+        }
+
+        return selectedCandidates;
+    }
+
+    private static bool TryGetCachedCandidates(string hostname, out IReadOnlyList<ConnectionCandidate> candidates)
     {
         if (CachedCandidatesByHost.TryGetValue(hostname, out var cacheEntry) && cacheEntry.ExpiresAt > DateTimeOffset.UtcNow)
         {
-            candidates = FilterCandidates(cacheEntry.Candidates, addressFamily);
+            candidates = cacheEntry.Candidates;
             return true;
         }
 
@@ -366,33 +284,15 @@ internal static class DNSResolver
         DateTimeOffset                     ExpiresAt
     );
 
-    private readonly record struct HijackCacheEntry
-    (
-        IReadOnlyList<IPAddress> Addresses,
-        DateTimeOffset           ExpiresAt
-    );
-
     #region Constants
 
     private const int DNS_RESOLVE_TIMEOUT_SECONDS = 4;
 
-    private const int DIRECT_RESOLVE_WAIT_MS = 650;
-
-    private const int DNS_PENDING_HOST_CACHE_SECONDS = 8;
-
-    private const int HIJACK_CACHE_SECONDS = 90;
-
-    private const string HIJACK_CNAME = "cf.951886.xyz";
-
-    private const int HIJACK_PENDING_HOST_CACHE_SECONDS = 8;
-
-    private const int HIJACK_RESOLVE_WAIT_MS = 450;
-
-    private const string HIJACK_TARGET_HOST = "gh.atmoomen.top";
+    private const string CLOUDFLARE_TARGET_HOST = "gh.atmoomen.top";
 
     private const int HOST_CACHE_SECONDS = 75;
 
-    private const int MAX_HIJACK_ADDRESS_COUNT = 6;
+    private const int MAX_CONNECTION_CANDIDATE_COUNT = 10;
 
     #endregion
 }

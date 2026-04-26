@@ -3,12 +3,12 @@ using System.Net;
 
 namespace XIVLauncher.Common.Http;
 
-internal readonly struct CloudflareIPV4Range
+internal readonly struct CloudflareIPv4Range
 {
     private readonly uint mask;
     private readonly uint network;
 
-    public CloudflareIPV4Range(IPAddress address, int prefixLength)
+    public CloudflareIPv4Range(IPAddress address, int prefixLength)
     {
         var bytes = address.GetAddressBytes();
 
@@ -19,13 +19,14 @@ internal readonly struct CloudflareIPV4Range
         network = BitConverter.ToUInt32(bytes, 0) & mask;
     }
 
-    public bool Contains(IPAddress address)
+    public IPAddress GetCandidateAddress()
     {
-        var bytes = address.GetAddressBytes();
+        var candidate = network + 1;
+        var bytes     = BitConverter.GetBytes(candidate);
 
         if (BitConverter.IsLittleEndian)
             Array.Reverse(bytes);
 
-        return (BitConverter.ToUInt32(bytes, 0) & mask) == network;
+        return new IPAddress(bytes);
     }
 }
