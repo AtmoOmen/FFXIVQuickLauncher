@@ -22,16 +22,16 @@ public class DalamudUpdater
 {
     public DirectoryInfo Runtime { get; }
 
-    public        DownloadState           State               { get; private set; } = DownloadState.Unknown;
-    public        Exception?              EnsurementException { get; private set; }
-    public        FileInfo?               RunnerOverride      { get; set; }
-    public        DirectoryInfo?          AssetDirectory      { get; private set; }
-    public        Action?                 ShowLoadingCallback { get; set; }
-    public        Action?                 HideLoadingCallback { get; set; }
-    public        Action<string>?         SetLoadingMessage   { get; set; }
+    public        DownloadState                 State                 { get; private set; } = DownloadState.Unknown;
+    public        Exception?                    EnsurementException   { get; private set; }
+    public        FileInfo?                     RunnerOverride        { get; set; }
+    public        DirectoryInfo?                AssetDirectory        { get; private set; }
+    public        Action?                       ShowLoadingCallback   { get; set; }
+    public        Action?                       HideLoadingCallback   { get; set; }
+    public        Action<string>?               SetLoadingMessage     { get; set; }
     public        Action<long?, long, double?>? ReportLoadingProgress { get; set; }
-    public static string                  OnlineHash          { get; private set; } = string.Empty;
-    public static string                  Version             { get; private set; } = string.Empty;
+    public static string                        OnlineHash            { get; private set; } = string.Empty;
+    public static string                        Version               { get; private set; } = string.Empty;
 
     public FileInfo? Runner
     {
@@ -48,7 +48,6 @@ public class DalamudUpdater
     private readonly DirectoryInfo assetDirectory;
     private readonly string?       githubToken;
 
-    private readonly TimeSpan   defaultTimeout = TimeSpan.FromMinutes(1);
     private readonly HttpClient httpClient;
     private readonly HttpClient testHttpClient;
 
@@ -267,6 +266,187 @@ public class DalamudUpdater
 
     #region Dalamud
 
+    private async Task<bool> TryUpdateDalamudIncrementally
+    (
+        DirectoryInfo              addonPath,
+        DirectoryInfo              devPath,
+        Dictionary<string, string> assets,
+        string                     manifestUrl
+    )
+    {
+        var       manifestJson = await httpClient.GetStringAsync(manifestUrl).ConfigureAwait(false);
+        using var manifestDoc  = JsonDocument.Parse(manifestJson);
+        var       manifest     = ReadDalamudManifest(manifestDoc.RootElement);
+
+        if (!assets.TryGetValue(manifest.HashesAsset, out var hashesUrl))
+            throw new InvalidDataException("[DUPDATE] Dalamud 文件清单缺少 hashes.json 资产");
+
+        var plan = BuildDalamudUpdatePlan(addonPath, devPath, assets, manifest.HashesAsset, manifest.Files);
+
+        var remoteFileCount = plan.DownloadFiles.Count;
+
+        if (remoteFileCount * 2 > manifest.Files.Count)
+        {
+            Log.Information("[DUPDATE] 需远程下载文件数超过一半, 改用完整包更新: {DownloadCount}/{TotalCount}", remoteFileCount, manifest.Files.Count);
+            return false;
+        }
+
+        foreach (var file in plan.CopyFiles)
+        {
+            Log.Verbose("[DUPDATE] 从 dev 目录复用 Dalamud 文件: {Path}", Path.GetRelativePath(addonPath.FullName, file.TargetPath));
+            Directory.CreateDirectory(Path.GetDirectoryName(file.TargetPath)!);
+            File.Copy(file.SourcePath, file.TargetPath, true);
+        }
+
+        plan.DownloadFiles.Add((hashesUrl, GetReleaseFilePath(addonPath, manifest.HashesAsset), OnlineHash));
+        await DownloadVerifiedFiles(plan.DownloadFiles).ConfigureAwait(false);
+        CleanDalamudReleaseDirectory(addonPath, plan.KeepPaths);
+
+        Log.Information
+        (
+            "[DUPDATE] Dalamud 按需更新完成: 复用 {CopyCount}, 下载 {DownloadCount}, 变更 {ChangedCount}/{TotalCount}",
+            plan.CopyFiles.Count,
+            remoteFileCount,
+            plan.ChangedFiles,
+            manifest.Files.Count
+        );
+
+        return true;
+    }
+
+    private static (string HashesAsset, List<(string Path, string Hash, string Asset)> Files) ReadDalamudManifest(JsonElement manifest)
+    {
+        if (!manifest.TryGetProperty("version", out var manifestVersionProperty))
+            throw new InvalidDataException("[DUPDATE] Dalamud 文件清单为空");
+
+        var manifestVersion = manifestVersionProperty.GetInt32();
+
+        if (manifestVersion != RELEASE_MANIFEST_VERSION)
+            throw new InvalidDataException($"[DUPDATE] 不支持的 Dalamud 文件清单版本: {manifestVersion}");
+
+        var hashAlgorithm = GetRequiredStringProperty(manifest, "hashAlgorithm", "[DUPDATE] Dalamud 文件清单缺少哈希算法");
+
+        if (!string.Equals(hashAlgorithm, RELEASE_HASH_ALGORITHM, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"[DUPDATE] 不支持的 Dalamud 哈希算法: {hashAlgorithm}");
+
+        if (!manifest.TryGetProperty("files", out var manifestFiles) || manifestFiles.ValueKind != JsonValueKind.Array || manifestFiles.GetArrayLength() == 0)
+            throw new InvalidDataException("[DUPDATE] Dalamud 文件清单没有文件项");
+
+        var hashesAsset = GetRequiredStringProperty(manifest, "hashesAsset", "[DUPDATE] Dalamud 文件清单缺少 hashes.json 资产");
+        var files       = new List<(string Path, string Hash, string Asset)>(manifestFiles.GetArrayLength());
+
+        foreach (var file in manifestFiles.EnumerateArray())
+        {
+            var filePath  = GetRequiredStringProperty(file, "path",  "[DUPDATE] Dalamud 文件清单包含无效文件项");
+            var fileHash  = GetRequiredStringProperty(file, "hash",  "[DUPDATE] Dalamud 文件清单包含无效文件项");
+            var fileAsset = GetRequiredStringProperty(file, "asset", "[DUPDATE] Dalamud 文件清单包含无效文件项");
+
+            if (!file.TryGetProperty("size", out var fileSizeProperty) || !fileSizeProperty.TryGetInt64(out var fileSize) || fileSize < 0)
+                throw new InvalidDataException("[DUPDATE] Dalamud 文件清单包含无效文件项");
+
+            files.Add((filePath, fileHash, fileAsset));
+        }
+
+        return (hashesAsset, files);
+    }
+
+    private static (HashSet<string> KeepPaths, List<(string SourcePath, string TargetPath)> CopyFiles, List<(string Url, string Path, string Hash)> DownloadFiles, int ChangedFiles)
+        BuildDalamudUpdatePlan
+        (
+            DirectoryInfo                                           addonPath,
+            DirectoryInfo                                           devPath,
+            Dictionary<string, string>                              assets,
+            string                                                  hashesAsset,
+            IReadOnlyList<(string Path, string Hash, string Asset)> manifestFiles
+        )
+    {
+        var keepPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            NormalizeReleasePath(hashesAsset)
+        };
+
+        var copyFiles     = new List<(string SourcePath, string TargetPath)>();
+        var downloadFiles = new List<(string Url, string Path, string Hash)>();
+        var changedFiles  = 0;
+
+        foreach (var file in manifestFiles)
+        {
+            keepPaths.Add(NormalizeReleasePath(file.Path));
+            var targetPath = GetReleaseFilePath(addonPath, file.Path);
+
+            if (FileMatchesHash(targetPath, file.Hash))
+            {
+                Log.Verbose("[DUPDATE] Dalamud 文件已是最新: {Path}", file.Path);
+                continue;
+            }
+
+            changedFiles++;
+            var oldFilePath = GetReleaseFilePath(devPath, file.Path);
+
+            if (FileMatchesHash(oldFilePath, file.Hash))
+            {
+                copyFiles.Add((oldFilePath, targetPath));
+                continue;
+            }
+
+            if (!assets.TryGetValue(file.Asset, out var fileUrl))
+                throw new InvalidDataException($"[DUPDATE] Dalamud 文件资产缺失: {file.Asset}");
+
+            downloadFiles.Add((fileUrl, targetPath, file.Hash));
+        }
+
+        return (keepPaths, copyFiles, downloadFiles, changedFiles);
+    }
+
+    private static string GetRequiredStringProperty(JsonElement element, string propertyName, string message)
+    {
+        if (!element.TryGetProperty(propertyName, out var property))
+            throw new InvalidDataException(message);
+
+        var value = property.GetString();
+
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidDataException(message);
+
+        return value;
+    }
+
+    private static bool HasReusableDalamudSeed(DirectoryInfo directory) =>
+        directory.Exists
+        && directory.EnumerateFiles("*", SearchOption.AllDirectories).Any
+        (file => !string.Equals(file.Name, RELEASE_HASHES_ASSET, StringComparison.OrdinalIgnoreCase) && !file.Name.EndsWith(".download", StringComparison.OrdinalIgnoreCase)
+        );
+
+    private static void CleanDalamudReleaseDirectory(DirectoryInfo addonPath, HashSet<string> keepPaths)
+    {
+        foreach (var file in addonPath.GetFiles("*", SearchOption.AllDirectories))
+        {
+            var relativePath = NormalizeReleasePath(Path.GetRelativePath(addonPath.FullName, file.FullName));
+
+            if (!keepPaths.Contains(relativePath))
+                file.Delete();
+        }
+
+        foreach (var directory in addonPath.GetDirectories("*", SearchOption.AllDirectories).OrderByDescending(directory => directory.FullName.Length))
+        {
+            if (!directory.EnumerateFileSystemInfos().Any())
+                directory.Delete();
+        }
+    }
+
+    private static void RefreshDalamudDevCache(DirectoryInfo addonPath, DirectoryInfo devPath)
+    {
+        try
+        {
+            PlatformHelpers.DeleteAndRecreateDirectory(devPath);
+            PlatformHelpers.CopyFilesRecursively(addonPath, devPath);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[DUPDATE] 复制到 dev 目录失败");
+        }
+    }
+
     public static bool CheckDalamudIntegrity(DirectoryInfo addonPath)
     {
         try
@@ -337,34 +517,33 @@ public class DalamudUpdater
                 throw new NullReferenceException("[DUPDATE] 未能找到对应的版本信息");
             Version = version;
 
-            var assets = jsonDoc.RootElement.GetProperty("assets");
+            var assets    = jsonDoc.RootElement.GetProperty("assets");
+            var assetUrls = GetReleaseAssetUrls(assets);
 
-            foreach (var asset in assets.EnumerateArray())
+            if (!assetUrls.TryGetValue(RELEASE_HASHES_ASSET, out var downloadUrl))
+                throw new NullReferenceException("[DUPDATE] 未能找到对应的 hashes.json 文件");
+
+            var downloadPath = PlatformHelpers.GetTempFileName();
+
+            try
             {
-                if (asset.GetProperty("name").GetString() == "hashes.json")
+                using (var fileResponse = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
                 {
-                    var downloadUrl = asset.GetProperty("browser_download_url").GetString();
-                    if (string.IsNullOrWhiteSpace(downloadUrl)) continue;
-
-                    var downloadPath = PlatformHelpers.GetTempFileName();
-
-                    using (var fileResponse = await httpClient.GetAsync($"{downloadUrl}", HttpCompletionOption.ResponseHeadersRead))
-                    {
-                        fileResponse.EnsureSuccessStatusCode();
-                        using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                            await fileResponse.Content.CopyToAsync(fileStream);
-                    }
-
-                    var hash = ComputeFileHash(downloadPath);
-                    File.Delete(downloadPath);
-
-                    Log.Information($"[DUPDATE] 获取到远端 Dalamud 哈希: {hash}");
-                    OnlineHash = hash;
-                    return;
+                    fileResponse.EnsureSuccessStatusCode();
+                    using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        await fileResponse.Content.CopyToAsync(fileStream);
                 }
-            }
 
-            throw new NullReferenceException("[DUPDATE] 未能找到对应的 hashes.json 文件");
+                var hash = ComputeFileHash(downloadPath);
+
+                Log.Information($"[DUPDATE] 获取到远端 Dalamud 哈希: {hash}");
+                OnlineHash = hash;
+            }
+            finally
+            {
+                if (File.Exists(downloadPath))
+                    File.Delete(downloadPath);
+            }
         }
         catch (HttpRequestException e)
         {
@@ -382,43 +561,37 @@ public class DalamudUpdater
 
     private async Task DownloadDalamud(DirectoryInfo addonPath)
     {
-        if (addonPath.Exists) addonPath.Delete(true);
-        addonPath.Create();
-
         try
         {
             var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
             response.EnsureSuccessStatusCode();
 
-            var       json    = await response.Content.ReadAsStringAsync();
-            using var jsonDoc = JsonDocument.Parse(json);
-            var       assets  = jsonDoc.RootElement.GetProperty("assets");
+            var       json         = await response.Content.ReadAsStringAsync();
+            using var jsonDoc      = JsonDocument.Parse(json);
+            var       assets       = GetReleaseAssetUrls(jsonDoc.RootElement.GetProperty("assets"));
+            var       devPath      = new DirectoryInfo(Path.Combine(addonPath.FullName, "..", "dev"));
+            var       hasLocalSeed = HasReusableDalamudSeed(addonPath) || HasReusableDalamudSeed(devPath);
 
-            var downloadPath = PlatformHelpers.GetTempFileName();
+            if (!addonPath.Exists)
+                addonPath.Create();
 
-            foreach (var asset in assets.EnumerateArray())
+            if (hasLocalSeed && assets.TryGetValue(RELEASE_MANIFEST_ASSET, out var manifestUrl))
             {
-                var fileName    = asset.GetProperty("name").GetString()!;
-                var downloadUrl = asset.GetProperty("browser_download_url").GetString()!;
+                Log.Information("[DUPDATE] 发现 Dalamud 文件清单, 开始按需更新");
 
-                if (fileName != "latest.7z") continue;
+                var incrementalUpdated = await TryUpdateDalamudIncrementally(addonPath, devPath, assets, manifestUrl).ConfigureAwait(false);
 
-                await DownloadFile($"{downloadUrl}", downloadPath).ConfigureAwait(false);
-                PlatformHelpers.Unzip7ZAsset(downloadPath, addonPath.FullName);
-                File.Delete(downloadPath);
-                break;
+                if (!incrementalUpdated)
+                    await DownloadDalamudPackage(addonPath, assets).ConfigureAwait(false);
+            }
+            else
+            {
+                Log.Information(hasLocalSeed ? "[DUPDATE] 未发现 Dalamud 文件清单, 开始下载完整包" : "[DUPDATE] 未发现可复用 Dalamud 本地基线, 开始下载完整包");
+                await DownloadDalamudPackage(addonPath, assets).ConfigureAwait(false);
             }
 
-            try
-            {
-                var devPath = new DirectoryInfo(Path.Combine(addonPath.FullName, "..", "dev"));
-                PlatformHelpers.DeleteAndRecreateDirectory(devPath);
-                PlatformHelpers.CopyFilesRecursively(addonPath, devPath);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[DUPDATE] 复制到 dev 目录失败");
-            }
+            CachedFileHashes.Clear();
+            RefreshDalamudDevCache(addonPath, devPath);
         }
         catch (HttpRequestException e)
         {
@@ -502,6 +675,120 @@ public class DalamudUpdater
     #endregion
 
     #region Utility
+
+    private async Task DownloadDalamudPackage(DirectoryInfo addonPath, Dictionary<string, string> assets)
+    {
+        if (!assets.TryGetValue(RELEASE_PACKAGE_ASSET, out var downloadUrl))
+            throw new InvalidDataException("[DUPDATE] 未找到 Dalamud 完整包");
+
+        if (addonPath.Exists) addonPath.Delete(true);
+        addonPath.Create();
+
+        var downloadPath = PlatformHelpers.GetTempFileName();
+
+        try
+        {
+            await DownloadFiles([(downloadUrl, downloadPath)]).ConfigureAwait(false);
+            PlatformHelpers.Unzip7ZAsset(downloadPath, addonPath.FullName);
+        }
+        finally
+        {
+            if (File.Exists(downloadPath))
+                File.Delete(downloadPath);
+        }
+    }
+
+    private async Task DownloadVerifiedFiles(IReadOnlyList<(string Url, string Path, string Hash)> files)
+    {
+        if (files.Count == 0)
+            return;
+
+        var downloads = files.Select(file => (file.Url, Path: $"{file.Path}.download")).ToList();
+
+        foreach (var download in downloads)
+        {
+            if (File.Exists(download.Path))
+                File.Delete(download.Path);
+        }
+
+        try
+        {
+            await DownloadFiles(downloads).ConfigureAwait(false);
+
+            for (var i = 0; i < files.Count; i++)
+            {
+                var file         = files[i];
+                var downloadPath = downloads[i].Path;
+                var fileHash     = ComputeFileHash(downloadPath);
+
+                if (!string.Equals(fileHash, file.Hash, StringComparison.OrdinalIgnoreCase))
+                    throw new DalamudIntegrityException($"文件哈希不一致, 本地: {fileHash}, 远端: {file.Hash}");
+
+                var directory = Path.GetDirectoryName(file.Path);
+
+                if (!string.IsNullOrWhiteSpace(directory))
+                    Directory.CreateDirectory(directory);
+
+                File.Move(downloadPath, file.Path, true);
+            }
+        }
+        finally
+        {
+            foreach (var download in downloads)
+            {
+                if (File.Exists(download.Path))
+                    File.Delete(download.Path);
+            }
+        }
+    }
+
+    private static Dictionary<string, string> GetReleaseAssetUrls(JsonElement assets)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var asset in assets.EnumerateArray())
+        {
+            if (!asset.TryGetProperty("name", out var nameProperty) || !asset.TryGetProperty("browser_download_url", out var urlProperty))
+                continue;
+
+            var name = nameProperty.GetString();
+            var url  = urlProperty.GetString();
+
+            if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(url))
+                result[name] = url;
+        }
+
+        return result;
+    }
+
+    private static string GetReleaseFilePath(DirectoryInfo directory, string relativePath)
+    {
+        var normalizedPath = NormalizeReleasePath(relativePath);
+
+        if (string.IsNullOrWhiteSpace(normalizedPath) || Path.IsPathRooted(normalizedPath) || normalizedPath.Split('/').Any(part => part == ".."))
+            throw new InvalidDataException($"非法 Dalamud 文件路径: {relativePath}");
+
+        return Path.Combine(directory.FullName, normalizedPath.Replace('/', Path.DirectorySeparatorChar));
+    }
+
+    private static string NormalizeReleasePath(string path) =>
+        path.Replace('\\', '/');
+
+    private static bool FileMatchesHash(string path, string expectedHash)
+    {
+        if (!File.Exists(path) || string.IsNullOrWhiteSpace(expectedHash))
+            return false;
+
+        try
+        {
+            return string.Equals(ComputeFileHash(path), expectedHash, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[DUPDATE] 无法校验文件哈希: {Path}", path);
+            return false;
+        }
+    }
 
     private static bool CheckIntegrity(DirectoryInfo directory, string hashesJson)
     {
@@ -604,21 +891,19 @@ public class DalamudUpdater
         }
     }
 
-    public async Task DownloadFile(string url, string path)
+    public async Task DownloadFile(string url, string path) =>
+        await DownloadFiles([(url, path)]).ConfigureAwait(false);
+
+    private async Task DownloadFiles(IReadOnlyList<(string Url, string Path)> files)
     {
-        using var downloader = new HttpClientDownloadWithProgress(url, path);
+        using var downloader = new HttpClientDownloadWithProgress(files);
         downloader.ProgressChanged += ReportLoadingProgressCore;
 
         await downloader.Download().ConfigureAwait(false);
     }
 
-    public async Task DownloadNuGet(string url, string path)
-    {
-        using var downloader = new HttpClientDownloadWithProgress(url, path);
-        downloader.ProgressChanged += ReportLoadingProgressCore;
-
-        await downloader.Download(true).ConfigureAwait(false);
-    }
+    public async Task DownloadNuGet(string url, string path) =>
+        await DownloadFiles([(url, path)]).ConfigureAwait(false);
 
     public static void ExtractSpecificDirectory(string zipPath, string extractPath, string directoryToExtract)
     {
@@ -730,10 +1015,18 @@ public class DalamudUpdater
         Done,
         NoIntegrity // fail with error message
     }
-}
 
-public class DalamudIntegrityException
-(
-    string     msg,
-    Exception? inner = null
-) : Exception(msg, inner);
+    #region Constants
+
+    private const int RELEASE_MANIFEST_VERSION = 1;
+
+    private const string RELEASE_HASH_ALGORITHM = "MD5";
+
+    private const string RELEASE_MANIFEST_ASSET = "manifest.json";
+
+    private const string RELEASE_PACKAGE_ASSET = "latest.7z";
+
+    private const string RELEASE_HASHES_ASSET = "hashes.json";
+
+    #endregion
+}
