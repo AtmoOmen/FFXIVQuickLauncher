@@ -23,20 +23,17 @@ public partial class LoadingDialog
         DataContext = new LoadingDialogViewModel();
     }
 
-    public LoadingDialog(string message, bool useManualStartupLocation, bool hideFromTaskSwitcher)
+    public LoadingDialog(string message, bool hideFromTaskSwitcher)
         : this()
     {
         ViewModel.HeaderText         = message;
         shouldHideFromWindowSwitcher = hideFromTaskSwitcher;
 
-        if (!useManualStartupLocation)
+        if (!hideFromTaskSwitcher)
             return;
 
-        WindowStartupLocation = WindowStartupLocation.Manual;
-        Left                  = 0;
-        Top                   = 0;
-        ShowInTaskbar         = false;
-        Topmost               = true;
+        ShowInTaskbar = false;
+        Topmost       = true;
 
         var interop = new WindowInteropHelper(this);
         interop.EnsureHandle();

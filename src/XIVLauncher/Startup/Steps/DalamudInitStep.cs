@@ -54,7 +54,7 @@ public class DalamudInitStep
 
     private static void StartDalamudOverlayThread(StartupContext context)
     {
-        var overlay = new LoadingDialog("正在更新 Dalamud 框架...", true, true);
+        var overlay = new LoadingDialog("正在更新 Dalamud 框架...", true);
         overlay.Hide();
         context.DalamudUpdater.ShowLoadingCallback = overlay.ShowDialog;
         context.DalamudUpdater.HideLoadingCallback = overlay.HideDialog;
