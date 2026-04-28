@@ -242,31 +242,38 @@ public partial class DCTravelClient
     {
         var cancellationToken = KeepAliveCancelSource.Token;
 
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            if (!IsInitialized)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
-                continue;
-            }
+                if (!IsInitialized)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
 
-            try
-            {
-                Log.Information("Cookie 保活中");
-                await QueryGroupListTravelSource().ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "保活 Cookie 时出错");
-            }
+                try
+                {
+                    Log.Information("Cookie 保活中");
+                    await QueryGroupListTravelSource().ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "保活 Cookie 时出错");
+                }
 
-            var randomDelay = TimeSpan.FromMinutes(Random.Shared.Next(KEEP_ALIVE_MIN_MINUTES, KEEP_ALIVE_MAX_MINUTES));
-            Log.Information("下次 Cookie 保活将在 {RandomDelay} 分钟后进行", randomDelay);
-            await Task.Delay(randomDelay, cancellationToken);
+                var randomDelay = TimeSpan.FromMinutes(Random.Shared.Next(KEEP_ALIVE_MIN_MINUTES, KEEP_ALIVE_MAX_MINUTES));
+                Log.Information("下次 Cookie 保活将在 {RandomDelay} 分钟后进行", randomDelay);
+                await Task.Delay(randomDelay, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // ignored
         }
     }
 

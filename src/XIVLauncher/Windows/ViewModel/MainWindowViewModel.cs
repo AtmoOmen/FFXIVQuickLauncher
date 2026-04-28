@@ -181,12 +181,12 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         LoginCardAfterCompletion = null;
         SwitchCard(loginType == LoginType.QRCode ? LoginCardType.ScanQRCode : LoginCardType.Logining, false);
 
-        Task.Run
-        (() =>
+        _ = Task.Run
+        (async () =>
             {
                 try
                 {
-                    LoginAsync(loginType, username, password, doingAutoLogin, readWeGameInfo, action).Wait();
+                    await LoginAsync(loginType, username, password, doingAutoLogin, readWeGameInfo, action).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -559,14 +559,24 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
             if (App.Settings.DalamudEnabled && loginType != LoginType.WeGameAuto)
             {
-                Log.Information("[DCTravelListener] 正在开启监听用端口");
-                await dcTraveler.GetValidCookie();
-                _ = dcTraveler.KeepCookieAlive();
+                try
+                {
+                    DCTravelListener = null;
+                    Log.Information("[DCTravelListener] 正在开启监听用端口");
+                    await dcTraveler.GetValidCookie();
+                    _ = dcTraveler.KeepCookieAlive();
 
-                loginResult.DCTravelPort = APIHelper.GetAvailablePort();
-                DCTravelListener         = new(dcTraveler, loginResult.DCTravelPort, false);
-                Log.Information("[DCTravelListener] 打开监听端口: {LoginResultDCTravelPort}", loginResult.DCTravelPort);
-                _ = DCTravelListener.StartAsync();
+                    loginResult.DCTravelPort = APIHelper.GetAvailablePort();
+                    DCTravelListener         = new(dcTraveler, loginResult.DCTravelPort, false);
+                    Log.Information("[DCTravelListener] 打开监听端口: {LoginResultDCTravelPort}", loginResult.DCTravelPort);
+                    _ = DCTravelListener.StartAsync();
+                }
+                catch (Exception ex)
+                {
+                    loginResult.DCTravelPort = 0;
+                    DCTravelListener         = null;
+                    Log.Warning(ex, "[DCTravelListener] 启动失败, 已跳过游戏内超域传送支持");
+                }
             }
 
             var accountToSave = new XIVAccount
@@ -591,15 +601,16 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 if (!string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
                     accountToSave.SdoAutoLoginSessionKey = await AccountManager.Encrypt(oAuthLogin.AutoLoginSessionKey);
 
-                if (DCTravelListener != null && !string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
+                var dcTravelListener = DCTravelListener;
+                if (dcTravelListener != null && !string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
                 {
-                    DCTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
+                    dcTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
                     {
                         var newLoginResult = await Launcher.LoginClient.LoginBySessionKey
                                              (
                                                  username,
                                                  oAuthLogin.AutoLoginSessionKey,
-                                                 DCTravelListener.DCTravelClient,
+                                                 dcTravelListener.DCTravelClient,
                                                  deviceProfileSnapshot
                                              ).ConfigureAwait(false);
                         return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;

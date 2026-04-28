@@ -94,11 +94,10 @@ public sealed class DCTravelListener : IDisposable, IAsyncDisposable
 
     public async Task StartAsync()
     {
-        ThrowIfDisposed();
-        var server = webServer ?? throw new ObjectDisposedException(nameof(DCTravelListener));
-
         try
         {
+            ThrowIfDisposed();
+            var server = webServer ?? throw new ObjectDisposedException(nameof(DCTravelListener));
             await server.RunAsync(listenerCts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
