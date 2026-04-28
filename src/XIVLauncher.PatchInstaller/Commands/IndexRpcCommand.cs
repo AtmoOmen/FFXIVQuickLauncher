@@ -1,12 +1,10 @@
 using System.CommandLine;
 using System.CommandLine.Parsing;
-using System.IO;
 using System.Threading.Tasks;
 using Serilog;
-using Serilog.Events;
 using XIVLauncher.Common;
-using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
+using XIVLauncher.PatchInstaller.Support;
 
 namespace XIVLauncher.PatchInstaller.Commands;
 
@@ -36,14 +34,11 @@ public class IndexRpcCommand
 
     private Task<int> Handle()
     {
-        Log.Logger = new LoggerConfiguration()
-                     .WriteTo.Console(standardErrorFromLevel: LogEventLevel.Fatal)
-                     .WriteTo.File(Path.Combine(Paths.RoamingPath, "patcher.log"))
-                     .WriteTo.Debug()
-                     .MinimumLevel.Verbose()
-                     .CreateLogger();
+        PatchInstallerLog.Setup();
+        Log.Information("[PatchInstaller] 启动索引 RPC, 父进程 {ProcessId}, 通道 {ChannelName}", monitorProcessId, channelName);
 
         new IndexedZiPatchIndexRemoteInstaller.WorkerSubprocessBody(monitorProcessId, channelName).RunToDisposeSelf();
+        Log.Information("[PatchInstaller] 索引 RPC 已退出");
         return Task.FromResult(0);
     }
 }

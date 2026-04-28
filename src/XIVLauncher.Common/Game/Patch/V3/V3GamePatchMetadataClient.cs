@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Integrity;
 
@@ -25,6 +27,7 @@ public sealed class V3GamePatchMetadataClient : IDisposable
 
     public async Task<V3GameUpdatePlan?> BuildUpdatePlan(string currentGameVersion, bool forceUpdate, CancellationToken cancellationToken = default)
     {
+        Log.Information("[V3Patch] 正在构建更新计划, 当前游戏版本 {CurrentGameVersion}, 强制更新 {ForceUpdate}", currentGameVersion, forceUpdate);
         var remoteVersion  = await DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
         var versionMapping = await DownloadVersionMapping(cancellationToken).ConfigureAwait(false);
         var targetArea     = GetTargetArea(remoteVersion);
@@ -32,7 +35,10 @@ public sealed class V3GamePatchMetadataClient : IDisposable
         var currentVersion = currentMapping?.V ?? string.Empty;
 
         if (!forceUpdate && string.Equals(currentVersion, targetArea.Must, StringComparison.Ordinal))
+        {
+            Log.Information("[V3Patch] 当前版本已是目标版本, 数据版本 {CurrentVersion}", currentVersion);
             return null;
+        }
 
         var targetGameVersion = versionMapping
                                 .FirstOrDefault(entry => string.Equals(entry.Value.V, targetArea.Must, StringComparison.Ordinal))
@@ -56,10 +62,11 @@ public sealed class V3GamePatchMetadataClient : IDisposable
                 throw new InvalidDataException($"未找到 V3 更新包: {cursor} -> {targetArea.Must}");
 
             packages.Add(package);
+            Log.Information("[V3Patch] 已选择更新包 {PackageName}, 版本 {FromVersion} -> {ToVersion}", package.Name, package.From, package.To);
             cursor = package.To;
         }
 
-        return new()
+        var updatePlan = new V3GameUpdatePlan
         {
             BaseUrl            = remoteVersion.BaseUrl,
             BackupBaseUrl      = remoteVersion.BackupBaseUrl,
@@ -71,6 +78,8 @@ public sealed class V3GamePatchMetadataClient : IDisposable
             TargetViewVersion  = ResolveTargetViewVersion(remoteVersion, targetArea, versionMapping),
             Packages           = packages
         };
+        Log.Information("[V3Patch] 更新计划构建完成, 当前数据版本 {CurrentDataVersion}, 目标数据版本 {TargetDataVersion}, 包数量 {PackageCount}", updatePlan.CurrentDataVersion, updatePlan.TargetDataVersion, updatePlan.Packages.Count);
+        return updatePlan;
     }
 
     public async Task<IntegrityCheckResult> DownloadIntegrityCheck(CancellationToken cancellationToken = default)
@@ -169,8 +178,12 @@ public sealed class V3GamePatchMetadataClient : IDisposable
 
     private async Task<string> DownloadString(string url, CancellationToken cancellationToken)
     {
+        var ticks = Stopwatch.GetTimestamp();
+        Log.Information("[V3Patch] 正在下载元数据 {Url}", url);
         using var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        Log.Information("[V3Patch] 元数据下载完成 {Url}, 字符数 {Length}, 耗时 {ElapsedMs} ms", url, content.Length, Stopwatch.GetElapsedTime(ticks).TotalMilliseconds);
+        return content;
     }
 }

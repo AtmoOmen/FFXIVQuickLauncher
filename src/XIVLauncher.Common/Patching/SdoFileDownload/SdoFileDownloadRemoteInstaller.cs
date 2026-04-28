@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 using SharedMemory;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Integrity;
@@ -28,6 +29,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 
         if (workerExecutablePath != null)
         {
+            Log.Information("[SdoRpc] 正在启动远端补丁进程, 路径 {WorkerExecutablePath}, 提权 {AsAdmin}, 通道 {RpcChannelName}", workerExecutablePath, asAdmin, rpcChannelName);
             workerProcess                           = new();
             workerProcess.StartInfo.FileName         = workerExecutablePath;
             workerProcess.StartInfo.WorkingDirectory = Path.GetDirectoryName(workerExecutablePath) ?? string.Empty;
@@ -39,10 +41,12 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
             workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 #endif
             workerProcess.Start();
+            Log.Information("[SdoRpc] 远端补丁进程已启动, PID {ProcessId}", workerProcess.Id);
         }
         else
         {
             workerProcess = null;
+            Log.Information("[SdoRpc] 正在启动进程内远端补丁 worker, 通道 {RpcChannelName}", rpcChannelName);
             Task.Run(() => new WorkerSubprocessBody(Environment.ProcessId, rpcChannelName).RunToDisposeSelf());
         }
     }
@@ -51,6 +55,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
     {
         ObjectDisposedException.ThrowIf(isDisposed, this);
 
+        Log.Information("[SdoRpc] 正在释放远端补丁进程");
         try
         {
             subprocessBuffer.RemoteRequest(((MemoryStream)GetRequestCreator(WorkerInboundOpcode.DisposeAndExit).BaseStream).ToArray(), 100);
@@ -78,6 +83,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         subprocessBuffer.Dispose();
         workerProcess?.Dispose();
         isDisposed = true;
+        Log.Information("[SdoRpc] 远端补丁进程已释放");
     }
 
     public async Task ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity, TimeSpan progressReportInterval = default)
@@ -138,6 +144,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         CancellationToken                       cancellationToken = default
     )
     {
+        Log.Information("[SdoRpc] 请求远端合并 V3 差分, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}, 期望大小 {ExpectedSize}", sourceFile, deltaFile, targetFile, expectedSize);
         SdoFileDownloadInstaller.OnInstallProgressDelegate? updateProgress = null;
 
         if (progress != null)
@@ -160,6 +167,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         try
         {
             await WaitForResult(writer, cancellationToken, 864000000);
+            Log.Information("[SdoRpc] 远端 V3 差分合并完成 {TargetFile}", targetFile);
         }
         finally
         {
@@ -308,7 +316,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         if (isDisposed)
             throw new OperationCanceledException();
 
-        var logPath = Path.Combine(Paths.RoamingPath, "patcher.log");
+        var logPath = $"{Path.Combine(Paths.RoamingPath, "patcher.log")} 或 {Path.Combine(Paths.RoamingPath, "output.log")}";
 
         if (!response.Success)
         {
@@ -397,6 +405,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
                     }
 
                     var method = (WorkerInboundOpcode)reader.ReadInt32();
+                    Log.Information("[SdoRpcWorker] 收到请求 {Method}", method);
 
                     var ms     = new MemoryStream();
                     var writer = new BinaryWriter(ms);
@@ -523,9 +532,11 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 
                         writer.Seek(0, SeekOrigin.Begin);
                         writer.Write((int)WorkerResultCode.Pass);
+                        Log.Information("[SdoRpcWorker] 请求完成 {Method}", method);
                     }
                     catch (Exception ex)
                     {
+                        Log.Error(ex, "[SdoRpcWorker] 请求失败 {Method}", method);
                         writer.Seek(0, SeekOrigin.Begin);
 
                         if (ex is OperationCanceledException)

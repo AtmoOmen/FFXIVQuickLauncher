@@ -57,11 +57,20 @@ public sealed class GameClientFileTaskService
     {
         const string TITLE = "更新游戏文件";
 
+        Log.Information("[GameClientFileTask] 开始更新流程");
         if (!TryGetValidGamePath(out var gamePath, out var gamePathError))
+        {
+            Log.Warning("[GameClientFileTask] 游戏路径无效: {Message}", gamePathError);
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, gamePathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+        }
 
         if (!TryResolvePatchPath(out var patchPathError))
+        {
+            Log.Warning("[GameClientFileTask] 更新文件路径无效: {Message}", patchPathError);
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, patchPathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+        }
+
+        Log.Information("[GameClientFileTask] 更新检查路径, 游戏 {GamePath}, 补丁 {PatchPath}", gamePath.FullName, App.Settings.PatchPath.FullName);
 
         using var cancellationTokenSource = new CancellationTokenSource();
         var       ctsBox                  = new StrongBox<CancellationTokenSource?>(cancellationTokenSource);
@@ -72,7 +81,9 @@ public sealed class GameClientFileTaskService
 
         try
         {
+            Log.Information("[GameClientFileTask] 正在检查游戏更新");
             loginResult = await UpdateClient.Check(gamePath, false, cancellationTokenSource.Token).ConfigureAwait(false);
+            Log.Information("[GameClientFileTask] 更新检查完成, 状态 {State}, 存在 V3 计划 {HasV3Plan}", loginResult.State, loginResult.V3GameUpdatePlan != null);
         }
         catch (OperationCanceledException)
         {
@@ -100,10 +111,16 @@ public sealed class GameClientFileTaskService
         using var mutex = new Mutex(false, "XivLauncherIsPatching");
 
         if (!mutex.WaitOne(0, false))
+        {
+            Log.Warning("[GameClientFileTask] 更新互斥锁已被占用");
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+        }
 
         if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以更新游戏"))
+        {
+            Log.Warning("[GameClientFileTask] 检测到游戏文件被占用, 更新已取消");
             return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消更新"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+        }
 
         using var cancellationTokenSource = new CancellationTokenSource();
         var       ctsBox                  = new StrongBox<CancellationTokenSource?>(cancellationTokenSource);
@@ -114,10 +131,25 @@ public sealed class GameClientFileTaskService
         try
         {
             var assemblyLocation = AppContext.BaseDirectory;
+            var workerExecutablePath = Path.Combine(assemblyLocation!, "XIVLauncher.PatchInstaller.exe");
+            var adminAccessRequired = PatchVerifier.AdminAccessRequired(App.Settings.GamePath.FullName);
+
+            Log.Information
+            (
+                "[GameClientFileTask] 准备安装 V3 更新, 当前 {CurrentGameVersion}/{CurrentDataVersion}, 目标 {TargetGameVersion}/{TargetDataVersion}, 包数量 {PackageCount}, 提权 {AdminAccessRequired}, Worker {WorkerPath}",
+                updatePlan.CurrentGameVersion,
+                updatePlan.CurrentDataVersion,
+                updatePlan.TargetGameVersion,
+                updatePlan.TargetDataVersion,
+                updatePlan.Packages.Count,
+                adminAccessRequired,
+                workerExecutablePath
+            );
+
             using var fileInstaller = new SdoFileDownloadRemoteInstaller
             (
-                Path.Combine(assemblyLocation!, "XIVLauncher.PatchInstaller.exe"),
-                PatchVerifier.AdminAccessRequired(App.Settings.GamePath.FullName)
+                workerExecutablePath,
+                adminAccessRequired
             );
             using var patchInstaller = new V3GamePatchInstaller();
 
@@ -134,6 +166,7 @@ public sealed class GameClientFileTaskService
                 )
                 .ConfigureAwait(false);
 
+            Log.Information("[GameClientFileTask] V3 游戏更新安装完成");
             return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "游戏更新已完成", "所有更新内容已安装完成"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
         }
         catch (OperationCanceledException)

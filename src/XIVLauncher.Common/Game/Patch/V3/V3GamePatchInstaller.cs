@@ -51,6 +51,16 @@ public sealed class V3GamePatchInstaller : IDisposable
         var packageRoot = Path.Combine(patchPath.FullName, "v3");
         Directory.CreateDirectory(packageRoot);
 
+        Log.Information
+        (
+            "[V3Patch] 开始安装更新, 游戏 {GamePath}, 补丁 {PatchPath}, 包数量 {PackageCount}, 保留补丁 {KeepPatches}",
+            gamePath.FullName,
+            patchPath.FullName,
+            plan.Packages.Count,
+            keepPatches
+        );
+
+        Log.Information("[V3Patch] 正在获取完整性清单 {Url}", SdoInfos.CLIENT_ALL_FILES_LIST_URL);
         var sourceFilesText = await client.GetStringAsync(SdoInfos.CLIENT_ALL_FILES_LIST_URL, cancellationToken).ConfigureAwait(false);
         var sourceFileLines = sourceFilesText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
         var sourceFiles     = new Dictionary<string, (long Size, string Md5)>(StringComparer.OrdinalIgnoreCase);
@@ -79,6 +89,8 @@ public sealed class V3GamePatchInstaller : IDisposable
         if (sourceFiles.Count == 0)
             throw new InvalidDataException("未能解析 V3 完整性清单");
 
+        Log.Information("[V3Patch] 完整性清单解析完成, 版本 {SourceVersion}, 文件数 {FileCount}", sourceVersion, sourceFiles.Count);
+
         for (var packageIndex = 0; packageIndex < plan.Packages.Count; packageIndex++)
         {
             var package = plan.Packages[packageIndex];
@@ -93,6 +105,17 @@ public sealed class V3GamePatchInstaller : IDisposable
 
             var packageDirectory = Path.Combine(packageRoot, packageName);
             Directory.CreateDirectory(packageDirectory);
+
+            Log.Information
+            (
+                "[V3Patch] 开始处理更新包 {PackageIndex}/{PackageCount}, 名称 {PackageName}, 版本 {FromVersion} -> {ToVersion}, 清单 {FileListUrl}",
+                packageIndex + 1,
+                plan.Packages.Count,
+                packageName,
+                package.From,
+                package.To,
+                package.FileListUrl
+            );
 
             progress?.Report
             (
@@ -115,6 +138,8 @@ public sealed class V3GamePatchInstaller : IDisposable
             var downloaded      = 0L;
             var packageFiles    = new List<string>(fileList.FileList.Count);
 
+            Log.Information("[V3Patch] 更新包清单解析完成, 文件数 {FileCount}, 下载大小 {TotalDownload}", fileList.FileList.Count, totalDownload);
+
             foreach (var entry in fileList.FileList)
             {
                 var fileName = Path.GetFileName(entry.Path.Replace('\\', '/'));
@@ -126,6 +151,7 @@ public sealed class V3GamePatchInstaller : IDisposable
 
                 if (File.Exists(localFilePath) && await IsFileValidAsync(localFilePath, entry.Md5, cancellationToken).ConfigureAwait(false))
                 {
+                    Log.Information("[V3Patch] 更新包文件已存在且校验通过 {FileName}, 大小 {Size}", fileName, entry.Size);
                     downloaded += entry.Size;
                     continue;
                 }
@@ -186,6 +212,8 @@ public sealed class V3GamePatchInstaller : IDisposable
 
                 var applyTotal = deltaMap.Count;
                 var applied    = 0L;
+
+                Log.Information("[V3Patch] 更新包差分索引解析完成, 差分数 {DeltaCount}, 压缩包数 {ArchiveCount}", applyTotal, packageArchives.Count);
 
                 for (var deltaIndex = 0; deltaIndex < deltaMap.Count; deltaIndex++)
                 {
@@ -348,6 +376,7 @@ public sealed class V3GamePatchInstaller : IDisposable
                     File.Delete(deltaFilePath);
 
                     applied++;
+                    Log.Information("[V3Patch] 更新文件安装完成 {Path}, 进度 {Applied}/{Total}", targetRelativePath, applied, applyTotal);
                     progress?.Report
                     (
                         new()
@@ -369,9 +398,15 @@ public sealed class V3GamePatchInstaller : IDisposable
             }
 
             if (!keepPatches)
+            {
+                Log.Information("[V3Patch] 删除更新包缓存 {PackageDirectory}", packageDirectory);
                 Directory.Delete(packageDirectory, true);
+            }
+
+            Log.Information("[V3Patch] 更新包处理完成 {PackageName}", packageName);
         }
 
+        Log.Information("[V3Patch] 正在写入 V3 本地版本信息, 数据版本 {DataVersion}, 显示版本 {ViewVersion}", plan.TargetDataVersion, plan.TargetViewVersion);
         progress?.Report(new() { PhaseText = "正在写入版本信息", CurrentFile = "LocalVersion3.xml" });
         var productName = $"zone{SdoInfos.APP_ID}_{SdoInfos.BRANCH_ID}_v3";
         var localVersionPayload = JsonSerializer.Serialize
@@ -389,6 +424,7 @@ public sealed class V3GamePatchInstaller : IDisposable
         );
         var localVersion = $"""<?xmlversion="1.0"encoding="utf-8"?><Root><{productName}>{localVersionPayload}</{productName}></Root>""";
         await installer.WriteAllText(Path.Combine(gamePath.FullName, "LocalVersion3.xml"), localVersion, cancellationToken).ConfigureAwait(false);
+        Log.Information("[V3Patch] V3 更新安装流程完成");
     }
 
     private async Task DownloadFileAsync
@@ -410,6 +446,9 @@ public sealed class V3GamePatchInstaller : IDisposable
 
         try
         {
+            var downloadTicks = Stopwatch.GetTimestamp();
+            Log.Information("[V3Patch] 开始下载更新包文件 {FileName}, 地址 {Url}, 目标 {TargetPath}, 期望 MD5 {Md5}", Path.GetFileName(targetPath), sourceUrl.GetLeftPart(UriPartial.Path), targetPath, expectedMd5);
+
             using var response = await client.GetAsync(sourceUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
@@ -461,6 +500,7 @@ public sealed class V3GamePatchInstaller : IDisposable
             if (!await IsFileValidAsync(targetPath, expectedMd5, cancellationToken).ConfigureAwait(false))
                 throw new InvalidDataException($"更新包校验失败: {Path.GetFileName(targetPath)}");
 
+            Log.Information("[V3Patch] 更新包文件下载完成 {FileName}, 耗时 {ElapsedMs} ms", Path.GetFileName(targetPath), Stopwatch.GetElapsedTime(downloadTicks).TotalMilliseconds);
             complete = true;
         }
         finally

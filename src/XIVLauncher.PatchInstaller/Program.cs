@@ -1,11 +1,9 @@
 using System;
 using System.CommandLine;
-using System.IO;
 using System.Threading.Tasks;
 using Serilog;
-using Serilog.Events;
-using XIVLauncher.Common.Constant;
 using XIVLauncher.PatchInstaller.Commands;
+using XIVLauncher.PatchInstaller.Support;
 
 namespace XIVLauncher.PatchInstaller;
 
@@ -13,12 +11,8 @@ public static class Program
 {
     private static async Task<int> Main(string[] args)
     {
-        Log.Logger = new LoggerConfiguration()
-                     .WriteTo.Console(standardErrorFromLevel: LogEventLevel.Fatal)
-                     .WriteTo.File(Path.Combine(Paths.RoamingPath, "patcher.log"))
-                     .WriteTo.Debug()
-                     .MinimumLevel.Verbose()
-                     .CreateLogger();
+        PatchInstallerLog.Setup();
+        Log.Information("[PatchInstaller] 启动补丁进程, 参数 {Args}", string.Join(' ', args));
 
         var rc = new RootCommand();
         rc.Subcommands.Add(CheckIntegrityCommand.COMMAND);
@@ -36,11 +30,11 @@ public static class Program
         try
         {
             ret = await rc.Parse(args).InvokeAsync();
-            Log.Information("Operation complete.");
+            Log.Information("[PatchInstaller] 操作完成, 返回码 {ReturnCode}", ret);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Operation failed.");
+            Log.Error(ex, "[PatchInstaller] 操作失败");
         }
 
         return ret;

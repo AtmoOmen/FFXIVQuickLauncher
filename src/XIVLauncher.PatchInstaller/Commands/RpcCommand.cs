@@ -2,17 +2,14 @@ using System;
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
-using Serilog.Events;
-using XIVLauncher.Common;
-using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.Rpc.Implementations;
+using XIVLauncher.PatchInstaller.Support;
 
 namespace XIVLauncher.PatchInstaller.Commands;
 
@@ -35,12 +32,8 @@ public class RpcCommand
 
     private Task<int> Handle()
     {
-        Log.Logger = new LoggerConfiguration()
-                     .WriteTo.Console(standardErrorFromLevel: LogEventLevel.Fatal)
-                     .WriteTo.File(Path.Combine(Paths.RoamingPath, "patcher.log"))
-                     .WriteTo.Debug()
-                     .MinimumLevel.Verbose()
-                     .CreateLogger();
+        PatchInstallerLog.Setup();
+        Log.Information("[PatchInstaller] 启动 ZiPatch RPC, 通道 {ChannelName}", channelName);
 
         try
         {
@@ -59,7 +52,7 @@ public class RpcCommand
 
                 if (installer.IsFailed)
                 {
-                    Log.Information("Exited due to failure");
+                    Log.Information("[PatchInstaller] ZiPatch RPC 因安装失败退出");
                     Environment.Exit(-1);
                     return Task.FromResult(-1); // does not run
                 }

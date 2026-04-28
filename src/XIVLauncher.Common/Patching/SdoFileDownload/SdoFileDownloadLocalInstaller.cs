@@ -79,6 +79,7 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
         try
         {
             OnInstallProgress?.Invoke(0, 0, 0, SdoFileDownloadInstaller.InstallTaskState.Downloading);
+            Log.Information("[V3Patch] 本地差分合并开始, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}, 临时文件 {TempPath}, 期望大小 {ExpectedSize}, 期望 MD5 {ExpectedMd5}", sourceFile, deltaFile, targetFile, tempPath, expectedSize, expectedMd5);
 
             if (Environment.Is64BitProcess)
                 throw new InvalidOperationException("V3 差分必须在 32 位补丁进程中安装");
@@ -88,6 +89,7 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
             if (!File.Exists(modulePath))
                 throw new FileNotFoundException("缺少 V3 差分模块", modulePath);
 
+            Log.Information("[V3Patch] 使用 V3 差分模块目录 {ModuleDirectory}", moduleDirectory);
             foreach (var moduleName in new[] { "GlobalSharedEnv.dll", "log4cplusU.dll", "minizip.dll", "XDelta3WrapFactory.dll", "ZlibWrap.dll", "zlib1.dll" })
             {
                 var requiredModulePath = Path.Combine(moduleDirectory, moduleName);
@@ -173,6 +175,7 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
 
             if (!string.IsNullOrWhiteSpace(expectedMd5))
             {
+                Log.Information("[V3Patch] 正在校验差分合并产物 {TempPath}", tempPath);
                 using var stream = File.OpenRead(tempPath);
                 var       hash   = MD5.HashData(stream);
 
@@ -181,9 +184,11 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
             }
 
             var decodedSize = new FileInfo(tempPath).Length;
+            Log.Information("[V3Patch] 正在替换目标文件 {TargetFile}, 产物大小 {DecodedSize}", targetFile, decodedSize);
             File.Move(tempPath, targetFile, true);
             complete = true;
             OnInstallProgress?.Invoke(0, decodedSize, decodedSize, SdoFileDownloadInstaller.InstallTaskState.Complete);
+            Log.Information("[V3Patch] 本地差分合并完成 {TargetFile}", targetFile);
         }
         finally
         {
