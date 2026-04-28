@@ -145,17 +145,6 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
     )
     {
         Log.Information("[SdoRpc] 请求远端合并 V3 差分, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}, 期望大小 {ExpectedSize}", sourceFile, deltaFile, targetFile, expectedSize);
-        SdoFileDownloadInstaller.OnInstallProgressDelegate? updateProgress = null;
-
-        if (progress != null)
-        {
-            updateProgress = (_, current, total, state) =>
-            {
-                if (state == SdoFileDownloadInstaller.InstallTaskState.Downloading)
-                    progress.Report((current, total));
-            };
-            OnInstallProgress += updateProgress;
-        }
 
         var writer = GetRequestCreator(WorkerInboundOpcode.ApplyVcdiff, cancellationToken);
         writer.Write(sourceFile);
@@ -164,16 +153,33 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         writer.Write(expectedMd5);
         writer.Write(expectedSize);
 
-        try
+        var resultTask = WaitForResult(writer, cancellationToken, 864000000);
+        var tempPath   = string.Concat(targetFile, ".tmp");
+        var total      = expectedSize > 0 ? expectedSize : 0;
+
+        while (await Task.WhenAny(resultTask, Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken)).ConfigureAwait(false) != resultTask)
         {
-            await WaitForResult(writer, cancellationToken, 864000000);
-            Log.Information("[SdoRpc] 远端 V3 差分合并完成 {TargetFile}", targetFile);
+            if (workerProcess is { HasExited: true } exitedWorkerProcess)
+                throw new IOException($"远端修复进程已退出，退出码 {exitedWorkerProcess.ExitCode}，可查看日志: {Path.Combine(Paths.RoamingPath, "patcher.log")} 或 {Path.Combine(Paths.RoamingPath, "output.log")}");
+
+            try
+            {
+                var current = File.Exists(tempPath) ? new FileInfo(tempPath).Length : 0;
+                progress?.Report((current, current > 0 ? Math.Max(total, current) : 0));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
         }
-        finally
+
+        await resultTask.ConfigureAwait(false);
+        if (progress != null)
         {
-            if (updateProgress != null)
-                OnInstallProgress -= updateProgress;
+            var completedSize = File.Exists(targetFile) ? new FileInfo(targetFile).Length : total;
+            progress.Report((completedSize, completedSize));
         }
+
+        Log.Information("[SdoRpc] 远端 V3 差分合并完成 {TargetFile}", targetFile);
     }
 
     public async Task<List<string>> GetBrokenFiles(CancellationToken cancellationToken = default)
@@ -382,6 +388,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         private readonly Dictionary<int, CancellationTokenSource> cancellationTokenSources = new();
         private          SdoFileDownloadLocalInstaller?           instance;
         private          long                                     progressUpdateCounter;
+        private volatile bool                                     suppressInstallProgressUpdates;
 
         public WorkerSubprocessBody(int monitorProcessId, string channelName)
         {
@@ -467,7 +474,16 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
                                     instance.OnVerifyProgress  += OnVerifyProgressUpdate;
                                 }
 
-                                await instance.ApplyVcdiff(reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadInt64(), cancellationToken: cancelToken);
+                                suppressInstallProgressUpdates = true;
+                                try
+                                {
+                                    await instance.ApplyVcdiff(reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadInt64(), cancellationToken: cancelToken);
+                                }
+                                finally
+                                {
+                                    suppressInstallProgressUpdates = false;
+                                }
+
                                 break;
 
                             case WorkerInboundOpcode.GetBrokenFiles:
@@ -592,6 +608,9 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
 
         private void OnInstallProgressUpdate(int index, long progress, long max, SdoFileDownloadInstaller.InstallTaskState state)
         {
+            if (suppressInstallProgressUpdates)
+                return;
+
             lock (progressUpdateSync)
             {
                 var ms     = new MemoryStream();
@@ -603,7 +622,13 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
                 writer.Write(max);
                 writer.Write((int)state);
                 progressUpdateCounter += 1;
-                subprocessBuffer.RemoteRequest(ms.ToArray());
+                try
+                {
+                    subprocessBuffer.RemoteRequest(ms.ToArray(), 100);
+                }
+                catch (Exception ex) when (ex is IOException or TimeoutException)
+                {
+                }
             }
         }
 
@@ -620,7 +645,13 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
                 writer.Write(progress);
                 writer.Write(max);
                 progressUpdateCounter += 1;
-                subprocessBuffer.RemoteRequest(ms.ToArray());
+                try
+                {
+                    subprocessBuffer.RemoteRequest(ms.ToArray(), 100);
+                }
+                catch (Exception ex) when (ex is IOException or TimeoutException)
+                {
+                }
             }
         }
     }
