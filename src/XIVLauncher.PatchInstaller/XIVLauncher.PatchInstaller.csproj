@@ -15,10 +15,12 @@
         <RuntimeIdentifier>win-x86</RuntimeIdentifier>
         <PlatformTarget>x86</PlatformTarget>
         <UseWPF>true</UseWPF>
-        <LangVersion>12</LangVersion>
+        <LangVersion>latest</LangVersion>
         <Deterministic>true</Deterministic>
-        <OutputPath>..\bin\</OutputPath>
+        <OutputPath>..\bin\PatchInstaller\</OutputPath>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+        <SelfContained>false</SelfContained>
     </PropertyGroup>
     <ItemGroup Label="Assets">
         <Resource Include="Resources/*.*"/>
@@ -43,4 +45,7 @@
     <ItemGroup>
         <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
     </ItemGroup>
+    <Target Name="CleanStaleSelfContainedOutput" BeforeTargets="Build" Condition="Exists('$(OutputPath)coreclr.dll')">
+        <RemoveDir Directories="$(OutputPath)"/>
+    </Target>
 </Project>

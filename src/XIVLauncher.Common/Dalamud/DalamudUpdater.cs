@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -14,6 +12,7 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
+using XIVLauncher.Common.Runtime;
 using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Dalamud;
@@ -49,8 +48,6 @@ public class DalamudUpdater
     private readonly string?       githubToken;
 
     private readonly HttpClient httpClient;
-    private readonly HttpClient testHttpClient;
-
     public DalamudUpdater
     (
         DirectoryInfo addonDirectory,
@@ -67,9 +64,6 @@ public class DalamudUpdater
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
         if (!string.IsNullOrWhiteSpace(this.githubToken))
             httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
-
-        testHttpClient         = XLHttpClientFactory.Create(TimeSpan.FromSeconds(3), 8, DecompressionMethods.All);
-        testHttpClient.Timeout = TimeSpan.FromSeconds(3);
     }
 
     public void Run()
@@ -115,7 +109,7 @@ public class DalamudUpdater
             await InitVersionInfoAsync();
             var paths                  = PreparePaths();
             var currentVersionVerified = await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath);
-            await UpdateRuntimeAsync(paths.runtimePaths);
+            await UpdateRuntimeAsync();
             await UpdateAssetsAsync();
 
             if (!currentVersionVerified && !CheckDalamudIntegrity(paths.currentVersionPath))
@@ -149,28 +143,20 @@ public class DalamudUpdater
         Log.Information("[DUPDATE] 获取到版本: {Version} ({Hash})", Version, OnlineHash);
     }
 
-    private (DirectoryInfo addonPath, DirectoryInfo currentVersionPath, DirectoryInfo[] runtimePaths) PreparePaths()
+    private (DirectoryInfo addonPath, DirectoryInfo currentVersionPath) PreparePaths()
     {
         Log.Verbose("[DUPDATE] 开始准备路径信息");
 
         var addonPath          = new DirectoryInfo(Path.Combine(addonDirectory.FullName, "Hooks"));
         var currentVersionPath = new DirectoryInfo(Path.Combine(addonPath.FullName,      Version));
 
-        var runtimePaths = new DirectoryInfo[]
-        {
-            new(Path.Combine(Runtime.FullName, "host",   "fxr",                          runtimeVersion)),
-            new(Path.Combine(Runtime.FullName, "shared", "Microsoft.NETCore.App",        runtimeVersion)),
-            new(Path.Combine(Runtime.FullName, "shared", "Microsoft.WindowsDesktop.App", runtimeVersion))
-        };
-
         Log.Verbose
         (
-            "[DUPDATE] 路径信息: 版本路径={Path}, 运行时路径数={Count}",
-            currentVersionPath.FullName,
-            runtimePaths.Length
+            "[DUPDATE] 路径信息: 版本路径={Path}",
+            currentVersionPath.FullName
         );
 
-        return (addonPath, currentVersionPath, runtimePaths);
+        return (addonPath, currentVersionPath);
     }
 
     private async Task<bool> UpdateDalamudCoreAsync(DirectoryInfo addonPath, DirectoryInfo currentVersionPath)
@@ -204,42 +190,9 @@ public class DalamudUpdater
         }
     }
 
-    private async Task UpdateRuntimeAsync(DirectoryInfo[] runtimePaths)
+    private async Task UpdateRuntimeAsync()
     {
-        Log.Information("[DUPDATE] 开始检查 .NET 运行时 {Version} 完整性", runtimeVersion);
-
-        if (!Runtime.Exists)
-        {
-            Log.Verbose("[DUPDATE] 运行时目录不存在, 进行创建");
-            Directory.CreateDirectory(Runtime.FullName);
-        }
-
-        var versionFile        = new FileInfo(Path.Combine(Runtime.FullName, "version"));
-        var localVersion       = GetLocalRuntimeVersion(versionFile);
-        var runtimeNeedsUpdate = localVersion != runtimeVersion;
-
-        if (runtimePaths.All(p => p.Exists) && !runtimeNeedsUpdate)
-        {
-            Log.Information("[DUPDATE] .NET 运行时已是最新版本: {Version}", runtimeVersion);
-            return;
-        }
-
-        Log.Information("[DUPDATE] 需要更新 .NET 运行时: 本地={LocalVer}, 目标={RemoteVer}", localVersion, runtimeVersion);
-        SetLoadingDetail("正在更新依赖库...");
-
-        try
-        {
-            Log.Information("[DUPDATE] 开始下载 .NET 运行时");
-            await DownloadRuntime(Runtime, runtimeVersion).ConfigureAwait(false);
-
-            File.WriteAllText(versionFile.FullName, runtimeVersion);
-            Log.Information("[DUPDATE] .NET 运行时更新完成");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[DUPDATE] .NET 运行时更新失败");
-            throw new DalamudIntegrityException("无法确保运行时完整性", ex);
-        }
+        await DotNetRuntimeManager.EnsureRuntimeAsync(Runtime, runtimeVersion, "win-x64", ".NET 运行时", SetLoadingDetail, ReportLoadingProgressCore).ConfigureAwait(false);
     }
 
     private async Task UpdateAssetsAsync()
@@ -499,10 +452,7 @@ public class DalamudUpdater
     {
         try
         {
-            var runtimeResponse = await httpClient.GetAsync(Links.DALAMUD_RUNTIME_INFO_URL);
-            runtimeResponse.EnsureSuccessStatusCode();
-            runtimeVersion = await runtimeResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-            runtimeVersion = runtimeVersion.Trim().Trim('\n');
+            runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(httpClient).ConfigureAwait(false);
 
             Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
@@ -603,73 +553,6 @@ public class DalamudUpdater
             Log.Error(ex, "[DUPDATE] 下载过程中发生错误");
             throw;
         }
-    }
-
-    #endregion
-
-    #region Runtime
-
-    private async Task DownloadRuntime(DirectoryInfo runtimePath, string version)
-    {
-        if (runtimePath.Exists) runtimePath.Delete(true);
-        runtimePath.Create();
-
-        try
-        {
-            // 微软 .NET 运行时下载链接
-            var packageBaseAddress = await IsGoogleReachableAsync() ? Links.NUGET_V3_FLAT_CONTAINER_URL : Links.HUAWEI_NUGET_V3_REMOTE_URL;
-
-            var dotnetUrl  = $"{packageBaseAddress}/microsoft.netcore.app.runtime.win-x64/{version}/microsoft.netcore.app.runtime.win-x64.{version}.nupkg";
-            var desktopUrl = $"{packageBaseAddress}/microsoft.windowsdesktop.app.runtime.win-x64/{version}/microsoft.windowsdesktop.app.runtime.win-x64.{version}.nupkg";
-
-            var downloadPath = PlatformHelpers.GetTempFileName();
-
-            if (File.Exists(downloadPath))
-                File.Delete(downloadPath);
-
-            // 下载 .NET 运行时
-            Log.Verbose("[DUPDATE] 正在下载 .NET 运行时 v{Version}...", version);
-            var dotnetVersion = version.Split('.')[0];
-            await DownloadNuGet(dotnetUrl, downloadPath).ConfigureAwait(false);
-            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version), "runtimes/win-x64/native/");
-            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version), $"runtimes/win-x64/lib/net{dotnetVersion}.0/");
-
-            // 下载 Windows Desktop 运行时
-            Log.Verbose("[DUPDATE] 正在下载 .NET 桌面运行时 v{Version}...", version);
-            await DownloadNuGet(desktopUrl, downloadPath).ConfigureAwait(false);
-            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", version), "runtimes/win-x64/native/");
-            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimePath.FullName, "shared", "Microsoft.WindowsDesktop.App", version), $"runtimes/win-x64/lib/net{dotnetVersion}.0/");
-
-            Directory.CreateDirectory(Path.Combine(runtimePath.FullName, "host", "fxr", version));
-            File.Move
-            (
-                Path.Combine(runtimePath.FullName, "shared", "Microsoft.NETCore.App", version, "hostfxr.dll"),
-                Path.Combine(runtimePath.FullName, "host",   "fxr",                   version, "hostfxr.dll")
-            );
-
-            File.Delete(downloadPath);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[DUPDATE] 从微软下载 .NET 运行时 v{Version} 时失败", version);
-        }
-    }
-
-    private static string GetLocalRuntimeVersion(FileInfo versionFile)
-    {
-        const string DEFAULT_VERSION = "5.0.0";
-
-        try
-        {
-            if (versionFile.Exists)
-                return File.ReadAllText(versionFile.FullName);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, $"[DUPDATE] 无法读取本地运行时版本, 返回默认版本 {DEFAULT_VERSION}");
-        }
-
-        return DEFAULT_VERSION;
     }
 
     #endregion
@@ -900,95 +783,6 @@ public class DalamudUpdater
         downloader.ProgressChanged += ReportLoadingProgressCore;
 
         await downloader.Download().ConfigureAwait(false);
-    }
-
-    public async Task DownloadNuGet(string url, string path) =>
-        await DownloadFiles([(url, path)]).ConfigureAwait(false);
-
-    public static void ExtractSpecificDirectory(string zipPath, string extractPath, string directoryToExtract)
-    {
-        using var archive = ZipFile.OpenRead(zipPath);
-
-        foreach (var entry in archive.Entries)
-        {
-            if (entry.FullName.StartsWith(directoryToExtract, StringComparison.OrdinalIgnoreCase))
-            {
-                var destinationPath      = Path.Combine(extractPath, entry.FullName[directoryToExtract.Length..]);
-                var destinationDirectory = Path.GetDirectoryName(destinationPath);
-                if (!string.IsNullOrEmpty(destinationDirectory))
-                    Directory.CreateDirectory(destinationDirectory);
-
-                if (!string.IsNullOrEmpty(entry.Name))
-                    entry.ExtractToFile(destinationPath, true);
-            }
-        }
-    }
-
-    public async Task<bool> IsGoogleReachableAsync()
-    {
-        var googleTask = GetConnectionTimeAsync(Links.GOOGLE_URL);
-        var huaweiTask = GetConnectionTimeAsync(Links.HUAWEI_CLOUD_URL);
-
-        await Task.WhenAll(googleTask, huaweiTask);
-
-        var googleResult = await googleTask;
-        var huaweiResult = await huaweiTask;
-
-        Log.Information
-        (
-            "谷歌连接耗时: {GoogleTime:F2} ms, 状态: {GoogleStatus}",
-            googleResult.Elapsed.TotalMilliseconds,
-            googleResult.IsSuccess ? "成功" : "失败"
-        );
-
-        Log.Information
-        (
-            "华为云连接耗时: {HuaweiTime:F2} ms, 状态: {HuaweiStatus}",
-            huaweiResult.Elapsed.TotalMilliseconds,
-            huaweiResult.IsSuccess ? "成功" : "失败"
-        );
-
-        if (!googleResult.IsSuccess)
-        {
-            Log.Warning("无法连接到谷歌");
-            return false;
-        }
-
-        if (huaweiResult.IsSuccess && huaweiResult.Elapsed < googleResult.Elapsed)
-        {
-            Log.Information
-            (
-                "华为云连接速度 ({HuaweiTime:F2} ms) 快于 Google ({GoogleTime:F2} ms)",
-                huaweiResult.Elapsed.TotalMilliseconds,
-                googleResult.Elapsed.TotalMilliseconds
-            );
-            return false;
-        }
-
-        Log.Information("Google 连接成功且速度不慢于华为云");
-        return true;
-
-        async Task<(bool IsSuccess, TimeSpan Elapsed)> GetConnectionTimeAsync(string url)
-        {
-            var stopwatch = new Stopwatch();
-
-            try
-            {
-                stopwatch.Start();
-                using var request  = new HttpRequestMessage(HttpMethod.Get, url);
-                using var response = await testHttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-                stopwatch.Stop();
-
-                return (response.IsSuccessStatusCode, stopwatch.Elapsed);
-            }
-            catch
-            {
-                if (stopwatch.IsRunning)
-                    stopwatch.Stop();
-
-                return (false, stopwatch.Elapsed);
-            }
-        }
     }
 
     #endregion

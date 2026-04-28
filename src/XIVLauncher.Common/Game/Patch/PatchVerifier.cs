@@ -15,6 +15,7 @@ using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
 using XIVLauncher.Common.Patching.SdoFileDownload;
 using XIVLauncher.Common.PlatformAbstractions;
+using XIVLauncher.Common.Runtime;
 
 namespace XIVLauncher.Common.Game.Patch;
 
@@ -325,7 +326,27 @@ public class PatchVerifier : IDisposable
         {
             var assemblyLocation = AppContext.BaseDirectory;
             if (_external)
-                sdoFileInstaller = new SdoFileDownloadRemoteInstaller(Path.Combine(assemblyLocation!, "XIVLauncher.PatchInstaller.exe"), AdminAccessRequired(_settings.GamePath.FullName));
+            {
+                CurrentFile = "补丁安装器运行时";
+                var patchInstallerRuntime = DotNetRuntimeManager.GetRuntimeDirectory("win-x86");
+                var runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
+                await DotNetRuntimeManager.EnsureRuntimeAsync
+                    (
+                        patchInstallerRuntime,
+                        runtimeVersion,
+                        "win-x86",
+                        "补丁安装器 .NET 运行时",
+                        cancellationToken: _cancellationTokenSource.Token
+                    )
+                    .ConfigureAwait(false);
+
+                sdoFileInstaller = new SdoFileDownloadRemoteInstaller
+                (
+                    Path.Combine(assemblyLocation!, "PatchInstaller", "XIVLauncher.PatchInstaller.exe"),
+                    AdminAccessRequired(_settings.GamePath.FullName),
+                    patchInstallerRuntime.FullName
+                );
+            }
             else
                 sdoFileInstaller = new SdoFileDownloadLocalInstaller();
 

@@ -863,6 +863,10 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                     msgbox.WithText("从游戏文件中读取版本信息失败, 可能需要重新安装或修复游戏文件");
                     break;
 
+                case InvalidDataException invalidDataException when invalidDataException.Message.Contains("当前游戏数据版本", StringComparison.Ordinal):
+                    msgbox.WithText("无法确认当前游戏版本, 请先运行游戏文件修复后重试");
+                    break;
+
                 case OAuthLoginException oauthLoginException:
                 {
                     if ((type == LoginType.QRCode || fallbackLoginType == LoginType.QRCode) && oauthLoginException.OAuthErrorMessage == "二维码不存在或已过期，请重试")

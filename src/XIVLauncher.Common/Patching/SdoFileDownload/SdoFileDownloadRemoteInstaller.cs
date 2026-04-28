@@ -11,6 +11,7 @@ using Serilog;
 using SharedMemory;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Integrity;
+using XIVLauncher.Common.Patching;
 
 namespace XIVLauncher.Common.Patching.SdoFileDownload;
 
@@ -22,22 +23,18 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
     private          long      lastProgressUpdateCounter;
     private          bool      isDisposed;
 
-    public SdoFileDownloadRemoteInstaller(string? workerExecutablePath, bool asAdmin)
+    public SdoFileDownloadRemoteInstaller(string? workerExecutablePath, bool asAdmin, string? dotnetRootPath = null)
     {
         var rpcChannelName = "RemoteSdoFileDownloadInstaller" + Guid.NewGuid();
         subprocessBuffer = new(rpcChannelName, RpcResponseHandler);
 
         if (workerExecutablePath != null)
         {
-            Log.Information("[SdoRpc] 正在启动远端补丁进程, 路径 {WorkerExecutablePath}, 提权 {AsAdmin}, 通道 {RpcChannelName}", workerExecutablePath, asAdmin, rpcChannelName);
-            workerProcess                           = new();
-            workerProcess.StartInfo.FileName         = workerExecutablePath;
-            workerProcess.StartInfo.WorkingDirectory = Path.GetDirectoryName(workerExecutablePath) ?? string.Empty;
-            workerProcess.StartInfo.UseShellExecute  = asAdmin;
-            if (asAdmin)
-                workerProcess.StartInfo.Verb = "runas";
-
-            workerProcess.StartInfo.Arguments        = $"sdo-rpc {Environment.ProcessId} {rpcChannelName}";
+            Log.Information("[SdoRpc] 正在启动远端补丁进程, 路径 {WorkerExecutablePath}, 提权 {AsAdmin}, 通道 {RpcChannelName}, 运行时 {DotNetRootPath}", workerExecutablePath, asAdmin, rpcChannelName, dotnetRootPath);
+            workerProcess = new()
+            {
+                StartInfo = PatchInstallerProcessStartInfo.Create(workerExecutablePath, $"sdo-rpc {Environment.ProcessId} {rpcChannelName}", asAdmin, dotnetRootPath)
+            };
 #if !DEBUG
             workerProcess.StartInfo.CreateNoWindow = true;
             workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;

@@ -42,23 +42,23 @@ public class PatchInstaller : IDisposable
             var path = Path.Combine
             (
                 AppContext.BaseDirectory,
+                "PatchInstaller",
                 "XIVLauncher.PatchInstaller.exe"
             );
 
-            var startInfo = new ProcessStartInfo(path);
-            startInfo.UseShellExecute = true;
-
-            //Start as admin if needed
-            if (!EnvironmentSettings.IsNoRunas && Environment.OSVersion.Version.Major >= 6)
-                startInfo.Verb = "runas";
+            var startInfo = PatchInstallerProcessStartInfo.Create
+            (
+                path,
+                $"rpc {rpcName}",
+                !EnvironmentSettings.IsNoRunas && Environment.OSVersion.Version.Major >= 6,
+                PatchInstallerProcessStartInfo.GetDefaultDotNetRootPath()
+            );
 
             if (!Debugger.IsAttached)
             {
                 startInfo.CreateNoWindow = true;
                 startInfo.WindowStyle    = ProcessWindowStyle.Hidden;
             }
-
-            startInfo.Arguments = $"rpc {rpcName}";
 
             State = InstallerState.NotReady;
 

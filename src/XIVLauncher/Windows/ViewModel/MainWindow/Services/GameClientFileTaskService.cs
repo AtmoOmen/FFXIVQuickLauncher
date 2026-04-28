@@ -9,7 +9,6 @@ using System.Windows;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch;
@@ -17,6 +16,7 @@ using XIVLauncher.Common.Game.Patch.V3;
 using XIVLauncher.Common.Game.Update;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
 using XIVLauncher.Common.Patching.SdoFileDownload;
+using XIVLauncher.Common.Runtime;
 using XIVLauncher.Common.Util;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Windows.GameClientFiles;
@@ -58,6 +58,7 @@ public sealed class GameClientFileTaskService
         const string TITLE = "更新游戏文件";
 
         Log.Information("[GameClientFileTask] 开始更新流程");
+
         if (!TryGetValidGamePath(out var gamePath, out var gamePathError))
         {
             Log.Warning("[GameClientFileTask] 游戏路径无效: {Message}", gamePathError);
@@ -130,9 +131,24 @@ public sealed class GameClientFileTaskService
 
         try
         {
-            var assemblyLocation = AppContext.BaseDirectory;
-            var workerExecutablePath = Path.Combine(assemblyLocation!, "XIVLauncher.PatchInstaller.exe");
-            var adminAccessRequired = PatchVerifier.AdminAccessRequired(App.Settings.GamePath.FullName);
+            var assemblyLocation      = AppContext.BaseDirectory;
+            var workerExecutablePath  = Path.Combine(assemblyLocation, "PatchInstaller", "XIVLauncher.PatchInstaller.exe");
+            var adminAccessRequired   = PatchVerifier.AdminAccessRequired(App.Settings.GamePath.FullName);
+            var patchInstallerRuntime = DotNetRuntimeManager.GetRuntimeDirectory("win-x86");
+
+            ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, "正在准备补丁安装器运行时"));
+            var runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(cancellationTokenSource.Token).ConfigureAwait(false);
+            await DotNetRuntimeManager.EnsureRuntimeAsync
+                                      (
+                                          patchInstallerRuntime,
+                                          runtimeVersion,
+                                          "win-x86",
+                                          "补丁安装器 .NET 运行时",
+                                          message => ApplySnapshot(viewModel,                CreateRunningSnapshot(TITLE, message)),
+                                          (total, downloaded, _) => ApplySnapshot(viewModel, CreateRuntimeDownloadSnapshot(TITLE, total, downloaded)),
+                                          cancellationTokenSource.Token
+                                      )
+                                      .ConfigureAwait(false);
 
             Log.Information
             (
@@ -149,22 +165,23 @@ public sealed class GameClientFileTaskService
             using var fileInstaller = new SdoFileDownloadRemoteInstaller
             (
                 workerExecutablePath,
-                adminAccessRequired
+                adminAccessRequired,
+                patchInstallerRuntime.FullName
             );
             using var patchInstaller = new V3GamePatchInstaller();
 
             await patchInstaller.InstallAsync
-                (
-                    updatePlan,
-                    App.Settings.GamePath,
-                    App.Settings.PatchPath,
-                    fileInstaller,
-                    App.Settings.KeepPatches,
-                    TimeSpan.FromMilliseconds(100),
-                    progress,
-                    cancellationTokenSource.Token
-                )
-                .ConfigureAwait(false);
+                                (
+                                    updatePlan,
+                                    App.Settings.GamePath,
+                                    App.Settings.PatchPath,
+                                    fileInstaller,
+                                    App.Settings.KeepPatches,
+                                    TimeSpan.FromMilliseconds(100),
+                                    progress,
+                                    cancellationTokenSource.Token
+                                )
+                                .ConfigureAwait(false);
 
             Log.Information("[GameClientFileTask] V3 游戏更新安装完成");
             return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "游戏更新已完成", "所有更新内容已安装完成"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
@@ -363,18 +380,18 @@ public sealed class GameClientFileTaskService
         {
             PatchVerifier.VerifyState.DownloadMeta => new GameClientFileTaskSnapshot
             {
-                Title = title,
-                PhaseText = $"正在获取{listLabel}",
-                DetailText = verify.CurrentFile,
-                Progress = verify.Total == 0 ? 0 : 100.0 * verify.Progress / verify.Total,
+                Title                   = title,
+                PhaseText               = $"正在获取{listLabel}",
+                DetailText              = verify.CurrentFile,
+                Progress                = verify.Total == 0 ? 0 : 100.0 * verify.Progress / verify.Total,
                 IsProgressIndeterminate = false,
-                StatusText = $"{APIHelper.BytesToString(verify.Progress)}/{APIHelper.BytesToString(verify.Total)}",
-                SpeedText = $"{APIHelper.BytesToString(verify.Speed)}/s",
-                EtaText = FormatEstimatedTime(verify.Total - verify.Progress, verify.Speed),
-                PrimaryButtonText = "取消",
-                IsPrimaryButtonVisible = true,
-                IsPrimaryButtonEnabled = true,
-                IsRunning = true
+                StatusText              = $"{APIHelper.BytesToString(verify.Progress)}/{APIHelper.BytesToString(verify.Total)}",
+                SpeedText               = $"{APIHelper.BytesToString(verify.Speed)}/s",
+                EtaText                 = FormatEstimatedTime(verify.Total - verify.Progress, verify.Speed),
+                PrimaryButtonText       = "取消",
+                IsPrimaryButtonVisible  = true,
+                IsPrimaryButtonEnabled  = true,
+                IsRunning               = true
             },
             PatchVerifier.VerifyState.VerifyAndRepair => new GameClientFileTaskSnapshot
             {
@@ -411,6 +428,7 @@ public sealed class GameClientFileTaskService
     private static GameClientFileTaskSnapshot CreateV3GamePatchSnapshot(V3GamePatchProgress progress)
     {
         var statusText = progress.StatusText;
+
         if (string.IsNullOrWhiteSpace(statusText) && progress.Total > 0)
         {
             statusText = progress.IsByteProgress
@@ -480,16 +498,16 @@ public sealed class GameClientFileTaskService
 
         return new GameClientFileTaskSnapshot
         {
-            Title                    = "修复游戏文件",
-            PhaseText                = "修复已完成",
-            DetailText               = detailText,
-            StatusText               = verify.MovedFiles.Count == 0 ? string.Empty : string.Join("\n", verify.MovedFiles.Select(file => $"* {file}")),
-            PrimaryButtonText        = "启动游戏",
-            IsPrimaryButtonVisible   = true,
-            IsPrimaryButtonEnabled   = true,
-            CloseButtonText          = "关闭",
-            IsCloseButtonVisible     = true,
-            IsCloseButtonEnabled     = true
+            Title                  = "修复游戏文件",
+            PhaseText              = "修复已完成",
+            DetailText             = detailText,
+            StatusText             = verify.MovedFiles.Count == 0 ? string.Empty : string.Join("\n", verify.MovedFiles.Select(file => $"* {file}")),
+            PrimaryButtonText      = "启动游戏",
+            IsPrimaryButtonVisible = true,
+            IsPrimaryButtonEnabled = true,
+            CloseButtonText        = "关闭",
+            IsCloseButtonVisible   = true,
+            IsCloseButtonEnabled   = true
         };
     }
 
@@ -568,6 +586,20 @@ public sealed class GameClientFileTaskService
             Title                   = title,
             PhaseText               = phaseText,
             IsProgressIndeterminate = true,
+            PrimaryButtonText       = "取消",
+            IsPrimaryButtonVisible  = true,
+            IsPrimaryButtonEnabled  = true,
+            IsRunning               = true
+        };
+
+    private static GameClientFileTaskSnapshot CreateRuntimeDownloadSnapshot(string title, long? total, long downloaded) =>
+        new()
+        {
+            Title                   = title,
+            PhaseText               = "正在下载补丁安装器运行时",
+            Progress                = total > 0 ? 100.0 * downloaded / total.Value : 0,
+            IsProgressIndeterminate = total <= 0,
+            StatusText              = total > 0 ? $"{APIHelper.BytesToString(downloaded)}/{APIHelper.BytesToString(total.Value)}" : APIHelper.BytesToString(downloaded),
             PrimaryButtonText       = "取消",
             IsPrimaryButtonVisible  = true,
             IsPrimaryButtonEnabled  = true,

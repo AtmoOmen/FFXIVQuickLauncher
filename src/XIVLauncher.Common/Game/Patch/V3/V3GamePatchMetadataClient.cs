@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,14 +26,63 @@ public sealed class V3GamePatchMetadataClient : IDisposable
     public void Dispose() =>
         client.Dispose();
 
-    public async Task<V3GameUpdatePlan?> BuildUpdatePlan(string currentGameVersion, bool forceUpdate, CancellationToken cancellationToken = default)
+    public async Task<V3GameUpdatePlan?> BuildUpdatePlan(DirectoryInfo gamePath, string currentGameVersion, bool forceUpdate, CancellationToken cancellationToken = default)
     {
-        Log.Information("[V3Patch] 正在构建更新计划, 当前游戏版本 {CurrentGameVersion}, 强制更新 {ForceUpdate}", currentGameVersion, forceUpdate);
-        var remoteVersion  = await DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
-        var versionMapping = await DownloadVersionMapping(cancellationToken).ConfigureAwait(false);
-        var targetArea     = GetTargetArea(remoteVersion);
-        var currentMapping = versionMapping.GetValueOrDefault(currentGameVersion);
-        var currentVersion = currentMapping?.V ?? string.Empty;
+        var normalizedGameVersion = currentGameVersion.Trim().Trim('\uFEFF').Trim();
+        Log.Information("[V3Patch] 正在构建更新计划, 当前游戏版本 {CurrentGameVersion}, 强制更新 {ForceUpdate}", normalizedGameVersion, forceUpdate);
+        var remoteVersion      = await DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
+        var versionMapping     = await DownloadVersionMapping(cancellationToken).ConfigureAwait(false);
+        var targetArea         = GetTargetArea(remoteVersion);
+        var currentMapping     = versionMapping.GetValueOrDefault(normalizedGameVersion);
+        var currentVersion     = currentMapping?.V    ?? string.Empty;
+        var currentViewVersion = currentMapping?.View ?? normalizedGameVersion;
+
+        if (string.IsNullOrWhiteSpace(currentVersion))
+        {
+            var localVersionPath = Path.Combine(gamePath.FullName, "LocalVersion3.xml");
+
+            if (File.Exists(localVersionPath))
+            {
+                try
+                {
+                    var productName      = $"zone{SdoInfos.APP_ID}_{SdoInfos.BRANCH_ID}_v3";
+                    var startTag         = $"<{productName}>";
+                    var endTag           = $"</{productName}>";
+                    var localVersionText = await File.ReadAllTextAsync(localVersionPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+                    var jsonStart        = localVersionText.IndexOf(startTag, StringComparison.Ordinal);
+
+                    if (jsonStart >= 0)
+                    {
+                        jsonStart += startTag.Length;
+                        var jsonEnd = localVersionText.IndexOf(endTag, jsonStart, StringComparison.Ordinal);
+
+                        if (jsonEnd > jsonStart)
+                        {
+                            using var localVersionDocument = JsonDocument.Parse(localVersionText[jsonStart..jsonEnd]);
+
+                            if (localVersionDocument.RootElement.TryGetProperty("version", out var versionElement))
+                            {
+                                if (versionElement.TryGetProperty("v", out var dataVersionElement))
+                                    currentVersion = dataVersionElement.GetString() ?? string.Empty;
+
+                                if (versionElement.TryGetProperty("view", out var viewVersionElement))
+                                    currentViewVersion = viewVersionElement.GetString() ?? currentViewVersion;
+                            }
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(currentVersion))
+                        Log.Information("[V3Patch] 已从 LocalVersion3.xml 解析当前数据版本 {CurrentDataVersion}, 显示版本 {CurrentViewVersion}", currentVersion, currentViewVersion);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+                {
+                    Log.Warning(ex, "[V3Patch] 读取 LocalVersion3.xml 失败");
+                }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(currentVersion))
+            throw new InvalidDataException($"无法确定当前游戏数据版本, 游戏版本 {normalizedGameVersion}, 请运行游戏文件修复后重试");
 
         if (!forceUpdate && string.Equals(currentVersion, targetArea.Must, StringComparison.Ordinal))
         {
@@ -54,8 +104,10 @@ public sealed class V3GamePatchMetadataClient : IDisposable
             if (string.IsNullOrWhiteSpace(cursor) || !visited.Add(cursor))
                 throw new InvalidDataException("未能解析可用的 V3 更新路径");
 
-            var package = remoteVersion.Packages.FirstOrDefault(entry => string.Equals(entry.From, cursor,          StringComparison.Ordinal)
-                                                                      && string.Equals(entry.To,   targetArea.Must, StringComparison.Ordinal))
+            var package = remoteVersion.Packages.FirstOrDefault
+                          (entry => string.Equals(entry.From,  cursor,          StringComparison.Ordinal)
+                                    && string.Equals(entry.To, targetArea.Must, StringComparison.Ordinal)
+                          )
                           ?? remoteVersion.Packages.FirstOrDefault(entry => string.Equals(entry.From, cursor, StringComparison.Ordinal));
 
             if (package == null)
@@ -70,15 +122,16 @@ public sealed class V3GamePatchMetadataClient : IDisposable
         {
             BaseUrl            = remoteVersion.BaseUrl,
             BackupBaseUrl      = remoteVersion.BackupBaseUrl,
-            CurrentGameVersion = currentGameVersion,
+            CurrentGameVersion = normalizedGameVersion,
             CurrentDataVersion = currentVersion,
-            CurrentViewVersion = currentMapping?.View ?? currentGameVersion,
+            CurrentViewVersion = currentViewVersion,
             TargetGameVersion  = targetGameVersion,
             TargetDataVersion  = targetArea.Must,
             TargetViewVersion  = ResolveTargetViewVersion(remoteVersion, targetArea, versionMapping),
             Packages           = packages
         };
-        Log.Information("[V3Patch] 更新计划构建完成, 当前数据版本 {CurrentDataVersion}, 目标数据版本 {TargetDataVersion}, 包数量 {PackageCount}", updatePlan.CurrentDataVersion, updatePlan.TargetDataVersion, updatePlan.Packages.Count);
+        Log.Information
+            ("[V3Patch] 更新计划构建完成, 当前数据版本 {CurrentDataVersion}, 目标数据版本 {TargetDataVersion}, 包数量 {PackageCount}", updatePlan.CurrentDataVersion, updatePlan.TargetDataVersion, updatePlan.Packages.Count);
         return updatePlan;
     }
 
