@@ -33,7 +33,7 @@ internal class Updates
             var updateOptions = new UpdateOptions
             {
                 ExplicitChannel = "win",
-                AllowVersionDowngrade = true
+                AllowVersionDowngrade = false
             };
 
             var updateSource = new GitHubSource
