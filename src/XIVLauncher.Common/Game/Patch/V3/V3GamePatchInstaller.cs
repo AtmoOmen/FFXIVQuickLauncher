@@ -257,7 +257,24 @@ public sealed class V3GamePatchInstaller : IDisposable
                         expectedTargetSize = targetVersionBytes.Length;
                     }
 
-                    await installer.ApplyVcdiff(targetPath, deltaFilePath, targetPath, expectedTargetMd5, expectedTargetSize, cancellationToken).ConfigureAwait(false);
+                    var currentApplied = applied;
+                    var deltaProgress = new Progress<(long Progress, long Total)>
+                                        (
+                                            value => progress?.Report
+                                            (
+                                                new()
+                                                {
+                                                    PhaseText      = $"正在安装更新文件 {packageIndex + 1}/{plan.Packages.Count}",
+                                                    CurrentFile    = targetRelativePath,
+                                                    Progress       = value.Progress,
+                                                    Total          = value.Total,
+                                                    StatusText     = string.Empty,
+                                                    IsByteProgress = value.Total > 0
+                                                }
+                                            )
+                                        );
+
+                    await installer.ApplyVcdiff(targetPath, deltaFilePath, targetPath, expectedTargetMd5, expectedTargetSize, deltaProgress, cancellationToken).ConfigureAwait(false);
                     File.Delete(deltaFilePath);
 
                     applied++;

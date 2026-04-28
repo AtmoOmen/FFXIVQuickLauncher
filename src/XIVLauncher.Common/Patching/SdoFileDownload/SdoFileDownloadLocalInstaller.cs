@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -55,7 +56,16 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
     public Task Install(int concurrentCount = 8, CancellationToken cancellationToken = default) =>
         GetInstance().Install(gameRootPath ?? throw new InvalidOperationException("VerifyFiles must run before Install to initialize game root path."), concurrentCount, cancellationToken);
 
-    public Task ApplyVcdiff(string sourceFile, string deltaFile, string targetFile, string expectedMd5, long expectedSize, CancellationToken cancellationToken = default)
+    public Task ApplyVcdiff
+    (
+        string                                  sourceFile,
+        string                                  deltaFile,
+        string                                  targetFile,
+        string                                  expectedMd5,
+        long                                    expectedSize,
+        IProgress<(long Progress, long Total)>? progress          = null,
+        CancellationToken                       cancellationToken = default
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -73,12 +83,57 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
                 throw new InvalidOperationException("V3 差分必须在 32 位补丁进程中安装");
 
             var moduleDirectory = Path.Combine(AppContext.BaseDirectory, "Launcher3Modules");
-            var modulePath      = Path.Combine(moduleDirectory, "XDelta3WrapFactory.dll");
+            var modulePath      = Path.Combine(moduleDirectory,          "XDelta3WrapFactory.dll");
             if (!File.Exists(modulePath))
                 throw new FileNotFoundException("缺少 V3 差分模块", modulePath);
 
-            var currentDirectory = Environment.CurrentDirectory;
-            var library          = IntPtr.Zero;
+            var reportTotal = expectedSize >= 0 ? expectedSize : new FileInfo(sourceFile).Length;
+            if (reportTotal <= 0)
+                reportTotal = 1;
+
+            var       currentDirectory                = Environment.CurrentDirectory;
+            var       library                         = IntPtr.Zero;
+            using var progressCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var       progressCancellationToken       = progressCancellationTokenSource.Token;
+            var progressTask = Task.Run
+            (
+                async () =>
+                {
+                    var lastSize  = 0L;
+                    var lastTicks = Stopwatch.GetTimestamp();
+
+                    while (!progressCancellationToken.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            var size  = File.Exists(tempPath) ? new FileInfo(tempPath).Length : lastSize;
+                            var total = Math.Max(reportTotal, size);
+
+                            if (size != lastSize || Stopwatch.GetTimestamp() - lastTicks >= Stopwatch.Frequency)
+                            {
+                                progress?.Report((size, total));
+                                OnInstallProgress?.Invoke(0, size, total, SdoFileDownloadInstaller.InstallTaskState.Downloading);
+                                lastSize  = size;
+                                lastTicks = Stopwatch.GetTimestamp();
+                            }
+                        }
+                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                        {
+                            // ignored
+                        }
+
+                        try
+                        {
+                            await Task.Delay(DEFAULT_PROGRESS_REPORT_INTERVAL, progressCancellationToken).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // ignored
+                        }
+                    }
+                },
+                CancellationToken.None
+            );
             {
                 try
                 {
@@ -93,6 +148,9 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
                 }
                 finally
                 {
+                    progressCancellationTokenSource.Cancel();
+                    progressTask.GetAwaiter().GetResult();
+
                     if (library != IntPtr.Zero)
                         NativeLibrary.Free(library);
 
@@ -197,8 +255,8 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
 
     #region Constants
 
-    private const int DEFAULT_PROGRESS_REPORT_INTERVAL = 250;
-    private const string TEMP_EXTENSION = ".tmp";
+    private const int    DEFAULT_PROGRESS_REPORT_INTERVAL = 250;
+    private const string TEMP_EXTENSION                   = ".tmp";
 
     #endregion
 }

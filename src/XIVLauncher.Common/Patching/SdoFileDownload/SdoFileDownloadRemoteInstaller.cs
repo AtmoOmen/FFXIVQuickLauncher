@@ -35,7 +35,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
             workerProcess.StartInfo.Arguments       = $"sdo-rpc {Environment.ProcessId} {rpcChannelName}";
 #if !DEBUG
             workerProcess.StartInfo.CreateNoWindow = true;
-            workerProcess.StartInfo.WindowStyle    = ProcessWindowStyle.Hidden;
+            workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 #endif
             workerProcess.Start();
         }
@@ -126,15 +126,45 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         await WaitForResult(writer, cancellationToken, 864000000);
     }
 
-    public async Task ApplyVcdiff(string sourceFile, string deltaFile, string targetFile, string expectedMd5, long expectedSize, CancellationToken cancellationToken = default)
+    public async Task ApplyVcdiff
+    (
+        string                                  sourceFile,
+        string                                  deltaFile,
+        string                                  targetFile,
+        string                                  expectedMd5,
+        long                                    expectedSize,
+        IProgress<(long Progress, long Total)>? progress          = null,
+        CancellationToken                       cancellationToken = default
+    )
     {
+        SdoFileDownloadInstaller.OnInstallProgressDelegate? updateProgress = null;
+
+        if (progress != null)
+        {
+            updateProgress = (_, current, total, state) =>
+            {
+                if (state == SdoFileDownloadInstaller.InstallTaskState.Downloading)
+                    progress.Report((current, total));
+            };
+            OnInstallProgress += updateProgress;
+        }
+
         var writer = GetRequestCreator(WorkerInboundOpcode.ApplyVcdiff, cancellationToken);
         writer.Write(sourceFile);
         writer.Write(deltaFile);
         writer.Write(targetFile);
         writer.Write(expectedMd5);
         writer.Write(expectedSize);
-        await WaitForResult(writer, cancellationToken, 864000000);
+
+        try
+        {
+            await WaitForResult(writer, cancellationToken, 864000000);
+        }
+        finally
+        {
+            if (updateProgress != null)
+                OnInstallProgress -= updateProgress;
+        }
     }
 
     public async Task<List<string>> GetBrokenFiles(CancellationToken cancellationToken = default)
@@ -427,7 +457,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
                                     instance.OnVerifyProgress  += OnVerifyProgressUpdate;
                                 }
 
-                                await instance.ApplyVcdiff(reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadInt64(), cancelToken);
+                                await instance.ApplyVcdiff(reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadInt64(), cancellationToken: cancelToken);
                                 break;
 
                             case WorkerInboundOpcode.GetBrokenFiles:
