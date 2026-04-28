@@ -16,6 +16,8 @@ public interface ISdoFileDownloadInstaller : IDisposable, IInstaller
 
     Task Install(int concurrentCount = 8, CancellationToken cancellationToken = default);
 
+    Task ApplyVcdiff(string sourceFile, string deltaFile, string targetFile, string expectedMd5, long expectedSize, CancellationToken cancellationToken = default);
+
     Task<List<string>> GetBrokenFiles(CancellationToken cancellationToken = default);
 
     Task WriteAllText(string filePath, string content, CancellationToken cancellationToken = default);

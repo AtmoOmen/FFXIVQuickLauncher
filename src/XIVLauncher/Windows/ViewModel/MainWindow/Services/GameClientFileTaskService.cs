@@ -13,8 +13,10 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch;
+using XIVLauncher.Common.Game.Patch.V3;
 using XIVLauncher.Common.Game.Update;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
+using XIVLauncher.Common.Patching.SdoFileDownload;
 using XIVLauncher.Common.Util;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Windows.GameClientFiles;
@@ -85,7 +87,64 @@ public sealed class GameClientFileTaskService
         if (loginResult.State != LoginState.NeedsPatchGame)
             return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "更新检查已完成", "当前没有待安装的更新内容"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
 
-        return await RunPatchVerifierAsync(viewModel, PatchVerifierMode.Update).ConfigureAwait(false);
+        if (loginResult.V3GameUpdatePlan == null)
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "获取游戏更新计划失败"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+
+        return await RunV3GamePatchUpdateAsync(viewModel, loginResult.V3GameUpdatePlan).ConfigureAwait(false);
+    }
+
+    private async Task<GameClientFileTaskResult> RunV3GamePatchUpdateAsync(GameClientFileTaskWindowViewModel viewModel, V3GameUpdatePlan updatePlan)
+    {
+        const string TITLE = "更新游戏文件";
+
+        using var mutex = new Mutex(false, "XivLauncherIsPatching");
+
+        if (!mutex.WaitOne(0, false))
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+
+        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以更新游戏"))
+            return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消更新"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var       ctsBox                  = new StrongBox<CancellationTokenSource?>(cancellationTokenSource);
+        SetRunningHandler(viewModel, () => ctsBox.Value?.Cancel());
+
+        var progress = new Progress<V3GamePatchProgress>(value => ApplySnapshot(viewModel, CreateV3GamePatchSnapshot(value)));
+
+        try
+        {
+            var assemblyLocation = AppContext.BaseDirectory;
+            using var fileInstaller = new SdoFileDownloadRemoteInstaller
+            (
+                Path.Combine(assemblyLocation!, "XIVLauncher.PatchInstaller.exe"),
+                PatchVerifier.AdminAccessRequired(App.Settings.GamePath.FullName)
+            );
+            using var patchInstaller = new V3GamePatchInstaller();
+
+            await patchInstaller.InstallAsync
+                (
+                    updatePlan,
+                    App.Settings.GamePath,
+                    App.Settings.PatchPath,
+                    fileInstaller,
+                    App.Settings.KeepPatches,
+                    TimeSpan.FromMilliseconds(100),
+                    progress,
+                    cancellationTokenSource.Token
+                )
+                .ConfigureAwait(false);
+
+            return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "游戏更新已完成", "所有更新内容已安装完成"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消更新"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[GameClientFileTask] V3 游戏更新失败");
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "游戏更新失败", ex.Message), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+        }
     }
 
     private async Task<GameClientFileTaskResult> RunRepairAsync(GameClientFileTaskWindowViewModel viewModel)
@@ -313,6 +372,33 @@ public sealed class GameClientFileTaskService
                 IsPrimaryButtonEnabled  = true,
                 IsRunning               = true
             }
+        };
+    }
+
+    private static GameClientFileTaskSnapshot CreateV3GamePatchSnapshot(V3GamePatchProgress progress)
+    {
+        var statusText = progress.StatusText;
+        if (string.IsNullOrWhiteSpace(statusText) && progress.Total > 0)
+        {
+            statusText = progress.IsByteProgress
+                             ? $"{APIHelper.BytesToString(progress.Progress)}/{APIHelper.BytesToString(progress.Total)}"
+                             : $"{progress.Progress}/{progress.Total}";
+        }
+
+        return new()
+        {
+            Title                   = "更新游戏文件",
+            PhaseText               = string.IsNullOrWhiteSpace(progress.PhaseText) ? "正在准备更新任务" : progress.PhaseText,
+            DetailText              = progress.CurrentFile,
+            Progress                = progress.Total == 0 ? 0 : 100.0 * progress.Progress / progress.Total,
+            IsProgressIndeterminate = progress.Total == 0,
+            StatusText              = statusText,
+            SpeedText               = progress.Speed > 0 ? $"{APIHelper.BytesToString(progress.Speed)}/s" : string.Empty,
+            EtaText                 = progress.IsByteProgress ? FormatEstimatedTime(progress.Total - progress.Progress, progress.Speed) : string.Empty,
+            PrimaryButtonText       = "取消",
+            IsPrimaryButtonVisible  = true,
+            IsPrimaryButtonEnabled  = true,
+            IsRunning               = true
         };
     }
 

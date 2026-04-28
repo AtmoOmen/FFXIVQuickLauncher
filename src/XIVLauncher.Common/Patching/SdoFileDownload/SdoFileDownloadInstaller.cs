@@ -268,11 +268,7 @@ public class SdoFileDownloadInstaller : IDisposable
         var pathEnd = filePath.LastIndexOf('\\');
         var directoryPath = pathEnd < 0 ? string.Empty : filePath[..pathEnd].Replace('\\', '/');
         var uri = new Uri($"{downloadBaseUrl}/{directoryPath}/{GetFileKey(filePath)}");
-        var timeStampHex = DateTimeOffset.Now.ToUnixTimeSeconds().ToString("x");
-        var hashBytes = MD5.HashData(Encoding.UTF8.GetBytes($"{SdoInfos.CDN_KEY}{uri.AbsolutePath}{timeStampHex}"));
-        var cdnKey = Convert.ToHexStringLower(hashBytes);
-
-        return new($"{uri.Scheme}://{uri.Host}/{cdnKey}/{timeStampHex}{uri.AbsolutePath}");
+        return SdoCdnUrlSigner.Sign(uri);
     }
 
     public enum InstallTaskState

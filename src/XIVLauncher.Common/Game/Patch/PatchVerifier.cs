@@ -271,7 +271,7 @@ public class PatchVerifier : IDisposable
         return normalized;
     }
 
-    private bool AdminAccessRequired(string gameRootPath)
+    public static bool AdminAccessRequired(string gameRootPath)
     {
         string tempFn;
         do
@@ -394,11 +394,7 @@ public class PatchVerifier : IDisposable
                             sdoFileInstaller.OnInstallProgress += UpdateInstallProgress;
 
                             var remoteIntegrity = await IntegrityCheck.DownloadIntegrityCheckForVersion().ConfigureAwait(false);
-                            //var localVersion = Repository.Ffxiv.GetVer(_settings.GamePath);
-                            //if (remoteIntegrity.GameVersion != localVersion)
-                            //{
-                            //    throw new Exception($"游戏版本不匹配，请先更新游戏。 本地版本: {localVersion}, 远程版本: {remoteIntegrity.GameVersion}");
-                            //}
+
                             targetRelativePaths = remoteIntegrity.Hashes
                                                                  .Where(x => !string.IsNullOrWhiteSpace(x.Key))
                                                                  .Select(x => NormalizeSdoTargetRelativePath(x.Key))

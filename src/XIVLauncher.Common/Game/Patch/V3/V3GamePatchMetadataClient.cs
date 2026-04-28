@@ -39,14 +39,37 @@ public sealed class V3GamePatchMetadataClient : IDisposable
                                 .Key
                                 ?? string.Empty;
 
+        List<V3GameVersionPackage> packages = [];
+        var                        cursor   = currentVersion;
+        HashSet<string>            visited  = [];
+
+        while (!string.Equals(cursor, targetArea.Must, StringComparison.Ordinal))
+        {
+            if (string.IsNullOrWhiteSpace(cursor) || !visited.Add(cursor))
+                throw new InvalidDataException("未能解析可用的 V3 更新路径");
+
+            var package = remoteVersion.Packages.FirstOrDefault(entry => string.Equals(entry.From, cursor,          StringComparison.Ordinal)
+                                                                      && string.Equals(entry.To,   targetArea.Must, StringComparison.Ordinal))
+                          ?? remoteVersion.Packages.FirstOrDefault(entry => string.Equals(entry.From, cursor, StringComparison.Ordinal));
+
+            if (package == null)
+                throw new InvalidDataException($"未找到 V3 更新包: {cursor} -> {targetArea.Must}");
+
+            packages.Add(package);
+            cursor = package.To;
+        }
+
         return new()
         {
+            BaseUrl            = remoteVersion.BaseUrl,
+            BackupBaseUrl      = remoteVersion.BackupBaseUrl,
             CurrentGameVersion = currentGameVersion,
             CurrentDataVersion = currentVersion,
             CurrentViewVersion = currentMapping?.View ?? currentGameVersion,
             TargetGameVersion  = targetGameVersion,
             TargetDataVersion  = targetArea.Must,
-            TargetViewVersion  = ResolveTargetViewVersion(remoteVersion, targetArea, versionMapping)
+            TargetViewVersion  = ResolveTargetViewVersion(remoteVersion, targetArea, versionMapping),
+            Packages           = packages
         };
     }
 

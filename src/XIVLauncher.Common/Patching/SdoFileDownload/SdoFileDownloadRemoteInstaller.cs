@@ -126,6 +126,17 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         await WaitForResult(writer, cancellationToken, 864000000);
     }
 
+    public async Task ApplyVcdiff(string sourceFile, string deltaFile, string targetFile, string expectedMd5, long expectedSize, CancellationToken cancellationToken = default)
+    {
+        var writer = GetRequestCreator(WorkerInboundOpcode.ApplyVcdiff, cancellationToken);
+        writer.Write(sourceFile);
+        writer.Write(deltaFile);
+        writer.Write(targetFile);
+        writer.Write(expectedMd5);
+        writer.Write(expectedSize);
+        await WaitForResult(writer, cancellationToken, 864000000);
+    }
+
     public async Task<List<string>> GetBrokenFiles(CancellationToken cancellationToken = default)
     {
         using var reader = await WaitForResult(GetRequestCreator(WorkerInboundOpcode.GetBrokenFiles, cancellationToken), cancellationToken, 30000, false);
@@ -408,6 +419,17 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
                                 await instance.Install(reader.ReadInt32(), cancelToken);
                                 break;
 
+                            case WorkerInboundOpcode.ApplyVcdiff:
+                                if (instance is null)
+                                {
+                                    instance                   =  new();
+                                    instance.OnInstallProgress += OnInstallProgressUpdate;
+                                    instance.OnVerifyProgress  += OnVerifyProgressUpdate;
+                                }
+
+                                await instance.ApplyVcdiff(reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadString(), reader.ReadInt64(), cancelToken);
+                                break;
+
                             case WorkerInboundOpcode.GetBrokenFiles:
                                 if (instance is null)
                                     throw new InvalidOperationException("Installer is not initialized.");
@@ -582,6 +604,7 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         VerifyFiles,
         QueueInstall,
         Install,
+        ApplyVcdiff,
         GetBrokenFiles,
         MoveFile,
         CreateDirectory,
