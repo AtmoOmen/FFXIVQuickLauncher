@@ -12,6 +12,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Patching.SdoFileDownload;
 
@@ -82,6 +83,7 @@ public sealed class V3GamePatchInstaller : IDisposable
         {
             var package = plan.Packages[packageIndex];
             var packageSourceFiles = string.Equals(sourceVersion, package.From, StringComparison.Ordinal) ? sourceFiles : null;
+            var packageTargetFiles = string.Equals(sourceVersion, package.To,   StringComparison.Ordinal) ? sourceFiles : null;
             var packageName = string.IsNullOrWhiteSpace(package.Name)
                                   ? $"{package.From}-{package.To}"
                                   : package.Name;
@@ -210,8 +212,28 @@ public sealed class V3GamePatchInstaller : IDisposable
                             throw new InvalidDataException($"完整性清单缺少更新源文件: {targetRelativePath}");
 
                         var targetInfo = new FileInfo(targetPath);
-                        if (targetInfo.Length != sourceFile.Size || !await IsFileValidAsync(targetPath, sourceFile.Md5, cancellationToken).ConfigureAwait(false))
+                        var sourceValidateTicks = Stopwatch.GetTimestamp();
+                        var sourceFileSize = sourceFile.Size;
+                        var sourceValidateProgress = new Progress<long>
+                                                     (
+                                                         value => progress?.Report
+                                                         (
+                                                             new()
+                                                             {
+                                                                 PhaseText      = $"正在校验更新文件 {packageIndex + 1}/{plan.Packages.Count}",
+                                                                 CurrentFile    = targetRelativePath,
+                                                                 Progress       = value,
+                                                                 Total          = sourceFileSize,
+                                                                 IsByteProgress = true
+                                                             }
+                                                         )
+                                                     );
+
+                        Log.Information("[V3Patch] 正在校验源文件 {Path}, 大小 {Size}", targetRelativePath, sourceFile.Size);
+                        if (targetInfo.Length != sourceFile.Size || !await IsFileValidAsync(targetPath, sourceFile.Md5, cancellationToken, sourceValidateProgress, progressUpdateInterval).ConfigureAwait(false))
                             throw new InvalidDataException($"当前文件状态与更新包起点不一致: {targetRelativePath}");
+
+                        Log.Information("[V3Patch] 源文件校验完成 {Path}, 耗时 {ElapsedMs} ms", targetRelativePath, Stopwatch.GetElapsedTime(sourceValidateTicks).TotalMilliseconds);
                     }
 
                     var deltaDirectory = Path.Combine(packageDirectory, "delta");
@@ -231,9 +253,53 @@ public sealed class V3GamePatchInstaller : IDisposable
                         }
                     );
 
+                    var extractTicks = Stopwatch.GetTimestamp();
+                    var extracted    = 0L;
+                    var lastExtracted = 0L;
+                    var lastExtractTicks = Stopwatch.GetTimestamp();
+                    var minExtractTicks = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
+                    var deltaEntryLength = deltaEntry.Length;
+                    var extractBuffer = new byte[FILE_STREAM_BUFFER_SIZE];
+
+                    Log.Information("[V3Patch] 正在解压差分 {Entry}, 目标 {Path}, 大小 {Size}", deltaEntryPath, targetRelativePath, deltaEntryLength);
                     await using (var deltaSource = deltaEntry.Open())
                     await using (var deltaTarget = new FileStream(deltaFilePath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan))
-                        await deltaSource.CopyToAsync(deltaTarget, cancellationToken).ConfigureAwait(false);
+                    {
+                        while (true)
+                        {
+                            var read = await deltaSource.ReadAsync(extractBuffer, cancellationToken).ConfigureAwait(false);
+                            if (read == 0)
+                                break;
+
+                            await deltaTarget.WriteAsync(extractBuffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                            extracted += read;
+
+                            var ticks = Stopwatch.GetTimestamp();
+                            if (ticks - lastExtractTicks < minExtractTicks)
+                                continue;
+
+                            var speed = (extracted - lastExtracted) * Stopwatch.Frequency / Math.Max(1, ticks - lastExtractTicks);
+                            progress?.Report
+                            (
+                                new()
+                                {
+                                    PhaseText      = $"正在解压更新文件 {packageIndex + 1}/{plan.Packages.Count}",
+                                    CurrentFile    = targetRelativePath,
+                                    Progress       = extracted,
+                                    Total          = deltaEntryLength,
+                                    Speed          = speed,
+                                    IsByteProgress = true
+                                }
+                            );
+
+                            lastExtracted = extracted;
+                            lastExtractTicks = ticks;
+                        }
+
+                        await deltaTarget.FlushAsync(cancellationToken).ConfigureAwait(false);
+                    }
+
+                    Log.Information("[V3Patch] 差分解压完成 {Path}, 耗时 {ElapsedMs} ms", targetRelativePath, Stopwatch.GetElapsedTime(extractTicks).TotalMilliseconds);
 
                     progress?.Report
                     (
@@ -250,14 +316,18 @@ public sealed class V3GamePatchInstaller : IDisposable
 
                     var expectedTargetMd5  = string.Empty;
                     var expectedTargetSize = -1L;
-                    if (string.Equals(normalizedTargetPath, "game/ffxivgame.ver", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(plan.TargetGameVersion))
+                    if (packageTargetFiles != null && packageTargetFiles.TryGetValue(normalizedTargetPath, out var targetFile))
+                    {
+                        expectedTargetMd5  = targetFile.Md5;
+                        expectedTargetSize = targetFile.Size;
+                    }
+                    else if (string.Equals(normalizedTargetPath, "game/ffxivgame.ver", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(plan.TargetGameVersion))
                     {
                         var targetVersionBytes = Encoding.ASCII.GetBytes(plan.TargetGameVersion);
                         expectedTargetMd5  = Convert.ToHexString(MD5.HashData(targetVersionBytes));
                         expectedTargetSize = targetVersionBytes.Length;
                     }
 
-                    var currentApplied = applied;
                     var deltaProgress = new Progress<(long Progress, long Total)>
                                         (
                                             value => progress?.Report
@@ -408,14 +478,51 @@ public sealed class V3GamePatchInstaller : IDisposable
         }
     }
 
-    private static async Task<bool> IsFileValidAsync(string filePath, string expectedMd5, CancellationToken cancellationToken)
+    private static async Task<bool> IsFileValidAsync
+    (
+        string                 filePath,
+        string                 expectedMd5,
+        CancellationToken      cancellationToken,
+        IProgress<long>?       progress = null,
+        TimeSpan               progressUpdateInterval = default
+    )
     {
         if (string.IsNullOrWhiteSpace(expectedMd5))
             return true;
 
         await using var stream = File.OpenRead(filePath);
-        var             hash   = await MD5.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
-        return string.Equals(Convert.ToHexString(hash), expectedMd5, StringComparison.OrdinalIgnoreCase);
+        if (progress == null)
+        {
+            var directHash = await MD5.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
+            return string.Equals(Convert.ToHexString(directHash), expectedMd5, StringComparison.OrdinalIgnoreCase);
+        }
+
+        using var incrementalHash = IncrementalHash.CreateHash(HashAlgorithmName.MD5);
+        var       buffer          = new byte[FILE_STREAM_BUFFER_SIZE];
+        var       readTotal       = 0L;
+        var       lastTicks       = Stopwatch.GetTimestamp();
+        var       minTicks        = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
+
+        while (true)
+        {
+            var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            if (read == 0)
+                break;
+
+            incrementalHash.AppendData(buffer.AsSpan(0, read));
+            readTotal += read;
+
+            var ticks = Stopwatch.GetTimestamp();
+            if (ticks - lastTicks < minTicks)
+                continue;
+
+            progress.Report(readTotal);
+            lastTicks = ticks;
+        }
+
+        progress.Report(readTotal);
+        var incrementalFileHash = incrementalHash.GetHashAndReset();
+        return string.Equals(Convert.ToHexString(incrementalFileHash), expectedMd5, StringComparison.OrdinalIgnoreCase);
     }
 
     #region Constants

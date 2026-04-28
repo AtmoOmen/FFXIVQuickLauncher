@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 using XIVLauncher.Common.Game.Integrity;
 
 namespace XIVLauncher.Common.Patching.SdoFileDownload;
@@ -87,11 +88,17 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
             if (!File.Exists(modulePath))
                 throw new FileNotFoundException("缺少 V3 差分模块", modulePath);
 
+            foreach (var moduleName in new[] { "GlobalSharedEnv.dll", "log4cplusU.dll", "minizip.dll", "XDelta3WrapFactory.dll", "ZlibWrap.dll", "zlib1.dll" })
+            {
+                var requiredModulePath = Path.Combine(moduleDirectory, moduleName);
+                if (!File.Exists(requiredModulePath))
+                    throw new FileNotFoundException("缺少 V3 差分模块依赖", requiredModulePath);
+            }
+
             var reportTotal = expectedSize >= 0 ? expectedSize : new FileInfo(sourceFile).Length;
             if (reportTotal <= 0)
                 reportTotal = 1;
 
-            var       currentDirectory                = Environment.CurrentDirectory;
             var       library                         = IntPtr.Zero;
             using var progressCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var       progressCancellationToken       = progressCancellationTokenSource.Token;
@@ -107,7 +114,7 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
                         try
                         {
                             var size  = File.Exists(tempPath) ? new FileInfo(tempPath).Length : lastSize;
-                            var total = Math.Max(reportTotal, size);
+                            var total = size > 0 ? Math.Max(reportTotal, size) : 0;
 
                             if (size != lastSize || Stopwatch.GetTimestamp() - lastTicks >= Stopwatch.Frequency)
                             {
@@ -137,14 +144,17 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
             {
                 try
                 {
-                    Environment.CurrentDirectory = moduleDirectory;
                     if (!SetDllDirectory(moduleDirectory))
                         throw new Win32Exception(Marshal.GetLastWin32Error());
 
+                    var mergeTicks = Stopwatch.GetTimestamp();
+                    Log.Information("[V3Patch] 正在合并差分 {DeltaPath}, 目标 {TargetPath}", deltaFile, targetFile);
                     library = NativeLibrary.Load(modulePath);
                     var mergeFile = Marshal.GetDelegateForFunctionPointer<MergeFileDelegate>(NativeLibrary.GetExport(library, "MergeFile"));
                     if (!mergeFile(sourceFile, deltaFile, tempPath))
                         throw new InvalidDataException("V3 差分合并失败");
+
+                    Log.Information("[V3Patch] 差分合并完成 {TargetPath}, 耗时 {ElapsedMs} ms", targetFile, Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
                 }
                 finally
                 {
@@ -155,7 +165,6 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
                         NativeLibrary.Free(library);
 
                     SetDllDirectory(null);
-                    Environment.CurrentDirectory = currentDirectory;
                 }
             }
 

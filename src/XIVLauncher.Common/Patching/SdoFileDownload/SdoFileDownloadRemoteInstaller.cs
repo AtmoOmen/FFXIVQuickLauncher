@@ -29,10 +29,11 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
         if (workerExecutablePath != null)
         {
             workerProcess                           = new();
-            workerProcess.StartInfo.FileName        = workerExecutablePath;
-            workerProcess.StartInfo.UseShellExecute = true;
-            workerProcess.StartInfo.Verb            = asAdmin ? "runas" : "open";
-            workerProcess.StartInfo.Arguments       = $"sdo-rpc {Environment.ProcessId} {rpcChannelName}";
+            workerProcess.StartInfo.FileName         = workerExecutablePath;
+            workerProcess.StartInfo.WorkingDirectory = Path.GetDirectoryName(workerExecutablePath) ?? string.Empty;
+            workerProcess.StartInfo.UseShellExecute  = true;
+            workerProcess.StartInfo.Verb             = asAdmin ? "runas" : "open";
+            workerProcess.StartInfo.Arguments        = $"sdo-rpc {Environment.ProcessId} {rpcChannelName}";
 #if !DEBUG
             workerProcess.StartInfo.CreateNoWindow = true;
             workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
