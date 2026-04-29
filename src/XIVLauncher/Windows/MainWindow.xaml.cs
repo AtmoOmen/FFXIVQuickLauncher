@@ -26,7 +26,6 @@ using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 using XIVLauncher.Windows.ViewModel.MainWindow.Models;
 using XIVLauncher.Xaml;
-using Timer = System.Timers.Timer;
 
 namespace XIVLauncher.Windows;
 
@@ -42,7 +41,7 @@ public partial class MainWindow
     private readonly AccountManager accountManager;
     private readonly Launcher       launcher;
 
-    private Timer?                               bannerChangeTimer;
+    private DispatcherTimer?                     bannerChangeTimer;
     private ObservableCollection<BannerDotInfo>? bannerDotList;
     private Headlines?                           headlines;
     private Banner[]?                            banners;
@@ -678,8 +677,8 @@ public partial class MainWindow
         if (bannerChangeTimer != null || bannerBitmaps is not { Length: > 0 })
             return;
 
-        bannerChangeTimer         =  new Timer { Interval = 5000, AutoReset = true };
-        bannerChangeTimer.Elapsed += (_, _) => Dispatcher.BeginInvoke(new Action(ShowNextBanner), DispatcherPriority.Background);
+        bannerChangeTimer       =  new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromSeconds(5) };
+        bannerChangeTimer.Tick += (_, _) => ShowNextBanner();
         bannerChangeTimer.Start();
         isBannerRotationActive = true;
     }
@@ -692,7 +691,6 @@ public partial class MainWindow
             return;
 
         bannerChangeTimer.Stop();
-        bannerChangeTimer.Dispose();
         bannerChangeTimer = null;
     }
 
