@@ -119,7 +119,7 @@ public class DalamudUpdater
             SetLoadingDetail("正在启动...");
             ReportLoadingProgressCore(null, 0, null);
 
-            Log.Information($"[DUPDATE] Dalamud {Version} ({OnlineHash}) 准备完毕");
+            Log.Information("[DUPDATE] Dalamud {Version} ({OnlineHash}) 准备完毕", Version, OnlineHash);
         }
         catch (Exception ex)
         {
@@ -190,10 +190,16 @@ public class DalamudUpdater
         }
     }
 
-    private async Task UpdateRuntimeAsync()
-    {
-        await DotNetRuntimeManager.EnsureRuntimeAsync(Runtime, runtimeVersion, "win-x64", ".NET 运行时", SetLoadingDetail, ReportLoadingProgressCore).ConfigureAwait(false);
-    }
+    private async Task UpdateRuntimeAsync() =>
+        await DotNetRuntimeManager.EnsureRuntimeAsync
+        (
+            Runtime,
+            runtimeVersion,
+            "win-x64",
+            ".NET 运行时",
+            SetLoadingDetail,
+            ReportLoadingProgressCore
+        ).ConfigureAwait(false);
 
     private async Task UpdateAssetsAsync()
     {

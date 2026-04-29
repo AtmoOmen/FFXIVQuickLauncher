@@ -9,7 +9,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
-using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
@@ -325,20 +324,21 @@ public class PatchVerifier : IDisposable
         try
         {
             var assemblyLocation = AppContext.BaseDirectory;
+
             if (_external)
             {
                 CurrentFile = "补丁安装器运行时";
                 var patchInstallerRuntime = DotNetRuntimeManager.GetRuntimeDirectory("win-x86");
-                var runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
+                var runtimeVersion        = await DotNetRuntimeManager.GetLatestVersionAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
                 await DotNetRuntimeManager.EnsureRuntimeAsync
-                    (
-                        patchInstallerRuntime,
-                        runtimeVersion,
-                        "win-x86",
-                        "补丁安装器 .NET 运行时",
-                        cancellationToken: _cancellationTokenSource.Token
-                    )
-                    .ConfigureAwait(false);
+                                          (
+                                              patchInstallerRuntime,
+                                              runtimeVersion,
+                                              "win-x86",
+                                              "补丁安装器 .NET 运行时",
+                                              cancellationToken: _cancellationTokenSource.Token
+                                          )
+                                          .ConfigureAwait(false);
 
                 sdoFileInstaller = new SdoFileDownloadRemoteInstaller
                 (
@@ -547,5 +547,4 @@ public class PatchVerifier : IDisposable
         Cancelled,
         Error
     }
-
 }

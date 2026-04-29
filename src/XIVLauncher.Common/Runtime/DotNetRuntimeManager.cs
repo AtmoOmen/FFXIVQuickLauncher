@@ -100,7 +100,7 @@ public static class DotNetRuntimeManager
                 true
             );
 
-            File.WriteAllText(versionFile.FullName, version);
+            await File.WriteAllTextAsync(versionFile.FullName, version, cancellationToken);
             Log.Information("[Runtime] {DisplayName} 更新完成", displayName);
         }
         catch (Exception ex)
