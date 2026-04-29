@@ -234,6 +234,43 @@ public sealed class V3GamePatchInstaller : IDisposable
                     if (!File.Exists(targetPath))
                         throw new FileNotFoundException($"缺少待更新文件: {targetRelativePath}");
 
+                    var expectedTargetMd5  = string.Empty;
+                    var expectedTargetSize = -1L;
+                    if (packageTargetFiles != null && packageTargetFiles.TryGetValue(normalizedTargetPath, out var targetFile))
+                    {
+                        expectedTargetMd5  = targetFile.Md5;
+                        expectedTargetSize = targetFile.Size;
+                    }
+                    else if (string.Equals(normalizedTargetPath, "game/ffxivgame.ver", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(plan.TargetGameVersion))
+                    {
+                        var targetVersionBytes = Encoding.ASCII.GetBytes(plan.TargetGameVersion);
+                        expectedTargetMd5  = Convert.ToHexString(MD5.HashData(targetVersionBytes));
+                        expectedTargetSize = targetVersionBytes.Length;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(expectedTargetMd5))
+                    {
+                        var targetInfo = new FileInfo(targetPath);
+                        if ((expectedTargetSize < 0 || targetInfo.Length == expectedTargetSize) && await IsFileValidAsync(targetPath, expectedTargetMd5, cancellationToken).ConfigureAwait(false))
+                        {
+                            applied++;
+                            Log.Information("[V3Patch] 更新文件已是目标版本, 跳过 {Path}, 进度 {Applied}/{Total}", targetRelativePath, applied, applyTotal);
+                            progress?.Report
+                            (
+                                new()
+                                {
+                                    PhaseText      = $"正在安装更新文件 {packageIndex + 1}/{plan.Packages.Count}",
+                                    CurrentFile    = targetRelativePath,
+                                    Progress       = applied,
+                                    Total          = applyTotal,
+                                    StatusText     = $"{applied}/{applyTotal}",
+                                    IsByteProgress = false
+                                }
+                            );
+                            continue;
+                        }
+                    }
+
                     if (packageSourceFiles != null)
                     {
                         if (!packageSourceFiles.TryGetValue(normalizedTargetPath, out var sourceFile))
@@ -341,20 +378,6 @@ public sealed class V3GamePatchInstaller : IDisposable
                             IsByteProgress = false
                         }
                     );
-
-                    var expectedTargetMd5  = string.Empty;
-                    var expectedTargetSize = -1L;
-                    if (packageTargetFiles != null && packageTargetFiles.TryGetValue(normalizedTargetPath, out var targetFile))
-                    {
-                        expectedTargetMd5  = targetFile.Md5;
-                        expectedTargetSize = targetFile.Size;
-                    }
-                    else if (string.Equals(normalizedTargetPath, "game/ffxivgame.ver", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(plan.TargetGameVersion))
-                    {
-                        var targetVersionBytes = Encoding.ASCII.GetBytes(plan.TargetGameVersion);
-                        expectedTargetMd5  = Convert.ToHexString(MD5.HashData(targetVersionBytes));
-                        expectedTargetSize = targetVersionBytes.Length;
-                    }
 
                     var deltaProgress = new Progress<(long Progress, long Total)>
                                         (

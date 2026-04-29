@@ -146,17 +146,27 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
             {
                 try
                 {
-                    if (!SetDllDirectory(moduleDirectory))
-                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    var currentDirectory = Directory.GetCurrentDirectory();
+                    Directory.SetCurrentDirectory(moduleDirectory);
 
-                    var mergeTicks = Stopwatch.GetTimestamp();
-                    Log.Information("[V3Patch] 正在合并差分 {DeltaPath}, 目标 {TargetPath}", deltaFile, targetFile);
-                    library = NativeLibrary.Load(modulePath);
-                    var mergeFile = Marshal.GetDelegateForFunctionPointer<MergeFileDelegate>(NativeLibrary.GetExport(library, "MergeFile"));
-                    if (!mergeFile(sourceFile, deltaFile, tempPath))
-                        throw new InvalidDataException("V3 差分合并失败");
+                    try
+                    {
+                        if (!SetDllDirectory(moduleDirectory))
+                            throw new Win32Exception(Marshal.GetLastWin32Error());
 
-                    Log.Information("[V3Patch] 差分合并完成 {TargetPath}, 耗时 {ElapsedMs} ms", targetFile, Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
+                        var mergeTicks = Stopwatch.GetTimestamp();
+                        Log.Information("[V3Patch] 正在合并差分 {DeltaPath}, 目标 {TargetPath}", deltaFile, targetFile);
+                        library = NativeLibrary.Load(modulePath);
+                        var mergeFile = Marshal.GetDelegateForFunctionPointer<MergeFileDelegate>(NativeLibrary.GetExport(library, "MergeFile"));
+                        if (!mergeFile(sourceFile, deltaFile, targetFile))
+                            throw new InvalidDataException($"V3 差分合并失败, Win32 错误 {Marshal.GetLastWin32Error()}");
+
+                        Log.Information("[V3Patch] 差分合并完成 {TargetPath}, 耗时 {ElapsedMs} ms", targetFile, Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
+                    }
+                    finally
+                    {
+                        Directory.SetCurrentDirectory(currentDirectory);
+                    }
                 }
                 finally
                 {
@@ -170,22 +180,20 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
                 }
             }
 
-            if (expectedSize >= 0 && new FileInfo(tempPath).Length != expectedSize)
+            if (expectedSize >= 0 && new FileInfo(targetFile).Length != expectedSize)
                 throw new InvalidDataException("V3 差分产物大小不匹配");
 
             if (!string.IsNullOrWhiteSpace(expectedMd5))
             {
-                Log.Information("[V3Patch] 正在校验差分合并产物 {TempPath}", tempPath);
-                using var stream = File.OpenRead(tempPath);
+                Log.Information("[V3Patch] 正在校验差分合并产物 {TargetFile}", targetFile);
+                using var stream = File.OpenRead(targetFile);
                 var       hash   = MD5.HashData(stream);
 
                 if (!string.Equals(Convert.ToHexString(hash), expectedMd5, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("V3 差分产物校验失败");
             }
 
-            var decodedSize = new FileInfo(tempPath).Length;
-            Log.Information("[V3Patch] 正在替换目标文件 {TargetFile}, 产物大小 {DecodedSize}", targetFile, decodedSize);
-            File.Move(tempPath, targetFile, true);
+            var decodedSize = new FileInfo(targetFile).Length;
             complete = true;
             OnInstallProgress?.Invoke(0, decodedSize, decodedSize, SdoFileDownloadInstaller.InstallTaskState.Complete);
             Log.Information("[V3Patch] 本地差分合并完成 {TargetFile}", targetFile);
@@ -263,7 +271,7 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
 
     public event SdoFileDownloadInstaller.OnVerifyProgressDelegate? OnVerifyProgress;
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.I1)]
     private delegate bool MergeFileDelegate(string sourceFile, string deltaFile, string targetFile);
 
