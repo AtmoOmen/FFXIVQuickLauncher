@@ -244,12 +244,6 @@ public class DalamudUpdater
 
         var remoteFileCount = plan.DownloadFiles.Count;
 
-        if (remoteFileCount * 2 > manifest.Files.Count)
-        {
-            Log.Information("[DUPDATE] 需远程下载文件数超过一半, 改用完整包更新: {DownloadCount}/{TotalCount}", remoteFileCount, manifest.Files.Count);
-            return false;
-        }
-
         foreach (var file in plan.CopyFiles)
         {
             Log.Verbose("[DUPDATE] 从 dev 目录复用 Dalamud 文件: {Path}", Path.GetRelativePath(addonPath.FullName, file.TargetPath));

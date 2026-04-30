@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -63,14 +64,14 @@ public class HttpClientDownloadWithProgress : IDisposable
         var tasks = new List<Task>(downloads.Length);
 
         for (var i = 0; i < downloads.Length; i++)
-            tasks.Add(Download(i, probes[i].Size, probes[i].SupportsRanges));
+            tasks.Add(Download(i, probes[i].Size, probes[i].SupportsRanges, probes[i].EntityTag, probes[i].LastModified));
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    private async Task<(long? Size, bool SupportsRanges)[]> ProbeDownloads()
+    private async Task<(long? Size, bool SupportsRanges, EntityTagHeaderValue? EntityTag, DateTimeOffset? LastModified)[]> ProbeDownloads()
     {
-        var tasks = new Task<(long? Size, bool SupportsRanges)>[downloads.Length];
+        var tasks = new Task<(long? Size, bool SupportsRanges, EntityTagHeaderValue? EntityTag, DateTimeOffset? LastModified)>[downloads.Length];
 
         for (var i = 0; i < downloads.Length; i++)
             tasks[i] = ProbeDownload(downloads[i].Url);
@@ -78,14 +79,14 @@ public class HttpClientDownloadWithProgress : IDisposable
         return await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    private async Task Download(int index, long? totalDownloadSize, bool supportsRanges)
+    private async Task Download(int index, long? totalDownloadSize, bool supportsRanges, EntityTagHeaderValue? entityTag, DateTimeOffset? lastModified)
     {
         var download = downloads[index];
         var isNuGet  = IsNuGetDownload(download.Url);
 
         if (supportsRanges && totalDownloadSize is >= MIN_SEGMENTED_DOWNLOAD_SIZE)
         {
-            await DownloadSegmented(index, totalDownloadSize.Value, isNuGet).ConfigureAwait(false);
+            await DownloadSegmented(index, totalDownloadSize.Value, isNuGet, entityTag, lastModified).ConfigureAwait(false);
             return;
         }
 
@@ -137,7 +138,7 @@ public class HttpClientDownloadWithProgress : IDisposable
 
             var now = Environment.TickCount64;
 
-            if (now - lastProgressTick >= 500)
+            if (now - lastProgressTick >= PROGRESS_INTERVAL_MILLISECONDS)
             {
                 TriggerProgressChanged(index, downloaded);
                 lastProgressTick = now;
@@ -145,7 +146,7 @@ public class HttpClientDownloadWithProgress : IDisposable
         }
     }
 
-    private async Task<(long? Size, bool SupportsRanges)> ProbeDownload(string url)
+    private async Task<(long? Size, bool SupportsRanges, EntityTagHeaderValue? EntityTag, DateTimeOffset? LastModified)> ProbeDownload(string url)
     {
         try
         {
@@ -156,23 +157,23 @@ public class HttpClientDownloadWithProgress : IDisposable
             using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
             if (response.StatusCode == HttpStatusCode.PartialContent && response.Content.Headers.ContentRange?.Length != null)
-                return (response.Content.Headers.ContentRange.Length.Value, true);
+                return (response.Content.Headers.ContentRange.Length.Value, true, response.Headers.ETag, response.Content.Headers.LastModified);
 
             if (response.IsSuccessStatusCode && response.Content.Headers.ContentLength > 0)
-                return (response.Content.Headers.ContentLength.Value, false);
+                return (response.Content.Headers.ContentLength.Value, false, response.Headers.ETag, response.Content.Headers.LastModified);
         }
         catch (Exception ex)
         {
             Log.Warning("[DUPDATE] [{url}] 探测 Range 支持失败或超时: {Msg}. 将降级为直接下载。", url, ex.Message);
         }
 
-        return (null, false);
+        return (null, false, null, null);
     }
 
-    private async Task DownloadSegmented(int index, long downloadSize, bool isNuGet)
+    private async Task DownloadSegmented(int index, long downloadSize, bool isNuGet, EntityTagHeaderValue? entityTag, DateTimeOffset? lastModified)
     {
-        var parallelParts = Math.Clamp(Environment.ProcessorCount, MIN_SEGMENTED_PARTS, MAX_SEGMENTED_PARTS);
-        Log.Information("[DUPDATE] 下载线程数: {0}", parallelParts);
+        var parallelParts = Math.Clamp((int)(downloadSize / MIN_SEGMENTED_DOWNLOAD_SIZE), MIN_SEGMENTED_PARTS, MAX_SEGMENTED_PARTS);
+        Log.Information("[DUPDATE] 下载线程数: {0}, 单片大小: {1} MiB", parallelParts, SEGMENT_SIZE >> 20);
 
         PrepareDestinationDirectory(downloads[index].Path);
 
@@ -182,52 +183,88 @@ public class HttpClientDownloadWithProgress : IDisposable
             await prealloc.FlushAsync().ConfigureAwait(false);
         }
 
-        var chunks = BuildChunks(downloadSize, parallelParts);
+        var chunks = BuildChunks(downloadSize);
         var queue  = new ConcurrentQueue<(long Start, long End)>(chunks);
         var tasks  = new List<Task>(parallelParts);
 
         for (var i = 0; i < parallelParts; i++)
-            tasks.Add(DownloadSegments(index, isNuGet, queue));
+            tasks.Add(DownloadSegments(index, downloadSize, isNuGet, entityTag, lastModified, queue));
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
         TriggerProgressChanged(index, actualDownloadedSizes[index]);
     }
 
-    private async Task DownloadSegments(int index, bool isNuGet, ConcurrentQueue<(long Start, long End)> queue)
+    private async Task DownloadSegments(int index, long downloadSize, bool isNuGet, EntityTagHeaderValue? entityTag, DateTimeOffset? lastModified, ConcurrentQueue<(long Start, long End)> queue)
     {
-        await using var fileStream = new FileStream(downloads[index].Path, FileMode.Open, FileAccess.Write, FileShare.Write, BUFFER_SIZE, true);
-        var             buffer     = new byte[BUFFER_SIZE];
+        var buffer           = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE);
+        var lastProgressTick = Environment.TickCount64;
+        var readCount        = 0L;
 
-        while (queue.TryDequeue(out var chunk))
+        await using var fileStream = new FileStream(downloads[index].Path, FileMode.Open, FileAccess.Write, FileShare.Write, BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.RandomAccess);
+
+        try
         {
-            using var response = await SendWithRetry
-                                 (
-                                     () =>
-                                     {
-                                         var request = CreateRequest(downloads[index].Url, isNuGet);
-                                         request.Headers.Range = new RangeHeaderValue(chunk.Start, chunk.End);
-                                         return request;
-                                     },
-                                     HttpCompletionOption.ResponseHeadersRead
-                                 ).ConfigureAwait(false);
-
-            if (response.StatusCode != HttpStatusCode.PartialContent)
-                throw new HttpRequestException($"服务器未返回分段内容: {response.StatusCode}");
-
-            using var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            fileStream.Seek(chunk.Start, SeekOrigin.Begin);
-
-            while (true)
+            while (queue.TryDequeue(out var chunk))
             {
-                var bytesRead = await contentStream.ReadAsync(buffer).ConfigureAwait(false);
+                using var response = await SendWithRetry
+                                     (
+                                         () =>
+                                         {
+                                             var request = CreateRequest(downloads[index].Url, isNuGet);
+                                             request.Headers.Range = new RangeHeaderValue(chunk.Start, chunk.End);
 
-                if (bytesRead == 0)
-                    break;
+                                             if (entityTag is not null && !entityTag.IsWeak)
+                                                 request.Headers.IfRange = new RangeConditionHeaderValue(entityTag);
+                                             else if (lastModified is not null)
+                                                 request.Headers.IfRange = new RangeConditionHeaderValue(lastModified.Value);
 
-                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead)).ConfigureAwait(false);
-                var downloaded = Interlocked.Add(ref actualDownloadedSizes[index], bytesRead);
-                TriggerProgressChanged(index, downloaded);
+                                             return request;
+                                         },
+                                         HttpCompletionOption.ResponseHeadersRead
+                                     ).ConfigureAwait(false);
+
+                if (response.StatusCode != HttpStatusCode.PartialContent)
+                    throw new HttpRequestException($"服务器未返回分段内容: {response.StatusCode}");
+
+                var range = response.Content.Headers.ContentRange;
+
+                if (range?.From != chunk.Start || range.To != chunk.End || range.Length != downloadSize)
+                    throw new HttpRequestException($"服务器返回了不匹配的分段: {range}");
+
+                using var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+                var       position      = chunk.Start;
+
+                while (true)
+                {
+                    var bytesRead = await contentStream.ReadAsync(buffer.AsMemory(0, BUFFER_SIZE)).ConfigureAwait(false);
+
+                    if (bytesRead == 0)
+                        break;
+
+                    await RandomAccess.WriteAsync(fileStream.SafeFileHandle, buffer.AsMemory(0, bytesRead), position).ConfigureAwait(false);
+                    position += bytesRead;
+                    var downloaded = Interlocked.Add(ref actualDownloadedSizes[index], bytesRead);
+                    readCount++;
+
+                    if (readCount % 100 == 0)
+                        TriggerProgressChanged(index, downloaded);
+
+                    var now = Environment.TickCount64;
+
+                    if (now - lastProgressTick >= PROGRESS_INTERVAL_MILLISECONDS)
+                    {
+                        TriggerProgressChanged(index, downloaded);
+                        lastProgressTick = now;
+                    }
+                }
+
+                if (position != chunk.End + 1)
+                    throw new IOException($"分段下载不完整: {chunk.Start}-{chunk.End}, 已下载到 {position - 1}");
             }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 
@@ -294,18 +331,15 @@ public class HttpClientDownloadWithProgress : IDisposable
             Directory.CreateDirectory(directory);
     }
 
-    private static List<(long Start, long End)> BuildChunks(long downloadSize, int parallelParts)
+    private static List<(long Start, long End)> BuildChunks(long downloadSize)
     {
-        var targetChunks = parallelParts * 64;
-        var result       = new List<(long Start, long End)>();
-        var estimated    = Math.Max(MIN_CHUNK_SIZE, downloadSize / targetChunks);
-        var chunkSize    = Math.Min(estimated, MAX_CHUNK_SIZE);
+        var result = new List<(long Start, long End)>();
 
         long position = 0;
 
         while (position < downloadSize)
         {
-            var end = Math.Min(position + chunkSize - 1, downloadSize - 1);
+            var end = Math.Min(position + SEGMENT_SIZE - 1, downloadSize - 1);
             result.Add((position, end));
             position = end + 1;
         }
@@ -370,11 +404,11 @@ public class HttpClientDownloadWithProgress : IDisposable
 
     private const int MIN_SEGMENTED_PARTS = 4;
 
-    private const long MAX_CHUNK_SIZE = 8L << 20;
-
-    private const long MIN_CHUNK_SIZE = 1L << 20;
+    private const int PROGRESS_INTERVAL_MILLISECONDS = 500;
 
     private const long MIN_SEGMENTED_DOWNLOAD_SIZE = 16L << 20;
+
+    private const long SEGMENT_SIZE = 4L << 20;
 
     #endregion
 }
