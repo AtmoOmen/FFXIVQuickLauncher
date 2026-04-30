@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Serilog;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Game.Integrity;
 using XIVLauncher.Common.Patching.SdoFileDownload;
 
 namespace XIVLauncher.Common.Game.Patch.V3;
@@ -64,11 +65,15 @@ public sealed class V3GamePatchInstaller : IDisposable
         var sourceFilesText = await client.GetStringAsync(SdoInfos.CLIENT_ALL_FILES_LIST_URL, cancellationToken).ConfigureAwait(false);
         var sourceFileLines = sourceFilesText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
         var sourceFiles     = new Dictionary<string, (long Size, string Md5)>(StringComparer.OrdinalIgnoreCase);
+        var sourceBaseUrl   = string.Empty;
         var sourceVersion   = string.Empty;
 
         if (sourceFileLines.Length > 0)
         {
             var headerParts = sourceFileLines[0].Split('|');
+            if (headerParts.Length >= 1)
+                sourceBaseUrl = headerParts[0];
+
             if (headerParts.Length >= 3)
                 sourceVersion = headerParts[2];
         }
@@ -395,7 +400,48 @@ public sealed class V3GamePatchInstaller : IDisposable
                                             )
                                         );
 
-                    await installer.ApplyVcdiff(targetPath, deltaFilePath, targetPath, expectedTargetMd5, expectedTargetSize, deltaProgress, cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        await installer.ApplyVcdiff(targetPath, deltaFilePath, targetPath, expectedTargetMd5, expectedTargetSize, deltaProgress, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (packageTargetFiles?.ContainsKey(normalizedTargetPath) == true
+                                               && !string.IsNullOrWhiteSpace(sourceBaseUrl)
+                                               && !string.IsNullOrWhiteSpace(expectedTargetMd5)
+                                               && expectedTargetSize >= 0)
+                    {
+                        Log.Warning(ex, "[V3Patch] 差分合并失败, 尝试下载完整目标文件 {Path}", targetRelativePath);
+                        progress?.Report
+                        (
+                            new()
+                            {
+                                PhaseText      = $"正在修复更新文件 {packageIndex + 1}/{plan.Packages.Count}",
+                                CurrentFile    = targetRelativePath,
+                                Progress       = applied,
+                                Total          = applyTotal,
+                                StatusText     = $"{applied}/{applyTotal}",
+                                IsByteProgress = false
+                            }
+                        );
+
+                        var sdoTargetPath = "\\" + normalizedTargetPath.Replace('/', '\\');
+                        var targetIntegrity = new IntegrityCheckResult
+                        {
+                            BaseUrl     = sourceBaseUrl,
+                            DataVersion = sourceVersion,
+                            Hashes      = { [sdoTargetPath] = expectedTargetMd5 },
+                            Sizes       = { [sdoTargetPath] = (ulong)expectedTargetSize }
+                        };
+
+                        await installer.ConstructFromRemoteIntegrity(targetIntegrity, progressUpdateInterval).ConfigureAwait(false);
+                        await installer.QueueInstall(0, sdoTargetPath, cancellationToken).ConfigureAwait(false);
+                        await installer.Install(1, cancellationToken).ConfigureAwait(false);
+
+                        var repairedInfo = new FileInfo(targetPath);
+                        if (repairedInfo.Length != expectedTargetSize || !await IsFileValidAsync(targetPath, expectedTargetMd5, cancellationToken).ConfigureAwait(false))
+                            throw new InvalidDataException($"完整目标文件修复校验失败: {targetRelativePath}", ex);
+
+                        Log.Information("[V3Patch] 完整目标文件修复完成 {Path}", targetRelativePath);
+                    }
                     File.Delete(deltaFilePath);
 
                     applied++;
