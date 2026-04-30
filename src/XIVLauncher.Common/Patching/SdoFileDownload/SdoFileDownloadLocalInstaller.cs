@@ -111,9 +111,9 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
             if (reportTotal <= 0)
                 reportTotal = 1;
 
-            var       library                         = IntPtr.Zero;
             using var progressCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var       progressCancellationToken       = progressCancellationTokenSource.Token;
+            var       library                         = IntPtr.Zero;
             var progressTask = Task.Run
             (
                 async () =>
@@ -171,17 +171,16 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
 
                         if (!mergeFile(sourceFile, deltaFile, tempPath))
                         {
-                            var win32Error = Marshal.GetLastWin32Error();
+                            var sourceInfo = new FileInfo(sourceFile);
                             Log.Error
                             (
-                                "[V3Patch] 差分合并失败, 源 {SourcePath}, 差分 {DeltaPath}, 临时目标 {TempPath}, 源文件大小 {SourceSize}, Win32 错误 {Win32Error}",
+                                "[V3Patch] 差分合并失败, 源 {SourcePath} (大小 {SourceSize}), 差分 {DeltaPath}, 临时目标 {TempPath}",
                                 sourceFile,
+                                sourceInfo.Length,
                                 deltaFile,
-                                tempPath,
-                                new FileInfo(sourceFile).Length,
-                                win32Error
+                                tempPath
                             );
-                            throw new InvalidDataException($"V3 差分合并失败, Win32 错误 {win32Error}");
+                            throw new InvalidDataException($"V3 差分合并失败: 源文件 {sourceInfo.Length} 字节, 差分 {new FileInfo(deltaFile).Length} 字节");
                         }
 
                         Log.Information("[V3Patch] 差分合并完成, 耗时 {ElapsedMs} ms", Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
@@ -296,7 +295,7 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
 
     public event SdoFileDownloadInstaller.OnVerifyProgressDelegate? OnVerifyProgress;
 
-    [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode, SetLastError = true)]
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.I1)]
     private delegate bool MergeFileDelegate(string sourceFile, string deltaFile, string targetFile);
 
