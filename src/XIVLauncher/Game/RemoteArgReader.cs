@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -42,9 +43,9 @@ public class RemoteArgReader : IDisposable
 
         var startInfo = new ProcessStartInfo(path)
         {
-            UseShellExecute = true,
-            Verb            = "runas",
-            Arguments       = $"{rpcName}"
+            UseShellExecute  = false,
+            Arguments        = rpcName,
+            WorkingDirectory = AppContext.BaseDirectory
         };
 
         if (!Debugger.IsAttached)
@@ -58,6 +59,11 @@ public class RemoteArgReader : IDisposable
         try
         {
             process = Process.Start(startInfo);
+        }
+        catch (Win32Exception ex)
+        {
+            Log.Error(ex, "Could not launch Args Reader");
+            throw;
         }
         catch (Exception ex)
         {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -11,6 +12,7 @@ using Serilog;
 using SharedMemory;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Integrity;
+using XIVLauncher.Common.Util;
 using XIVLauncher.Common.Patching;
 
 namespace XIVLauncher.Common.Patching.SdoFileDownload;
@@ -39,7 +41,15 @@ public class SdoFileDownloadRemoteInstaller : ISdoFileDownloadInstaller
             workerProcess.StartInfo.CreateNoWindow = true;
             workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 #endif
-            workerProcess.Start();
+            try
+            {
+                workerProcess.Start();
+            }
+            catch (Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
+            {
+                throw new OperationCanceledException();
+            }
+
             Log.Information("[SdoRpc] 远端补丁进程已启动, PID {ProcessId}", workerProcess.Id);
         }
         else

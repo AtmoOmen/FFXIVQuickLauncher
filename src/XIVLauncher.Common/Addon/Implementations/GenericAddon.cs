@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using Serilog;
+using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Addon.Implementations;
 
@@ -146,7 +147,13 @@ public class GenericAddon : IRunnableAddon, INotifyAddonAfterClose
 
         _addonProcess.StartInfo.WindowStyle = ProcessWindowStyle.Minimized;
 
-        _addonProcess.Start();
+        try
+        {
+            _addonProcess.Start();
+        }
+        catch (Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
+        {
+        }
     }
 
     private void RunPowershell()
@@ -196,7 +203,7 @@ public class GenericAddon : IRunnableAddon, INotifyAddonAfterClose
         catch (Win32Exception exc)
         {
             // If the user didn't cause this manually by dismissing the UAC prompt, we throw it
-            if ((uint)exc.HResult != 0x80004005)
+            if (!PlatformHelpers.IsWindowsErrorCancelled(exc))
                 throw;
         }
     }

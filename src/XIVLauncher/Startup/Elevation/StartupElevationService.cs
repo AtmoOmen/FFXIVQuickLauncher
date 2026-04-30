@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using XIVLauncher.Common.Constant;
@@ -22,7 +23,15 @@ internal static class StartupElevationService
             Arguments = arguments
         };
 
-        Process.Start(startInfo);
+        try
+        {
+            Process.Start(startInfo);
+        }
+        catch (Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
+        {
+            return false;
+        }
+
         Environment.Exit(0);
         return true;
     }

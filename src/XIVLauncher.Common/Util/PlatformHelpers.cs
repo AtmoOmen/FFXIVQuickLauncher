@@ -74,6 +74,9 @@ public static class PlatformHelpers
     public static bool IsElevated() =>
         new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
 
+    public static bool IsWindowsErrorCancelled(Win32Exception exception) =>
+        exception.NativeErrorCode == 1223;
+
     public static void Unzip7ZAsset(string path, string output)
     {
         Log.Information("[DUPDATE] 正在解压 7z 包...");

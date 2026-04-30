@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -7,6 +8,7 @@ using XIVLauncher.Common.Game.Patch.PatchList;
 using XIVLauncher.Common.Patching;
 using XIVLauncher.Common.Patching.Rpc;
 using XIVLauncher.Common.Patching.Rpc.Implementations;
+using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Game.Patch;
 
@@ -65,6 +67,10 @@ public class PatchInstaller : IDisposable
             try
             {
                 Process.Start(startInfo);
+            }
+            catch (Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
+            {
+                throw new OperationCanceledException();
             }
             catch (Exception ex)
             {

@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -49,7 +50,13 @@ public static class GameHelpers
         if (!EnvironmentSettings.IsNoRunas && Environment.OSVersion.Version.Major >= 6)
             startInfo.Verb = "runas";
 
-        Process.Start(startInfo);
+        try
+        {
+            Process.Start(startInfo);
+        }
+        catch (Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
+        {
+        }
     }
 
     public static bool CheckIsGameOpen()

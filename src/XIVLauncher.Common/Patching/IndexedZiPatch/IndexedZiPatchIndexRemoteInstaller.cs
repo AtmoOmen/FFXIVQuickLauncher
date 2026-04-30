@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SharedMemory;
+using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Patching.IndexedZiPatch;
 
@@ -31,9 +34,16 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
             workerProcess.StartInfo.Arguments       = $"index-rpc {Process.GetCurrentProcess().Id} {rpcChannelName}";
 #if !DEBUG
             this.workerProcess.StartInfo.CreateNoWindow = true;
-            this.workerProcess.StartInfo.WindowStyle    = ProcessWindowStyle.Hidden;
+            this.workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 #endif
-            workerProcess.Start();
+            try
+            {
+                workerProcess.Start();
+            }
+            catch (Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
+            {
+                throw new OperationCanceledException();
+            }
         }
         else
         {
@@ -314,7 +324,8 @@ public class IndexedZiPatchIndexRemoteInstaller : IIndexedZiPatchIndexInstaller
         if (isDisposed)
             throw new OperationCanceledException();
 
-        var logPath = Path.Combine(XIVLauncher.Common.Constant.Paths.RoamingPath, "patcher.log");
+        var logPath = Path.Combine(Paths.RoamingPath, "patcher.log");
+
         if (!response.Success)
         {
             if (workerProcess is { HasExited: true } exitedWorkerProcess)

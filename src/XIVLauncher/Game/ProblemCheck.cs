@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -152,10 +153,10 @@ internal static class ProblemCheck
                             WindowStyle      = ProcessWindowStyle.Hidden
                         };
 
-                        var process = Process.Start(psi);
+                        var process = StartElevated(psi);
 
                         if (process == null)
-                            throw new Exception("Could not spawn CMD when fixing GShade");
+                            return;
 
                         process.WaitForExit();
 
@@ -192,10 +193,10 @@ internal static class ProblemCheck
                                         WindowStyle      = ProcessWindowStyle.Hidden
                                     };
 
-                                    var gshadeProcess = Process.Start(gshadePsi);
+                                    var gshadeProcess = StartElevated(gshadePsi);
 
                                     if (gshadeProcess == null)
-                                        throw new Exception("Could not spawn reg when fixing GShade");
+                                        return;
 
                                     gshadeProcess.WaitForExit();
                                 }
@@ -229,12 +230,24 @@ internal static class ProblemCheck
             WindowStyle     = ProcessWindowStyle.Hidden
         };
 
-        var process = Process.Start(psi);
+        var process = StartElevated(psi);
 
         if (process == null)
-            throw new Exception("Could not spawn CMD for elevated delete");
+            return;
 
         process.WaitForExit();
+    }
+
+    private static Process? StartElevated(ProcessStartInfo startInfo)
+    {
+        try
+        {
+            return Process.Start(startInfo);
+        }
+        catch (Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
+        {
+            return null;
+        }
     }
 
     private static bool CheckMyGamesWriteAccess()
