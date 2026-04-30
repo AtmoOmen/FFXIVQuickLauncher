@@ -79,7 +79,16 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
         try
         {
             OnInstallProgress?.Invoke(0, 0, 0, SdoFileDownloadInstaller.InstallTaskState.Downloading);
-            Log.Information("[V3Patch] 本地差分合并开始, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}, 临时文件 {TempPath}, 期望大小 {ExpectedSize}, 期望 MD5 {ExpectedMd5}", sourceFile, deltaFile, targetFile, tempPath, expectedSize, expectedMd5);
+            Log.Information
+            (
+                "[V3Patch] 本地差分合并开始, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}, 临时文件 {TempPath}, 期望大小 {ExpectedSize}, 期望 MD5 {ExpectedMd5}",
+                sourceFile,
+                deltaFile,
+                targetFile,
+                tempPath,
+                expectedSize,
+                expectedMd5
+            );
 
             if (Environment.Is64BitProcess)
                 throw new InvalidOperationException("V3 差分必须在 32 位补丁进程中安装");
@@ -90,6 +99,7 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
                 throw new FileNotFoundException("缺少 V3 差分模块", modulePath);
 
             Log.Information("[V3Patch] 使用 V3 差分模块目录 {ModuleDirectory}", moduleDirectory);
+
             foreach (var moduleName in new[] { "GlobalSharedEnv.dll", "log4cplusU.dll", "minizip.dll", "XDelta3WrapFactory.dll", "ZlibWrap.dll", "zlib1.dll" })
             {
                 var requiredModulePath = Path.Combine(moduleDirectory, moduleName);
@@ -155,13 +165,26 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
                             throw new Win32Exception(Marshal.GetLastWin32Error());
 
                         var mergeTicks = Stopwatch.GetTimestamp();
-                        Log.Information("[V3Patch] 正在合并差分 {DeltaPath}, 目标 {TargetPath}", deltaFile, targetFile);
+                        Log.Information("[V3Patch] 正在合并差分 {DeltaPath}, 源 {SourcePath}, 临时目标 {TempPath}", deltaFile, sourceFile, tempPath);
                         library = NativeLibrary.Load(modulePath);
                         var mergeFile = Marshal.GetDelegateForFunctionPointer<MergeFileDelegate>(NativeLibrary.GetExport(library, "MergeFile"));
-                        if (!mergeFile(sourceFile, deltaFile, targetFile))
-                            throw new InvalidDataException($"V3 差分合并失败, Win32 错误 {Marshal.GetLastWin32Error()}");
 
-                        Log.Information("[V3Patch] 差分合并完成 {TargetPath}, 耗时 {ElapsedMs} ms", targetFile, Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
+                        if (!mergeFile(sourceFile, deltaFile, tempPath))
+                        {
+                            var win32Error = Marshal.GetLastWin32Error();
+                            Log.Error
+                            (
+                                "[V3Patch] 差分合并失败, 源 {SourcePath}, 差分 {DeltaPath}, 临时目标 {TempPath}, 源文件大小 {SourceSize}, Win32 错误 {Win32Error}",
+                                sourceFile,
+                                deltaFile,
+                                tempPath,
+                                new FileInfo(sourceFile).Length,
+                                win32Error
+                            );
+                            throw new InvalidDataException($"V3 差分合并失败, Win32 错误 {win32Error}");
+                        }
+
+                        Log.Information("[V3Patch] 差分合并完成, 耗时 {ElapsedMs} ms", Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
                     }
                     finally
                     {
@@ -180,18 +203,20 @@ public class SdoFileDownloadLocalInstaller : ISdoFileDownloadInstaller
                 }
             }
 
-            if (expectedSize >= 0 && new FileInfo(targetFile).Length != expectedSize)
+            if (expectedSize >= 0 && new FileInfo(tempPath).Length != expectedSize)
                 throw new InvalidDataException("V3 差分产物大小不匹配");
 
             if (!string.IsNullOrWhiteSpace(expectedMd5))
             {
-                Log.Information("[V3Patch] 正在校验差分合并产物 {TargetFile}", targetFile);
-                using var stream = File.OpenRead(targetFile);
+                Log.Information("[V3Patch] 正在校验差分合并产物 {TempPath}", tempPath);
+                using var stream = File.OpenRead(tempPath);
                 var       hash   = MD5.HashData(stream);
 
                 if (!string.Equals(Convert.ToHexString(hash), expectedMd5, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidDataException("V3 差分产物校验失败");
             }
+
+            File.Move(tempPath, targetFile, true);
 
             var decodedSize = new FileInfo(targetFile).Length;
             complete = true;

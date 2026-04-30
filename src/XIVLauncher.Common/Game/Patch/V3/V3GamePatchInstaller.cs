@@ -301,7 +301,10 @@ public sealed class V3GamePatchInstaller : IDisposable
 
                         Log.Information("[V3Patch] 正在校验源文件 {Path}, 大小 {Size}", targetRelativePath, sourceFile.Size);
                         if (targetInfo.Length != sourceFile.Size || !await IsFileValidAsync(targetPath, sourceFile.Md5, cancellationToken, sourceValidateProgress, progressUpdateInterval).ConfigureAwait(false))
+                        {
+                            Log.Warning("[V3Patch] 源文件校验失败 {Path}, 实际大小 {ActualSize}, 期望大小 {ExpectedSize}", targetRelativePath, targetInfo.Length, sourceFile.Size);
                             throw new InvalidDataException($"当前文件状态与更新包起点不一致: {targetRelativePath}");
+                        }
 
                         Log.Information("[V3Patch] 源文件校验完成 {Path}, 耗时 {ElapsedMs} ms", targetRelativePath, Stopwatch.GetElapsedTime(sourceValidateTicks).TotalMilliseconds);
                     }
@@ -404,43 +407,96 @@ public sealed class V3GamePatchInstaller : IDisposable
                     {
                         await installer.ApplyVcdiff(targetPath, deltaFilePath, targetPath, expectedTargetMd5, expectedTargetSize, deltaProgress, cancellationToken).ConfigureAwait(false);
                     }
-                    catch (Exception ex) when (packageTargetFiles?.ContainsKey(normalizedTargetPath) == true
-                                               && !string.IsNullOrWhiteSpace(sourceBaseUrl)
-                                               && !string.IsNullOrWhiteSpace(expectedTargetMd5)
-                                               && expectedTargetSize >= 0)
+                    catch (Exception ex)
                     {
-                        Log.Warning(ex, "[V3Patch] 差分合并失败, 尝试下载完整目标文件 {Path}", targetRelativePath);
-                        progress?.Report
-                        (
-                            new()
-                            {
-                                PhaseText      = $"正在修复更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                                CurrentFile    = targetRelativePath,
-                                Progress       = applied,
-                                Total          = applyTotal,
-                                StatusText     = $"{applied}/{applyTotal}",
-                                IsByteProgress = false
-                            }
-                        );
+                        Log.Warning(ex, "[V3Patch] 差分合并失败, 尝试下载完整目标文件 {Path}, 期望 MD5 {ExpectedMd5}, 期望大小 {ExpectedSize}", targetRelativePath, expectedTargetMd5, expectedTargetSize);
 
-                        var sdoTargetPath = "\\" + normalizedTargetPath.Replace('/', '\\');
-                        var targetIntegrity = new IntegrityCheckResult
+                        if (string.IsNullOrWhiteSpace(sourceBaseUrl))
                         {
-                            BaseUrl     = sourceBaseUrl,
-                            DataVersion = sourceVersion,
-                            Hashes      = { [sdoTargetPath] = expectedTargetMd5 },
-                            Sizes       = { [sdoTargetPath] = (ulong)expectedTargetSize }
-                        };
+                            Log.Error("[V3Patch] 缺少源文件下载地址, 无法下载完整文件 {Path}", targetRelativePath);
+                            throw;
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(expectedTargetMd5))
+                        {
+                            progress?.Report
+                            (
+                                new()
+                                {
+                                    PhaseText      = $"正在修复更新文件 {packageIndex + 1}/{plan.Packages.Count}",
+                                    CurrentFile    = targetRelativePath,
+                                    Progress       = applied,
+                                    Total          = applyTotal,
+                                    StatusText     = $"{applied}/{applyTotal}",
+                                    IsByteProgress = false
+                                }
+                            );
+
+                            var sdoTargetPath = "\\" + normalizedTargetPath.Replace('/', '\\');
+                            var targetIntegrity = new IntegrityCheckResult
+                            {
+                                BaseUrl     = sourceBaseUrl,
+                                DataVersion = sourceVersion,
+                                Hashes      = { [sdoTargetPath] = expectedTargetMd5 },
+                                Sizes       = { [sdoTargetPath] = (ulong)expectedTargetSize }
+                            };
 
                         await installer.ConstructFromRemoteIntegrity(targetIntegrity, progressUpdateInterval).ConfigureAwait(false);
+                        await installer.VerifyFiles(gamePath.FullName, false, 1, cancellationToken).ConfigureAwait(false);
                         await installer.QueueInstall(0, sdoTargetPath, cancellationToken).ConfigureAwait(false);
                         await installer.Install(1, cancellationToken).ConfigureAwait(false);
 
-                        var repairedInfo = new FileInfo(targetPath);
-                        if (repairedInfo.Length != expectedTargetSize || !await IsFileValidAsync(targetPath, expectedTargetMd5, cancellationToken).ConfigureAwait(false))
-                            throw new InvalidDataException($"完整目标文件修复校验失败: {targetRelativePath}", ex);
+                            var repairedInfo = new FileInfo(targetPath);
+                            if (repairedInfo.Length != expectedTargetSize || !await IsFileValidAsync(targetPath, expectedTargetMd5, cancellationToken).ConfigureAwait(false))
+                                throw new InvalidDataException($"完整目标文件修复校验失败: {targetRelativePath}", ex);
 
-                        Log.Information("[V3Patch] 完整目标文件修复完成 {Path}", targetRelativePath);
+                            Log.Information("[V3Patch] 完整目标文件修复完成 {Path}", targetRelativePath);
+                        }
+                        else
+                        {
+                            var directoryPath = Path.GetDirectoryName(normalizedTargetPath.Replace('/', '\\')) ?? string.Empty;
+                            var fileName      = Path.GetFileName(normalizedTargetPath);
+                            var fileKeyInput  = $"{SdoInfos.APP_ID}_{sourceVersion}_\\{normalizedTargetPath.Replace('/', '\\')}";
+                            var fileKeyBytes  = MD5.HashData(Encoding.Unicode.GetBytes(fileKeyInput));
+                            var fileKeyHex    = Convert.ToHexString(fileKeyBytes).ToLowerInvariant();
+                            var downloadUri   = new Uri($"{sourceBaseUrl.TrimEnd('/')}/{directoryPath.Replace('\\', '/')}/{fileKeyHex}");
+                            var signedUri     = SdoCdnUrlSigner.Sign(downloadUri);
+
+                            Log.Information("[V3Patch] 正在直接下载完整文件 {Path}, 地址 {Url}", targetRelativePath, signedUri.GetLeftPart(UriPartial.Path));
+                            progress?.Report
+                            (
+                                new()
+                                {
+                                    PhaseText      = $"正在修复更新文件 {packageIndex + 1}/{plan.Packages.Count}",
+                                    CurrentFile    = targetRelativePath,
+                                    Progress       = applied,
+                                    Total          = applyTotal,
+                                    StatusText     = $"{applied}/{applyTotal}",
+                                    IsByteProgress = false
+                                }
+                            );
+
+                            var tempDownloadPath = string.Concat(targetPath, ".fix");
+                            try
+                            {
+                                using var response = await client.GetAsync(signedUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                                response.EnsureSuccessStatusCode();
+
+                                await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                                await using var sink   = new FileStream(tempDownloadPath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                                await source.CopyToAsync(sink, cancellationToken).ConfigureAwait(false);
+                                await sink.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+                                File.Move(tempDownloadPath, targetPath, true);
+                            }
+                            catch
+                            {
+                                try { File.Delete(tempDownloadPath); } catch { }
+                                throw;
+                            }
+
+                            Log.Information("[V3Patch] 直接下载完整文件完成 {Path}", targetRelativePath);
+                        }
                     }
                     File.Delete(deltaFilePath);
 
