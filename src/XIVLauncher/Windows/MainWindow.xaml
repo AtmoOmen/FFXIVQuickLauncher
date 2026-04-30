@@ -75,6 +75,17 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
         </Style>
+        <Style x:Key="DalamudStatusButtonStyle"
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource MaterialDesignFlatButton}">
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+        </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Window.Resources>
 
@@ -804,6 +815,11 @@
 
                                         <!--  Actions  -->
                                         <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="8" />
@@ -844,7 +860,7 @@
                                             </Button>
 
                                             <Button x:Name="AccountSwitcherButton"
-                                                    Grid.Column="2"
+                                                    Grid.Row="0" Grid.Column="2"
                                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                                     materialDesign:ButtonAssist.CornerRadius="18"
                                                     Width="32" Height="32" Padding="0"
@@ -852,11 +868,22 @@
                                                     Command="{Binding AccountSwitcherButtonCommand}"
                                                     CommandParameter="{Binding RelativeSource={RelativeSource Self}}">
                                                 <materialDesign:PackIcon Kind="AccountGroup" Width="18"
-                                                                         Height="18" />
+                                                                        Height="18" />
                                             </Button>
 
+                                            <Button Grid.Row="1"
+                                                    Grid.Column="0"
+                                                    Grid.ColumnSpan="3"
+                                                    Content="{Binding DalamudStatusText}"
+                                                    HorizontalAlignment="Stretch"
+                                                    HorizontalContentAlignment="Center"
+                                                    Margin="0,8,0,0"
+                                                    Style="{StaticResource DalamudStatusButtonStyle}"
+                                                    Command="{Binding RefreshDalamudInfoCommand}"
+                                                    Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BoolToVis}}" />
+
                                             <Popup x:Name="AccountSwitcherPopup"
-                                                   Grid.Column="2"
+                                                   Grid.Row="0" Grid.Column="2"
                                                    AllowsTransparency="True"
                                                    DataContext="{Binding AccountSwitcher}"
                                                    HorizontalOffset="-15"

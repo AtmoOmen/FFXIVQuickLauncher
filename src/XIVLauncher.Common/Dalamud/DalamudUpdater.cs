@@ -21,16 +21,30 @@ public class DalamudUpdater
 {
     public DirectoryInfo Runtime { get; }
 
-    public        DownloadState                 State                 { get; private set; } = DownloadState.Unknown;
-    public        Exception?                    EnsurementException   { get; private set; }
-    public        FileInfo?                     RunnerOverride        { get; set; }
-    public        DirectoryInfo?                AssetDirectory        { get; private set; }
-    public        Action?                       ShowLoadingCallback   { get; set; }
-    public        Action?                       HideLoadingCallback   { get; set; }
-    public        Action<string>?               SetLoadingMessage     { get; set; }
-    public        Action<long?, long, double?>? ReportLoadingProgress { get; set; }
-    public static string                        OnlineHash            { get; private set; } = string.Empty;
-    public static string                        Version               { get; private set; } = string.Empty;
+    public DownloadState State
+    {
+        get;
+        private set
+        {
+            field = value;
+            NotifyStatusChanged();
+        }
+    } = DownloadState.Unknown;
+
+    public Exception?                    EnsurementException   { get; private set; }
+    public FileInfo?                     RunnerOverride        { get; set; }
+    public DirectoryInfo?                AssetDirectory        { get; private set; }
+    public string                        LoadingDetail         { get; private set; } = string.Empty;
+    public long?                         LoadingTotal          { get; private set; }
+    public long                          LoadingDownloaded     { get; private set; }
+    public double?                       LoadingProgress       { get; private set; }
+    public Action?                       ShowLoadingCallback   { get; set; }
+    public Action?                       HideLoadingCallback   { get; set; }
+    public Action<string>?               SetLoadingMessage     { get; set; }
+    public Action<long?, long, double?>? ReportLoadingProgress { get; set; }
+    public event Action<DalamudUpdater>? StatusChanged;
+    public static string                 OnlineHash { get; private set; } = string.Empty;
+    public static string                 Version    { get; private set; } = string.Empty;
 
     public FileInfo? Runner
     {
@@ -48,6 +62,7 @@ public class DalamudUpdater
     private readonly string?       githubToken;
 
     private readonly HttpClient httpClient;
+
     public DalamudUpdater
     (
         DirectoryInfo addonDirectory,
@@ -66,10 +81,18 @@ public class DalamudUpdater
             httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
     }
 
-    public void Run()
+    public void Run() =>
+        Run(false);
+
+    public void Run(bool refreshVersionInfo)
     {
         Log.Information("[DUPDATE] 启动 Dalamud 更新器中...");
-        State = DownloadState.Unknown;
+        EnsurementException = null;
+        LoadingDetail       = string.Empty;
+        LoadingTotal        = null;
+        LoadingDownloaded   = 0;
+        LoadingProgress     = null;
+        State               = DownloadState.Unknown;
 
         Task.Run
         (async () =>
@@ -82,7 +105,7 @@ public class DalamudUpdater
                 {
                     try
                     {
-                        await UpdateDalamud().ConfigureAwait(true);
+                        await UpdateDalamud(refreshVersionInfo).ConfigureAwait(true);
                         isUpdated = true;
                         break;
                     }
@@ -100,13 +123,13 @@ public class DalamudUpdater
 
     #region Steps
 
-    private async Task UpdateDalamud()
+    private async Task UpdateDalamud(bool refreshVersionInfo)
     {
         try
         {
             Log.Information("[DUPDATE] 开始 Dalamud 更新进程");
 
-            await InitVersionInfoAsync();
+            await InitVersionInfoAsync(refreshVersionInfo);
             var paths                  = PreparePaths();
             var currentVersionVerified = await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath);
             await UpdateRuntimeAsync();
@@ -128,11 +151,11 @@ public class DalamudUpdater
         }
     }
 
-    private async Task InitVersionInfoAsync()
+    private async Task InitVersionInfoAsync(bool refreshVersionInfo)
     {
         Log.Verbose("[DUPDATE] 开始检查版本信息");
 
-        if (!string.IsNullOrWhiteSpace(OnlineHash) && !string.IsNullOrWhiteSpace(Version))
+        if (!refreshVersionInfo && !string.IsNullOrWhiteSpace(OnlineHash) && !string.IsNullOrWhiteSpace(Version))
         {
             Log.Verbose("[DUPDATE] 版本信息已存在: {Version} ({Hash})", Version, OnlineHash);
             return;
@@ -789,8 +812,12 @@ public class DalamudUpdater
 
     #region UI
 
-    private void SetLoadingDetail(string message) =>
+    private void SetLoadingDetail(string message)
+    {
+        LoadingDetail = message;
         SetLoadingMessage?.Invoke(message);
+        NotifyStatusChanged();
+    }
 
     public void ShowLoading() =>
         ShowLoadingCallback?.Invoke();
@@ -798,8 +825,17 @@ public class DalamudUpdater
     public void HideLoading() =>
         HideLoadingCallback?.Invoke();
 
-    private void ReportLoadingProgressCore(long? size, long downloaded, double? progress) =>
+    private void ReportLoadingProgressCore(long? size, long downloaded, double? progress)
+    {
+        LoadingTotal      = size;
+        LoadingDownloaded = downloaded;
+        LoadingProgress   = progress;
         ReportLoadingProgress?.Invoke(size, downloaded, progress);
+        NotifyStatusChanged();
+    }
+
+    private void NotifyStatusChanged() =>
+        StatusChanged?.Invoke(this);
 
     #endregion
 

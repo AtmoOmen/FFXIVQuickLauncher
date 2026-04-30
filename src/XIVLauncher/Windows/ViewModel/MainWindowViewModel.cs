@@ -54,6 +54,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public ICommand AccountSwitcherButtonCommand { get; }
 
+    public ICommand RefreshDalamudInfoCommand => refreshDalamudInfoCommand;
+
     public AccountSwitcherViewModel AccountSwitcher { get; }
 
     public Launcher          Launcher         { get; private set; }
@@ -72,6 +74,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private MainWindowAccountDraftFactory AccountDraftFactory      { get; }
     private GameLaunchService             GameLaunchService        { get; }
     private GameClientFileTaskService     GameClientFileTaskService { get; }
+    private readonly SyncCommand          refreshDalamudInfoCommand;
     private CancellationTokenSource?      LoginCancelSource        { get; set; }
     private bool                          IsLoginCanceledByUser    { get; set; }
     private LoginCardType?                LoginCardAfterCompletion { get; set; }
@@ -94,6 +97,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             () => CloseAccountSwitcher(false)
         );
         AccountSwitcherButtonCommand = new SyncCommand(ExecuteAccountSwitcherButton);
+        refreshDalamudInfoCommand    = new SyncCommand(_ => RefreshDalamudInfo(), () => Settings.EnableHooks && App.DalamudUpdater.State != DalamudUpdater.DownloadState.Unknown);
         LoginPage = new LoginPageViewModel
         (
             () => IsLoggingIn,
@@ -118,7 +122,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         );
         LoginPage.RefreshCommandStates();
         InjectPage.RefreshCommandStates();
-        Settings.SettingsSaved += (_, _) => InjectPage.ReloadSettings();
+        UpdateDalamudStatusText();
+        App.DalamudUpdater.StatusChanged += DalamudUpdaterStatusChanged;
+        Settings.SettingsSaved += (_, _) =>
+        {
+            InjectPage.ReloadSettings();
+            RefreshDalamudInfoCommandState();
+        };
     }
 
     public bool IsAccountSwitcherVisible => IsAccountSwitcherOpen;
@@ -463,7 +473,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                                       loginAutoLogin,
                                       deviceProfileSnapshot,
                                       dcTraveler
-                                   ).ConfigureAwait(false);
+                                  ).ConfigureAwait(false);
             if (nextLoginResult == null)
                 return;
 
@@ -1521,6 +1531,48 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     #region 杂项
 
+    private void RefreshDalamudInfo() =>
+        App.DalamudUpdater.Run(true);
+
+    private void DalamudUpdaterStatusChanged(DalamudUpdater updater)
+    {
+        if (Window.Dispatcher == Dispatcher.CurrentDispatcher)
+        {
+            UpdateDalamudStatusText();
+            return;
+        }
+
+        Window.Dispatcher.Invoke(UpdateDalamudStatusText);
+    }
+
+    private void UpdateDalamudStatusText()
+    {
+        var updater = App.DalamudUpdater;
+
+        DalamudStatusText = updater.State switch
+        {
+            DalamudUpdater.DownloadState.Done        => string.IsNullOrWhiteSpace(DalamudUpdater.Version) ? "Dalamud 已就绪" : $"Dalamud {DalamudUpdater.Version}",
+            DalamudUpdater.DownloadState.NoIntegrity => "Dalamud 加载失败",
+            _                                        => GetDalamudLoadingText(updater)
+        };
+
+        RefreshDalamudInfoCommandState();
+    }
+
+    private void RefreshDalamudInfoCommandState() =>
+        refreshDalamudInfoCommand.RaiseCanExecuteChanged();
+
+    private static string GetDalamudLoadingText(DalamudUpdater updater)
+    {
+        if (updater.LoadingProgress is { } progress)
+            return $"Dalamud 正在加载 {progress:P0}";
+
+        if (!string.IsNullOrWhiteSpace(updater.LoadingDetail))
+            return $"Dalamud {updater.LoadingDetail.TrimEnd('.')}";
+
+        return "Dalamud 正在加载";
+    }
+
     private void HandleLoginAction(LoginPageViewModel loginPage, LoginAfterAction action)
     {
         if (IsLoggingIn)
@@ -1640,6 +1692,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public void OnWindowClosed(object? sender, object args)
     {
+        App.DalamudUpdater.StatusChanged -= DalamudUpdaterStatusChanged;
         InjectPage.StopRefreshing(true);
         CancelLogin();
         Application.Current.Shutdown();
@@ -1702,6 +1755,16 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         {
             field = value;
             OnPropertyChanged(nameof(LoadingDialogMessage));
+        }
+    } = string.Empty;
+
+    public string DalamudStatusText
+    {
+        get;
+        set
+        {
+            field = value;
+            OnPropertyChanged(nameof(DalamudStatusText));
         }
     } = string.Empty;
 
