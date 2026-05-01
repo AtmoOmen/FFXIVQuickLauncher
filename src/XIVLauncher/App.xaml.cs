@@ -1,12 +1,18 @@
 using System;
+using System.Buffers;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
 using XIVLauncher.Accounts;
+using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
+using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
 using XIVLauncher.Startup;
-using XIVLauncher.Startup.Elevation;
 using XIVLauncher.Windows;
 
 namespace XIVLauncher;
@@ -50,6 +56,8 @@ public partial class App
 
     private StartupOrchestrator? orchestrator;
     private MainWindow?          mainWindow;
+    
+    private static readonly SearchValues<char> CommandArgsSearchValues = SearchValues.Create(" \t\n\v\"");
 
     private bool isUseFullExceptionHandler;
 
@@ -74,7 +82,7 @@ public partial class App
     {
         try
         {
-            if (StartupElevationService.TryRestartElevatedAndExit())
+            if (TryRestartElevatedAndExit())
                 return;
 
             orchestrator   = new(Dispatcher);
@@ -129,7 +137,7 @@ public partial class App
         (() =>
             {
                 var exception = (Exception)e.ExceptionObject;
-                
+
                 Log.Error(exception, "未处理的异常");
 
                 if (isUseFullExceptionHandler)
@@ -159,4 +167,69 @@ public partial class App
 
     private static StartupContext GetStartupContext() =>
         StartupContext ?? throw new InvalidOperationException("启动上下文尚未初始化");
+
+    private static bool TryRestartElevatedAndExit()
+    {
+        if (PlatformHelpers.IsElevated())
+            return false;
+
+        var executablePath = Paths.ResolveExecutablePath();
+        var arguments      = string.Join(" ", Environment.GetCommandLineArgs().Skip(1).Select(EncodeParameterArgument));
+        var startInfo = new ProcessStartInfo(executablePath)
+        {
+            UseShellExecute = true,
+            Verb            = "runas",
+            Arguments       = arguments
+        };
+
+        try
+        {
+            Process.Start(startInfo);
+        }
+        catch (Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
+        {
+            return false;
+        }
+
+        Environment.Exit(0);
+        return true;
+    }
+
+    private static string EncodeParameterArgument(string argument)
+    {
+        if (argument.Length > 0 && argument.AsSpan().IndexOfAny(CommandArgsSearchValues) == -1)
+            return argument;
+
+        var quoted = new StringBuilder(argument.Length * 2);
+        quoted.Append('\"');
+
+        var numberBackslashes = 0;
+
+        foreach (var chr in argument)
+        {
+            switch (chr)
+            {
+                case '\\':
+                    numberBackslashes++;
+                    continue;
+
+                case '\"':
+                    quoted.Append('\\', numberBackslashes * 2 + 1);
+                    break;
+
+                default:
+                    quoted.Append('\\', numberBackslashes);
+                    break;
+            }
+
+            quoted.Append(chr);
+
+            numberBackslashes = 0;
+        }
+
+        quoted.Append('\\', numberBackslashes * 2);
+        quoted.Append('\"');
+
+        return quoted.ToString();
+    }
 }

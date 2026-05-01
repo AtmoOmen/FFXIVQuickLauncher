@@ -12,7 +12,6 @@ public class StartupContext
     public AccountManager       AccountManager        { get; set; } = null!;
     public DalamudUpdater       DalamudUpdater        { get; set; } = null!;
     public Dispatcher           Dispatcher            { get; set; } = null!;
-    public bool                 IsUpdateFinished      { get; set; }
     public bool                 IsRestartingForUpdate { get; set; }
     public CredTypeApplyResult? CredTypeApplyResult   { get; set; }
 }

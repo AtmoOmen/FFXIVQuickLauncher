@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Media.Animation;
 using MaterialDesignThemes.Wpf.Transitions;
 
-namespace XIVLauncher.Windows.Transitions;
+namespace XIVLauncher.Xaml.Transitions;
 
 public sealed class StableFadeWipe : ITransitionWipe
 {
