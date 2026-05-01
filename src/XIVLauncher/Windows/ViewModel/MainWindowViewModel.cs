@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -1565,7 +1566,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private static string GetDalamudLoadingText(DalamudUpdater updater)
     {
         if (updater.LoadingProgress is { } progress)
-            return $"Dalamud 正在加载 {progress:P0}";
+            return $"Dalamud 正在加载 {progress.ToString("0.##", CultureInfo.InvariantCulture)}%";
 
         if (!string.IsNullOrWhiteSpace(updater.LoadingDetail))
             return $"Dalamud {updater.LoadingDetail.TrimEnd('.')}";
