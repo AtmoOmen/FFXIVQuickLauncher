@@ -1,4 +1,5 @@
 * 修复了主界面 Dalamud 更新进度格式化文本错误的问题
 * 现在每次登录时, 若启用了 Dalamud, 都会检查一次 Dalamud 版本
+* 启动器将始终进行更新检查
 
 > 当前分支仅支持 `Windows 11` 的 `x64` 环境，不提供 `Linux`、`macOS` 与 `SteamDeck` 等环境的相关支持

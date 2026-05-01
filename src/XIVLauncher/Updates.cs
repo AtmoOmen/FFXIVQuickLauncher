@@ -24,15 +24,9 @@ internal class Updates
 
         try
         {
-            if (GameHelpers.CheckIsGameOpen())
-            {
-                Log.Information("游戏正在运行，跳过启动器更新检查。");
-                return true;
-            }
-
             var updateOptions = new UpdateOptions
             {
-                ExplicitChannel = "win",
+                ExplicitChannel       = "win",
                 AllowVersionDowngrade = false
             };
 
