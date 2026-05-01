@@ -1473,6 +1473,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     {
         try
         {
+            App.DalamudUpdater.Run(true);
             var dalamudStatus = dalamudLauncher.HoldForUpdate(gamePath);
             return dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
         }

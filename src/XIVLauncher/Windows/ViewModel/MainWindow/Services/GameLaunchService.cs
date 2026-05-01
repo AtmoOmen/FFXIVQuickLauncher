@@ -181,6 +181,7 @@ public sealed class GameLaunchService
     {
         try
         {
+            App.DalamudUpdater.Run(true);
             var dalamudStatus = dalamudLauncher.HoldForUpdate(gamePath);
             return dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
         }
