@@ -171,7 +171,7 @@ public class RestartMonitor
         var             restartObservationTime = DateTime.Now.AddSeconds(-1);
         RestartOptions? detectedRestartOptions = null;
 
-        while (DateTime.Now < deadline)
+        while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -206,13 +206,14 @@ public class RestartMonitor
 
             if (ProcessExists(relatedCrashHandlerProcessIds, DALAMUD_CRASH_HANDLER_NAME))
                 exitGraceEnds = DateTime.Now + CrashHandlerExitGracePeriod;
+            else if (DateTime.Now >= deadline)
+                return false;
             else if (DateTime.Now >= exitGraceEnds)
                 return false;
 
             await Task.Delay(RestartedProcessExitPollInterval, cancellationToken).ConfigureAwait(false);
         }
 
-        return false;
     }
 
     private async Task<bool> RestartFromNewGameProcessAsync
