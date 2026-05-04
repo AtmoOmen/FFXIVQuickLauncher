@@ -16,6 +16,7 @@ using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Support;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
@@ -252,11 +253,11 @@ public class StartupOrchestrator
     {
         Log.Error(ex, "执行更新检查失败");
 
-        if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+        if (ex.FindHttpRequestException() is { StatusCode: not null } httpRequestException && (int)httpRequestException.StatusCode is 403 or 444 or 522)
         {
             MessageBox.Show
             (
-                $"错误：服务端返回错误代码 {httpRequestException.StatusCode}\n\n{ex}",
+                $"错误：服务端返回错误代码 {httpRequestException.StatusCode}\n\n{httpRequestException.Message}\n\n{ex}",
                 "XIVLauncher 错误",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error

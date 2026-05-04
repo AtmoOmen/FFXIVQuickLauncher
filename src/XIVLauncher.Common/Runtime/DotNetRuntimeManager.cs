@@ -25,7 +25,7 @@ public static class DotNetRuntimeManager
     public static async Task<string> GetLatestVersionAsync(HttpClient httpClient, CancellationToken cancellationToken = default)
     {
         using var runtimeResponse = await httpClient.GetAsync(Links.DALAMUD_RUNTIME_INFO_URL, cancellationToken).ConfigureAwait(false);
-        runtimeResponse.EnsureSuccessStatusCode();
+        await runtimeResponse.EnsureSuccessWithDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
         var runtimeVersion = await runtimeResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return runtimeVersion.Trim();
     }

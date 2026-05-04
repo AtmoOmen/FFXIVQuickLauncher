@@ -480,7 +480,7 @@ public class DalamudUpdater
             Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
             var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
-            response.EnsureSuccessStatusCode();
+            await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
 
             var       json    = await response.Content.ReadAsStringAsync();
             using var jsonDoc = JsonDocument.Parse(json);
@@ -502,7 +502,7 @@ public class DalamudUpdater
             {
                 using (var fileResponse = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
                 {
-                    fileResponse.EnsureSuccessStatusCode();
+                    await fileResponse.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
                     using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
                         await fileResponse.Content.CopyToAsync(fileStream);
                 }
@@ -537,7 +537,7 @@ public class DalamudUpdater
         try
         {
             var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
-            response.EnsureSuccessStatusCode();
+            await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
 
             var       json         = await response.Content.ReadAsStringAsync();
             using var jsonDoc      = JsonDocument.Parse(json);

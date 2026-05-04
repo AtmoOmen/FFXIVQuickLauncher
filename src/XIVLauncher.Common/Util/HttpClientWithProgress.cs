@@ -100,7 +100,7 @@ public class HttpClientDownloadWithProgress : IDisposable
 
     private async Task DownloadFileFromHttpResponseMessage(int index, HttpResponseMessage response)
     {
-        response.EnsureSuccessStatusCode();
+        await response.EnsureSuccessWithDiagnosticsAsync();
 
         var totalDownloadSize = response.Content.Headers.ContentLength;
         if (totalDownloadSize > 0 && Interlocked.CompareExchange(ref totalSizes[index], totalDownloadSize.Value, 0) == 0) Interlocked.Add(ref totalSize, totalDownloadSize.Value);
@@ -224,7 +224,7 @@ public class HttpClientDownloadWithProgress : IDisposable
                                      ).ConfigureAwait(false);
 
                 if (response.StatusCode != HttpStatusCode.PartialContent)
-                    throw new HttpRequestException($"服务器未返回分段内容: {response.StatusCode}");
+                    throw await HttpResponseDiagnostics.CreateFailureExceptionAsync(response, "服务器未返回分段内容", CancellationToken.None).ConfigureAwait(false);
 
                 var range = response.Content.Headers.ContentRange;
 

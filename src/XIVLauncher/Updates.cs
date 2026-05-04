@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
 using Velopack;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
@@ -118,10 +119,10 @@ internal class Updates
         exception switch
         {
             TimeoutException timeoutException => timeoutException.Message,
-            HttpRequestException httpRequestException when httpRequestException.StatusCode.HasValue => (int)httpRequestException.StatusCode switch
+            Exception ex when ex.FindHttpRequestException() is { StatusCode: not null } httpRequestException => (int)httpRequestException.StatusCode switch
             {
-                403 or 444 or 522 => $"更新源返回错误状态码 {(int)httpRequestException.StatusCode}。",
-                _                 => $"更新请求失败，状态码：{(int)httpRequestException.StatusCode}。"
+                403 or 444 or 522 => $"更新源返回错误状态码 {(int)httpRequestException.StatusCode}{Environment.NewLine}{httpRequestException.Message}",
+                _                 => $"更新请求失败, 状态码 {(int)httpRequestException.StatusCode}{Environment.NewLine}{httpRequestException.Message}"
             },
             OperationCanceledException => "更新请求已被取消。",
             _                          => exception.Message

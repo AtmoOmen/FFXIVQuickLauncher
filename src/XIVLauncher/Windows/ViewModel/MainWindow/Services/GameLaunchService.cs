@@ -9,6 +9,7 @@ using System.Windows;
 using Serilog;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Dalamud;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Windows;
 using XIVLauncher.Support;
@@ -192,10 +193,9 @@ public sealed class GameLaunchService
             var ensurementErrorMessage = "下载 Dalamud 相关文件异常\n请检查本地网络连接, 或关闭杀毒软件\n游戏将照常启动, 但无法使用 Dalamud";
 
             if (appendWafStatusCodeHint
-                && ex is HttpRequestException httpRequestException
-                && httpRequestException.StatusCode.HasValue
+                && ex.FindHttpRequestException() is { StatusCode: not null } httpRequestException
                 && (int)httpRequestException.StatusCode is 403 or 444 or 522)
-                ensurementErrorMessage = $"服务器错误: {httpRequestException.StatusCode}\n{ensurementErrorMessage}";
+                ensurementErrorMessage = $"服务器错误: {httpRequestException.StatusCode}\n{httpRequestException.Message}\n{ensurementErrorMessage}";
             else
                 ensurementErrorMessage = $"错误: {ex.Message}\n{ensurementErrorMessage}";
 

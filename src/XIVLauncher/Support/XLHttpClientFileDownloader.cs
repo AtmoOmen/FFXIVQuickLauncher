@@ -60,7 +60,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
                                      requestCts.Token
                                  );
 
-            response.EnsureSuccessStatusCode();
+            await response.EnsureSuccessWithDiagnosticsAsync(requestCts.Token);
 
             var totalBytes        = response.Content.Headers.ContentLength ?? -1L;
             var canReportProgress = totalBytes > 0;
@@ -160,7 +160,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
             using var request  = CreateRequest(HttpMethod.Get, url, headers);
             using var response = await httpClient.SendAsync(request, cts.Token);
 
-            response.EnsureSuccessStatusCode();
+            await response.EnsureSuccessWithDiagnosticsAsync(cts.Token);
             return await response.Content.ReadAsByteArrayAsync(cts.Token);
         }
         catch (Exception ex)
@@ -190,7 +190,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
             using var request  = CreateRequest(HttpMethod.Get, url, headers);
             using var response = await httpClient.SendAsync(request, cts.Token);
 
-            response.EnsureSuccessStatusCode();
+            await response.EnsureSuccessWithDiagnosticsAsync(cts.Token);
             return await response.Content.ReadAsStringAsync(cts.Token);
         }
         catch (Exception ex)
