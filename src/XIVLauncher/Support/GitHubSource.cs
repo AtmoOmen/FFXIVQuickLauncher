@@ -1,10 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using NuGet.Versioning;
 using Velopack;
 using Velopack.Logging;
@@ -18,22 +20,187 @@ public class GitHubSource
     string           repoUrl,
     string?          accessToken,
     bool             prerelease,
-    string?          proxyBaseUrl = null,
-    IFileDownloader? downloader   = null
+    string           proxyBaseUrl,
+    IFileDownloader? downloader = null
 )
-    :
-        GithubSource(repoUrl, accessToken, prerelease, downloader)
+    : IUpdateSource
 {
-    private readonly string? proxyUrl = proxyBaseUrl?.TrimEnd('/');
+    private readonly IFileDownloader            downloader  = downloader ?? new XLHttpClientFileDownloader();
+    private readonly string                     proxyUrl    = proxyBaseUrl.TrimEnd('/');
+    private readonly Uri                        repoUri     = new(repoUrl);
+    private readonly Dictionary<string, string> packageUrls = new(StringComparer.OrdinalIgnoreCase);
 
-    // copy from Velopack
-    public static string GetVeloReleaseIndexName(string channel)
-        => $"releases.{channel ?? VelopackRuntimeInfo.SystemOs.GetOsShortName()}.json";
+    private static readonly JsonSerializerSettings JsonSettings = new()
+    {
+        ContractResolver = new DefaultContractResolver
+        {
+            NamingStrategy = new SnakeCaseNamingStrategy()
+        }
+    };
 
-    // copy from Velopack
+    public async Task<VelopackAssetFeed> GetReleaseFeed
+    (
+        IVelopackLogger logger,
+        string?         appId,
+        string          channel,
+        Guid?           stagingId          = null,
+        VelopackAsset?  latestLocalRelease = null
+    )
+    {
+        var releases = await GetReleases().ConfigureAwait(false);
+
+        if (releases.Count == 0)
+        {
+            logger.Warn($"No releases found at '{repoUri}'.");
+            return new();
+        }
+
+        var releaseIndexName = GetVeloReleaseIndexName(channel);
+        var feedAssets       = new List<VelopackAsset>();
+
+        foreach (var (version, release) in PickReleases(releases, latestLocalRelease, logger))
+        {
+            _ = version;
+            var releaseIndexUrl = GetReleaseAssetUrl(release, releaseIndexName);
+            if (string.IsNullOrEmpty(releaseIndexUrl))
+                continue;
+
+            var releaseBytes = await downloader.DownloadBytes
+                               (
+                                   releaseIndexUrl,
+                                   CreateHeaders("application/octet-stream")
+                               ).ConfigureAwait(false);
+            var feed = VelopackAssetFeed.FromJson(RemoveByteOrderMarkerIfPresent(releaseBytes));
+
+            foreach (var asset in feed.Assets)
+            {
+                var packageUrl = GetReleaseAssetUrl(release, asset.FileName);
+
+                if (string.IsNullOrEmpty(packageUrl))
+                {
+                    logger.Warn($"Could not find asset '{asset.FileName}' in release '{release.Name}'.");
+                    continue;
+                }
+
+                packageUrls[asset.FileName] = packageUrl;
+                feedAssets.Add(asset);
+            }
+        }
+
+        return new()
+        {
+            Assets = feedAssets.ToArray()
+        };
+    }
+
+    public async Task DownloadReleaseEntry
+    (
+        IVelopackLogger   logger,
+        VelopackAsset     releaseEntry,
+        string            localFile,
+        Action<int>       progress,
+        CancellationToken cancelToken
+    )
+    {
+        if (!packageUrls.TryGetValue(releaseEntry.FileName, out var packageUrl))
+            throw new InvalidOperationException($"缺少更新包下载地址: {releaseEntry.FileName}");
+
+        logger.Info($"Downloading '{releaseEntry.FileName}' from '{packageUrl}'.");
+        await downloader.DownloadFile
+        (
+            packageUrl,
+            localFile,
+            progress,
+            CreateHeaders("application/octet-stream"),
+            cancelToken: cancelToken
+        ).ConfigureAwait(false);
+    }
+
+    private async Task<List<GithubRelease>> GetReleases()
+    {
+        const int PER_PAGE = 5;
+        const int PAGE     = 1;
+        var       path     = $"repos{repoUri.AbsolutePath}/releases?per_page={PER_PAGE}&page={PAGE}";
+        var       url      = $"{proxyUrl}/{Links.GITHUB_API_BASE_URL.TrimEnd('/')}/{path}";
+        var       json     = await downloader.DownloadString(url, CreateHeaders("application/vnd.github.v3+json")).ConfigureAwait(false);
+        var       releases = JsonConvert.DeserializeObject<List<GithubRelease>>(json, JsonSettings);
+
+        return releases == null
+                   ? []
+                   : releases.OrderByDescending(release => release.PublishedAt)
+                             .Where(release => prerelease || !release.Prerelease)
+                             .ToList();
+    }
+
+    private static List<(SemanticVersion Version, GithubRelease Release)> PickReleases
+    (
+        IReadOnlyList<GithubRelease> releases,
+        VelopackAsset?               latestLocalRelease,
+        IVelopackLogger              logger
+    )
+    {
+        var parsed = releases.Select
+                             (release =>
+                                 {
+                                     var match = Regex.Match(release.Name ?? string.Empty, @"\d+.\d+.\d+", RegexOptions.Compiled);
+
+                                     if (!match.Success)
+                                     {
+                                         logger.Warn($"Failed to parse version from release name '{release.Name}'.");
+                                         return (null, release);
+                                     }
+
+                                     try
+                                     {
+                                         return (SemanticVersion.Parse(match.Value), release);
+                                     }
+                                     catch (Exception ex)
+                                     {
+                                         logger.Error(ex);
+                                         return (null, release);
+                                     }
+                                 }
+                             ).Where(entry => entry.Item1 != null)
+                             .Select(entry => (entry.Item1!, entry.release))
+                             .ToList();
+
+        if (latestLocalRelease != null && parsed.Any(entry => entry.Item1 == latestLocalRelease.Version))
+            return parsed.Where(entry => entry.Item1                      >= latestLocalRelease.Version).ToList();
+
+        return parsed.Take(1).ToList();
+    }
+
+    private string? GetReleaseAssetUrl(GithubRelease release, string assetName)
+    {
+        var asset = release.Assets.FirstOrDefault(asset => string.Equals(asset.Name, assetName, StringComparison.OrdinalIgnoreCase));
+        if (asset == null || string.IsNullOrWhiteSpace(asset.BrowserDownloadUrl))
+            return null;
+
+        return ToProxyUrl(asset.BrowserDownloadUrl);
+    }
+
+    private string ToProxyUrl(string url) =>
+        url.StartsWith($"{proxyUrl}/", StringComparison.OrdinalIgnoreCase) ? url : $"{proxyUrl}/{url}";
+
+    private Dictionary<string, string> CreateHeaders(string accept)
+    {
+        var headers = new Dictionary<string, string>
+        {
+            ["Accept"] = accept
+        };
+
+        if (!string.IsNullOrWhiteSpace(accessToken))
+            headers["Authorization"] = $"Bearer {accessToken}";
+
+        return headers;
+    }
+
+    public static string GetVeloReleaseIndexName(string channel) =>
+        $"releases.{channel ?? VelopackRuntimeInfo.SystemOs.GetOsShortName()}.json";
+
     public static string RemoveByteOrderMarkerIfPresent(byte[] content)
     {
-        byte[] output = [];
+        byte[] output;
 
         var utf32Be = new byte[] { 0x00, 0x00, 0xFE, 0xFF };
         var utf32Le = new byte[] { 0xFF, 0xFE, 0x00, 0x00 };
@@ -59,158 +226,12 @@ public class GitHubSource
 
         return Encoding.UTF8.GetString(output);
 
-        bool Matches(byte[] bom, byte[] src)
+        bool Matches(byte[] bom, byte[] source)
         {
-            if (src.Length < bom.Length)
+            if (source.Length < bom.Length)
                 return false;
 
-            return !bom.Where((chr, index) => src[index] != chr).Any();
+            return !bom.Where((chr, index) => source[index] != chr).Any();
         }
-    }
-
-    public override async Task<VelopackAssetFeed> GetReleaseFeed(IVelopackLogger logger, string? appId, string channel, Guid? stagingId = null, VelopackAsset? latestLocalRelease = null)
-    {
-        var releases = await GetReleases(Prerelease).ConfigureAwait(false);
-
-        if (releases == null || releases.Length == 0)
-        {
-            logger.Warn($"No releases found at '{RepoUri}'.");
-            return new VelopackAssetFeed();
-        }
-
-        var releasesFileName = GetVeloReleaseIndexName(channel);
-        var entries          = new List<GitBaseAsset>();
-
-        var releasesList = releases.Select
-        ((SemanticVersion?, GithubRelease) (r) =>
-            {
-                // 从PR名字解析版本号，与ci-workflow.yml中的vpk upload github --releaseName "Release $refver"关联
-                var match = Regex.Match(r.Name ?? string.Empty, @"\d+.\d+.\d+", RegexOptions.Compiled);
-
-                if (!match.Success)
-                {
-                    logger.Warn($"Failed to parse version from release name '{r.Name}'.");
-                    return (null, r);
-                }
-
-                try
-                {
-                    return (SemanticVersion.Parse(match.Value), r);
-                }
-                catch (Exception ex)
-                {
-                    logger.Error(ex);
-                    return (null, r);
-                }
-            }
-        ).ToList();
-
-        if (latestLocalRelease is not null && releasesList.Any(v => v.Item1 is not null && v.Item1 == latestLocalRelease.Version))
-            releasesList = releasesList.Where(v => v.Item1 != null && v.Item1 >= latestLocalRelease.Version).ToList();
-        else
-            releasesList = releasesList.Take(1).ToList();
-
-        var jsonList = releasesList.Select
-        (async Task<(GithubRelease, string?)> (r) =>
-            {
-                // this might be a browser url or an api url (depending on whether we have a AccessToken or not)
-                // https://docs.github.com/en/rest/reference/releases#get-a-release-asset
-                string assetUrl;
-
-                try
-                {
-                    assetUrl = GetAssetUrlFromName(r.Item2, releasesFileName);
-                }
-                catch (Exception ex)
-                {
-                    logger.Trace(ex.ToString());
-                    return (r.Item2, null);
-                }
-
-                var releaseBytes = await Downloader.DownloadBytes
-                                   (
-                                       assetUrl,
-                                       CreateHeaders(Authorization, "application/octet-stream")
-                                   ).ConfigureAwait(false);
-                return (r.Item2, RemoveByteOrderMarkerIfPresent(releaseBytes));
-            }
-        ).ToList();
-
-        foreach (var j in jsonList)
-        {
-            var result = await j.ConfigureAwait(false);
-            var r      = result.Item1;
-            var txt    = result.Item2;
-            if (txt is null)
-                continue;
-
-            var feed = VelopackAssetFeed.FromJson(txt);
-            foreach (var f in feed.Assets)
-                entries.Add(new GitBaseAsset(f, r));
-        }
-
-        return new VelopackAssetFeed
-        {
-            Assets = entries.Cast<VelopackAsset>().ToArray()
-        };
-    }
-
-    protected override async Task<GithubRelease[]> GetReleases(bool includePrereleases)
-    {
-        // 1. 计算原始的 GitHub API 路径
-        // RepoUri.AbsolutePath 通常是 "/User/Repo"
-        const int PER_PAGE     = 5;
-        const int PAGE         = 1;
-        var       releasesPath = $"repos{RepoUri.AbsolutePath}/releases?per_page={PER_PAGE}&page={PAGE}";
-
-        // 2. 构建目标 URL
-        string requestUrl;
-
-        if (!string.IsNullOrEmpty(proxyUrl))
-            requestUrl = $"{proxyUrl}/{Links.GITHUB_API_BASE_URL.TrimEnd('/')}/{releasesPath}";
-        else
-        {
-            // 直连逻辑 (回退到原始方式)
-            var baseUri = GetApiBaseUrl(RepoUri);
-            requestUrl = new Uri(baseUri, releasesPath).ToString();
-        }
-
-        // 3. 发起请求
-        // 如果走了代理，Worker 会返回修改后的 JSON（里面的 browser_download_url 都会变成代理链接）
-        var response = await Downloader.DownloadString
-                       (
-                           requestUrl,
-                           CreateHeaders(Authorization, "application/vnd.github.v3+json")
-                       ).ConfigureAwait(false);
-
-        var releases = JsonConvert.DeserializeObject<List<GithubRelease>>(response);
-        return releases == null ? [] : releases.OrderByDescending(d => d.PublishedAt).Where(x => includePrereleases || !x.Prerelease).ToArray();
-    }
-
-    protected override string GetAssetUrlFromName(GithubRelease release, string assetName)
-    {
-        if (!string.IsNullOrEmpty(proxyUrl))
-        {
-            var asset = release.Assets.FirstOrDefault(asset => string.Equals(asset.Name, assetName, StringComparison.OrdinalIgnoreCase));
-            if (asset == null)
-                throw new Exception($"Could not find asset '{assetName}' in release '{release.Name}'");
-
-            return asset.BrowserDownloadUrl;
-        }
-
-        return base.GetAssetUrlFromName(release, assetName);
-    }
-
-    private static Dictionary<string, string> CreateHeaders((string Name, string Value)? authorization, string accept)
-    {
-        var headers = new Dictionary<string, string>
-        {
-            ["Accept"] = accept
-        };
-
-        if (authorization is { } header && !string.IsNullOrWhiteSpace(header.Name) && !string.IsNullOrWhiteSpace(header.Value))
-            headers[header.Name] = header.Value;
-
-        return headers;
     }
 }
