@@ -187,6 +187,20 @@ public class GitHubSource
         return releases == null ? [] : releases.OrderByDescending(d => d.PublishedAt).Where(x => includePrereleases || !x.Prerelease).ToArray();
     }
 
+    protected override string GetAssetUrlFromName(GithubRelease release, string assetName)
+    {
+        if (!string.IsNullOrEmpty(proxyUrl))
+        {
+            var asset = release.Assets.FirstOrDefault(asset => string.Equals(asset.Name, assetName, StringComparison.OrdinalIgnoreCase));
+            if (asset == null)
+                throw new Exception($"Could not find asset '{assetName}' in release '{release.Name}'");
+
+            return asset.BrowserDownloadUrl;
+        }
+
+        return base.GetAssetUrlFromName(release, assetName);
+    }
+
     private static Dictionary<string, string> CreateHeaders((string Name, string Value)? authorization, string accept)
     {
         var headers = new Dictionary<string, string>
