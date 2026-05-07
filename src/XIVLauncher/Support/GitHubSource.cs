@@ -139,33 +139,30 @@ public class GitHubSource
         IVelopackLogger              logger
     )
     {
-        var parsed = releases.Select
-                             (release =>
-                                 {
-                                     var match = Regex.Match(release.Name ?? string.Empty, @"\d+.\d+.\d+", RegexOptions.Compiled);
+        var parsed = new List<(SemanticVersion Version, GithubRelease Release)>(releases.Count);
 
-                                     if (!match.Success)
-                                     {
-                                         logger.Warn($"Failed to parse version from release name '{release.Name}'.");
-                                         return (null, release);
-                                     }
+        foreach (var release in releases)
+        {
+            var match = Regex.Match(release.Name ?? string.Empty, @"\d+.\d+.\d+", RegexOptions.Compiled);
 
-                                     try
-                                     {
-                                         return (SemanticVersion.Parse(match.Value), release);
-                                     }
-                                     catch (Exception ex)
-                                     {
-                                         logger.Error(ex);
-                                         return (null, release);
-                                     }
-                                 }
-                             ).Where(entry => entry.Item1 != null)
-                             .Select(entry => (entry.Item1!, entry.release))
-                             .ToList();
+            if (!match.Success)
+            {
+                logger.Warn($"Failed to parse version from release name '{release.Name}'.");
+                continue;
+            }
+
+            try
+            {
+                parsed.Add((SemanticVersion.Parse(match.Value), release));
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex);
+            }
+        }
 
         if (latestLocalRelease != null && parsed.Any(entry => entry.Item1 == latestLocalRelease.Version))
-            return parsed.Where(entry => entry.Item1                      >= latestLocalRelease.Version).ToList();
+            return parsed.Where(entry => entry.Version >= latestLocalRelease.Version).ToList();
 
         return parsed.Take(1).ToList();
     }
