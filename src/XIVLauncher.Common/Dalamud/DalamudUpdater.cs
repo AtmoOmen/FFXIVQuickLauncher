@@ -136,10 +136,7 @@ namespace XIVLauncher.Common.Dalamud
             });
         }
 
-        private static string GetBetaTrackName(DalamudSettings settings) =>
-            string.IsNullOrEmpty(settings.DalamudBetaKind) ? "staging" : settings.DalamudBetaKind;
-
-        private async Task<(DalamudVersionInfo release, DalamudVersionInfo? staging)> GetVersionInfo(DalamudSettings settings)
+        private async Task<(DalamudVersionInfo versionInfo, string track)> GetVersionInfo(DalamudSettings settings)
         {
             using var client = new HttpClient
             {
@@ -152,38 +149,70 @@ namespace XIVLauncher.Common.Dalamud
             };
             client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
 
-            var versionInfoJsonRelease = await client.GetStringAsync(DalamudLauncher.REMOTE_BASE + $"release&bucket={this.RolloutBucket}").ConfigureAwait(false);
+            var track = DalamudSettings.NormalizeDalamudBetaKind(settings.DalamudBetaKind);
+            DalamudVersionInfo? versionInfo = null;
 
-            DalamudVersionInfo versionInfoRelease = JsonConvert.DeserializeObject<DalamudVersionInfo>(versionInfoJsonRelease);
-
-            DalamudVersionInfo? versionInfoStaging = null;
-
-            if (!string.IsNullOrEmpty(settings.DalamudBetaKey))
+            if (DalamudSettings.IsStagingChannel(track))
             {
-                var versionInfoJsonStaging = await client.GetAsync(DalamudLauncher.REMOTE_BASE + GetBetaTrackName(settings)).ConfigureAwait(false);
-
-                if (versionInfoJsonStaging.StatusCode != HttpStatusCode.BadRequest)
-                    versionInfoStaging = JsonConvert.DeserializeObject<DalamudVersionInfo>(await versionInfoJsonStaging.Content.ReadAsStringAsync().ConfigureAwait(false));
-
-                // 定义要发送的数据
-                var data = new { code = settings.DalamudBetaKey };
-
-                // 将数据序列化为 JSON 字符串
-                string jsonData = JsonConvert.SerializeObject(data);
-
-                var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
-
-                var respond = await client.PostAsync(ServerAddress.MainAddress + "/Dalamud/Check/StgCode", content).ConfigureAwait(false);
-
-                if (!respond.IsSuccessStatusCode)
-                {
-                    versionInfoStaging = null;
-                    Log.Error("[GetVersionInfo] BetaKey is not correct.");
-                }
-                else versionInfoStaging.Key = settings.DalamudBetaKey;
+                versionInfo = await DownloadStagingVersionInfo(client, settings).ConfigureAwait(false);
+            }
+            else
+            {
+                versionInfo = await DownloadVersionInfo(client, track).ConfigureAwait(false);
             }
 
-            return (versionInfoRelease, versionInfoStaging);
+            if (versionInfo == null && track != DalamudSettings.ReleaseChannel)
+            {
+                Log.Error("[GetVersionInfo] {Track} channel is not available, falling back to release.", track);
+                track = DalamudSettings.ReleaseChannel;
+                versionInfo = await DownloadVersionInfo(client, track).ConfigureAwait(false);
+            }
+
+            if (versionInfo == null)
+                throw new DalamudIntegrityException("Could not download Dalamud version info");
+
+            return (versionInfo, track);
+        }
+
+        private async Task<DalamudVersionInfo?> DownloadStagingVersionInfo(HttpClient client, DalamudSettings settings)
+        {
+            if (string.IsNullOrWhiteSpace(settings.DalamudBetaKey))
+            {
+                Log.Error("[GetVersionInfo] Staging key is empty.");
+                return null;
+            }
+
+            var versionInfoStaging = await DownloadVersionInfo(client, DalamudSettings.StagingChannel).ConfigureAwait(false);
+
+            if (versionInfoStaging == null)
+                return null;
+
+            var data = new { code = settings.DalamudBetaKey };
+            var jsonData = JsonConvert.SerializeObject(data);
+            var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync(ServerAddress.MainAddress + "/Dalamud/Check/StgCode", content).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Log.Error("[GetVersionInfo] Staging key is not correct.");
+                return null;
+            }
+
+            versionInfoStaging.Key = settings.DalamudBetaKey;
+            return versionInfoStaging;
+        }
+
+        private async Task<DalamudVersionInfo?> DownloadVersionInfo(HttpClient client, string track)
+        {
+            using var response = await client.GetAsync(DalamudLauncher.GetVersionInfoUrl(track, this.RolloutBucket)).ConfigureAwait(false);
+
+            if (response.StatusCode == HttpStatusCode.BadRequest)
+                return null;
+
+            response.EnsureSuccessStatusCode();
+
+            return JsonConvert.DeserializeObject<DalamudVersionInfo>(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
         }
 
         private async Task UpdateDalamud()
@@ -193,18 +222,21 @@ namespace XIVLauncher.Common.Dalamud
             // GitHub requires TLS 1.2, we need to hardcode this for Windows 7
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-            var (versionInfoRelease, versionInfoStaging) = await GetVersionInfo(settings).ConfigureAwait(false);
+            var (remoteVersionInfo, track) = await GetVersionInfo(settings).ConfigureAwait(false);
 
-            var remoteVersionInfo = versionInfoRelease;
-
-            if (versionInfoStaging?.Key != null && versionInfoStaging.Key == settings.DalamudBetaKey)
+            if (DalamudSettings.IsStagingChannel(track))
             {
-                remoteVersionInfo = versionInfoStaging;
                 IsStaging = true;
-                Log.Information("[DUPDATE] Using staging version {Kind} with key {Key} ({Hash})", settings.DalamudBetaKind, settings.DalamudBetaKey, remoteVersionInfo.AssemblyVersion);
+                Log.Information("[DUPDATE] Using staging version {Kind} ({Hash})", settings.DalamudBetaKind, remoteVersionInfo.AssemblyVersion);
+            }
+            else if (DalamudSettings.IsCanaryChannel(track))
+            {
+                IsStaging = false;
+                Log.Information("[DUPDATE] Using beta version {Kind} ({Hash})", settings.DalamudBetaKind, remoteVersionInfo.AssemblyVersion);
             }
             else
             {
+                IsStaging = false;
                 Log.Information("[DUPDATE] Using release version ({Hash})", remoteVersionInfo.AssemblyVersion);
             }
 

@@ -104,6 +104,15 @@ namespace XIVLauncher.Windows.ViewModel
             InGameAddonCommandHintLoc = Loc.Localize("InGameAddonCommandHint",
                 "When enabled, type \"/xlhelp\" in-game to see other available commands.");
             InGameAddonEnabledCheckBoxLoc = Loc.Localize("InGameAddonEnabledCheckBox", "Enable Dalamud");
+            InGameAddonUpdateChannelLoc = Loc.Localize("InGameAddonUpdateChannelLoc", "Dalamud update channel");
+            InGameAddonUpdateChannelReleaseLoc = Loc.Localize("InGameAddonUpdateChannelReleaseLoc", "Release");
+            InGameAddonUpdateChannelBetaLoc = Loc.Localize("InGameAddonUpdateChannelBetaLoc", "Beta");
+            InGameAddonUpdateChannelStagingLoc = Loc.Localize("InGameAddonUpdateChannelStagingLoc", "Staging");
+            InGameAddonUpdateChannelReleaseDescriptionLoc = Loc.Localize("InGameAddonUpdateChannelReleaseDescriptionLoc", "Use the release update channel.");
+            InGameAddonUpdateChannelBetaDescriptionLoc = Loc.Localize("InGameAddonUpdateChannelBetaDescriptionLoc", "Use the beta update channel to get updates earlier. It may contain bugs, cause plugin incompatibilities, or crash the game.");
+            InGameAddonUpdateChannelStagingDescriptionLoc = Loc.Localize("InGameAddonUpdateChannelStagingDescriptionLoc", "Use the staging update channel. It may contain unfinished features and many bugs, and can easily crash the game.");
+            InGameAddonUpdateChannelStagingKeyLoc = Loc.Localize("InGameAddonUpdateChannelStagingKeyLoc", "Key");
+            InGameAddonUpdateChannelStagingKeyDescriptionLoc = Loc.Localize("InGameAddonUpdateChannelStagingKeyDescriptionLoc", "Enter a test key when using the staging channel.");
             InGameAddonChatSettingsLoc = Loc.Localize("ChatSettings", "Chat settings");
             InGameAddonDiscordBotTokenLoc = Loc.Localize("DiscordBotToken", "Discord Bot Token");
             InGameAddonHowLoc = Loc.Localize("HowToHint", "How do I set this up?");
@@ -204,6 +213,15 @@ namespace XIVLauncher.Windows.ViewModel
         public string InGameAddonDescriptionLoc { get; private set; }
         public string InGameAddonCommandHintLoc { get; private set; }
         public string InGameAddonEnabledCheckBoxLoc { get; private set; }
+        public string InGameAddonUpdateChannelLoc { get; private set; }
+        public string InGameAddonUpdateChannelReleaseLoc { get; private set; }
+        public string InGameAddonUpdateChannelBetaLoc { get; private set; }
+        public string InGameAddonUpdateChannelStagingLoc { get; private set; }
+        public string InGameAddonUpdateChannelReleaseDescriptionLoc { get; private set; }
+        public string InGameAddonUpdateChannelBetaDescriptionLoc { get; private set; }
+        public string InGameAddonUpdateChannelStagingDescriptionLoc { get; private set; }
+        public string InGameAddonUpdateChannelStagingKeyLoc { get; private set; }
+        public string InGameAddonUpdateChannelStagingKeyDescriptionLoc { get; private set; }
         public string InGameAddonChatSettingsLoc { get; private set; }
         public string InGameAddonDiscordBotTokenLoc { get; private set; }
         public string InGameAddonHowLoc { get; private set; }

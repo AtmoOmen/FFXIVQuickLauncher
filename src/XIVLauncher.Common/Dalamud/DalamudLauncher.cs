@@ -52,6 +52,18 @@ namespace XIVLauncher.Common.Dalamud
 
         public const string REMOTE_BASE = ServerAddress.MainAddress + "/Dalamud/Release/VersionInfo?track=";
 
+        internal static string GetVersionInfoUrl(string track, string rolloutBucket = null)
+        {
+            track = DalamudSettings.NormalizeDalamudBetaKind(track);
+
+            var url = REMOTE_BASE + track;
+
+            if (track == DalamudSettings.ReleaseChannel && !string.IsNullOrEmpty(rolloutBucket))
+                url += $"&bucket={rolloutBucket}";
+
+            return url;
+        }
+
         public DalamudInstallState HoldForUpdate(DirectoryInfo gamePath)
         {
             Log.Information("[HOOKS] DalamudLauncher::HoldForUpdate(gp:{0})", gamePath.FullName);
@@ -208,11 +220,16 @@ namespace XIVLauncher.Common.Dalamud
             return true;
         }
 
-        public static bool CanRunDalamud(DirectoryInfo gamePath)
+        public static bool CanRunDalamud(DirectoryInfo gamePath, DirectoryInfo configDirectory = null, string rolloutBucket = null)
         {
+            var track = DalamudSettings.ReleaseChannel;
+
+            if (configDirectory != null)
+                track = DalamudSettings.GetSettings(configDirectory).DalamudBetaKind;
+
             using var client = new WebClient();
 
-            var versionInfoJson = client.DownloadString(REMOTE_BASE);
+            var versionInfoJson = client.DownloadString(GetVersionInfoUrl(track, rolloutBucket));
             var remoteVersionInfo = JsonConvert.DeserializeObject<DalamudVersionInfo>(versionInfoJson);
 
             if (Repository.Ffxiv.GetVer(gamePath) != remoteVersionInfo.SupportedGameVer)

@@ -103,6 +103,10 @@
     "message": "Game and patch download paths cannot be the same.\nPlease make sure to choose distinct game and patch download paths.",
     "description": "SettingsControl.AcceptButton_Click"
   },
+  "DalamudStagingKeyRequired": {
+    "message": "Please enter a staging key.",
+    "description": "SettingsControl.AcceptButton_Click"
+  },
   "LaunchAsSteam": {
     "message": "Launch as a steam user?",
     "description": "SettingsControl.OriginalLauncherButton_OnClick"
@@ -941,6 +945,42 @@
   },
   "InGameAddonEnabledCheckBox": {
     "message": "Enable Dalamud",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelLoc": {
+    "message": "Dalamud update channel",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelReleaseLoc": {
+    "message": "Release",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelBetaLoc": {
+    "message": "Beta",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelStagingLoc": {
+    "message": "Staging",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelReleaseDescriptionLoc": {
+    "message": "Use the release update channel.",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelBetaDescriptionLoc": {
+    "message": "Use the beta update channel to get updates earlier. It may contain bugs, cause plugin incompatibilities, or crash the game.",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelStagingDescriptionLoc": {
+    "message": "Use the staging update channel. It may contain unfinished features and many bugs, and can easily crash the game.",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelStagingKeyLoc": {
+    "message": "Key",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelStagingKeyDescriptionLoc": {
+    "message": "Enter a test key when using the staging channel.",
     "description": "SettingsControlViewModel.SetupLoc"
   },
   "ChatSettings": {

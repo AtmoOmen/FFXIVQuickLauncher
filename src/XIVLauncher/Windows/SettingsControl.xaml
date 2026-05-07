@@ -183,7 +183,34 @@
                             <StackPanel Margin="22,0,0,0"
                                         IsEnabled="{Binding ElementName=EnableHooksCheckBox, Path=IsChecked}">
 
-                                <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="{DynamicResource MaterialDesignBody}" Margin="0,0,0,0"
+                                <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="{DynamicResource MaterialDesignBody}" Margin="0,0,0,5"
+                                       Text="{Binding InGameAddonUpdateChannelLoc}" />
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                    <RadioButton GroupName="dalamudUpdateChannel" x:Name="ReleaseDalamudUpdateChannelRadioButton"
+                                                 Foreground="{DynamicResource MaterialDesignBody}" IsChecked="True" Margin="0,0,20,0"
+                                                 Content="{Binding InGameAddonUpdateChannelReleaseLoc}" ToolTip="{Binding InGameAddonUpdateChannelReleaseDescriptionLoc}"
+                                                 Checked="DalamudUpdateChannelRadioButton_OnChecked"/>
+                                    <RadioButton GroupName="dalamudUpdateChannel" x:Name="BetaDalamudUpdateChannelRadioButton"
+                                                 Foreground="{DynamicResource MaterialDesignBody}" Margin="0,0,20,0"
+                                                 Content="{Binding InGameAddonUpdateChannelBetaLoc}" ToolTip="{Binding InGameAddonUpdateChannelBetaDescriptionLoc}"
+                                                 Checked="DalamudUpdateChannelRadioButton_OnChecked"/>
+                                    <RadioButton GroupName="dalamudUpdateChannel" x:Name="StagingDalamudUpdateChannelRadioButton"
+                                                 Foreground="{DynamicResource MaterialDesignBody}"
+                                                 Content="{Binding InGameAddonUpdateChannelStagingLoc}" ToolTip="{Binding InGameAddonUpdateChannelStagingDescriptionLoc}"
+                                                 Checked="DalamudUpdateChannelRadioButton_OnChecked" />
+                                </StackPanel>
+
+                                <StackPanel x:Name="StagingDalamudKeyPanel" Margin="0,8,0,0" Visibility="Collapsed">
+                                    <TextBox x:Name="StagingDalamudKeyTextBox" Width="320" HorizontalAlignment="Left"
+                                             Foreground="{DynamicResource MaterialDesignBody}"
+                                             materialDesign:HintAssist.Hint="{Binding InGameAddonUpdateChannelStagingKeyLoc}"
+                                             materialDesign:HintAssist.IsFloating="True" />
+                                    <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,5,0,0"
+                                               Foreground="DarkGray" Text="{Binding InGameAddonUpdateChannelStagingKeyDescriptionLoc}" />
+                                </StackPanel>
+
+                                <TextBlock HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="{DynamicResource MaterialDesignBody}" Margin="0,15,0,0"
                                            Text="{Binding InGameAddonInjectionDelayLoc}" />
 
                                 <StackPanel Orientation="Horizontal" Margin="0,5,0,0">

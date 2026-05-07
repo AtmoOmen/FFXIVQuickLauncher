@@ -1633,7 +1633,7 @@ namespace XIVLauncher.Windows.ViewModel
             var gameExeFolder = Path.GetDirectoryName(gameExePath);
             var gamePath = (new DirectoryInfo(gameExeFolder!)).Parent;
             Log.Information($"GameExePath:{gameExePath},GameExeFolder:{gameExeFolder},GamePath;{gamePath}");
-            if (!DalamudLauncher.CanRunDalamud(gamePath))
+            if (!DalamudLauncher.CanRunDalamud(gamePath, new DirectoryInfo(Paths.RoamingPath), App.Settings.DalamudRolloutBucket))
             {
                 CustomMessageBox.Show($"""
                     {Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!")}

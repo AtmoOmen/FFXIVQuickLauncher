@@ -79,6 +79,18 @@ namespace XIVLauncher.Windows
             else
                 EntryPointDalamudLoadMethodRadioButton.IsChecked = true;
 
+            var dalamudSettings = DalamudSettings.GetSettings(new DirectoryInfo(Paths.RoamingPath));
+
+            if (DalamudSettings.IsStagingChannel(dalamudSettings.DalamudBetaKind))
+                StagingDalamudUpdateChannelRadioButton.IsChecked = true;
+            else if (DalamudSettings.IsCanaryChannel(dalamudSettings.DalamudBetaKind))
+                BetaDalamudUpdateChannelRadioButton.IsChecked = true;
+            else
+                ReleaseDalamudUpdateChannelRadioButton.IsChecked = true;
+
+            StagingDalamudKeyTextBox.Text = dalamudSettings.DalamudBetaKey ?? string.Empty;
+            UpdateDalamudStagingKeyVisibility();
+
             // Prevent raising events...
             this.EnableHooksCheckBox.Checked -= this.EnableHooksCheckBox_OnChecked;
             EnableHooksCheckBox.IsChecked = App.Settings.InGameAddonEnabled;
@@ -112,6 +124,16 @@ namespace XIVLauncher.Windows
                 return;
             }
 
+            var selectedDalamudChannel = GetSelectedDalamudUpdateChannel();
+            var selectedDalamudStagingKey = GetStagingKeyOrNull(StagingDalamudKeyTextBox.Text);
+
+            if (DalamudSettings.IsStagingChannel(selectedDalamudChannel) && string.IsNullOrWhiteSpace(selectedDalamudStagingKey))
+            {
+                CustomMessageBox.Show(Loc.Localize("DalamudStagingKeyRequired", "Please enter a staging key."), "XIVLauncherCN", MessageBoxButton.OK,
+                    MessageBoxImage.Error, parentWindow: Window.GetWindow(this));
+                return;
+            }
+
             App.Settings.GamePath = !string.IsNullOrEmpty(ViewModel.GamePath) ? new DirectoryInfo(ViewModel.GamePath) : null;
             App.Settings.PatchPath = !string.IsNullOrEmpty(ViewModel.PatchPath) ? new DirectoryInfo(ViewModel.PatchPath) : null;
 
@@ -137,6 +159,15 @@ namespace XIVLauncher.Windows
             else
                 App.Settings.InGameAddonLoadMethod = DalamudLoadMethod.EntryPoint;
 
+            var currentDalamudSettings = DalamudSettings.GetSettings(new DirectoryInfo(Paths.RoamingPath));
+            var currentDalamudChannel = currentDalamudSettings.DalamudBetaKind;
+            var currentDalamudStagingKey = GetStagingKeyOrNull(currentDalamudSettings.DalamudBetaKey);
+
+            DalamudSettings.SaveUpdateChannel(new DirectoryInfo(Paths.RoamingPath), selectedDalamudChannel, selectedDalamudStagingKey);
+
+            if (currentDalamudChannel != selectedDalamudChannel || currentDalamudStagingKey != selectedDalamudStagingKey)
+                App.DalamudUpdater.Run(Updates.HaveFeatureFlag(Updates.LeaseFeatureFlags.ForceProxyDalamudAndAssets));
+
             App.Settings.EnableDcTravel = EnableDcTravelCheckBox.IsChecked == true;
 
             App.Settings.OtpServerEnabled = OtpServerCheckBox.IsChecked == true;
@@ -154,6 +185,35 @@ namespace XIVLauncher.Windows
             App.AccountManager.ChangeCredType(App.Settings.CredType);
 
             Transitioner.MoveNextCommand.Execute(null, null);
+        }
+
+        private string GetSelectedDalamudUpdateChannel()
+        {
+            if (StagingDalamudUpdateChannelRadioButton.IsChecked == true)
+                return DalamudSettings.StagingChannel;
+
+            if (BetaDalamudUpdateChannelRadioButton.IsChecked == true)
+                return DalamudSettings.CanaryChannel;
+
+            return DalamudSettings.ReleaseChannel;
+        }
+
+        private static string GetStagingKeyOrNull(string stagingKey)
+        {
+            return string.IsNullOrWhiteSpace(stagingKey) ? null : stagingKey.Trim();
+        }
+
+        private void UpdateDalamudStagingKeyVisibility()
+        {
+            if (StagingDalamudKeyPanel == null)
+                return;
+
+            StagingDalamudKeyPanel.Visibility = StagingDalamudUpdateChannelRadioButton.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void DalamudUpdateChannelRadioButton_OnChecked(object sender, RoutedEventArgs e)
+        {
+            UpdateDalamudStagingKeyVisibility();
         }
 
         private void GitHubButton_OnClick(object sender, RoutedEventArgs e)
@@ -319,7 +379,7 @@ namespace XIVLauncher.Windows
         {
             try
             {
-                if (!string.IsNullOrEmpty(ViewModel.GamePath) && GameHelpers.IsValidGamePath(ViewModel.GamePath) && !DalamudLauncher.CanRunDalamud(new DirectoryInfo(ViewModel.GamePath)))
+                if (!string.IsNullOrEmpty(ViewModel.GamePath) && GameHelpers.IsValidGamePath(ViewModel.GamePath) && !DalamudLauncher.CanRunDalamud(new DirectoryInfo(ViewModel.GamePath), new DirectoryInfo(Paths.RoamingPath), App.Settings.DalamudRolloutBucket))
                 {
                     CustomMessageBox.Show(
                         Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!"),

@@ -103,6 +103,10 @@
     "message": "游戏和补丁的下载路径不能相同。\n请选择不同的游戏和补丁下载路径。",
     "description": "SettingsControl.AcceptButton_Click"
   },
+  "DalamudStagingKeyRequired": {
+    "message": "请输入 Staging Key。",
+    "description": "SettingsControl.AcceptButton_Click"
+  },
   "LaunchAsSteam": {
     "message": "您希望使用 Steam 启动游戏吗？",
     "description": "SettingsControl.OriginalLauncherButton_OnClick"
@@ -937,6 +941,42 @@
   },
   "InGameAddonEnabledCheckBox": {
     "message": "启用 Dalamud",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelLoc": {
+    "message": "Dalamud 更新通道",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelReleaseLoc": {
+    "message": "正式版",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelBetaLoc": {
+    "message": "测试版",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelStagingLoc": {
+    "message": "开发版",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelReleaseDescriptionLoc": {
+    "message": "使用正式版更新通道。",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelBetaDescriptionLoc": {
+    "message": "使用测试版更新通道来更早获得更新，可能存bug、插件不兼容，或者导致游戏崩溃。",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelStagingDescriptionLoc": {
+    "message": "使用开发版通道，可能存在未完成功能和大量bug，容易导致游戏崩溃。",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelStagingKeyLoc": {
+    "message": "Key",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
+  "InGameAddonUpdateChannelStagingKeyDescriptionLoc": {
+    "message": "选择开发版通道时需要输入测试key。",
     "description": "SettingsControlViewModel.SetupLoc"
   },
   "ChatSettings": {
