@@ -305,12 +305,13 @@ namespace XIVLauncher.Accounts
             // If the file is corrupted, this will be null anyway
             Accounts ??= new ObservableCollection<XivAccount>(this.db.Table<XivAccount>());
 
-            foreach (var account in Accounts)
+            var invalidAccounts = Accounts
+                .Where(account => account.UserName.IsNullOrEmpty() || account.Id.IsNullOrEmpty())
+                .ToList();
+
+            foreach (var account in invalidAccounts)
             {
-                if (account.UserName.IsNullOrEmpty() || account.Id.IsNullOrEmpty())
-                {
-                    Accounts.Remove(account);
-                }
+                Accounts.Remove(account);
             }
         }
 
