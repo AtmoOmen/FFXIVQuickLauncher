@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,6 +30,9 @@ namespace XIVLauncher.Common.Game
 
     public class Banner
     {
+        [JsonProperty("Title")]
+        public string Title { get; set; }
+
         [JsonProperty("HomeImagePath")]
         public Uri LsbBanner { get; set; }
 
@@ -56,13 +60,22 @@ namespace XIVLauncher.Common.Game
         [JsonProperty("Title")]
         public string Title { get; set; }
 
+        [JsonProperty("Summary")]
+        public string Summary { get; set; }
+
         [JsonProperty("Id")]
         public string Id { get; set; }
 
+        [JsonProperty("CategoryCode")]
+        public int CategoryCode { get; set; }
+
+        public bool IsAnnouncement => this.CategoryCode is 8324 or 8325 or 8326 or 8327;
+
         public string Url => $"https://ff.web.sdo.com/web8/index.html#/newstab/newscont/{Id}";
 
-        [JsonProperty("tag", NullValueHandling = NullValueHandling.Ignore)]
-        public string Tag { get; set; }
+        private string tag;
+
+        public string Tag { get => this.tag ?? (this.IsAnnouncement ? "Follow-up" : ""); set => this.tag = value; }
     }
 
     public class SdoBanner {
@@ -80,7 +93,13 @@ namespace XIVLauncher.Common.Game
         {
             var headlines = new Headlines();
             headlines.Banner = await GetBanner(game);
-            headlines.News = await GetNews(game);
+            var bannerTitles = new HashSet<string>((headlines.Banner ?? Array.Empty<Banner>())
+                .Where(banner => !string.IsNullOrWhiteSpace(banner.Title))
+                .Select(banner => banner.Title), StringComparer.Ordinal);
+
+            headlines.News = (await GetNews(game))?
+                .Where(news => !bannerTitles.Contains(news.Title))
+                .ToArray();
             return headlines;
         }
 
@@ -92,7 +111,7 @@ namespace XIVLauncher.Common.Game
 
         private static async Task<News[]> GetNews(Launcher game)
         {
-            var json = Encoding.UTF8.GetString(await game.DownloadAsLauncher("https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5310,5311,5312,5313,5316&pageIndex=0&pageSize=12", ClientLanguage.ChineseSimplified, "*/*").ConfigureAwait(false));
+            var json = Encoding.UTF8.GetString(await game.DownloadAsLauncher("https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=8324,8325,8326,8327,5309,5310,5311,5312,5313&pageIndex=0&pageSize=12", ClientLanguage.ChineseSimplified, "*/*").ConfigureAwait(false));
             var sdoNews = JsonConvert.DeserializeObject<SdoNews>(json);
             return sdoNews.Data;
         }
