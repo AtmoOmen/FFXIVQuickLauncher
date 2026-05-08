@@ -831,6 +831,10 @@
     "message": "XIVLauncher 并不支持国服或韩服版本。请确保您选择的路径属于国际服版本。",
     "description": "SettingsControlViewModel.SetupLoc"
   },
+  "GamePathSafeguardRegionWarningCN": {
+    "message": "XIVLauncherCN 仅支持中国版本的游戏。请确保您选择的路径属于中国版本。",
+    "description": "SettingsControlViewModel.SetupLoc"
+  },
   "OtpServerCheckBox": {
     "message": "启用 XL Authentixator 应用/OTP 宏支持",
     "description": "SettingsControlViewModel.SetupLoc"

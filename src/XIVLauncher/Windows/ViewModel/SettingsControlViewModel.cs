@@ -65,8 +65,8 @@ namespace XIVLauncher.Windows.ViewModel
                 "Please select the folder your game is installed in.\r\nIt should contain the folders \"game\" and \"boot\".");
             GamePathSafeguardLoc = Loc.Localize("GamePathSafeguardError",
                 "Please do not select the \"game\" or \"boot\" folder of your game installation, and choose the folder that contains these instead.");
-            GamePathSafeguardRegionLoc = Loc.Localize("GamePathSafeguardRegionWarning",
-                "XIVLauncher does not support Chinese or Korean version of the game. Make sure this path indeed is for the international version.");
+            GamePathSafeguardRegionLoc = Loc.Localize("GamePathSafeguardRegionWarningCN",
+                "XIVLauncherCN only support Chinese version of the game. Make sure this path indeed is for the Chinese version.");
             SteamCheckBoxLoc = Loc.Localize("FirstTimeSteamCheckBox", "Enable Steam integration");
             OtpServerCheckBoxLoc = Loc.Localize("OtpServerCheckBox", "Enable XL Authenticator app/OTP macro support");
             OtpServerTooltipLoc = Loc.Localize("OtpServerTooltip", "This will allow you to send your OTP code to XIVLauncher directly from your phone.\nClick \"Learn more\" to see how to set this up.");
