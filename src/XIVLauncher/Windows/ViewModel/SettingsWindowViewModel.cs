@@ -157,6 +157,24 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         }
     } = true;
 
+    public decimal? DalamudUpdateTimeoutSeconds
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
+    public decimal? DalamudUpdateMaxRetries
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
+    public int DalamudUpdateHttpModeIndex
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
     public string LaunchArgs
     {
         get;
@@ -318,6 +336,9 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod != DalamudLoadMethod.DllInject;
         EnableHooks                                 = App.Settings.DalamudEnabled;
         EnableDcTravel                              = true;
+        DalamudUpdateTimeoutSeconds                 = App.Settings.DalamudUpdateTimeoutSeconds;
+        DalamudUpdateMaxRetries                     = App.Settings.DalamudUpdateMaxRetries;
+        DalamudUpdateHttpModeIndex                  = (int)App.Settings.DalamudUpdateHttpMode;
         LaunchArgs                                  = App.Settings.AdditionalLaunchArgs ?? string.Empty;
         DpiAwarenessIndex                           = (int)App.Settings.DPIAwareness;
         VersionLabelText                            = $"XIVLauncher - v{AppUtil.GetAssemblyVersion()}";
@@ -350,6 +371,11 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         var addonEntries          = AddonEntries.ToList();
         var patchAcquisitionMethod = (AcquisitionMethod)PatchAcquisitionIndex;
         var dalamudLoadMethod      = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
+        var dalamudUpdateTimeoutSeconds = Math.Clamp((int)(DalamudUpdateTimeoutSeconds ?? 3), 1, 30);
+        var dalamudUpdateMaxRetries     = Math.Clamp((int)(DalamudUpdateMaxRetries     ?? 3), 1, 10);
+        var dalamudUpdateHttpMode       = Enum.IsDefined(typeof(DalamudUpdateHttpMode), DalamudUpdateHttpModeIndex)
+            ? (DalamudUpdateHttpMode)DalamudUpdateHttpModeIndex
+            : DalamudUpdateHttpMode.Auto;
         var dpiAwareness           = (DPIAwareness)DpiAwarenessIndex;
         var speedLimitBytes        = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
 
@@ -389,6 +415,9 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
                 settings.DalamudInjectionDelayMS             = DalamudInjectionDelayMs ?? 0;
                 settings.ManualInjectDelayMs                 = ManualInjectDelayMs     ?? 0;
                 settings.DalamudLoadMethod                   = dalamudLoadMethod;
+                settings.DalamudUpdateTimeoutSeconds         = dalamudUpdateTimeoutSeconds;
+                settings.DalamudUpdateMaxRetries             = dalamudUpdateMaxRetries;
+                settings.DalamudUpdateHttpMode               = dalamudUpdateHttpMode;
                 settings.AdditionalLaunchArgs                = LaunchArgs;
                 settings.DPIAwareness                        = dpiAwareness;
                 settings.SpeedLimitBytes                     = speedLimitBytes;
@@ -396,6 +425,10 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
                 settings.CredType                            = credTypeApplyResult.AppliedCredType;
             }
         );
+
+        DalamudUpdateTimeoutSeconds = dalamudUpdateTimeoutSeconds;
+        DalamudUpdateMaxRetries     = dalamudUpdateMaxRetries;
+        DalamudUpdateHttpModeIndex  = (int)dalamudUpdateHttpMode;
 
         SelectedCredType = credTypeApplyResult.AppliedCredType;
 

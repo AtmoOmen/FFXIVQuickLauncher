@@ -572,6 +572,88 @@
                                                  IsChecked="{Binding UseDllInjectLoadMethod}"
                                                  ToolTip="通过 DLL 注入方式加载 Dalamud, 兼容性取决于本机环境。"
                                                  Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                 </StackPanel>
+                            </materialDesign:Card>
+
+                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="更新设置"
+                                       Style="{StaticResource MaterialDesignHeadline5TextBlock}"
+                                       FontWeight="Medium"
+                                       Margin="0,24,0,16" />
+
+                            <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,24">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                       Text="更新超时"
+                                                       FontSize="15" />
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                       Text="控制 Dalamud 更新请求连接超时时间（1-30 秒）"
+                                                       Opacity="0.7"
+                                                       FontSize="12" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Right">
+                                            <TextBox Width="70" Text="{Binding DalamudUpdateTimeoutSeconds}"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                     VerticalAlignment="Center" HorizontalContentAlignment="Right" />
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="秒"
+                                                       Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,24">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                       Text="更新重试次数"
+                                                       FontSize="15" />
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                       Text="控制 Dalamud 更新失败后的重试次数（1-10 次）"
+                                                       Opacity="0.7"
+                                                       FontSize="12" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Right">
+                                            <TextBox Width="70" Text="{Binding DalamudUpdateMaxRetries}"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                     VerticalAlignment="Center" HorizontalContentAlignment="Right" />
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="次"
+                                                       Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" MinWidth="180" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                       Text="更新协议"
+                                                       FontSize="15" />
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                       Text="Auto: 先 HTTP/2，超时后回退 HTTP/1.1"
+                                                       Opacity="0.7"
+                                                       FontSize="12" />
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1" SelectedIndex="{Binding DalamudUpdateHttpModeIndex}"
+                                                  VerticalAlignment="Center"
+                                                  Foreground="{DynamicResource MaterialDesign.Brush.Foreground}">
+                                            <ComboBoxItem Content="Auto" />
+                                            <ComboBoxItem Content="HTTP/2" />
+                                            <ComboBoxItem Content="HTTP/1.1" />
+                                        </ComboBox>
+                                    </Grid>
                                 </StackPanel>
                             </materialDesign:Card>
 

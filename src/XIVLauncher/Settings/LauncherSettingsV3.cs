@@ -183,6 +183,33 @@ public sealed class LauncherSettingsV3
         set => Set(ref field, value);
     } = 0;
 
+    /// <summary>
+    ///     Dalamud 更新连接超时（秒）
+    /// </summary>
+    public int DalamudUpdateTimeoutSeconds
+    {
+        get;
+        set => Set(ref field, value);
+    } = 3;
+
+    /// <summary>
+    ///     Dalamud 更新最大重试次数
+    /// </summary>
+    public int DalamudUpdateMaxRetries
+    {
+        get;
+        set => Set(ref field, value);
+    } = 3;
+
+    /// <summary>
+    ///     Dalamud 更新 HTTP 协议策略
+    /// </summary>
+    public DalamudUpdateHttpMode DalamudUpdateHttpMode
+    {
+        get;
+        set => Set(ref field, value);
+    } = DalamudUpdateHttpMode.Auto;
+
     #endregion
 
     #region 插件/扩展配置

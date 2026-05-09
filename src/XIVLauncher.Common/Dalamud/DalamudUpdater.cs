@@ -63,6 +63,9 @@ public class DalamudUpdater
     private readonly DirectoryInfo assetDirectory;
     private readonly string?       githubToken;
     private readonly SemaphoreSlim runSemaphore = new(1, 1);
+    private readonly int updateTimeoutSeconds;
+    private readonly int updateMaxRetries;
+    private readonly DalamudUpdateHttpMode updateHttpMode;
 
     private HttpClient httpClient;
 
@@ -71,14 +74,24 @@ public class DalamudUpdater
         DirectoryInfo addonDirectory,
         DirectoryInfo runtimeDirectory,
         DirectoryInfo assetDirectory,
-        string?       githubToken
+        string?       githubToken,
+        int           updateTimeoutSeconds,
+        int           updateMaxRetries,
+        DalamudUpdateHttpMode updateHttpMode
     )
     {
         this.addonDirectory = addonDirectory;
         Runtime             = runtimeDirectory;
         this.assetDirectory = assetDirectory;
         this.githubToken    = githubToken;
-        httpClient = CreateHttpClient(HttpVersion.Version20, HttpVersionPolicy.RequestVersionOrHigher);
+        this.updateTimeoutSeconds = Math.Clamp(updateTimeoutSeconds, 1, 30);
+        this.updateMaxRetries     = Math.Clamp(updateMaxRetries, 1, 10);
+        this.updateHttpMode       = updateHttpMode;
+        httpClient = this.updateHttpMode switch
+        {
+            DalamudUpdateHttpMode.Http11 => CreateHttpClient(HttpVersion.Version11, HttpVersionPolicy.RequestVersionOrLower),
+            _ => CreateHttpClient(HttpVersion.Version20, HttpVersionPolicy.RequestVersionOrHigher)
+        };
     }
 
     public void Run() =>
@@ -101,14 +114,12 @@ public class DalamudUpdater
 
                 try
                 {
-                    const int MAX_TRIES = 3;
-
                     var isUpdated = false;
                     var hasTimeoutFailure = false;
                     var hasNonRetryableFailure = false;
                     Exception? lastException = null;
 
-                    for (var tries = 0; tries < MAX_TRIES; tries++)
+                    for (var tries = 0; tries < updateMaxRetries; tries++)
                     {
                         try
                         {
@@ -118,7 +129,7 @@ public class DalamudUpdater
                         }
                         catch (Exception ex)
                         {
-                            Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries + 1, MAX_TRIES);
+                            Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries + 1, updateMaxRetries);
                             EnsurementException = ex;
                             lastException = ex;
                             if (IsTimeoutException(ex))
@@ -128,14 +139,14 @@ public class DalamudUpdater
                         }
                     }
 
-                    if (!isUpdated && hasTimeoutFailure && !hasNonRetryableFailure)
+                    if (!isUpdated && updateHttpMode == DalamudUpdateHttpMode.Auto && hasTimeoutFailure && !hasNonRetryableFailure)
                     {
                         Log.Information("[DUPDATE] 检测到超时失败，降级至 HTTP/1.1 重试");
                         var previousClient = httpClient;
                         httpClient = CreateHttpClient(HttpVersion.Version11, HttpVersionPolicy.RequestVersionOrLower);
                         previousClient.Dispose();
 
-                        for (var tries = 0; tries < MAX_TRIES; tries++)
+                        for (var tries = 0; tries < updateMaxRetries; tries++)
                         {
                             try
                             {
@@ -145,7 +156,7 @@ public class DalamudUpdater
                             }
                             catch (Exception ex)
                             {
-                                Log.Error(ex, "[DUPDATE] HTTP/1.1 更新失败, 重试 {TryCnt}/{MaxTries}...", tries + 1, MAX_TRIES);
+                                Log.Error(ex, "[DUPDATE] HTTP/1.1 更新失败, 重试 {TryCnt}/{MaxTries}...", tries + 1, updateMaxRetries);
                                 EnsurementException = ex;
                                 lastException = ex;
                             }
@@ -292,7 +303,7 @@ public class DalamudUpdater
 
     private HttpClient CreateHttpClient(Version requestVersion, HttpVersionPolicy versionPolicy)
     {
-        var client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(3), 50, DecompressionMethods.All, requestVersion, versionPolicy);
+        var client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(updateTimeoutSeconds), 50, DecompressionMethods.All, requestVersion, versionPolicy);
         client.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
         if (!string.IsNullOrWhiteSpace(this.githubToken))
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", this.githubToken);
