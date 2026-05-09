@@ -10,7 +10,9 @@ public static class XLHttpClientFactory
     (
         TimeSpan             connectTimeout,
         int                  maxConnectionsPerServer,
-        DecompressionMethods automaticDecompression
+        DecompressionMethods automaticDecompression,
+        Version?             defaultRequestVersion = null,
+        HttpVersionPolicy    defaultVersionPolicy  = HttpVersionPolicy.RequestVersionOrHigher
     )
     {
         var client = new HttpClient
@@ -30,8 +32,8 @@ public static class XLHttpClientFactory
             }
         );
 
-        client.DefaultRequestVersion = HttpVersion.Version20;
-        client.DefaultVersionPolicy  = HttpVersionPolicy.RequestVersionOrHigher;
+        client.DefaultRequestVersion = defaultRequestVersion ?? HttpVersion.Version20;
+        client.DefaultVersionPolicy  = defaultVersionPolicy;
         return client;
     }
 }

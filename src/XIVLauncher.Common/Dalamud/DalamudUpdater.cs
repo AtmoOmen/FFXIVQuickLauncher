@@ -5,8 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
@@ -60,8 +62,9 @@ public class DalamudUpdater
     private readonly DirectoryInfo addonDirectory;
     private readonly DirectoryInfo assetDirectory;
     private readonly string?       githubToken;
+    private readonly SemaphoreSlim runSemaphore = new(1, 1);
 
-    private readonly HttpClient httpClient;
+    private HttpClient httpClient;
 
     public DalamudUpdater
     (
@@ -75,10 +78,7 @@ public class DalamudUpdater
         Runtime             = runtimeDirectory;
         this.assetDirectory = assetDirectory;
         this.githubToken    = githubToken;
-        httpClient          = XLHttpClientFactory.Create(TimeSpan.FromSeconds(10), 50, DecompressionMethods.All);
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-        if (!string.IsNullOrWhiteSpace(this.githubToken))
-            httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
+        httpClient = CreateHttpClient(HttpVersion.Version20, HttpVersionPolicy.RequestVersionOrHigher);
     }
 
     public void Run() =>
@@ -97,26 +97,70 @@ public class DalamudUpdater
         Task.Run
         (async () =>
             {
-                const int MAX_TRIES = 10;
+                await runSemaphore.WaitAsync().ConfigureAwait(false);
 
-                var isUpdated = false;
-
-                for (var tries = 0; tries < MAX_TRIES; tries++)
+                try
                 {
-                    try
-                    {
-                        await UpdateDalamud(refreshVersionInfo).ConfigureAwait(true);
-                        isUpdated = true;
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries, MAX_TRIES);
-                        EnsurementException = ex;
-                    }
-                }
+                    const int MAX_TRIES = 3;
 
-                State = isUpdated ? DownloadState.Done : DownloadState.NoIntegrity;
+                    var isUpdated = false;
+                    var hasTimeoutFailure = false;
+                    var hasNonRetryableFailure = false;
+                    Exception? lastException = null;
+
+                    for (var tries = 0; tries < MAX_TRIES; tries++)
+                    {
+                        try
+                        {
+                            await UpdateDalamud(refreshVersionInfo).ConfigureAwait(true);
+                            isUpdated = true;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries + 1, MAX_TRIES);
+                            EnsurementException = ex;
+                            lastException = ex;
+                            if (IsTimeoutException(ex))
+                                hasTimeoutFailure = true;
+                            if (IsNonRetryableException(ex))
+                                hasNonRetryableFailure = true;
+                        }
+                    }
+
+                    if (!isUpdated && hasTimeoutFailure && !hasNonRetryableFailure)
+                    {
+                        Log.Information("[DUPDATE] 检测到超时失败，降级至 HTTP/1.1 重试");
+                        var previousClient = httpClient;
+                        httpClient = CreateHttpClient(HttpVersion.Version11, HttpVersionPolicy.RequestVersionOrLower);
+                        previousClient.Dispose();
+
+                        for (var tries = 0; tries < MAX_TRIES; tries++)
+                        {
+                            try
+                            {
+                                await UpdateDalamud(refreshVersionInfo).ConfigureAwait(true);
+                                isUpdated = true;
+                                break;
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error(ex, "[DUPDATE] HTTP/1.1 更新失败, 重试 {TryCnt}/{MaxTries}...", tries + 1, MAX_TRIES);
+                                EnsurementException = ex;
+                                lastException = ex;
+                            }
+                        }
+                    }
+
+                    if (!isUpdated && lastException != null)
+                        EnsurementException = lastException;
+
+                    State = isUpdated ? DownloadState.Done : DownloadState.NoIntegrity;
+                }
+                finally
+                {
+                    runSemaphore.Release();
+                }
             }
         );
     }
@@ -245,6 +289,58 @@ public class DalamudUpdater
     }
 
     #endregion
+
+    private HttpClient CreateHttpClient(Version requestVersion, HttpVersionPolicy versionPolicy)
+    {
+        var client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(5), 50, DecompressionMethods.All, requestVersion, versionPolicy);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+        if (!string.IsNullOrWhiteSpace(this.githubToken))
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", this.githubToken);
+        return client;
+    }
+
+    private static bool IsTimeoutException(Exception ex)
+    {
+        while (true)
+        {
+            switch (ex)
+            {
+                case TaskCanceledException or OperationCanceledException:
+                case HttpRequestException httpRequestException when httpRequestException.InnerException is TimeoutException:
+                    return true;
+            }
+
+            if (ex.InnerException != null)
+            {
+                ex = ex.InnerException;
+                continue;
+            }
+
+            return false;
+        }
+    }
+
+    private static bool IsNonRetryableException(Exception ex)
+    {
+        while (true)
+        {
+            switch (ex)
+            {
+                case DalamudIntegrityException or InvalidDataException:
+                case HttpRequestException httpRequestException
+                    when httpRequestException.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.NotFound:
+                    return true;
+            }
+
+            if (ex.InnerException != null)
+            {
+                ex = ex.InnerException;
+                continue;
+            }
+
+            return false;
+        }
+    }
 
     #region Dalamud
 
