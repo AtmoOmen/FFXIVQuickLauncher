@@ -292,7 +292,7 @@ public class DalamudUpdater
 
     private HttpClient CreateHttpClient(Version requestVersion, HttpVersionPolicy versionPolicy)
     {
-        var client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(5), 50, DecompressionMethods.All, requestVersion, versionPolicy);
+        var client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(3), 50, DecompressionMethods.All, requestVersion, versionPolicy);
         client.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
         if (!string.IsNullOrWhiteSpace(this.githubToken))
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", this.githubToken);
@@ -305,6 +305,7 @@ public class DalamudUpdater
         {
             switch (ex)
             {
+                case TimeoutException:
                 case TaskCanceledException or OperationCanceledException:
                 case HttpRequestException httpRequestException when httpRequestException.InnerException is TimeoutException:
                     return true;
@@ -616,15 +617,18 @@ public class DalamudUpdater
         }
         catch (HttpRequestException e)
         {
-            throw new Exception("访问 Github API 时发生错误: " + e.Message);
+            Log.Error(e, "[DUPDATE] 访问 Github API 时发生错误");
+            throw;
         }
-        catch (TaskCanceledException)
+        catch (TaskCanceledException e)
         {
-            throw new Exception("下载超时");
+            Log.Error(e, "[DUPDATE] 下载超时");
+            throw;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException e)
         {
-            throw new Exception("下载取消");
+            Log.Error(e, "[DUPDATE] 下载取消");
+            throw;
         }
     }
 
