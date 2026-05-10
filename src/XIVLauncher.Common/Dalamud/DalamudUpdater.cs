@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -59,15 +60,19 @@ public class DalamudUpdater
     private static readonly ConcurrentDictionary<string, (long Length, long LastWriteTimeUtcTicks, string Hash)> CachedFileHashes =
         new(StringComparer.OrdinalIgnoreCase);
 
+    private static readonly JsonSerializerOptions StateJsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
+    private static readonly UTF8Encoding Utf8WithoutBom = new(false);
+
     private readonly DirectoryInfo addonDirectory;
     private readonly DirectoryInfo assetDirectory;
     private readonly string?       githubToken;
     private readonly SemaphoreSlim runSemaphore = new(1, 1);
-    private readonly int updateTimeoutSeconds;
-    private readonly int updateMaxRetries;
     private readonly DalamudUpdateHttpMode updateHttpMode;
-
-    private HttpClient httpClient;
+    private readonly FileInfo protocolStateFile = new(Path.Combine(Paths.RoamingPath, "dalamudUpdateState.json"));
 
     public DalamudUpdater
     (
@@ -75,8 +80,6 @@ public class DalamudUpdater
         DirectoryInfo runtimeDirectory,
         DirectoryInfo assetDirectory,
         string?       githubToken,
-        int           updateTimeoutSeconds,
-        int           updateMaxRetries,
         DalamudUpdateHttpMode updateHttpMode
     )
     {
@@ -84,14 +87,7 @@ public class DalamudUpdater
         Runtime             = runtimeDirectory;
         this.assetDirectory = assetDirectory;
         this.githubToken    = githubToken;
-        this.updateTimeoutSeconds = Math.Clamp(updateTimeoutSeconds, 1, 30);
-        this.updateMaxRetries     = Math.Clamp(updateMaxRetries, 1, 10);
-        this.updateHttpMode       = updateHttpMode;
-        httpClient = this.updateHttpMode switch
-        {
-            DalamudUpdateHttpMode.Http11 => CreateHttpClient(HttpVersion.Version11, HttpVersionPolicy.RequestVersionOrLower),
-            _ => CreateHttpClient(HttpVersion.Version20, HttpVersionPolicy.RequestVersionOrHigher)
-        };
+        this.updateHttpMode = updateHttpMode;
     }
 
     public void Run() =>
@@ -107,87 +103,35 @@ public class DalamudUpdater
         LoadingProgress     = null;
         State               = DownloadState.Unknown;
 
-        Task.Run
-        (async () =>
+        Task.Run(async () =>
+        {
+            await runSemaphore.WaitAsync().ConfigureAwait(false);
+
+            try
             {
-                await runSemaphore.WaitAsync().ConfigureAwait(false);
-
-                try
-                {
-                    var isUpdated = false;
-                    var hasTimeoutFailure = false;
-                    var hasNonRetryableFailure = false;
-                    Exception? lastException = null;
-
-                    for (var tries = 0; tries < updateMaxRetries; tries++)
-                    {
-                        try
-                        {
-                            await UpdateDalamud(refreshVersionInfo).ConfigureAwait(true);
-                            isUpdated = true;
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries + 1, updateMaxRetries);
-                            EnsurementException = ex;
-                            lastException = ex;
-                            if (IsTimeoutException(ex))
-                                hasTimeoutFailure = true;
-                            if (IsNonRetryableException(ex))
-                                hasNonRetryableFailure = true;
-                        }
-                    }
-
-                    if (!isUpdated && updateHttpMode == DalamudUpdateHttpMode.Auto && hasTimeoutFailure && !hasNonRetryableFailure)
-                    {
-                        Log.Information("[DUPDATE] 检测到超时失败，降级至 HTTP/1.1 重试");
-                        var previousClient = httpClient;
-                        httpClient = CreateHttpClient(HttpVersion.Version11, HttpVersionPolicy.RequestVersionOrLower);
-                        previousClient.Dispose();
-
-                        for (var tries = 0; tries < updateMaxRetries; tries++)
-                        {
-                            try
-                            {
-                                await UpdateDalamud(refreshVersionInfo).ConfigureAwait(true);
-                                isUpdated = true;
-                                break;
-                            }
-                            catch (Exception ex)
-                            {
-                                Log.Error(ex, "[DUPDATE] HTTP/1.1 更新失败, 重试 {TryCnt}/{MaxTries}...", tries + 1, updateMaxRetries);
-                                EnsurementException = ex;
-                                lastException = ex;
-                            }
-                        }
-                    }
-
-                    if (!isUpdated && lastException != null)
-                        EnsurementException = lastException;
-
-                    State = isUpdated ? DownloadState.Done : DownloadState.NoIntegrity;
-                }
-                finally
-                {
-                    runSemaphore.Release();
-                }
+                var result = await RunWithAdaptiveStrategyAsync(refreshVersionInfo).ConfigureAwait(false);
+                EnsurementException = result.LastException;
+                State               = result.IsSuccess ? DownloadState.Done : DownloadState.NoIntegrity;
             }
-        );
+            finally
+            {
+                runSemaphore.Release();
+            }
+        });
     }
 
     #region Steps
 
-    private async Task UpdateDalamud(bool refreshVersionInfo)
+    private async Task UpdateDalamud(bool refreshVersionInfo, UpdateSessionContext session, HttpClient httpClient)
     {
         try
         {
-            Log.Information("[DUPDATE] 开始 Dalamud 更新进程");
+            Log.Information("[DUPDATE] 开始 Dalamud 更新进程 attempt={Attempt} protocol={Protocol}", session.Attempt, session.Protocol);
 
-            await InitVersionInfoAsync(refreshVersionInfo);
+            await InitVersionInfoAsync(refreshVersionInfo, httpClient);
             var paths                  = PreparePaths();
-            var currentVersionVerified = await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath);
-            await UpdateRuntimeAsync();
+            var currentVersionVerified = await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath, session, httpClient);
+            await UpdateRuntimeAsync(httpClient);
             await UpdateAssetsAsync();
 
             if (!currentVersionVerified && !CheckDalamudIntegrity(paths.currentVersionPath))
@@ -206,7 +150,7 @@ public class DalamudUpdater
         }
     }
 
-    private async Task InitVersionInfoAsync(bool refreshVersionInfo)
+    private async Task InitVersionInfoAsync(bool refreshVersionInfo, HttpClient httpClient)
     {
         Log.Verbose("[DUPDATE] 开始检查版本信息");
 
@@ -217,7 +161,7 @@ public class DalamudUpdater
         }
 
         Log.Information("[DUPDATE] 正在从 Github 获取最新版本信息");
-        await GetDalamudVersionInfoAsync();
+        await GetDalamudVersionInfoAsync(httpClient);
         Log.Information("[DUPDATE] 获取到版本: {Version} ({Hash})", Version, OnlineHash);
     }
 
@@ -228,16 +172,11 @@ public class DalamudUpdater
         var addonPath          = new DirectoryInfo(Path.Combine(addonDirectory.FullName, "Hooks"));
         var currentVersionPath = new DirectoryInfo(Path.Combine(addonPath.FullName,      Version));
 
-        Log.Verbose
-        (
-            "[DUPDATE] 路径信息: 版本路径={Path}",
-            currentVersionPath.FullName
-        );
-
+        Log.Verbose("[DUPDATE] 路径信息: 版本路径={Path}", currentVersionPath.FullName);
         return (addonPath, currentVersionPath);
     }
 
-    private async Task<bool> UpdateDalamudCoreAsync(DirectoryInfo addonPath, DirectoryInfo currentVersionPath)
+    private async Task<bool> UpdateDalamudCoreAsync(DirectoryInfo addonPath, DirectoryInfo currentVersionPath, UpdateSessionContext session, HttpClient metadataHttpClient)
     {
         Log.Information("[DUPDATE] 开始检查 Dalamud 本体完整性");
 
@@ -253,7 +192,7 @@ public class DalamudUpdater
         try
         {
             Log.Information("[DUPDATE] 开始下载 Dalamud 本体");
-            await DownloadDalamud(currentVersionPath).ConfigureAwait(true);
+            await DownloadDalamud(currentVersionPath, metadataHttpClient, session).ConfigureAwait(true);
 
             Log.Information("[DUPDATE] 清理旧版本 Dalamud 文件");
             CleanUpOld(addonPath, Version);
@@ -268,7 +207,7 @@ public class DalamudUpdater
         }
     }
 
-    private async Task UpdateRuntimeAsync() =>
+    private async Task UpdateRuntimeAsync(HttpClient httpClient) =>
         await DotNetRuntimeManager.EnsureRuntimeAsync
         (
             Runtime,
@@ -276,7 +215,8 @@ public class DalamudUpdater
             "win-x64",
             ".NET 运行时",
             SetLoadingDetail,
-            ReportLoadingProgressCore
+            ReportLoadingProgressCore,
+            cancellationToken: default
         ).ConfigureAwait(false);
 
     private async Task UpdateAssetsAsync()
@@ -301,59 +241,6 @@ public class DalamudUpdater
 
     #endregion
 
-    private HttpClient CreateHttpClient(Version requestVersion, HttpVersionPolicy versionPolicy)
-    {
-        var client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(updateTimeoutSeconds), 50, DecompressionMethods.All, requestVersion, versionPolicy);
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-        if (!string.IsNullOrWhiteSpace(this.githubToken))
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", this.githubToken);
-        return client;
-    }
-
-    private static bool IsTimeoutException(Exception ex)
-    {
-        while (true)
-        {
-            switch (ex)
-            {
-                case TimeoutException:
-                case TaskCanceledException or OperationCanceledException:
-                case HttpRequestException httpRequestException when httpRequestException.InnerException is TimeoutException:
-                    return true;
-            }
-
-            if (ex.InnerException != null)
-            {
-                ex = ex.InnerException;
-                continue;
-            }
-
-            return false;
-        }
-    }
-
-    private static bool IsNonRetryableException(Exception ex)
-    {
-        while (true)
-        {
-            switch (ex)
-            {
-                case DalamudIntegrityException or InvalidDataException:
-                case HttpRequestException httpRequestException
-                    when httpRequestException.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.NotFound:
-                    return true;
-            }
-
-            if (ex.InnerException != null)
-            {
-                ex = ex.InnerException;
-                continue;
-            }
-
-            return false;
-        }
-    }
-
     #region Dalamud
 
     private async Task<bool> TryUpdateDalamudIncrementally
@@ -361,7 +248,9 @@ public class DalamudUpdater
         DirectoryInfo              addonPath,
         DirectoryInfo              devPath,
         Dictionary<string, string> assets,
-        string                     manifestUrl
+        string                     manifestUrl,
+        HttpClient                 httpClient,
+        UpdateSessionContext       session
     )
     {
         var       manifestJson = await httpClient.GetStringAsync(manifestUrl).ConfigureAwait(false);
@@ -383,7 +272,8 @@ public class DalamudUpdater
         }
 
         plan.DownloadFiles.Add((hashesUrl, GetReleaseFilePath(addonPath, manifest.HashesAsset), OnlineHash));
-        await DownloadVerifiedFiles(plan.DownloadFiles).ConfigureAwait(false);
+        using var downloadHttpClient = CreateDalamudDownloadHttpClient(session.Protocol);
+        await DownloadVerifiedFiles(plan.DownloadFiles, downloadHttpClient, session).ConfigureAwait(false);
         CleanDalamudReleaseDirectory(addonPath, plan.KeepPaths);
 
         Log.Information
@@ -579,7 +469,7 @@ public class DalamudUpdater
         }
     }
 
-    public async Task GetDalamudVersionInfoAsync()
+    public async Task GetDalamudVersionInfoAsync(HttpClient httpClient)
     {
         try
         {
@@ -590,8 +480,8 @@ public class DalamudUpdater
             var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
             await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
 
-            var       json    = await response.Content.ReadAsStringAsync();
-            using var jsonDoc = JsonDocument.Parse(json);
+            var    json    = await response.Content.ReadAsStringAsync();
+            using var jsonDoc = JsonDocument.Parse(json ?? string.Empty);
 
             var version = jsonDoc.RootElement.GetProperty("tag_name").GetString();
             if (string.IsNullOrWhiteSpace(version))
@@ -611,8 +501,8 @@ public class DalamudUpdater
                 using (var fileResponse = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
                 {
                     await fileResponse.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
-                    using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                        await fileResponse.Content.CopyToAsync(fileStream);
+                    using var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                    await fileResponse.Content.CopyToAsync(fileStream);
                 }
 
                 var hash = ComputeFileHash(downloadPath);
@@ -643,11 +533,11 @@ public class DalamudUpdater
         }
     }
 
-    private async Task DownloadDalamud(DirectoryInfo addonPath)
+    private async Task DownloadDalamud(DirectoryInfo addonPath, HttpClient metadataHttpClient, UpdateSessionContext session)
     {
         try
         {
-            var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
+            var response = await metadataHttpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
             await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
 
             var       json         = await response.Content.ReadAsStringAsync();
@@ -663,15 +553,15 @@ public class DalamudUpdater
             {
                 Log.Information("[DUPDATE] 发现 Dalamud 文件清单, 开始按需更新");
 
-                var incrementalUpdated = await TryUpdateDalamudIncrementally(addonPath, devPath, assets, manifestUrl).ConfigureAwait(false);
+                var incrementalUpdated = await TryUpdateDalamudIncrementally(addonPath, devPath, assets, manifestUrl, metadataHttpClient, session).ConfigureAwait(false);
 
                 if (!incrementalUpdated)
-                    await DownloadDalamudPackage(addonPath, assets).ConfigureAwait(false);
+                    await DownloadDalamudPackage(addonPath, assets, session).ConfigureAwait(false);
             }
             else
             {
                 Log.Information(hasLocalSeed ? "[DUPDATE] 未发现 Dalamud 文件清单, 开始下载完整包" : "[DUPDATE] 未发现可复用 Dalamud 本地基线, 开始下载完整包");
-                await DownloadDalamudPackage(addonPath, assets).ConfigureAwait(false);
+                await DownloadDalamudPackage(addonPath, assets, session).ConfigureAwait(false);
             }
 
             CachedFileHashes.Clear();
@@ -693,7 +583,7 @@ public class DalamudUpdater
 
     #region Utility
 
-    private async Task DownloadDalamudPackage(DirectoryInfo addonPath, Dictionary<string, string> assets)
+    private async Task DownloadDalamudPackage(DirectoryInfo addonPath, Dictionary<string, string> assets, UpdateSessionContext session)
     {
         if (!assets.TryGetValue(RELEASE_PACKAGE_ASSET, out var downloadUrl))
             throw new InvalidDataException("[DUPDATE] 未找到 Dalamud 完整包");
@@ -705,7 +595,8 @@ public class DalamudUpdater
 
         try
         {
-            await DownloadFiles([(downloadUrl, downloadPath)]).ConfigureAwait(false);
+            using var downloadHttpClient = CreateDalamudDownloadHttpClient(session.Protocol);
+            await DownloadFiles([(downloadUrl, downloadPath)], downloadHttpClient, session).ConfigureAwait(false);
             PlatformHelpers.Unzip7ZAsset(downloadPath, addonPath.FullName);
         }
         finally
@@ -715,7 +606,7 @@ public class DalamudUpdater
         }
     }
 
-    private async Task DownloadVerifiedFiles(IReadOnlyList<(string Url, string Path, string Hash)> files)
+    private async Task DownloadVerifiedFiles(IReadOnlyList<(string Url, string Path, string Hash)> files, HttpClient httpClient, UpdateSessionContext session)
     {
         if (files.Count == 0)
             return;
@@ -730,7 +621,7 @@ public class DalamudUpdater
 
         try
         {
-            await DownloadFiles(downloads).ConfigureAwait(false);
+            await DownloadFiles(downloads, httpClient, session).ConfigureAwait(false);
 
             for (var i = 0; i < files.Count; i++)
             {
@@ -757,6 +648,21 @@ public class DalamudUpdater
                     File.Delete(download.Path);
             }
         }
+    }
+
+    private async Task DownloadFiles(IReadOnlyList<(string Url, string Path)> files, HttpClient httpClient, UpdateSessionContext session)
+    {
+        using var downloader = new HttpClientDownloadWithProgress(files, httpClient, NoProgressTimeout);
+        downloader.ProgressChanged += (size, downloaded, progress) =>
+        {
+            var hadProgress = downloaded > session.LastDownloadedBytes;
+            session.LastAttemptHadProgress = session.LastAttemptHadProgress || hadProgress;
+            session.LastDownloadedBytes    = downloaded;
+            session.LastNoProgressDuration = hadProgress ? TimeSpan.Zero : NoProgressTimeout;
+            ReportLoadingProgressCore(size, downloaded, progress);
+        };
+
+        await downloader.Download().ConfigureAwait(false);
     }
 
     private static Dictionary<string, string> GetReleaseAssetUrls(JsonElement assets)
@@ -908,15 +814,12 @@ public class DalamudUpdater
         }
     }
 
-    public async Task DownloadFile(string url, string path) =>
-        await DownloadFiles([(url, path)]).ConfigureAwait(false);
-
-    private async Task DownloadFiles(IReadOnlyList<(string Url, string Path)> files)
+    public async Task DownloadFile(string url, string path)
     {
-        using var downloader = new HttpClientDownloadWithProgress(files);
-        downloader.ProgressChanged += ReportLoadingProgressCore;
-
-        await downloader.Download().ConfigureAwait(false);
+        using var httpClient = CreateHttpClient(ResolveInitialProtocol());
+        httpClient.Timeout = DalamudDownloadTimeout;
+        var session = new UpdateSessionContext { Protocol = ResolveInitialProtocol() };
+        await DownloadFiles([(url, path)], httpClient, session).ConfigureAwait(false);
     }
 
     #endregion
@@ -950,6 +853,282 @@ public class DalamudUpdater
 
     #endregion
 
+    #region Strategy
+
+    private async Task<UpdateExecutionResult> RunWithAdaptiveStrategyAsync(bool refreshVersionInfo)
+    {
+        var session = new UpdateSessionContext
+        {
+            StartedAtUtc = DateTime.UtcNow,
+            Protocol     = ResolveInitialProtocol(),
+            UpdateMode   = updateHttpMode
+        };
+
+        Exception? lastException = null;
+        var fallbackTriggered = false;
+
+        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
+        {
+            var previousAttemptHadProgress = session.LastAttemptHadProgress;
+            session.Attempt            = attempt;
+            session.Elapsed            = DateTime.UtcNow - session.StartedAtUtc;
+            session.LastDownloadedBytes = 0;
+            session.LastAttemptHadProgress = false;
+            session.LastNoProgressDuration = TimeSpan.Zero;
+
+            if (attempt > 1 && session.Elapsed >= SoftBudget && !previousAttemptHadProgress)
+            {
+                Log.Warning("[DUPDATE] 软预算已耗尽且无有效进度，终止重试。attempt={Attempt} protocol={Protocol} elapsed={Elapsed}",
+                    attempt, session.Protocol, session.Elapsed);
+                break;
+            }
+
+            try
+            {
+                using var httpClient = CreateHttpClient(session.Protocol);
+                await UpdateDalamud(refreshVersionInfo, session, httpClient).ConfigureAwait(false);
+                SaveProtocolState(session.Protocol);
+                return new UpdateExecutionResult(true, null);
+            }
+            catch (Exception ex)
+            {
+                lastException = ex;
+                var errorKind = ClassifyError(ex);
+                session.Elapsed = DateTime.UtcNow - session.StartedAtUtc;
+
+                Log.Error(ex,
+                    "[DUPDATE] 更新失败 attempt={Attempt} protocol={Protocol} errorKind={ErrorKind} fallbackTriggered={FallbackTriggered} noProgressDuration={NoProgressDuration} elapsed={Elapsed}",
+                    attempt,
+                    session.Protocol,
+                    errorKind,
+                    fallbackTriggered,
+                    session.LastNoProgressDuration,
+                    session.Elapsed);
+
+                if (errorKind == UpdateErrorKind.NonRetryable)
+                    break;
+
+                if (ShouldFallbackProtocol(session, errorKind))
+                {
+                    session.Protocol = HttpProtocol.Http11;
+                    session.ProtocolSwitchCount++;
+                    fallbackTriggered = true;
+                    SetLoadingDetail("自动切换兼容模式重试...");
+                    Log.Warning("[DUPDATE] 自动切换兼容模式重试。attempt={Attempt} protocol={Protocol}", attempt, session.Protocol);
+                }
+
+                var delay = ComputeBackoffDelay(attempt);
+                await Task.Delay(delay).ConfigureAwait(false);
+            }
+        }
+
+        return new UpdateExecutionResult(false, lastException);
+    }
+
+    private HttpClient CreateHttpClient(HttpProtocol protocol)
+    {
+        var requestVersion = protocol == HttpProtocol.Http11 ? HttpVersion.Version11 : HttpVersion.Version20;
+        var versionPolicy  = protocol == HttpProtocol.Http11 ? HttpVersionPolicy.RequestVersionOrLower : HttpVersionPolicy.RequestVersionOrHigher;
+
+        var client = XLHttpClientFactory.Create(MetadataRequestTimeout, 50, DecompressionMethods.All, requestVersion, versionPolicy);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+
+        if (!string.IsNullOrWhiteSpace(this.githubToken))
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", this.githubToken);
+
+        return client;
+    }
+
+    private HttpClient CreateDalamudDownloadHttpClient(HttpProtocol protocol)
+    {
+        var client = CreateHttpClient(protocol);
+        client.Timeout = DalamudDownloadTimeout;
+        return client;
+    }
+
+    private HttpProtocol ResolveInitialProtocol()
+    {
+        switch (updateHttpMode)
+        {
+            case DalamudUpdateHttpMode.Http11:
+                return HttpProtocol.Http11;
+
+            case DalamudUpdateHttpMode.Http2:
+                return HttpProtocol.Http2;
+
+            case DalamudUpdateHttpMode.Auto:
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        var remembered = TryLoadProtocolState();
+        if (remembered != null && DateTime.UtcNow - remembered.TimestampUtc <= ProtocolMemoryTtl)
+            return remembered.Protocol;
+
+        return HttpProtocol.Http2;
+    }
+
+    private bool ShouldFallbackProtocol(UpdateSessionContext session, UpdateErrorKind errorKind)
+    {
+        if (session.UpdateMode != DalamudUpdateHttpMode.Auto)
+            return false;
+
+        if (session.Protocol != HttpProtocol.Http2)
+            return false;
+
+        if (session.ProtocolSwitchCount >= MaxProtocolSwitchesPerRun)
+            return false;
+
+        return errorKind == UpdateErrorKind.Retryable;
+    }
+
+    private static UpdateErrorKind ClassifyError(Exception ex)
+    {
+        var current = ex;
+
+        while (true)
+        {
+            switch (current)
+            {
+                case DalamudIntegrityException or InvalidDataException:
+                    return UpdateErrorKind.NonRetryable;
+                case TimeoutException:
+                case TaskCanceledException or OperationCanceledException:
+                    return UpdateErrorKind.Retryable;
+                case UnauthorizedAccessException:
+                    return UpdateErrorKind.NonRetryable;
+                case HttpRequestException httpRequestException:
+                    switch (httpRequestException.StatusCode)
+                    {
+                        case HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.NotFound:
+                            return UpdateErrorKind.NonRetryable;
+
+                        case HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout:
+                            return UpdateErrorKind.Retryable;
+                    }
+
+                    if (httpRequestException.InnerException is TimeoutException)
+                        return UpdateErrorKind.Retryable;
+
+                    break;
+                case IOException ioException:
+                    return IsRetryableIOException(ioException)
+                        ? UpdateErrorKind.Retryable
+                        : UpdateErrorKind.NonRetryable;
+            }
+
+            if (current.InnerException != null)
+            {
+                current = current.InnerException;
+                continue;
+            }
+
+            return UpdateErrorKind.Retryable;
+        }
+    }
+
+    private static TimeSpan ComputeBackoffDelay(int attempt)
+    {
+        var exponent = Math.Min(attempt - 1, 6);
+        var baseSeconds = Math.Min(BackoffBaseSeconds * Math.Pow(2, exponent), BackoffMaxSeconds);
+        var jitterFactor = 1 + (Random.Shared.NextDouble() * BackoffJitterRatio);
+        return TimeSpan.FromSeconds(baseSeconds * jitterFactor);
+    }
+
+    private static bool IsRetryableIOException(IOException ex)
+    {
+        return ex is not
+            (
+                DirectoryNotFoundException
+                or DriveNotFoundException
+                or PathTooLongException
+                or FileNotFoundException
+            );
+    }
+
+    private ProtocolStateDto? TryLoadProtocolState()
+    {
+        try
+        {
+            if (!protocolStateFile.Exists)
+                return null;
+
+            var json = File.ReadAllText(protocolStateFile.FullName, Encoding.UTF8);
+            return System.Text.Json.JsonSerializer.Deserialize<ProtocolStateDto>(json);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void SaveProtocolState(HttpProtocol protocol)
+    {
+        try
+        {
+            if (protocolStateFile.Directory is { Exists: false } stateDirectory)
+                stateDirectory.Create();
+
+            var dto = new ProtocolStateDto
+            {
+                Protocol     = protocol,
+                TimestampUtc = DateTime.UtcNow,
+                Version      = Version
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(dto, StateJsonOptions);
+            File.WriteAllText(protocolStateFile.FullName, json, Utf8WithoutBom);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[DUPDATE] 写入协议记忆失败，不影响主流程");
+        }
+    }
+
+    private sealed class UpdateSessionContext
+    {
+        public int                   Attempt;
+        public DateTime              StartedAtUtc;
+        public TimeSpan              Elapsed;
+        public HttpProtocol          Protocol;
+        public DalamudUpdateHttpMode UpdateMode;
+        public int                   ProtocolSwitchCount;
+        public bool                  LastAttemptHadProgress;
+        public long                  LastDownloadedBytes;
+        public TimeSpan              LastNoProgressDuration;
+    }
+
+    private sealed class UpdateExecutionResult(bool isSuccess, Exception? lastException)
+    {
+        public bool       IsSuccess     { get; } = isSuccess;
+        public Exception? LastException { get; } = lastException;
+    }
+
+    private sealed class ProtocolStateDto
+    {
+        public HttpProtocol Protocol { get; set; }
+
+        public DateTime TimestampUtc { get; set; }
+
+        public string? Version { get; set; }
+    }
+
+    private enum HttpProtocol
+    {
+        Http2,
+        Http11
+    }
+
+    private enum UpdateErrorKind
+    {
+        Retryable,
+        NonRetryable
+    }
+
+    #endregion
+
     public enum DownloadState
     {
         Unknown,
@@ -968,6 +1147,26 @@ public class DalamudUpdater
     private const string RELEASE_PACKAGE_ASSET = "latest.7z";
 
     private const string RELEASE_HASHES_ASSET = "hashes.json";
+
+    private const int MaxAttempts = 8;
+
+    private const int MaxProtocolSwitchesPerRun = 1;
+
+    private const double BackoffBaseSeconds = 1;
+
+    private const double BackoffMaxSeconds = 15;
+
+    private const double BackoffJitterRatio = 0.3;
+
+    private static readonly TimeSpan SoftBudget = TimeSpan.FromMinutes(8);
+
+    private static readonly TimeSpan NoProgressTimeout = TimeSpan.FromSeconds(45);
+
+    private static readonly TimeSpan MetadataRequestTimeout = TimeSpan.FromSeconds(20);
+
+    private static readonly TimeSpan ProtocolMemoryTtl = TimeSpan.FromHours(24);
+
+    private static readonly TimeSpan DalamudDownloadTimeout = TimeSpan.FromMinutes(10);
 
     #endregion
 }

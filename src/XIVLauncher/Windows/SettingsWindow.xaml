@@ -582,56 +582,6 @@
 
                             <materialDesign:Card Style="{StaticResource SettingCardStyle}">
                                 <StackPanel>
-                                    <Grid Margin="0,0,0,24">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                       Text="更新超时"
-                                                       FontSize="15" />
-                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                       Text="控制 Dalamud 更新请求连接超时时间（1-30 秒）"
-                                                       Opacity="0.7"
-                                                       FontSize="12" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Right">
-                                            <TextBox Width="70" Text="{Binding DalamudUpdateTimeoutSeconds}"
-                                                     Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                     VerticalAlignment="Center" HorizontalContentAlignment="Right" />
-                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="秒"
-                                                       Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <Grid Margin="0,0,0,24">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                       Text="更新重试次数"
-                                                       FontSize="15" />
-                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                       Text="控制 Dalamud 更新失败后的重试次数（1-10 次）"
-                                                       Opacity="0.7"
-                                                       FontSize="12" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                                    VerticalAlignment="Center"
-                                                    HorizontalAlignment="Right">
-                                            <TextBox Width="70" Text="{Binding DalamudUpdateMaxRetries}"
-                                                     Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                     VerticalAlignment="Center" HorizontalContentAlignment="Right" />
-                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="次"
-                                                       Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
-                                        </StackPanel>
-                                    </Grid>
-
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />

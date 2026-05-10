@@ -17,6 +17,8 @@ namespace XIVLauncher.Common.Util;
 public class HttpClientDownloadWithProgress : IDisposable
 {
     private readonly HttpClient                  httpClient;
+    private readonly bool                        ownsHttpClient;
+    private readonly TimeSpan?                   noProgressTimeout;
     private readonly (string Url, string Path)[] downloads;
     private readonly long[]                      actualDownloadedSizes;
     private readonly long[]                      reportedSizes;
@@ -25,7 +27,12 @@ public class HttpClientDownloadWithProgress : IDisposable
     private long totalDownloadedSize;
     private long totalSize;
 
-    public HttpClientDownloadWithProgress(IReadOnlyList<(string Url, string Path)> downloads)
+    public HttpClientDownloadWithProgress(IReadOnlyList<(string Url, string Path)> downloads, TimeSpan? noProgressTimeout = null)
+        : this(downloads, null, noProgressTimeout)
+    {
+    }
+
+    public HttpClientDownloadWithProgress(IReadOnlyList<(string Url, string Path)> downloads, HttpClient? httpClient, TimeSpan? noProgressTimeout = null)
     {
         if (downloads.Count == 0)
             throw new ArgumentException("下载列表不能为空", nameof(downloads));
@@ -36,15 +43,29 @@ public class HttpClientDownloadWithProgress : IDisposable
         reportedSizes         = new long[downloads.Count];
         totalSizes            = new long[downloads.Count];
 
-        httpClient         = XLHttpClientFactory.Create(TimeSpan.FromSeconds(5), MAX_CONNECTIONS_PER_SERVER, DecompressionMethods.All);
-        httpClient.Timeout = TimeSpan.FromMinutes(10);
-        httpClient.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
+        this.noProgressTimeout = noProgressTimeout;
+
+        if (httpClient != null)
+        {
+            this.httpClient  = httpClient;
+            ownsHttpClient = false;
+        }
+        else
+        {
+            this.httpClient  = XLHttpClientFactory.Create(TimeSpan.FromSeconds(5), MAX_CONNECTIONS_PER_SERVER, DecompressionMethods.All);
+            this.httpClient.Timeout = TimeSpan.FromMinutes(10);
+            this.httpClient.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
+            ownsHttpClient = true;
+        }
     }
 
     #region Disposal
 
-    public void Dispose() =>
-        httpClient?.Dispose();
+    public void Dispose()
+    {
+        if (ownsHttpClient)
+            httpClient?.Dispose();
+    }
 
     #endregion
 
@@ -121,7 +142,7 @@ public class HttpClientDownloadWithProgress : IDisposable
 
         while (true)
         {
-            var bytesRead = await contentStream.ReadAsync(buffer).ConfigureAwait(false);
+            var bytesRead = await ReadWithNoProgressTimeoutAsync(contentStream, buffer.AsMemory(0, buffer.Length)).ConfigureAwait(false);
 
             if (bytesRead == 0)
             {
@@ -236,7 +257,7 @@ public class HttpClientDownloadWithProgress : IDisposable
 
                 while (true)
                 {
-                    var bytesRead = await contentStream.ReadAsync(buffer.AsMemory(0, BUFFER_SIZE)).ConfigureAwait(false);
+                    var bytesRead = await ReadWithNoProgressTimeoutAsync(contentStream, buffer.AsMemory(0, BUFFER_SIZE)).ConfigureAwait(false);
 
                     if (bytesRead == 0)
                         break;
@@ -265,6 +286,23 @@ public class HttpClientDownloadWithProgress : IDisposable
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private async Task<int> ReadWithNoProgressTimeoutAsync(Stream contentStream, Memory<byte> buffer)
+    {
+        if (!noProgressTimeout.HasValue)
+            return await contentStream.ReadAsync(buffer).ConfigureAwait(false);
+
+        using var cts = new CancellationTokenSource(noProgressTimeout.Value);
+
+        try
+        {
+            return await contentStream.ReadAsync(buffer, cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            throw new TimeoutException($"下载连接已中断，连续 {noProgressTimeout.Value.TotalSeconds:0} 秒未收到任何数据。");
         }
     }
 

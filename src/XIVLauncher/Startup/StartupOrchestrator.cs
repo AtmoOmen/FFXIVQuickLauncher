@@ -308,8 +308,6 @@ public class StartupOrchestrator
                 new(Path.Combine(Paths.RoamingPath, "runtime")),
                 new(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
                 context.Settings.GitHubToken,
-                context.Settings.DalamudUpdateTimeoutSeconds,
-                context.Settings.DalamudUpdateMaxRetries,
                 context.Settings.DalamudUpdateHttpMode
             );
 
