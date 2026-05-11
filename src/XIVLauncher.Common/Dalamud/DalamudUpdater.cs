@@ -132,7 +132,7 @@ public class DalamudUpdater
             var paths                  = PreparePaths();
             var currentVersionVerified = await UpdateDalamudCoreAsync(paths.addonPath, paths.currentVersionPath, session, httpClient);
             await UpdateRuntimeAsync(httpClient);
-            await UpdateAssetsAsync();
+            await UpdateAssetsAsync(session.Protocol, session);
 
             if (!currentVersionVerified && !CheckDalamudIntegrity(paths.currentVersionPath))
                 throw new DalamudIntegrityException("完整性验证最终失败");
@@ -203,6 +203,9 @@ public class DalamudUpdater
         catch (Exception ex)
         {
             Log.Error(ex, "[DUPDATE] 下载 Dalamud 本体失败");
+            if (ClassifyError(ex) == UpdateErrorKind.Retryable)
+                throw;
+
             throw new DalamudIntegrityException("下载 Dalamud 失败", ex);
         }
     }
@@ -219,7 +222,7 @@ public class DalamudUpdater
             cancellationToken: default
         ).ConfigureAwait(false);
 
-    private async Task UpdateAssetsAsync()
+    private async Task UpdateAssetsAsync(HttpProtocol protocol, UpdateSessionContext session)
     {
         Log.Information("[DUPDATE] 开始验证资源文件完整性");
 
@@ -228,13 +231,16 @@ public class DalamudUpdater
 
         try
         {
-            var assetResult = await AssetManager.EnsureAssets(this, assetDirectory).ConfigureAwait(true);
+            var assetResult = await AssetManager.EnsureAssets(this, assetDirectory, protocol, session).ConfigureAwait(true);
             AssetDirectory = assetResult.AssetDir;
             Log.Information("[DUPDATE] 资源文件验证完成: {Path}", AssetDirectory.FullName);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[DUPDATE] 资源文件验证失败");
+            if (ClassifyError(ex) == UpdateErrorKind.Retryable)
+                throw;
+
             throw new DalamudIntegrityException("资源文件验证失败", ex);
         }
     }
@@ -655,10 +661,7 @@ public class DalamudUpdater
         using var downloader = new HttpClientDownloadWithProgress(files, httpClient, NoProgressTimeout);
         downloader.ProgressChanged += (size, downloaded, progress) =>
         {
-            var hadProgress = downloaded > session.LastDownloadedBytes;
-            session.LastAttemptHadProgress = session.LastAttemptHadProgress || hadProgress;
-            session.LastDownloadedBytes    = downloaded;
-            session.LastNoProgressDuration = hadProgress ? TimeSpan.Zero : NoProgressTimeout;
+            session.MarkProgress();
             ReportLoadingProgressCore(size, downloaded, progress);
         };
 
@@ -814,11 +817,10 @@ public class DalamudUpdater
         }
     }
 
-    public async Task DownloadFile(string url, string path)
+    internal async Task DownloadFile(string url, string path, HttpProtocol protocol, UpdateSessionContext session)
     {
-        using var httpClient = CreateHttpClient(ResolveInitialProtocol());
+        using var httpClient = CreateHttpClient(protocol);
         httpClient.Timeout = DalamudDownloadTimeout;
-        var session = new UpdateSessionContext { Protocol = ResolveInitialProtocol() };
         await DownloadFiles([(url, path)], httpClient, session).ConfigureAwait(false);
     }
 
@@ -870,11 +872,9 @@ public class DalamudUpdater
         for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
             var previousAttemptHadProgress = session.LastAttemptHadProgress;
-            session.Attempt            = attempt;
-            session.Elapsed            = DateTime.UtcNow - session.StartedAtUtc;
-            session.LastDownloadedBytes = 0;
-            session.LastAttemptHadProgress = false;
-            session.LastNoProgressDuration = TimeSpan.Zero;
+            session.Attempt = attempt;
+            session.Elapsed = DateTime.UtcNow - session.StartedAtUtc;
+            session.BeginAttempt();
 
             if (attempt > 1 && session.Elapsed >= SoftBudget && !previousAttemptHadProgress)
             {
@@ -1087,17 +1087,39 @@ public class DalamudUpdater
         }
     }
 
-    private sealed class UpdateSessionContext
+    internal sealed class UpdateSessionContext
     {
+        private long lastProgressUtcTicks;
+        private int  lastAttemptHadProgress;
+
         public int                   Attempt;
         public DateTime              StartedAtUtc;
         public TimeSpan              Elapsed;
         public HttpProtocol          Protocol;
         public DalamudUpdateHttpMode UpdateMode;
         public int                   ProtocolSwitchCount;
-        public bool                  LastAttemptHadProgress;
-        public long                  LastDownloadedBytes;
-        public TimeSpan              LastNoProgressDuration;
+        public bool                  LastAttemptHadProgress => Volatile.Read(ref lastAttemptHadProgress) != 0;
+
+        public TimeSpan LastNoProgressDuration
+        {
+            get
+            {
+                var progressUtcTicks = Interlocked.Read(ref this.lastProgressUtcTicks);
+                return progressUtcTicks <= 0 ? TimeSpan.Zero : TimeSpan.FromTicks(Math.Max(0, DateTime.UtcNow.Ticks - progressUtcTicks));
+            }
+        }
+
+        public void BeginAttempt()
+        {
+            Volatile.Write(ref lastAttemptHadProgress, 0);
+            Interlocked.Exchange(ref lastProgressUtcTicks, DateTime.UtcNow.Ticks);
+        }
+
+        public void MarkProgress()
+        {
+            Volatile.Write(ref lastAttemptHadProgress, 1);
+            Interlocked.Exchange(ref lastProgressUtcTicks, DateTime.UtcNow.Ticks);
+        }
     }
 
     private sealed class UpdateExecutionResult(bool isSuccess, Exception? lastException)
@@ -1115,7 +1137,7 @@ public class DalamudUpdater
         public string? Version { get; set; }
     }
 
-    private enum HttpProtocol
+    internal enum HttpProtocol
     {
         Http2,
         Http11

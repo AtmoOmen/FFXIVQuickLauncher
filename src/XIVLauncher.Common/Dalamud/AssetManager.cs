@@ -17,7 +17,7 @@ namespace XIVLauncher.Common.Dalamud;
 
 public class AssetManager
 {
-    public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir)
+    internal static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir, DalamudUpdater.HttpProtocol protocol, DalamudUpdater.UpdateSessionContext session)
     {
         using var metaClient = XLHttpClientFactory.Create
         (
@@ -82,7 +82,7 @@ public class AssetManager
             }
         }
 
-        var tasks = new List<Task<bool>>();
+        var tasks = new List<Task>(assetFileDownloadList.Count);
 
         foreach (var entry in assetFileDownloadList)
         {
@@ -117,10 +117,8 @@ public class AssetManager
 
         if (tasks.Count > 0)
         {
-            var downloadResults = await Task.WhenAll(tasks).ConfigureAwait(false);
-
-            for (var i = 0; i < downloadResults.Length; i++)
-                isRefreshNeeded |= downloadResults[i];
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+            isRefreshNeeded = true;
         }
 
         if (isRefreshNeeded)
@@ -151,18 +149,17 @@ public class AssetManager
 
         return (currentDir, info.Version);
 
-        async Task<bool> Download(string url, string path)
+        async Task Download(string url, string path)
         {
             try
             {
                 Log.Information("[DASSET] 正在下载 {0} 至 {1}...", url, path);
-                await updater.DownloadFile(url, path).ConfigureAwait(false);
-                return true;
+                await updater.DownloadFile(url, path, protocol, session).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "[DASSET] 无法下载资源文件: {0}", url);
-                return false;
+                throw;
             }
         }
     }
