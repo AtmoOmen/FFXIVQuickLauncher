@@ -17,6 +17,9 @@ public static class XLHttpClientFactory
             ConnectTimeout                 = connectTimeout,
             MaxConnectionsPerServer        = maxConnectionsPerServer,
             EnableMultipleHttp2Connections = true,
+            KeepAlivePingDelay             = TimeSpan.FromSeconds(KEEP_ALIVE_PING_DELAY_SECONDS),
+            KeepAlivePingTimeout           = TimeSpan.FromSeconds(KEEP_ALIVE_PING_TIMEOUT_SECONDS),
+            KeepAlivePingPolicy            = HttpKeepAlivePingPolicy.WithActiveRequests,
             PooledConnectionLifetime       = TimeSpan.FromMinutes(3),
             PooledConnectionIdleTimeout    = TimeSpan.FromMinutes(1),
             Expect100ContinueTimeout       = TimeSpan.Zero,
@@ -27,4 +30,12 @@ public static class XLHttpClientFactory
 
         return new HttpClient(new Http11FallbackHandler(handler));
     }
+
+    #region Constants
+
+    private const int KEEP_ALIVE_PING_DELAY_SECONDS = 30;
+
+    private const int KEEP_ALIVE_PING_TIMEOUT_SECONDS = 10;
+
+    #endregion
 }

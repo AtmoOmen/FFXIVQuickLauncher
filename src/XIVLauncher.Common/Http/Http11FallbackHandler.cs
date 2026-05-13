@@ -7,11 +7,11 @@ public sealed class Http11FallbackHandler
     HttpMessageHandler innerHandler
 ) : DelegatingHandler(innerHandler)
 {
-    private int http2Failed;
+    private static int sHTTP2Failed;
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        if (http2Failed != 0)
+        if (Volatile.Read(ref sHTTP2Failed) != 0)
         {
             ForceHttp11(request);
             return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -21,11 +21,11 @@ public sealed class Http11FallbackHandler
         {
             return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException) when (Interlocked.Exchange(ref http2Failed, 1) == 0)
+        catch (HttpRequestException) when (Interlocked.Exchange(ref sHTTP2Failed, 1) == 0)
         {
             // ignored
         }
-        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested && Interlocked.Exchange(ref http2Failed, 1) == 0)
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested && Interlocked.Exchange(ref sHTTP2Failed, 1) == 0)
         {
             // ignored
         }
