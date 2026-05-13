@@ -1,4 +1,3 @@
-using System;
 using System.Net.NetworkInformation;
 
 namespace XIVLauncher.Common.Game.Login;

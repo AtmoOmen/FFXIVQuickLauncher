@@ -1,5 +1,3 @@
-using System;
-using System.Threading;
 using XIVLauncher.Common.Game.DCTravel;
 
 namespace XIVLauncher.Common.Game.Login;

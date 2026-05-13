@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.IO.Compression;
+﻿using System.IO.Compression;
 
 namespace XIVLauncher.Common.Patching.ZiPatch.Util;
 

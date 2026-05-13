@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using Serilog;
+﻿using Serilog;
 using XIVLauncher.Common.Patching.Util;
 
 namespace XIVLauncher.Common.Patching.ZiPatch.Chunk;

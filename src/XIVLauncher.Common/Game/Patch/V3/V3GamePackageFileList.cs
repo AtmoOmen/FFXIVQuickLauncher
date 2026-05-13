@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace XIVLauncher.Common.Game.Patch.V3;
 
 public sealed class V3GamePackageFileList

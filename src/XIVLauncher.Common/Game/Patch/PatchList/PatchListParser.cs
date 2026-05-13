@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace XIVLauncher.Common.Game.Patch.PatchList;
+﻿namespace XIVLauncher.Common.Game.Patch.PatchList;
 
 internal class PatchListParser
 {

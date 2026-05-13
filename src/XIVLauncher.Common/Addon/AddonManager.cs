@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using Serilog;
+﻿using Serilog;
 
 namespace XIVLauncher.Common.Addon;
 

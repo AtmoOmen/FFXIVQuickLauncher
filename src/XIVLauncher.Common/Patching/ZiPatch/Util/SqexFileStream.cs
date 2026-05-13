@@ -1,7 +1,4 @@
-﻿using System.IO;
-using System.Threading;
-
-namespace XIVLauncher.Common.Patching.ZiPatch.Util;
+﻿namespace XIVLauncher.Common.Patching.ZiPatch.Util;
 
 public class SqexFileStream : FileStream
 {

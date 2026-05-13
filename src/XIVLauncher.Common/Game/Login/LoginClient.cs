@@ -1,8 +1,4 @@
-using System;
 using System.Collections.Frozen;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Serilog;
 using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Login.Channels;

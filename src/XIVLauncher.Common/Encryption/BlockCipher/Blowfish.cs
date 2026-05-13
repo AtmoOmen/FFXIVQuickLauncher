@@ -4,7 +4,6 @@
 //       It's totally okay to change this. But for now, this is what it is atm.
 // ReSharper disable InconsistentNaming
 
-using System;
 using System.Buffers.Binary;
 
 namespace XIVLauncher.Common.Encryption.BlockCipher;

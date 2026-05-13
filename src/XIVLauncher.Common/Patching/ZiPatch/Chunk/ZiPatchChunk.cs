@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
-using System.Threading;
+﻿using System.Reflection;
 using XIVLauncher.Common.Patching.Util;
 using XIVLauncher.Common.Patching.ZiPatch.Util;
 

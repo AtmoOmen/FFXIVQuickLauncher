@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace XIVLauncher.Common.Encryption;
+﻿namespace XIVLauncher.Common.Encryption;
 
 public class LegacyBlowfish
 {

@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace XIVLauncher.Common.Patching.ZiPatch.Chunk;
+﻿namespace XIVLauncher.Common.Patching.ZiPatch.Chunk;
 
 // ReSharper disable once InconsistentNaming
 public class XXXXChunk : ZiPatchChunk

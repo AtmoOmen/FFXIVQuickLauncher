@@ -1,5 +1,3 @@
-using System;
-
 namespace XIVLauncher.Common.PlatformAbstractions;
 
 public interface IDalamudCompatibilityCheck

@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-
-namespace XIVLauncher.Common.Patching.Util;
+﻿namespace XIVLauncher.Common.Patching.Util;
 
 public class CircularMemoryStream : Stream
 {

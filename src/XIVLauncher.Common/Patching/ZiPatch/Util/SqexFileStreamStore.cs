@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-
-namespace XIVLauncher.Common.Patching.ZiPatch.Util;
+﻿namespace XIVLauncher.Common.Patching.ZiPatch.Util;
 
 public class SqexFileStreamStore : IDisposable
 {

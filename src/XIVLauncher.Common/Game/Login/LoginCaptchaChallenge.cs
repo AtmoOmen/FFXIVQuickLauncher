@@ -1,7 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace XIVLauncher.Common.Game.Login;
 
 public sealed class LoginCaptchaChallenge

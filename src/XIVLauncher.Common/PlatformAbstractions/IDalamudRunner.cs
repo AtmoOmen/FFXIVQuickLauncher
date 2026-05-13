@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
+﻿using System.Diagnostics;
 using XIVLauncher.Common.Dalamud;
 
 namespace XIVLauncher.Common.PlatformAbstractions;

@@ -1,5 +1,3 @@
-using System;
-
 namespace XIVLauncher.Common.Dalamud;
 
 public class DalamudIntegrityException

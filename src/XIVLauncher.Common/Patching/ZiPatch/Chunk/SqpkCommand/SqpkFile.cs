@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using XIVLauncher.Common.Patching.Util;
+﻿using XIVLauncher.Common.Patching.Util;
 using XIVLauncher.Common.Patching.ZiPatch.Util;
 
 namespace XIVLauncher.Common.Patching.ZiPatch.Chunk.SqpkCommand;

@@ -1,12 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
 using XIVLauncher.Common.Game.Patch.V3;
 
 namespace XIVLauncher.Common.Game.Integrity;

@@ -1,6 +1,4 @@
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using XIVLauncher.Common.Game.Exceptions;
 
 namespace XIVLauncher.Common.Game.Login.Channels;

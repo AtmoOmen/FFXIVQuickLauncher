@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace XIVLauncher.Common.Game.Login.Channels;
 
 public sealed class WeGameManualLoginChannel

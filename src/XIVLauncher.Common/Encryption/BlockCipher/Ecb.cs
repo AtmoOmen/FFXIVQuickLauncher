@@ -4,8 +4,6 @@
 //       It's totally okay to change this. But for now, this is what it is atm.
 // ReSharper disable InconsistentNaming
 
-using System;
-
 namespace XIVLauncher.Common.Encryption.BlockCipher;
 
 public sealed class Ecb<T> : IBlockMode where T : IBlockCipher

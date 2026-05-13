@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace XIVLauncher.Common.Game.Exceptions;
+﻿namespace XIVLauncher.Common.Game.Exceptions;
 
 public class BinaryNotPresentException
 (

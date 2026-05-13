@@ -1,5 +1,4 @@
-﻿using System.IO;
-using XIVLauncher.Common.Patching.Util;
+﻿using XIVLauncher.Common.Patching.Util;
 
 namespace XIVLauncher.Common.Patching.ZiPatch.Chunk;
 

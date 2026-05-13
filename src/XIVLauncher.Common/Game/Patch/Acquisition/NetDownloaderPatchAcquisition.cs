@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using Downloader;
+﻿using Downloader;
 using Serilog;
 
 namespace XIVLauncher.Common.Game.Patch.Acquisition;

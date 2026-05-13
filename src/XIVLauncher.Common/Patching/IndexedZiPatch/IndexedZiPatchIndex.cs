@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using XIVLauncher.Common.Patching.ZiPatch;
 using XIVLauncher.Common.Patching.ZiPatch.Chunk;
 using XIVLauncher.Common.Patching.ZiPatch.Chunk.SqpkCommand;

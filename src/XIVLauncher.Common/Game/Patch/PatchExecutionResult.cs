@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace XIVLauncher.Common.Game.Patch;
+﻿namespace XIVLauncher.Common.Game.Patch;
 
 public sealed class PatchExecutionResult
 {

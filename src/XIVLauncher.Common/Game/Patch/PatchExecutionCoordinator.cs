@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.PatchList;
 

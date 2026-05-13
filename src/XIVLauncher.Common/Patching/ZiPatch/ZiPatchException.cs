@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace XIVLauncher.Common.Patching.ZiPatch;
+﻿namespace XIVLauncher.Common.Patching.ZiPatch;
 
 public class ZiPatchException : Exception
 {

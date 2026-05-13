@@ -1,10 +1,8 @@
-using System;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 
 namespace XIVLauncher.Common.Http;
 

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace XIVLauncher.Common.Game.Login;
+﻿namespace XIVLauncher.Common.Game.Login;
 
 public enum LoginType
 {

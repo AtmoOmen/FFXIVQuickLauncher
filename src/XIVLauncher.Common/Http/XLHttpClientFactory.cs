@@ -1,6 +1,4 @@
-using System;
 using System.Net;
-using System.Net.Http;
 
 namespace XIVLauncher.Common.Http;
 
@@ -13,25 +11,20 @@ public static class XLHttpClientFactory
         DecompressionMethods automaticDecompression
     )
     {
-        var client = new HttpClient
-        (
-            new SocketsHttpHandler
-            {
-                UseProxy                       = true,
-                ConnectTimeout                 = connectTimeout,
-                MaxConnectionsPerServer        = maxConnectionsPerServer,
-                EnableMultipleHttp2Connections = true,
-                PooledConnectionLifetime       = TimeSpan.FromMinutes(3),
-                PooledConnectionIdleTimeout    = TimeSpan.FromMinutes(1),
-                Expect100ContinueTimeout       = TimeSpan.Zero,
-                ResponseDrainTimeout           = TimeSpan.FromSeconds(2),
-                AutomaticDecompression         = automaticDecompression,
-                ConnectCallback                = HappyEyeballsCallback.ConnectCallback
-            }
-        );
+        var handler = new SocketsHttpHandler
+        {
+            UseProxy                       = true,
+            ConnectTimeout                 = connectTimeout,
+            MaxConnectionsPerServer        = maxConnectionsPerServer,
+            EnableMultipleHttp2Connections = true,
+            PooledConnectionLifetime       = TimeSpan.FromMinutes(3),
+            PooledConnectionIdleTimeout    = TimeSpan.FromMinutes(1),
+            Expect100ContinueTimeout       = TimeSpan.Zero,
+            ResponseDrainTimeout           = TimeSpan.FromSeconds(2),
+            AutomaticDecompression         = automaticDecompression,
+            ConnectCallback                = HappyEyeballsCallback.ConnectCallback
+        };
 
-        client.DefaultRequestVersion = HttpVersion.Version20;
-        client.DefaultVersionPolicy  = HttpVersionPolicy.RequestVersionOrHigher;
-        return client;
+        return new HttpClient(new Http11FallbackHandler(handler));
     }
 }

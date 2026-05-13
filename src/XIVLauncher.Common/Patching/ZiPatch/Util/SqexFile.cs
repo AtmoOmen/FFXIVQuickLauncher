@@ -1,9 +1,4 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-
-namespace XIVLauncher.Common.Patching.ZiPatch.Util;
+﻿namespace XIVLauncher.Common.Patching.ZiPatch.Util;
 
 public class SqexFile
 {

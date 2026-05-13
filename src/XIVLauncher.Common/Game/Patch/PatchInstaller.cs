@@ -1,8 +1,5 @@
-using System;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
-using System.Threading;
 using Serilog;
 using XIVLauncher.Common.Game.Patch.PatchList;
 using XIVLauncher.Common.Patching;

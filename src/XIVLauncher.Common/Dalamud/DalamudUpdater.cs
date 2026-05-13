@@ -1,13 +1,7 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
@@ -473,62 +467,47 @@ public class DalamudUpdater
 
     public async Task GetDalamudVersionInfoAsync()
     {
+        runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(httpClient).ConfigureAwait(false);
+
+        Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
+
+        var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
+        await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
+
+        var       json    = await response.Content.ReadAsStringAsync();
+        using var jsonDoc = JsonDocument.Parse(json);
+
+        var version = jsonDoc.RootElement.GetProperty("tag_name").GetString();
+        if (string.IsNullOrWhiteSpace(version))
+            throw new NullReferenceException("[DUPDATE] 未能找到对应的版本信息");
+        Version = version;
+
+        var assets    = jsonDoc.RootElement.GetProperty("assets");
+        var assetUrls = GetReleaseAssetUrls(assets);
+
+        if (!assetUrls.TryGetValue(RELEASE_HASHES_ASSET, out var downloadUrl))
+            throw new NullReferenceException("[DUPDATE] 未能找到对应的 hashes.json 文件");
+
+        var downloadPath = PlatformHelpers.GetTempFileName();
+
         try
         {
-            runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(httpClient).ConfigureAwait(false);
-
-            Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
-
-            var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
-            await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
-
-            var       json    = await response.Content.ReadAsStringAsync();
-            using var jsonDoc = JsonDocument.Parse(json);
-
-            var version = jsonDoc.RootElement.GetProperty("tag_name").GetString();
-            if (string.IsNullOrWhiteSpace(version))
-                throw new NullReferenceException("[DUPDATE] 未能找到对应的版本信息");
-            Version = version;
-
-            var assets    = jsonDoc.RootElement.GetProperty("assets");
-            var assetUrls = GetReleaseAssetUrls(assets);
-
-            if (!assetUrls.TryGetValue(RELEASE_HASHES_ASSET, out var downloadUrl))
-                throw new NullReferenceException("[DUPDATE] 未能找到对应的 hashes.json 文件");
-
-            var downloadPath = PlatformHelpers.GetTempFileName();
-
-            try
+            using (var fileResponse = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
             {
-                using (var fileResponse = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
-                {
-                    await fileResponse.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
-                    using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                        await fileResponse.Content.CopyToAsync(fileStream);
-                }
-
-                var hash = ComputeFileHash(downloadPath);
-
-                Log.Information($"[DUPDATE] 获取到远端 Dalamud 哈希: {hash}");
-                OnlineHash = hash;
+                await fileResponse.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
+                using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    await fileResponse.Content.CopyToAsync(fileStream);
             }
-            finally
-            {
-                if (File.Exists(downloadPath))
-                    File.Delete(downloadPath);
-            }
+
+            var hash = ComputeFileHash(downloadPath);
+
+            Log.Information($"[DUPDATE] 获取到远端 Dalamud 哈希: {hash}");
+            OnlineHash = hash;
         }
-        catch (HttpRequestException e)
+        finally
         {
-            throw new Exception("访问 Github API 时发生错误: " + e.Message);
-        }
-        catch (TaskCanceledException)
-        {
-            throw new Exception("下载超时");
-        }
-        catch (OperationCanceledException)
-        {
-            throw new Exception("下载取消");
+            if (File.Exists(downloadPath))
+                File.Delete(downloadPath);
         }
     }
 
@@ -565,11 +544,6 @@ public class DalamudUpdater
 
             CachedFileHashes.Clear();
             RefreshDalamudDevCache(addonPath, devPath);
-        }
-        catch (HttpRequestException e)
-        {
-            Log.Error(e, "[DUPDATE] GitHub API 请求失败");
-            throw;
         }
         catch (Exception ex)
         {

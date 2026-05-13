@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace XIVLauncher.Common.Patching.Rpc.Implementations;
 
 public class InProcessRpc : IRpc, IDisposable

@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace XIVLauncher.Common.Game.Login;
+﻿namespace XIVLauncher.Common.Game.Login;
 
 public class LoginTypeOption
 {

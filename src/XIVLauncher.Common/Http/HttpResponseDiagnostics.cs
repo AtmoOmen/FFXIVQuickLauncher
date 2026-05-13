@@ -1,8 +1,3 @@
-using System;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace XIVLauncher.Common.Http;
 
 public static class HttpResponseDiagnostics

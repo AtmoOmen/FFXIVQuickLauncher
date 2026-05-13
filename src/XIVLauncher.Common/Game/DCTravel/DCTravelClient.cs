@@ -1,12 +1,6 @@
-using System;
 using System.Collections.Frozen;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Text.Json.Nodes;
-using System.Threading;
-using System.Threading.Tasks;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Exceptions;

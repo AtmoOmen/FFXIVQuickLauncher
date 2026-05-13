@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace XIVLauncher.Common.Patching.ZiPatch.Chunk;
+﻿namespace XIVLauncher.Common.Patching.ZiPatch.Chunk;
 
 public class EndOfFileChunk : ZiPatchChunk
 {

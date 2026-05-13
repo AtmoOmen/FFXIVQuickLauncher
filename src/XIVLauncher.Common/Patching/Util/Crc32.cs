@@ -1,6 +1,4 @@
-﻿using System.Linq;
-
-namespace XIVLauncher.Common.Patching.Util;
+﻿namespace XIVLauncher.Common.Patching.Util;
 
 /// <summary>
 ///     Performs the 32-bit reversed variant of the cyclic redundancy check algorithm

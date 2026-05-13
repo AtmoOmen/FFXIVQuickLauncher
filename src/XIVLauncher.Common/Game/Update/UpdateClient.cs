@@ -1,6 +1,3 @@
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Serilog;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Game.Patch.V3;

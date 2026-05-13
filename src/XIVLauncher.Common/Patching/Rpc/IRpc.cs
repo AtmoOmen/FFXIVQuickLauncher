@@ -1,5 +1,3 @@
-using System;
-
 namespace XIVLauncher.Common.Patching.Rpc;
 
 public interface IRpc

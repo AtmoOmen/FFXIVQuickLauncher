@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace XIVLauncher.Common.Patching.ZiPatch.Util;
+﻿namespace XIVLauncher.Common.Patching.ZiPatch.Util;
 
 internal class SqpackIndexFile : SqpackFile
 {

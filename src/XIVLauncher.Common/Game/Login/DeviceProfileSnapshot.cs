@@ -1,5 +1,3 @@
-using System;
-
 namespace XIVLauncher.Common.Game.Login;
 
 public sealed class DeviceProfileSnapshot : IEquatable<DeviceProfileSnapshot>

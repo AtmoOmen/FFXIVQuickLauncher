@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
-using XIVLauncher.Common.Constant;
+﻿using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Patch.Acquisition.Aria.Attributes;
 using XIVLauncher.Common.Game.Patch.Acquisition.Aria.JsonRpc;
 

@@ -1,8 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-
-namespace XIVLauncher.Common.Patching.Util;
+﻿namespace XIVLauncher.Common.Patching.Util;
 
 public class ReusableByteBufferManager
 {

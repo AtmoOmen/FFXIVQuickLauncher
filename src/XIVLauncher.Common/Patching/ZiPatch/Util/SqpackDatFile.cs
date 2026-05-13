@@ -1,5 +1,4 @@
-﻿using System.IO;
-using System.Text;
+﻿using System.Text;
 
 namespace XIVLauncher.Common.Patching.ZiPatch.Util;
 

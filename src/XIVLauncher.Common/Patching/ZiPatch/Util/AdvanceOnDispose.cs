@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-
 namespace XIVLauncher.Common.Patching.ZiPatch.Util;
 
 public sealed class AdvanceOnDispose : IDisposable

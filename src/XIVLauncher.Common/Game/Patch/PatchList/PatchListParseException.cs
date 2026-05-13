@@ -1,5 +1,3 @@
-using System;
-
 namespace XIVLauncher.Common.Game.Patch.PatchList;
 
 public class PatchListParseException

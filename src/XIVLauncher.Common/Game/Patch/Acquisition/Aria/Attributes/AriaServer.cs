@@ -3,7 +3,6 @@
  * You can find the original code in this GitHub repository: https://github.com/huming2207/AriaNet
  */
 
-using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace XIVLauncher.Common.Game.Patch.Acquisition.Aria.Attributes;

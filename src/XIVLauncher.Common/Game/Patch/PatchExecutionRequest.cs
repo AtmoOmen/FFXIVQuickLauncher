@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-
-namespace XIVLauncher.Common.Game.Patch;
+﻿namespace XIVLauncher.Common.Game.Patch;
 
 public sealed class PatchExecutionRequest
 {

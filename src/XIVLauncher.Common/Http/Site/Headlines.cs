@@ -1,5 +1,4 @@
 using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;

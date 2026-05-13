@@ -1,4 +1,3 @@
-using System.IO;
 using Newtonsoft.Json;
 
 namespace XIVLauncher.Common.Patching.Rpc;
