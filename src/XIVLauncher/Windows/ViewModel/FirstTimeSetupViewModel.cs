@@ -133,7 +133,7 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
         {
             var result = _dialogService.ShowMessage
             (
-                "当前目录中没有检测到游戏安装，XIVLauncher 会在首次登录时尝试安装游戏。是否继续？",
+                "当前目录中没有检测到游戏安装，是否继续？你也可以稍后登录时再安装游戏。",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.YesNo
             );

@@ -875,8 +875,26 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                     break;
 
                 case InvalidDataException invalidDataException when invalidDataException.Message.Contains("当前游戏数据版本", StringComparison.Ordinal):
+                {
+                    if (App.Settings.GamePath != null && Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
+                    {
+                        if (CustomMessageBox.Show
+                            (
+                                "未检测到游戏安装, 是否立即下载安装完整游戏?",
+                                "XIVLauncherCN (Soil)",
+                                MessageBoxButton.YesNo,
+                                parentWindow: Window
+                            ) == MessageBoxResult.Yes)
+                        {
+                            await GameClientFileTaskService.RunAsync(GameClientFileTaskKind.FreshInstall).ConfigureAwait(false);
+                        }
+
+                        return null;
+                    }
+
                     msgbox.WithText("无法确认当前游戏版本, 请先运行游戏文件修复后重试");
                     break;
+                }
 
                 case OAuthLoginException oauthLoginException:
                 {

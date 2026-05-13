@@ -4,5 +4,6 @@ public enum GameClientFileTaskKind
 {
     Update,
     Repair,
-    IntegrityCheck
+    IntegrityCheck,
+    FreshInstall
 }

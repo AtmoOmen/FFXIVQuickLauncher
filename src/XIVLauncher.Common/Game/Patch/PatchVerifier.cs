@@ -404,6 +404,43 @@ public class PatchVerifier : IDisposable
                             await sdoFileInstaller.ConstructFromRemoteIntegrity(remoteIntegrity, ProgressUpdateInterval).ConfigureAwait(false);
                             fileBroken = Enumerable.Repeat(false, targetRelativePaths.Count).ToList();
 
+                            if (Mode == PatchVerifierMode.FreshInstall)
+                            {
+                                TaskCount     = targetRelativePaths.Count;
+                                PatchSetIndex = 0;
+                                PatchSetCount = 1;
+
+                                for (var fileIndex = 0; fileIndex < targetRelativePaths.Count; fileIndex++)
+                                {
+                                    var filePath = targetRelativePaths[fileIndex];
+                                    var sdoPath  = $"\\game\\{filePath.Replace('/', '\\')}";
+                                    fileBroken[fileIndex] = true;
+                                    UpdateInstallProgressEntry(fileIndex, filePath, 0, 0);
+                                    await sdoFileInstaller.QueueInstall(fileIndex, sdoPath, _cancellationTokenSource.Token).ConfigureAwait(false);
+                                }
+
+                                ResetInstallProgressDisplay();
+                                CurrentMetaInstallState = IndexedZiPatchInstaller.InstallTaskState.Connecting;
+                                await sdoFileInstaller.Install(MAX_CONCURRENT_CONNECTIONS_FOR_PATCH_SET, _cancellationTokenSource.Token).ConfigureAwait(false);
+                                CurrentInstallBrokenFileCount = 0;
+                                ResetInstallProgressDisplay();
+
+                                if (!string.IsNullOrWhiteSpace(remoteIntegrity.GameVersion))
+                                {
+                                    var gameDir = Path.Combine(_settings.GamePath.FullName, "game");
+                                    if (!Directory.Exists(gameDir))
+                                        Directory.CreateDirectory(gameDir);
+
+                                    await sdoFileInstaller.WriteAllText(Path.Combine(gameDir, "ffxivgame.ver"), remoteIntegrity.GameVersion, _cancellationTokenSource.Token).ConfigureAwait(false);
+                                    await sdoFileInstaller.WriteAllText(Path.Combine(gameDir, "ffxivgame.bck"), remoteIntegrity.GameVersion, _cancellationTokenSource.Token).ConfigureAwait(false);
+                                    Log.Information("[V3Patch] 已写入游戏版本文件, 版本 {GameVersion}", remoteIntegrity.GameVersion);
+                                }
+
+                                NumBrokenFiles  = targetRelativePaths.Count;
+                                PatchSetIndex   = PatchSetCount;
+                            }
+                            else
+                            {
                             TaskCount               = targetRelativePaths.Count;
                             PatchSetIndex           = 0;
                             PatchSetCount           = 1;
@@ -459,6 +496,7 @@ public class PatchVerifier : IDisposable
 
                             NumBrokenFiles += fileBroken.Count(x => x);
                             PatchSetIndex  =  PatchSetCount;
+                            }
                         }
                         finally
                         {

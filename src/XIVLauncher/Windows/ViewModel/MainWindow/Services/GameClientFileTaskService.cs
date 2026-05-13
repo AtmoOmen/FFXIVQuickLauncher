@@ -50,6 +50,7 @@ public sealed class GameClientFileTaskService
             GameClientFileTaskKind.Update         => await RunUpdateAsync(viewModel).ConfigureAwait(false),
             GameClientFileTaskKind.Repair         => await RunRepairAsync(viewModel).ConfigureAwait(false),
             GameClientFileTaskKind.IntegrityCheck => await RunIntegrityCheckAsync(viewModel).ConfigureAwait(false),
+            GameClientFileTaskKind.FreshInstall   => await RunFreshInstallAsync(viewModel).ConfigureAwait(false),
             _                                     => throw new ArgumentOutOfRangeException(nameof(kind), kind, "未知客户端文件任务类型")
         };
 
@@ -213,6 +214,25 @@ public sealed class GameClientFileTaskService
         return await RunPatchVerifierAsync(viewModel, PatchVerifierMode.Repair).ConfigureAwait(false);
     }
 
+    private async Task<GameClientFileTaskResult> RunFreshInstallAsync(GameClientFileTaskWindowViewModel viewModel)
+    {
+        const string TITLE = "安装游戏文件";
+
+        if (!TryGetGamePath(out var gamePath, out var gamePathError))
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, gamePathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+
+        if (!TryResolvePatchPath(out var patchPathError))
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, patchPathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+
+        if (!gamePath.Exists)
+            gamePath.Create();
+
+        gamePath.CreateSubdirectory("game");
+        gamePath.CreateSubdirectory("boot");
+
+        return await RunPatchVerifierAsync(viewModel, PatchVerifierMode.FreshInstall).ConfigureAwait(false);
+    }
+
     private async Task<GameClientFileTaskResult> RunIntegrityCheckAsync(GameClientFileTaskWindowViewModel viewModel)
     {
         const string TITLE = "检查游戏完整性";
@@ -283,8 +303,8 @@ public sealed class GameClientFileTaskService
 
     private async Task<GameClientFileTaskResult> RunPatchVerifierAsync(GameClientFileTaskWindowViewModel viewModel, PatchVerifierMode mode)
     {
-        var title      = mode == PatchVerifierMode.Update ? "更新游戏文件" : "修复游戏文件";
-        var actionText = mode == PatchVerifierMode.Update ? "更新" : "修复";
+        var title      = mode switch { PatchVerifierMode.Update => "更新游戏文件", PatchVerifierMode.FreshInstall => "安装游戏文件", _ => "修复游戏文件" };
+        var actionText = mode switch { PatchVerifierMode.Update => "更新", PatchVerifierMode.FreshInstall => "安装", _ => "修复" };
 
         using var mutex = new Mutex(false, "XivLauncherIsPatching");
 
@@ -332,6 +352,16 @@ public sealed class GameClientFileTaskService
                 case PatchVerifier.VerifyState.Done when mode == PatchVerifierMode.Update:
                     return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(title, "游戏更新已完成", "所有更新内容已安装完成"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
 
+                case PatchVerifier.VerifyState.Done when mode == PatchVerifierMode.FreshInstall:
+                {
+                    var action = await WaitForChoiceAsync(viewModel, CreateFreshInstallCompletedSnapshot(verify)).ConfigureAwait(false);
+
+                    if (action == GameClientFileTaskWindowAction.Primary)
+                        return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Success, ShouldLaunchGame = true };
+
+                    return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Success };
+                }
+
                 case PatchVerifier.VerifyState.Done:
                 {
                     var action = await WaitForChoiceAsync(viewModel, CreateRepairCompletedSnapshot(verify)).ConfigureAwait(false);
@@ -371,10 +401,10 @@ public sealed class GameClientFileTaskService
 
     private static GameClientFileTaskSnapshot CreatePatchVerifierSnapshot(PatchVerifierMode mode, PatchVerifier verify)
     {
-        var title       = mode == PatchVerifierMode.Update ? "更新游戏文件" : "修复游戏文件";
-        var listLabel   = mode == PatchVerifierMode.Update ? "更新清单" : "修复清单";
-        var verifyLabel = mode == PatchVerifierMode.Update ? "校验" : "验证";
-        var applyLabel  = mode == PatchVerifierMode.Update ? "更新" : "修复";
+        var title       = mode switch { PatchVerifierMode.Update => "更新游戏文件", PatchVerifierMode.FreshInstall => "安装游戏文件", _ => "修复游戏文件" };
+        var listLabel   = mode switch { PatchVerifierMode.Update => "更新清单", PatchVerifierMode.FreshInstall => "游戏文件清单", _ => "修复清单" };
+        var verifyLabel = mode switch { PatchVerifierMode.Update => "校验", PatchVerifierMode.FreshInstall => "下载", _ => "验证" };
+        var applyLabel  = mode switch { PatchVerifierMode.Update => "更新", PatchVerifierMode.FreshInstall => "安装", _ => "修复" };
 
         return verify.State switch
         {
@@ -485,6 +515,24 @@ public sealed class GameClientFileTaskService
             _                                                            => FormatEstimatedTime(verify.Total - verify.Progress, verify.Speed)
         };
 
+    private static GameClientFileTaskSnapshot CreateFreshInstallCompletedSnapshot(PatchVerifier verify)
+    {
+        var detailText = $"游戏文件安装完成, 共下载 {verify.NumBrokenFiles} 个文件";
+
+        return new GameClientFileTaskSnapshot
+        {
+            Title                  = "安装游戏文件",
+            PhaseText              = "安装已完成",
+            DetailText             = detailText,
+            PrimaryButtonText      = "启动游戏",
+            IsPrimaryButtonVisible = true,
+            IsPrimaryButtonEnabled = true,
+            CloseButtonText        = "关闭",
+            IsCloseButtonVisible   = true,
+            IsCloseButtonEnabled   = true
+        };
+    }
+
     private static GameClientFileTaskSnapshot CreateRepairCompletedSnapshot(PatchVerifier verify)
     {
         var detailText = verify.NumBrokenFiles switch
@@ -513,7 +561,7 @@ public sealed class GameClientFileTaskService
 
     private static GameClientFileTaskSnapshot CreatePatchVerifierFailureSnapshot(PatchVerifierMode mode, PatchVerifier verify)
     {
-        var actionText = mode == PatchVerifierMode.Update ? "更新" : "修复";
+        var actionText = mode switch { PatchVerifierMode.Update => "更新", PatchVerifierMode.FreshInstall => "安装", _ => "修复" };
         var detailText = verify.LastException switch
         {
             null                                                                                    => $"{actionText}失败: 未知错误, 可能需要重新安装游戏",
@@ -523,7 +571,7 @@ public sealed class GameClientFileTaskService
 
         return new GameClientFileTaskSnapshot
         {
-            Title                  = mode == PatchVerifierMode.Update ? "更新游戏文件" : "修复游戏文件",
+            Title                  = mode switch { PatchVerifierMode.Update => "更新游戏文件", PatchVerifierMode.FreshInstall => "安装游戏文件", _ => "修复游戏文件" },
             PhaseText              = $"{actionText}未完成",
             DetailText             = detailText,
             StatusText             = verify.LastException?.GetType().Name ?? string.Empty,
@@ -739,6 +787,20 @@ public sealed class GameClientFileTaskService
         {
             gamePath     = null!;
             errorMessage = "所选路径中没有检测到游戏安装";
+            return false;
+        }
+
+        gamePath     = App.Settings.GamePath;
+        errorMessage = string.Empty;
+        return true;
+    }
+
+    private static bool TryGetGamePath(out DirectoryInfo gamePath, out string errorMessage)
+    {
+        if (App.Settings.GamePath == null || string.IsNullOrWhiteSpace(App.Settings.GamePath.FullName))
+        {
+            gamePath     = null!;
+            errorMessage = "请先选择游戏目录";
             return false;
         }
 
