@@ -91,12 +91,6 @@ public static class IntegrityCheck
         return await metadataClient.DownloadIntegrityCheck(cancellationToken).ConfigureAwait(false);
     }
 
-    public static async Task<string> DownloadLatestLocalVersionFile(CancellationToken cancellationToken = default)
-    {
-        using var metadataClient = new V3GamePatchMetadataClient();
-        return await metadataClient.DownloadLatestLocalVersionFile(cancellationToken).ConfigureAwait(false);
-    }
-
     public static Task<IntegrityCheckResult> RunIntegrityCheckAsync
     (
         DirectoryInfo                      gamePath,

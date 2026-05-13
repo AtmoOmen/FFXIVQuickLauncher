@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
@@ -30,38 +29,6 @@ public sealed class V3GamePatchMetadataClient : IDisposable
         var currentVersion     = currentMapping?.V    ?? string.Empty;
         var currentViewVersion = currentMapping?.View ?? normalizedGameVersion;
 
-        if (string.IsNullOrWhiteSpace(currentVersion))
-        {
-            var localVersionPath = Path.Combine(gamePath.FullName, "LocalVersion3.xml");
-            var parsedLocal      = await ReadVersionInfoAsync(localVersionPath, cancellationToken).ConfigureAwait(false);
-
-            if (parsedLocal != null)
-            {
-                currentVersion     = parsedLocal.Value.DataVersion;
-                currentViewVersion = parsedLocal.Value.ViewVersion;
-                Log.Information("[V3Patch] 已从 LocalVersion3.xml 解析当前数据版本 {CurrentDataVersion}, 显示版本 {CurrentViewVersion}", currentVersion, currentViewVersion);
-            }
-
-            if (parsedLocal == null || !IsCurrentViewVersion(normalizedGameVersion, parsedLocal.Value.ViewVersion))
-            {
-                try
-                {
-                    var remoteLocalVersionText = await DownloadLatestLocalVersionFile(cancellationToken).ConfigureAwait(false);
-                    var parsedRemote           = TryParseVersionInfo(remoteLocalVersionText);
-
-                    if (parsedRemote != null && IsCurrentViewVersion(normalizedGameVersion, parsedRemote.Value.ViewVersion))
-                    {
-                        currentVersion     = parsedRemote.Value.DataVersion;
-                        currentViewVersion = parsedRemote.Value.ViewVersion;
-                        Log.Information("[V3Patch] 已从远端最新 LocalVersion3.xml 解析当前数据版本 {CurrentDataVersion}, 显示版本 {CurrentViewVersion}", currentVersion, currentViewVersion);
-                    }
-                }
-                catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or UnauthorizedAccessException or JsonException)
-                {
-                    Log.Warning(ex, "[V3Patch] 读取远端最新 LocalVersion3.xml 失败");
-                }
-            }
-        }
 
         if (string.IsNullOrWhiteSpace(currentVersion))
             throw new InvalidDataException($"无法确定当前游戏数据版本, 游戏版本 {normalizedGameVersion}, 请运行游戏文件修复后重试");
@@ -136,11 +103,10 @@ public sealed class V3GamePatchMetadataClient : IDisposable
 
         var result = new IntegrityCheckResult
         {
-            AppId                 = headerParts[1],
-            BaseUrl               = headerParts[0],
-            DataVersion           = headerParts[2],
-            GameVersion           = gameVersion,
-            LatestLocalVersionUrl = SdoInfos.LATEST_LOCAL_VERSION_FILE_URL
+            AppId       = headerParts[1],
+            BaseUrl     = headerParts[0],
+            DataVersion = headerParts[2],
+            GameVersion = gameVersion
         };
 
         for (var i = 1; i < integrityLines.Length; i++)
@@ -178,9 +144,6 @@ public sealed class V3GamePatchMetadataClient : IDisposable
                ?? throw new InvalidDataException("未能解析 V3 远端版本信息");
     }
 
-    public Task<string> DownloadLatestLocalVersionFile(CancellationToken cancellationToken = default) =>
-        DownloadString(SdoInfos.LATEST_LOCAL_VERSION_FILE_URL, cancellationToken);
-
     private static V3GameVersionArea GetTargetArea(V3RemoteVersion remoteVersion)
     {
         var targetArea = remoteVersion.Areas.FirstOrDefault(area => area.Id == "0") ?? remoteVersion.Areas.FirstOrDefault();
@@ -209,73 +172,6 @@ public sealed class V3GamePatchMetadataClient : IDisposable
                .Value
                ?.View
                ?? string.Empty;
-    }
-
-    private static bool IsCurrentViewVersion(string normalizedGameVersion, string currentViewVersion) =>
-        !string.IsNullOrWhiteSpace(currentViewVersion)
-        && (string.Equals(currentViewVersion, normalizedGameVersion, StringComparison.Ordinal)
-            || currentViewVersion.StartsWith(normalizedGameVersion, StringComparison.Ordinal));
-
-    private static async Task<(string DataVersion, string ViewVersion)?> ReadVersionInfoAsync(string versionPath, CancellationToken cancellationToken)
-    {
-        if (!File.Exists(versionPath))
-            return null;
-
-        try
-        {
-            var versionText = await File.ReadAllTextAsync(versionPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
-            return TryParseVersionInfo(versionText);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
-        {
-            Log.Warning(ex, "[V3Patch] 读取 LocalVersion3.xml 失败");
-            return null;
-        }
-    }
-
-    private static (string DataVersion, string ViewVersion)? TryParseVersionInfo(string versionText)
-    {
-        try
-        {
-            var productName      = $"zone{SdoInfos.APP_ID}_{SdoInfos.BRANCH_ID}_v3";
-            var startTag         = $"<{productName}>";
-            var endTag           = $"</{productName}>";
-            var jsonStart        = versionText.IndexOf(startTag, StringComparison.Ordinal);
-
-            if (jsonStart < 0)
-                return null;
-
-            jsonStart += startTag.Length;
-            var jsonEnd = versionText.IndexOf(endTag, jsonStart, StringComparison.Ordinal);
-            if (jsonEnd <= jsonStart)
-                return null;
-
-            using var localVersionDocument = JsonDocument.Parse(versionText[jsonStart..jsonEnd]);
-
-            if (!localVersionDocument.RootElement.TryGetProperty("version", out var versionElement))
-                return null;
-
-            var dataVersion = versionElement.TryGetProperty("v", out var dataVersionElement)
-                ? dataVersionElement.GetString() ?? string.Empty
-                : string.Empty;
-            var viewVersion = versionElement.TryGetProperty("view", out var viewVersionElement)
-                ? viewVersionElement.GetString() ?? string.Empty
-                : string.Empty;
-
-            if (string.IsNullOrWhiteSpace(dataVersion))
-                return null;
-
-            return (dataVersion, viewVersion);
-        }
-        catch (Exception ex) when (ex is JsonException)
-        {
-            Log.Warning(ex, "[V3Patch] 解析 LocalVersion3.xml 失败");
-            return null;
-        }
     }
 
     private async Task<string> DownloadString(string url, CancellationToken cancellationToken)

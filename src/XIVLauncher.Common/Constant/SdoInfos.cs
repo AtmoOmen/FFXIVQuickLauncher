@@ -21,6 +21,4 @@ public static class SdoInfos
     public const string REMOTE_VERSION_URL = $"{CONTENT_CONFIG_BASE_URL}/build/ver2data/{APP_ID}/{BRANCH_ID}/-1/ver2.dat";
 
     public const string CLIENT_ALL_FILES_LIST_URL = $"{CONTENT_CONFIG_BASE_URL}/build/{APP_ID}/{BRANCH_ID}/client-all-files-list/client_all_files_list.dat";
-
-    public const string LATEST_LOCAL_VERSION_FILE_URL = $"{CONTENT_CONFIG_BASE_URL}/build/{APP_ID}/{BRANCH_ID}/client-all-files-list/LocalVersion3.xml";
 }

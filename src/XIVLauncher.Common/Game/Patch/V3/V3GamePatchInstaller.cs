@@ -524,24 +524,6 @@ public sealed class V3GamePatchInstaller : IDisposable
             Log.Information("[V3Patch] 更新包处理完成 {PackageName}", packageName);
         }
 
-        Log.Information("[V3Patch] 正在写入 V3 本地版本信息, 数据版本 {DataVersion}, 显示版本 {ViewVersion}", plan.TargetDataVersion, plan.TargetViewVersion);
-        progress?.Report(new() { PhaseText = "正在写入版本信息", CurrentFile = "LocalVersion3.xml" });
-        var productName = $"zone{SdoInfos.APP_ID}_{SdoInfos.BRANCH_ID}_v3";
-        var localVersionPayload = JsonSerializer.Serialize
-        (
-            new
-            {
-                product_name = productName,
-                version = new
-                {
-                    v    = plan.TargetDataVersion,
-                    view = plan.TargetViewVersion
-                }
-            },
-            SerializerOptions
-        );
-        var localVersion = $"""<?xmlversion="1.0"encoding="utf-8"?><Root><{productName}>{localVersionPayload}</{productName}></Root>""";
-        await installer.WriteAllText(Path.Combine(gamePath.FullName, "LocalVersion3.xml"), localVersion, cancellationToken).ConfigureAwait(false);
         Log.Information("[V3Patch] V3 更新安装流程完成");
     }
 

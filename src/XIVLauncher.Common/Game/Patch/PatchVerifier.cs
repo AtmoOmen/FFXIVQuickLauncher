@@ -60,8 +60,6 @@ public class PatchVerifier : IDisposable
         //  shits of Shanda V3 launcher.
         new(@"^Launcher3Configs/.*$", RegexOptions.IgnoreCase),
 
-        new(@"^LocalVersion3\.xml$", RegexOptions.IgnoreCase),
-
         // Repair recycle bin folder.
         new(@"^repair_recycler/.*$", RegexOptions.IgnoreCase)
     ];
@@ -284,16 +282,6 @@ public class PatchVerifier : IDisposable
         return false;
     }
 
-    private async Task RefreshLatestLocalVersionFileAsync(ISdoFileDownloadInstaller installer, IntegrityCheckResult remoteIntegrity)
-    {
-        if (string.IsNullOrWhiteSpace(remoteIntegrity.LatestLocalVersionUrl))
-            throw new InvalidDataException("远端完整性清单缺少 latest_local_version_file_url");
-
-        var xmlContent       = await _client.GetStringAsync(remoteIntegrity.LatestLocalVersionUrl, _cancellationTokenSource.Token).ConfigureAwait(false);
-        var localVersionPath = Path.Combine(_settings.GamePath.FullName, "LocalVersion3.xml");
-        await installer.WriteAllText(localVersionPath, xmlContent, _cancellationTokenSource.Token).ConfigureAwait(false);
-    }
-
     private void RecordProgressForEstimation()
     {
         var now = DateTime.Now.Ticks;
@@ -471,7 +459,6 @@ public class PatchVerifier : IDisposable
 
                             NumBrokenFiles += fileBroken.Count(x => x);
                             PatchSetIndex  =  PatchSetCount;
-                            await RefreshLatestLocalVersionFileAsync(sdoFileInstaller, remoteIntegrity).ConfigureAwait(false);
                         }
                         finally
                         {

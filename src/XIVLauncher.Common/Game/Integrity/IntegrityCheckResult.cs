@@ -9,5 +9,4 @@ public sealed class IntegrityCheckResult
     public string                     BaseUrl               { get; set; } = string.Empty;
     public string                     DataVersion           { get; set; } = string.Empty;
     public string                     AppId                 { get; set; } = string.Empty;
-    public string                     LatestLocalVersionUrl { get; set; } = string.Empty;
 }
