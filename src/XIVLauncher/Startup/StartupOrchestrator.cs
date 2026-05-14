@@ -307,8 +307,8 @@ public class StartupOrchestrator
                     new(Path.Combine(Paths.RoamingPath, "addon")),
                     new(Path.Combine(Paths.RoamingPath, "runtime")),
                     new(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
-                    new(Path.Combine(Paths.RoamingPath, "dalamudConfig")),
-                    new(Path.Combine(Paths.RoamingPath, "logs")),
+                    new(Paths.RoamingPath),
+                    new(Paths.RoamingPath),
                     new(Environment.CurrentDirectory)
                 ),
                 dalamudProgressSink,
