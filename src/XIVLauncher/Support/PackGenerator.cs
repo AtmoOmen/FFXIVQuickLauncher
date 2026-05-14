@@ -6,7 +6,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Windows;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows;
@@ -92,7 +91,7 @@ public static class PackGenerator
 
     private static (string PackFullName, string[] CollectedLogs, string[] SkippedLogs) CreatePack()
     {
-        var outFile = new FileInfo(Path.Combine(Paths.RoamingPath, $"trouble-{DateTimeOffset.Now:yyyyMMddHHmmss}.tspack"));
+        var       outFile = new FileInfo(Path.Combine(Paths.RoamingPath, $"trouble-{DateTimeOffset.Now:yyyyMMddHHmmss}.tspack"));
         using var archive = ZipFile.Open(outFile.FullName, ZipArchiveMode.Create);
 
         using (var troubleEntry = archive.CreateEntry("trouble.json").Open())
@@ -113,10 +112,7 @@ public static class PackGenerator
                      "dalamud.boot.log",
                      "aria.log",
                      "argReader.log"
-                 })
-        {
-            AddIfAvailable(new FileInfo(Path.Combine(Paths.RoamingPath, logFileName)), archive, collectedLogs, skippedLogs);
-        }
+                 }) AddIfAvailable(new FileInfo(Path.Combine(Paths.RoamingPath, logFileName)), archive, collectedLogs, skippedLogs);
 
         return (outFile.FullName, [.. collectedLogs], [.. skippedLogs]);
     }

@@ -157,7 +157,7 @@ public static class GameArgumentInterop
             if (!scan.Found)
                 throw new InvalidOperationException($"无法定位 GameWindow: {SIGNATURE}");
 
-            var address = (nuint)baseAddress + (nuint)scan.Offset;
+            var address       = (nuint)baseAddress + (nuint)scan.Offset;
             var originalBytes = externalMemory.ReadRaw(address, 20);
 
             var codeReader = new ByteArrayCodeReader(originalBytes);
@@ -182,10 +182,10 @@ public static class GameArgumentInterop
 
     public sealed class Fixer
     {
-        private readonly ExternalMemory         externalMemory;
+        private readonly ExternalMemory          externalMemory;
         private readonly List<PrivateAllocation> privateAllocations = [];
-        private readonly Scanner                scanner;
-        private readonly Process                targetProcess;
+        private readonly Scanner                 scanner;
+        private readonly Process                 targetProcess;
 
         private nint  mainModuleRegionSize;
         private nuint mainModuleBaseAddress;
@@ -235,10 +235,10 @@ public static class GameArgumentInterop
             (
                 new BufferAllocatorSettings
                 {
-                    MinAddress = 0,
-                    MaxAddress = nuint.MaxValue,
-                    Size = (uint)testSidPrefixBytes.Length,
-                    TargetProcess = targetProcess,
+                    MinAddress    = 0,
+                    MaxAddress    = nuint.MaxValue,
+                    Size          = (uint)testSidPrefixBytes.Length,
+                    TargetProcess = targetProcess
                 }
             );
             privateAllocations.Add(testSidPrefixAllocation);
@@ -249,10 +249,10 @@ public static class GameArgumentInterop
             (
                 new BufferAllocatorSettings
                 {
-                    MinAddress = 0,
-                    MaxAddress = nuint.MaxValue,
-                    Size = (uint)sndaIdPrefixBytes.Length,
-                    TargetProcess = targetProcess,
+                    MinAddress    = 0,
+                    MaxAddress    = nuint.MaxValue,
+                    Size          = (uint)sndaIdPrefixBytes.Length,
+                    TargetProcess = targetProcess
                 }
             );
             privateAllocations.Add(sndaIdPrefixAllocation);
@@ -359,10 +359,10 @@ public static class GameArgumentInterop
             (
                 new BufferAllocatorSettings
                 {
-                    MinAddress = 0,
-                    MaxAddress = nuint.MaxValue,
-                    Size = (uint)bytes.Length,
-                    TargetProcess = targetProcess,
+                    MinAddress    = 0,
+                    MaxAddress    = nuint.MaxValue,
+                    Size          = (uint)bytes.Length,
+                    TargetProcess = targetProcess
                 }
             );
             privateAllocations.Add(argFixFunctionAllocation);
@@ -382,7 +382,7 @@ public static class GameArgumentInterop
             assembler.mov(rax, argFixFunctionAddress);
             assembler.jmp(rax);
 
-            var bytes = Assemble(assembler);
+            var bytes         = Assemble(assembler);
             var originalBytes = externalMemory.ReadRaw(sdoLoginAddress, bytes.Length + 0x20);
 
             var codeReader = new ByteArrayCodeReader(originalBytes);

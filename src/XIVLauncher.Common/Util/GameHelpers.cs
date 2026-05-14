@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 
 namespace XIVLauncher.Common.Util;
 

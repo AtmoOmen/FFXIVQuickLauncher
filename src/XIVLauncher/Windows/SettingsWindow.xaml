@@ -52,7 +52,8 @@
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Border" Property="Background"
                                         Value="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -136,7 +137,8 @@
                         <materialDesign:PackIcon Kind="Check" Width="18" Height="18" VerticalAlignment="Center"
                                                  Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
                         <TextBlock Text="保存并返回" Margin="8,0,0,0" VerticalAlignment="Center" FontSize="14"
-                                   FontWeight="Medium" Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
+                                   FontWeight="Medium"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
                     </StackPanel>
                 </Button>
             </Grid>
@@ -186,7 +188,8 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="安装更新前先进行确认"
+                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                               Text="安装更新前先进行确认"
                                                FontSize="15" VerticalAlignment="Center" />
                                     <ToggleButton Grid.Column="1"
                                                   IsChecked="{Binding AskBeforePatching}"
@@ -198,7 +201,8 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="保留已下载的补丁包"
+                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                               Text="保留已下载的补丁包"
                                                FontSize="15" VerticalAlignment="Center" />
                                     <ToggleButton Grid.Column="1"
                                                   IsChecked="{Binding KeepPatches}"
@@ -211,7 +215,8 @@
                                         <ColumnDefinition Width="Auto" MinWidth="150" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="下载方式"
+                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                   Text="下载方式"
                                                    FontSize="15" />
                                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                    Text="推荐选择 ARIA（HTTP）" Opacity="0.7" FontSize="12" />
@@ -230,7 +235,8 @@
                                         <ColumnDefinition Width="Auto" MinWidth="150" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="速度限制"
+                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                   Text="速度限制"
                                                    FontSize="15" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal"
@@ -239,13 +245,15 @@
                                         <TextBox Width="80" Text="{Binding SpeedLimitMb}"
                                                  Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                  VerticalAlignment="Center" HorizontalContentAlignment="Right" />
-                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="MB/s"
+                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                   Text="MB/s"
                                                    Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
                                     </StackPanel>
                                 </Grid>
 
                                 <StackPanel>
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="存储目录"
+                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                               Text="存储目录"
                                                FontSize="15" Margin="0,0,0,8" />
                                     <components:FolderEntry Description="选择文件夹"
                                                             Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}"
@@ -343,7 +351,7 @@
                                              Text="{Binding LaunchArgs, UpdateSourceTrigger=PropertyChanged}"
                                              materialDesign:HintAssist.Hint="参数" />
                                 </Grid>
-                                
+
                                 <Grid Margin="0,0,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -353,7 +361,8 @@
                                         <TextBlock Text="游戏退出时软件也一并退出" FontSize="15"
                                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
                                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                   Text="软件在游戏完全退出时, 一并结束自身进程, 若禁用, 则重新唤起主界面" FontSize="12" Opacity="0.7"
+                                                   Text="软件在游戏完全退出时, 一并结束自身进程, 若禁用, 则重新唤起主界面" FontSize="12"
+                                                   Opacity="0.7"
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
                                     <ToggleButton Grid.Column="1"
@@ -361,7 +370,7 @@
                                                   IsChecked="{Binding ExitLauncherAfterGameExit}"
                                                   Style="{StaticResource MaterialDesignSwitchToggleButton}" />
                                 </Grid>
-                                
+
                             </StackPanel>
                         </materialDesign:Card>
 
@@ -377,7 +386,8 @@
                                         <ColumnDefinition Width="Auto" MinWidth="200" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="凭据加密方式"
+                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                   Text="凭据加密方式"
                                                    FontSize="15" />
                                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                    Text="自动登录所用到的凭据在本地的加密方式" Opacity="0.7" FontSize="12" />
@@ -417,7 +427,8 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="共享设备信息"
+                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                   Text="共享设备信息"
                                                    FontSize="15" />
                                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                    Text="未设置独立设备信息的账号将使用此处设置的共享设备信息" Opacity="0.7" FontSize="12" />
@@ -432,7 +443,8 @@
                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="附加程序"
                                    Style="{StaticResource MaterialDesignHeadline5TextBlock}" FontWeight="Medium"
                                    Margin="0,24,0,8" />
-                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="添加在此处的程序会在游戏启动/结束时一并启动"
+                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Text="添加在此处的程序会在游戏启动/结束时一并启动"
                                    Opacity="0.7" Margin="0,0,0,16" />
 
                         <materialDesign:Card Style="{StaticResource SettingCardStyle}">
@@ -452,14 +464,16 @@
                                                        BasedOn="{StaticResource MaterialDesignSeparator}" />
                                             </ContextMenu.Resources>
                                             <MenuItem Command="{Binding RemoveSelectedAddonCommand}"
-                                                      Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Header="移除" />
+                                                      Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                      Header="移除" />
                                         </ContextMenu>
                                     </ListView.ContextMenu>
                                     <ListView.ItemTemplate>
                                         <DataTemplate DataType="{x:Type addon:AddonEntry}">
                                             <StackPanel Orientation="Horizontal" Margin="8">
-                                                <CheckBox Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                          IsChecked="{Binding IsEnabled}" />
+                                                <CheckBox
+                                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                    IsChecked="{Binding IsEnabled}" />
                                                 <TextBlock Margin="16,0,0,0"
                                                            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                            Text="{Binding Addon.Name}" VerticalAlignment="Center"
@@ -492,7 +506,8 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="启用 Dalamud"
+                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                               Text="启用 Dalamud"
                                                FontSize="15" />
                                     <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                Text="启用后, 可在游戏内使用 Dalamud 框架下的一系列增强功能与插件内容" Opacity="0.7" FontSize="12" />
@@ -531,7 +546,8 @@
                                             <TextBox Width="70" Text="{Binding DalamudInjectionDelayMs}"
                                                      Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                      VerticalAlignment="Center" HorizontalContentAlignment="Right" />
-                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="ms"
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                       Text="ms"
                                                        Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
                                         </StackPanel>
                                     </Grid>
@@ -555,12 +571,14 @@
                                             <TextBox Width="70" Text="{Binding ManualInjectDelayMs}"
                                                      Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                      VerticalAlignment="Center" HorizontalContentAlignment="Right" />
-                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="ms"
+                                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                       Text="ms"
                                                        Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.7" />
                                         </StackPanel>
                                     </Grid>
 
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="加载方式"
+                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                               Text="加载方式"
                                                FontSize="15" Margin="0,0,0,16" />
                                     <RadioButton x:Name="EntryPointDalamudLoadMethodRadioButton"
                                                  Content="新版：兼容部分需要更早加载的插件和辅助软件" GroupName="dalamudLoadMethod"
@@ -587,7 +605,8 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="游戏内超域传送"
+                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                   Text="游戏内超域传送"
                                                    FontSize="15" />
                                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                    Opacity="0.7"
@@ -632,12 +651,15 @@
 
                                     <TextBlock Text="本软件基于 GPLv3 协议发布" Cursor="Hand"
                                                MouseUp="LicenseText_OnMouseUp"
-                                               Foreground="{DynamicResource MaterialDesign.Brush.Primary}" Margin="0,0,0,24"
+                                               Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                               Margin="0,0,0,24"
                                                TextDecorations="Underline" FontSize="14" />
 
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="作者：goat"
+                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                               Text="作者：goat"
                                                FontSize="15" Margin="0,0,0,8" />
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="Soil 版维护：AtmoOmen"
+                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                               Text="Soil 版维护：AtmoOmen"
                                                FontSize="15" Margin="0,0,0,8" />
                                     <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                Text="特别鸣谢：Mino、sky、LeonBlade、Wintermute、Zyian、Roy、Meli、Aida Enna、Aireil、kizer 与 the angry paissa artist"
@@ -650,8 +672,9 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <mahIcon:PackIconSimpleIcons Kind="Discord"
                                                                              VerticalAlignment="Center" />
-                                                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                           Margin="8,0,0,0" VerticalAlignment="Center" Text="Discord" />
+                                                <TextBlock
+                                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                    Margin="8,0,0,0" VerticalAlignment="Center" Text="Discord" />
                                             </StackPanel>
                                         </Button>
                                         <Button Command="{Binding OpenGitHubCommand}"
@@ -659,8 +682,9 @@
                                                 Margin="0,0,12,12" Height="40">
                                             <StackPanel Orientation="Horizontal">
                                                 <materialDesign:PackIcon Kind="Github" VerticalAlignment="Center" />
-                                                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                           Margin="8,0,0,0" VerticalAlignment="Center" Text="GitHub" />
+                                                <TextBlock
+                                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                    Margin="8,0,0,0" VerticalAlignment="Center" Text="GitHub" />
                                             </StackPanel>
                                         </Button>
                                         <Button Command="{Binding OpenOriginalLauncherCommand}"
@@ -668,8 +692,9 @@
                                                 Margin="0,0,12,12" Height="40">
                                             <StackPanel Orientation="Horizontal">
                                                 <materialDesign:PackIcon Kind="Launch" VerticalAlignment="Center" />
-                                                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                           Margin="8,0,0,0" VerticalAlignment="Center" Text="官方启动器" />
+                                                <TextBlock
+                                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                    Margin="8,0,0,0" VerticalAlignment="Center" Text="官方启动器" />
                                             </StackPanel>
                                         </Button>
                                         <Button Command="{Binding OpenBackupToolCommand}"
@@ -677,9 +702,10 @@
                                                 Visibility="Collapsed" Margin="0,0,12,12" Height="40">
                                             <StackPanel Orientation="Horizontal">
                                                 <materialDesign:PackIcon Kind="Wrench" VerticalAlignment="Center" />
-                                                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                           Margin="8,0,0,0" VerticalAlignment="Center"
-                                                           Text="打开备份工具" />
+                                                <TextBlock
+                                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                    Margin="8,0,0,0" VerticalAlignment="Center"
+                                                    Text="打开备份工具" />
                                             </StackPanel>
                                         </Button>
                                     </WrapPanel>

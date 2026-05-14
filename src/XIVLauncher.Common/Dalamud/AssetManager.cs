@@ -225,19 +225,25 @@ public class AssetManager
 
     internal class AssetInfo
     {
-        [JsonPropertyName("version")] public int Version { get; set; }
+        [JsonPropertyName("version")]
+        public int Version { get; set; }
 
-        [JsonPropertyName("assets")] public IReadOnlyList<Asset> Assets { get; set; } = null!;
+        [JsonPropertyName("assets")]
+        public IReadOnlyList<Asset> Assets { get; set; } = null!;
 
-        [JsonPropertyName("packageUrl")] public string PackageUrl { get; set; } = null!;
+        [JsonPropertyName("packageUrl")]
+        public string PackageUrl { get; set; } = null!;
 
         public class Asset
         {
-            [JsonPropertyName("url")] public string Url { get; set; } = null!;
+            [JsonPropertyName("url")]
+            public string Url { get; set; } = null!;
 
-            [JsonPropertyName("fileName")] public string FileName { get; set; } = null!;
+            [JsonPropertyName("fileName")]
+            public string FileName { get; set; } = null!;
 
-            [JsonPropertyName("hash")] public string Hash { get; set; } = null!;
+            [JsonPropertyName("hash")]
+            public string Hash { get; set; } = null!;
         }
     }
 }

@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
@@ -27,6 +26,7 @@ public sealed class GameLaunchService
     public AddonManager? StartAddons(int gamePid)
     {
         var addonManager = new AddonManager();
+
         if (!addonManagers.TryAdd(gamePid, addonManager))
         {
             Log.Information("附加程序已随游戏进程启动: {GamePid}", gamePid);
@@ -38,10 +38,10 @@ public sealed class GameLaunchService
             App.Settings.AddonList ??= [];
 
             var addons = App.Settings.AddonList
-                                  .Where(entry => entry.IsEnabled && entry.Addon != null)
-                                  .Select(entry => entry.Addon)
-                                  .Cast<IAddon>()
-                                  .ToList();
+                            .Where(entry => entry.IsEnabled && entry.Addon != null)
+                            .Select(entry => entry.Addon)
+                            .Cast<IAddon>()
+                            .ToList();
 
             addonManager.RunAddons(gamePid, addons);
             return addonManager;
@@ -74,8 +74,7 @@ public sealed class GameLaunchService
             return;
 
         _ = Task.Run
-        (
-            async () =>
+        (async () =>
             {
                 try
                 {

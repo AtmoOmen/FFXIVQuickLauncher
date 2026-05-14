@@ -11,16 +11,16 @@ public class SdoFileDownloader : IDisposable
 {
     public int ProgressReportInterval { get; set; } = DEFAULT_PROGRESS_REPORT_INTERVAL;
 
-    private readonly HttpClient client = new();
-    private readonly List<string> hashes = [];
+    private readonly HttpClient                        client          = new();
+    private readonly List<string>                      hashes          = [];
     private readonly ConcurrentDictionary<int, string> queuedDownloads = new();
-    private readonly List<string> relativePaths = [];
-    private readonly List<bool> brokenStates = [];
-    private readonly List<ulong> sizes = [];
+    private readonly List<string>                      relativePaths   = [];
+    private readonly List<bool>                        brokenStates    = [];
+    private readonly List<ulong>                       sizes           = [];
 
-    private long lastProgressTimestamp;
+    private long   lastProgressTimestamp;
     private string downloadBaseUrl = null!;
-    private string dataVersion = null!;
+    private string dataVersion     = null!;
 
     public void Dispose() =>
         client.Dispose();
@@ -33,8 +33,8 @@ public class SdoFileDownloader : IDisposable
         brokenStates.Clear();
         queuedDownloads.Clear();
 
-        downloadBaseUrl = remoteIntegrity.BaseUrl ?? throw new ArgumentException("Remote integrity must contain a download base URL.", nameof(remoteIntegrity));
-        dataVersion = remoteIntegrity.DataVersion ?? throw new ArgumentException("Remote integrity must contain a data version.", nameof(remoteIntegrity));
+        downloadBaseUrl = remoteIntegrity.BaseUrl     ?? throw new ArgumentException("Remote integrity must contain a download base URL.", nameof(remoteIntegrity));
+        dataVersion     = remoteIntegrity.DataVersion ?? throw new ArgumentException("Remote integrity must contain a data version.",      nameof(remoteIntegrity));
 
         if (client.DefaultRequestHeaders.UserAgent.Count == 0)
             client.DefaultRequestHeaders.UserAgent.ParseAdd(USER_AGENT);
@@ -55,8 +55,9 @@ public class SdoFileDownloader : IDisposable
     {
         EnsureInitialized();
 
-        var candidates = new List<int>(relativePaths.Count);
-        ulong totalSize = 0;
+        var   candidates = new List<int>(relativePaths.Count);
+        ulong totalSize  = 0;
+
         for (var index = 0; index < relativePaths.Count; index++)
         {
             if (refine && !brokenStates[index])
@@ -66,13 +67,13 @@ public class SdoFileDownloader : IDisposable
             totalSize += sizes[index];
         }
 
-        var reportMax = GetReportSize(totalSize);
-        long reportedSize = 0;
-        var reportedCount = 0;
+        var  reportMax     = GetReportSize(totalSize);
+        long reportedSize  = 0;
+        var  reportedCount = 0;
         var parallelOptions = new ParallelOptions
         {
             MaxDegreeOfParallelism = Math.Max(1, concurrentCount),
-            CancellationToken = cancellationToken
+            CancellationToken      = cancellationToken
         };
 
         await Parallel.ForEachAsync
@@ -85,11 +86,13 @@ public class SdoFileDownloader : IDisposable
                 Log.Information("Verifying file: {Path}", localPath);
 
                 var isBroken = true;
+
                 try
                 {
                     if (File.Exists(localPath))
                     {
                         var fileInfo = new FileInfo(localPath);
+
                         if ((ulong)fileInfo.Length == sizes[targetIndex])
                         {
                             var fileHash = await GameIntegrityChecker.GetFileMd5Hash(localPath, ct);
@@ -105,7 +108,7 @@ public class SdoFileDownloader : IDisposable
                 brokenStates[targetIndex] = isBroken;
 
                 var reportCurrent = Interlocked.Add(ref reportedSize, GetReportSize(sizes[targetIndex]));
-                var reportCount = Interlocked.Increment(ref reportedCount);
+                var reportCount   = Interlocked.Increment(ref reportedCount);
                 ReportVerifyProgress(targetIndex, reportCount, reportCurrent, reportMax);
             }
         );
@@ -126,12 +129,12 @@ public class SdoFileDownloader : IDisposable
         if (queue.Length == 0)
             return;
 
-        long totalContentBytes = 0;
+        long totalContentBytes    = 0;
         long totalDownloadedBytes = 0;
         var parallelOptions = new ParallelOptions
         {
             MaxDegreeOfParallelism = Math.Max(1, concurrentCount),
-            CancellationToken = cancellationToken
+            CancellationToken      = cancellationToken
         };
 
         await Parallel.ForEachAsync
@@ -140,10 +143,10 @@ public class SdoFileDownloader : IDisposable
             parallelOptions,
             async (item, ct) =>
             {
-                var targetIndex = item.Key;
-                var relativePath = relativePaths[targetIndex];
+                var targetIndex    = item.Key;
+                var relativePath   = relativePaths[targetIndex];
                 var targetFilePath = GetLocalPath(gameRootPath, relativePath);
-                var targetDirPath = Path.GetDirectoryName(targetFilePath) ?? throw new InvalidOperationException("Invalid target path");
+                var targetDirPath  = Path.GetDirectoryName(targetFilePath) ?? throw new InvalidOperationException("Invalid target path");
                 Directory.CreateDirectory(targetDirPath);
 
                 ReportInstallProgress(targetIndex, 0, 0, InstallTaskState.Connecting);
@@ -163,7 +166,8 @@ public class SdoFileDownloader : IDisposable
                 {
                     {
                         await using var source = await response.Content.ReadAsStreamAsync(ct);
-                        await using var sink = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                        await using var sink = new FileStream
+                            (tempPath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan);
                         using var buffer = ReusableByteBufferManager.GetBuffer();
 
                         while (true)
@@ -178,7 +182,7 @@ public class SdoFileDownloader : IDisposable
                     }
 
                     File.Move(tempPath, targetFilePath, true);
-                    complete = true;
+                    complete                  = true;
                     brokenStates[targetIndex] = false;
                     ReportInstallProgress(targetIndex, Interlocked.Read(ref totalDownloadedBytes), Interlocked.Read(ref totalContentBytes), InstallTaskState.Complete);
                 }
@@ -205,6 +209,7 @@ public class SdoFileDownloader : IDisposable
     public List<string> GetBrokenFiles()
     {
         var brokenFiles = new List<string>();
+
         for (var index = 0; index < brokenStates.Count; index++)
         {
             if (brokenStates[index])
@@ -234,7 +239,7 @@ public class SdoFileDownloader : IDisposable
 
     private bool ShouldReportProgress()
     {
-        var now = Stopwatch.GetTimestamp();
+        var now      = Stopwatch.GetTimestamp();
         var interval = Stopwatch.Frequency * Math.Max(1, ProgressReportInterval) / 1000;
         var previous = Interlocked.Read(ref lastProgressTimestamp);
 
@@ -250,17 +255,17 @@ public class SdoFileDownloader : IDisposable
     private string GetFileKey(string filePath)
     {
         var inputBytes = Encoding.Unicode.GetBytes($"{SdoInfos.APP_ID}_{dataVersion}_{filePath}");
-        var hashBytes = MD5.HashData(inputBytes);
+        var hashBytes  = MD5.HashData(inputBytes);
         return Convert.ToHexString(hashBytes);
     }
 
     private Uri GetDownloadUrl(string filePath)
     {
         filePath = filePath.Replace(Path.DirectorySeparatorChar, '\\').TrimStart('\\');
-        var pathEnd = filePath.LastIndexOf('\\');
+        var pathEnd       = filePath.LastIndexOf('\\');
         var directoryPath = pathEnd < 0 ? string.Empty : filePath[..pathEnd].Replace('\\', '/');
-        var uri = new Uri($"{downloadBaseUrl}/{directoryPath}/{GetFileKey(filePath)}");
-        return CdnUrlSigner.Sign(uri);
+        var uri           = new Uri($"{downloadBaseUrl}/{directoryPath}/{GetFileKey(filePath)}");
+        return CDNLinkSigner.Sign(uri);
     }
 
     public enum InstallTaskState
@@ -281,10 +286,10 @@ public class SdoFileDownloader : IDisposable
 
     #region Constants
 
-    private const int DEFAULT_PROGRESS_REPORT_INTERVAL = 250;
-    private const int FILE_STREAM_BUFFER_SIZE = 131072;
-    private const string TEMP_EXTENSION = ".tmp";
-    private const string USER_AGENT = "FF14v3autopatch";
+    private const int    DEFAULT_PROGRESS_REPORT_INTERVAL = 250;
+    private const int    FILE_STREAM_BUFFER_SIZE          = 131072;
+    private const string TEMP_EXTENSION                   = ".tmp";
+    private const string USER_AGENT                       = "FF14v3autopatch";
 
     #endregion
 }

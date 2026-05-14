@@ -15,7 +15,7 @@ namespace XIVLauncher.Common.Util;
 public static class PlatformHelpers
 {
     private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, 0);
-    
+
     public static void BringProcessForeground(int pid)
     {
         const int SW_RESTORE = 9;

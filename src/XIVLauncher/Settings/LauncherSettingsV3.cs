@@ -20,7 +20,7 @@ namespace XIVLauncher.Settings;
 /// </summary>
 public sealed class LauncherSettingsV3
 {
-    private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
+    private static readonly JsonSerializerOptions JsonOptions    = CreateJsonOptions();
     private static readonly UTF8Encoding          Utf8WithoutBom = new(false);
 
     private string? configPath;
@@ -352,6 +352,7 @@ public sealed class LauncherSettingsV3
         }
 
         var backupPath = GetBackupPath(configPath);
+
         if (TryLoadSettings(backupPath, configPath, out settings, out var backupException))
         {
             Log.Warning("已从备份恢复启动器配置: {BackupPath}", backupPath);
@@ -436,10 +437,10 @@ public sealed class LauncherSettingsV3
 
     private static bool TryLoadSettings
     (
-        string                  sourcePath,
-        string                  attachPath,
-        out LauncherSettingsV3  settings,
-        out Exception?          exception
+        string                 sourcePath,
+        string                 attachPath,
+        out LauncherSettingsV3 settings,
+        out Exception?         exception
     )
     {
         settings  = null!;

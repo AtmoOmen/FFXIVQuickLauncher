@@ -51,8 +51,8 @@
                 <!-- Header Area -->
                 <Grid Grid.Row="0" Margin="0,0,0,16">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <materialDesign:PackIcon Kind="CloudDownloadOutline"
                                              Width="32" Height="32"
@@ -74,7 +74,7 @@
                                Text="{Binding PhaseText}"
                                FontWeight="SemiBold"
                                TextWrapping="Wrap" />
-                    
+
                     <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                Style="{StaticResource MaterialDesignBody2TextBlock}"
                                Opacity="0.65"
@@ -85,9 +85,9 @@
 
                 <!-- Items (Sub-tasks) -->
                 <!-- Use ScrollViewer to prevent window from growing infinitely -->
-                <ScrollViewer Grid.Row="2" 
-                              MaxHeight="120" 
-                              VerticalScrollBarVisibility="Auto" 
+                <ScrollViewer Grid.Row="2"
+                              MaxHeight="120"
+                              VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               Margin="0,0,0,16">
                     <!-- Invisible wrapper for dynamic height handling without jumping -->
@@ -96,17 +96,17 @@
                             <DataTemplate>
                                 <Grid Margin="0,0,0,12">
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    
+
                                     <TextBlock Text="{Binding Title}"
                                                Style="{StaticResource MaterialDesignCaptionTextBlock}"
                                                Opacity="0.8"
                                                Margin="0,0,0,4"
                                                TextTrimming="CharacterEllipsis"
                                                TextWrapping="NoWrap" />
-                                    
+
                                     <ProgressBar Grid.Row="1"
                                                  Height="4"
                                                  materialDesign:TransitionAssist.DisableTransitions="True"
@@ -144,13 +144,14 @@
                         </Style>
                     </Grid.Style>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    
+
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <materialDesign:PackIcon Kind="DataUsage" VerticalAlignment="Center" Width="16" Height="16" Opacity="0.6" Margin="0,0,6,0"/>
+                        <materialDesign:PackIcon Kind="DataUsage" VerticalAlignment="Center" Width="16" Height="16"
+                                                 Opacity="0.6" Margin="0,0,6,0" />
                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                    Style="{StaticResource MaterialDesignCaptionTextBlock}"
                                    Opacity="0.8"
@@ -172,7 +173,8 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <materialDesign:PackIcon Kind="Speedometer" VerticalAlignment="Center" Width="16" Height="16" Opacity="0.6" Margin="0,0,6,0"/>
+                        <materialDesign:PackIcon Kind="Speedometer" VerticalAlignment="Center" Width="16" Height="16"
+                                                 Opacity="0.6" Margin="0,0,6,0" />
                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                    Style="{StaticResource MaterialDesignCaptionTextBlock}"
                                    Opacity="0.8"
@@ -193,7 +195,8 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <materialDesign:PackIcon Kind="ClockOutline" VerticalAlignment="Center" Width="16" Height="16" Opacity="0.6" Margin="0,0,6,0"/>
+                        <materialDesign:PackIcon Kind="ClockOutline" VerticalAlignment="Center" Width="16" Height="16"
+                                                 Opacity="0.6" Margin="0,0,6,0" />
                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                    Style="{StaticResource MaterialDesignCaptionTextBlock}"
                                    Opacity="0.8"
@@ -215,7 +218,7 @@
                             Height="36"
                             Padding="16,0"
                             Margin="12,0,0,0" />
-                            
+
                     <Button Content="{Binding CloseButtonText}"
                             Command="{Binding CloseButtonCommand}"
                             IsEnabled="{Binding IsCloseButtonEnabled, Mode=OneWay}"
@@ -226,7 +229,7 @@
                             Height="36"
                             Padding="16,0"
                             Margin="12,0,0,0" />
-                            
+
                     <Button Content="{Binding PrimaryButtonText}"
                             Command="{Binding PrimaryButtonCommand}"
                             IsEnabled="{Binding IsPrimaryButtonEnabled, Mode=OneWay}"

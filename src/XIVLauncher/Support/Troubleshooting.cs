@@ -144,7 +144,7 @@ public static class Troubleshooting
     private class TroubleshootingPayload
     {
         public required DateTime When { get; set; }
-        
+
         public required bool DalamudEnabled { get; set; }
 
         public required DalamudLoadMethod DalamudLoadMethod { get; set; }

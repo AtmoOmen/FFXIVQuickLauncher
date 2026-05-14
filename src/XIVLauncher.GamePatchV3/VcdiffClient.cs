@@ -5,21 +5,16 @@ using SharedMemory;
 
 namespace XIVLauncher.GamePatchV3;
 
-public sealed class VcdiffClient : IDisposable
+public sealed class VcdiffClient
+(
+    string  workerExecutablePath,
+    string? dotnetRootPath = null,
+    bool    asAdmin        = false
+) : IDisposable
 {
-    private readonly string     workerExecutablePath;
-    private readonly string?    dotnetRootPath;
-    private readonly bool       asAdmin;
     private          Process?   workerProcess;
     private          RpcBuffer? rpcBuffer;
     private          bool       isDisposed;
-
-    public VcdiffClient(string workerExecutablePath, string? dotnetRootPath = null, bool asAdmin = false)
-    {
-        this.workerExecutablePath = workerExecutablePath;
-        this.dotnetRootPath       = dotnetRootPath;
-        this.asAdmin              = asAdmin;
-    }
 
     public void Dispose()
     {
@@ -39,6 +34,7 @@ public sealed class VcdiffClient : IDisposable
         if (workerProcess is { HasExited: false })
         {
             workerProcess.WaitForExit(1000);
+
             try
             {
                 workerProcess.Kill();
@@ -91,7 +87,7 @@ public sealed class VcdiffClient : IDisposable
             try
             {
                 var current = File.Exists(tempPath) ? new FileInfo(tempPath).Length : 0;
-                var total   = expectedSize > 0 ? expectedSize : (current > 0 ? Math.Max(current, 1) : 0);
+                var total   = expectedSize > 0 ? expectedSize : current > 0 ? Math.Max(current, 1) : 0;
                 progress?.Report((current, total));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -158,7 +154,7 @@ public sealed class VcdiffClient : IDisposable
         };
 #if !DEBUG
         workerProcess.StartInfo.CreateNoWindow = true;
-        workerProcess.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+        workerProcess.StartInfo.WindowStyle    = ProcessWindowStyle.Hidden;
 #endif
         try
         {

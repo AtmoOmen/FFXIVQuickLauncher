@@ -14,9 +14,9 @@ public sealed class DeviceProfileSnapshot : IEquatable<DeviceProfileSnapshot>
 
     public bool Equals(DeviceProfileSnapshot? other) =>
         other is not null
-        && string.Equals(DeviceId, other.DeviceId, StringComparison.Ordinal)
+        && string.Equals(DeviceId,   other.DeviceId,   StringComparison.Ordinal)
         && string.Equals(MacAddress, other.MacAddress, StringComparison.Ordinal)
-        && string.Equals(HostName, other.HostName, StringComparison.Ordinal);
+        && string.Equals(HostName,   other.HostName,   StringComparison.Ordinal);
 
     public override bool Equals(object? obj) =>
         obj is DeviceProfileSnapshot other && Equals(other);

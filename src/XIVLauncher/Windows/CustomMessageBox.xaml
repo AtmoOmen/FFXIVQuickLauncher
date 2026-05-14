@@ -72,78 +72,78 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                <!-- Header / Title Area -->
-                <Grid Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                        <!-- Header / Title Area -->
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                    <materialDesign:PackIcon x:Name="ErrorPackIcon"
-                                             Kind="AlertOctagon"
-                                             Width="32"
-                                             Height="32"
-                                             Foreground="{DynamicResource MaterialDesign.Brush.Error}"
-                                             VerticalAlignment="Center"
-                                             Margin="0,0,16,0" />
+                            <materialDesign:PackIcon x:Name="ErrorPackIcon"
+                                                     Kind="AlertOctagon"
+                                                     Width="32"
+                                                     Height="32"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Error}"
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,16,0" />
 
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <!-- Custom Title (previously on the window title bar) -->
-                        <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
-                                   FontSize="20"
-                                   FontWeight="Bold"
-                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                   Margin="0,0,0,12"
-                                   TextWrapping="Wrap" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <!-- Custom Title (previously on the window title bar) -->
+                                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                                           FontSize="20"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                           Margin="0,0,0,12"
+                                           TextWrapping="Wrap" />
 
-                        <TextBlock x:Name="MessageTextBlock"
-                                   TextWrapping="Wrap"
-                                   FontSize="14"
-                                   LineHeight="24"
-                                   Opacity="0.85"
-                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}">
-                            <!-- Content injected via code-behind -->
-                        </TextBlock>
-                    </StackPanel>
-                </Grid>
+                                <TextBlock x:Name="MessageTextBlock"
+                                           TextWrapping="Wrap"
+                                           FontSize="14"
+                                           LineHeight="24"
+                                           Opacity="0.85"
+                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground}">
+                                    <!-- Content injected via code-behind -->
+                                </TextBlock>
+                            </StackPanel>
+                        </Grid>
 
-                <!-- Details / Description Area (Stack Trace, Log) -->
-                <RichTextBox x:Name="DescriptionTextBox"
-                             Grid.Row="1"
-                             Margin="0,24,0,0"
-                             Padding="16"
-                             AcceptsReturn="True"
-                             IsDocumentEnabled="True"
-                             IsReadOnly="True"
-                             VerticalScrollBarVisibility="Auto"
-                             SpellCheck.IsEnabled="False"
-                             materialDesign:HintAssist.Hint="详细错误日志与环境信息"
-                             MaxHeight="250"
-                             MinHeight="120"
-                             FontSize="13"
-                             FontFamily="Consolas, Courier New, monospace"
-                             Background="{DynamicResource MaterialDesign.Brush.Surface}"
-                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                             BorderThickness="1"
-                             BorderBrush="{DynamicResource MaterialDesign.Brush.Divider}">
-                    <RichTextBox.Resources>
-                        <Style TargetType="{x:Type Border}">
-                            <Setter Property="CornerRadius" Value="8" />
-                        </Style>
-                    </RichTextBox.Resources>
-                </RichTextBox>
+                        <!-- Details / Description Area (Stack Trace, Log) -->
+                        <RichTextBox x:Name="DescriptionTextBox"
+                                     Grid.Row="1"
+                                     Margin="0,24,0,0"
+                                     Padding="16"
+                                     AcceptsReturn="True"
+                                     IsDocumentEnabled="True"
+                                     IsReadOnly="True"
+                                     VerticalScrollBarVisibility="Auto"
+                                     SpellCheck.IsEnabled="False"
+                                     materialDesign:HintAssist.Hint="详细错误日志与环境信息"
+                                     MaxHeight="250"
+                                     MinHeight="120"
+                                     FontSize="13"
+                                     FontFamily="Consolas, Courier New, monospace"
+                                     Background="{DynamicResource MaterialDesign.Brush.Surface}"
+                                     Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                     BorderThickness="1"
+                                     BorderBrush="{DynamicResource MaterialDesign.Brush.Divider}">
+                            <RichTextBox.Resources>
+                                <Style TargetType="{x:Type Border}">
+                                    <Setter Property="CornerRadius" Value="8" />
+                                </Style>
+                            </RichTextBox.Resources>
+                        </RichTextBox>
 
-                <!-- Input TextBox -->
-                <TextBox x:Name="InputTextBox"
-                         Grid.Row="2"
-                         Margin="0,24,0,0"
-                         Padding="16,14"
-                         VerticalAlignment="Center"
-                         Style="{DynamicResource MaterialDesignOutlinedTextBox}"
-                         materialDesign:HintAssist.Hint="在此处输入内容"
-                         materialDesign:TextFieldAssist.HasClearButton="True"
-                         materialDesign:TextFieldAssist.UnderlineBrush="{DynamicResource MaterialDesign.Brush.Primary}"
-                         Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                        <!-- Input TextBox -->
+                        <TextBox x:Name="InputTextBox"
+                                 Grid.Row="2"
+                                 Margin="0,24,0,0"
+                                 Padding="16,14"
+                                 VerticalAlignment="Center"
+                                 Style="{DynamicResource MaterialDesignOutlinedTextBox}"
+                                 materialDesign:HintAssist.Hint="在此处输入内容"
+                                 materialDesign:TextFieldAssist.HasClearButton="True"
+                                 materialDesign:TextFieldAssist.UnderlineBrush="{DynamicResource MaterialDesign.Brush.Primary}"
+                                 Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
                     </Grid>
                 </ScrollViewer>
 

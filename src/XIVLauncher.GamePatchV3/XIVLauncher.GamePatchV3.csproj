@@ -16,14 +16,14 @@
         <DefineConstants>$(DefineConstants);WIN32</DefineConstants>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="Serilog" />
-        <PackageReference Include="Serilog.Sinks.Async" />
-        <PackageReference Include="Serilog.Sinks.Console" />
-        <PackageReference Include="Serilog.Sinks.File" />
-        <PackageReference Include="SharedMemory" />
-        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" />
+        <PackageReference Include="Serilog"/>
+        <PackageReference Include="Serilog.Sinks.Async"/>
+        <PackageReference Include="Serilog.Sinks.Console"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="SharedMemory"/>
+        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers"/>
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
     </ItemGroup>
 </Project>

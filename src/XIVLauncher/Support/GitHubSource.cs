@@ -162,7 +162,7 @@ public class GitHubSource
         }
 
         if (latestLocalRelease != null && parsed.Any(entry => entry.Item1 == latestLocalRelease.Version))
-            return parsed.Where(entry => entry.Version >= latestLocalRelease.Version).ToList();
+            return parsed.Where(entry => entry.Version                    >= latestLocalRelease.Version).ToList();
 
         return parsed.Take(1).ToList();
     }

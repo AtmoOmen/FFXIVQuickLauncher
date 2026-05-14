@@ -17,7 +17,7 @@
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
         mc:Ignorable="d">
-        
+
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -36,8 +36,8 @@
         <Grid.RenderTransform>
             <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
         </Grid.RenderTransform>
-        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" 
-                             UniformCornerRadius="14" 
+        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}"
+                             UniformCornerRadius="14"
                              materialDesign:ElevationAssist.Elevation="Dp8"
                              Margin="0">
             <Grid>
@@ -53,12 +53,15 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" Margin="24,20,24,16" VerticalAlignment="Center">
-                        <materialDesign:PackIcon Kind="ShieldCheckOutline" Width="24" Height="24" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}" 
-                                   Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <materialDesign:PackIcon Kind="ShieldCheckOutline" Width="24" Height="24"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                 VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                                   Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" />
                     </StackPanel>
-                    
-                    <Button Grid.Column="1" Margin="0,0,16,0" 
+
+                    <Button Grid.Column="1" Margin="0,0,16,0"
                             Style="{StaticResource MaterialDesignIconForegroundButton}"
                             Click="CancelButton_OnClick"
                             ToolTip="关闭"
@@ -70,10 +73,10 @@
                 <!-- Content Body -->
                 <Grid Grid.Row="1" Margin="24,0,24,24">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <!-- Prompt -->
@@ -122,12 +125,14 @@
                                 Click="RefreshButton_OnClick"
                                 ToolTip="刷新验证码">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <materialDesign:PackIcon Kind="Refresh" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBlock x:Name="RefreshText" Text="刷新" VerticalAlignment="Center" FontWeight="Medium"/>
+                                <materialDesign:PackIcon Kind="Refresh" Width="20" Height="20"
+                                                         VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock x:Name="RefreshText" Text="刷新" VerticalAlignment="Center"
+                                           FontWeight="Medium" />
                             </StackPanel>
                         </Button>
                     </Grid>
-                    
+
                     <!-- Action Buttons -->
                     <Grid Grid.Row="3" Margin="0,28,0,0">
                         <Grid.ColumnDefinitions>
@@ -135,7 +140,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        
+
                         <Button x:Name="CancelButton"
                                 Grid.Column="0"
                                 Style="{StaticResource MaterialDesignFlatButton}"
@@ -152,7 +157,7 @@
                                 Width="120"
                                 materialDesign:ButtonAssist.CornerRadius="8"
                                 Click="ConfirmButton_OnClick"
-                                Content="确认验证" 
+                                Content="确认验证"
                                 FontWeight="Bold" />
                     </Grid>
                 </Grid>

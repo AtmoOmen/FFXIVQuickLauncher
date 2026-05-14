@@ -5,7 +5,7 @@ public static class HttpResponseDiagnostics
     public static async Task EnsureSuccessWithDiagnosticsAsync
     (
         this HttpResponseMessage response,
-        CancellationToken cancellationToken = default
+        CancellationToken        cancellationToken = default
     )
     {
         if (response.IsSuccessStatusCode)
@@ -46,14 +46,14 @@ public static class HttpResponseDiagnostics
         if (!string.IsNullOrWhiteSpace(prefix))
             message = $"{prefix}{Environment.NewLine}{message}";
         var errorSource = response.Headers.TryGetValues(PROXY_ERROR_SOURCE_HEADER, out var errorSources)
-            ? string.Join(", ", errorSources)
-            : null;
+                              ? string.Join(", ", errorSources)
+                              : null;
         var cfRay = response.Headers.TryGetValues(CF_RAY_HEADER, out var cfRays)
-            ? string.Join(", ", cfRays)
-            : null;
+                        ? string.Join(", ", cfRays)
+                        : null;
         var proxyCache = response.Headers.TryGetValues(PROXY_CACHE_HEADER, out var proxyCaches)
-            ? string.Join(", ", proxyCaches)
-            : null;
+                             ? string.Join(", ", proxyCaches)
+                             : null;
 
         if (!string.IsNullOrWhiteSpace(errorSource))
             message += $"{Environment.NewLine}诊断来源: {errorSource}";

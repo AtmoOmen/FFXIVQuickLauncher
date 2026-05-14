@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using Serilog;
 using XIVLauncher.Common;
 
 namespace XIVLauncher.GamePatchV3;
@@ -9,9 +10,9 @@ public static class GameIntegrityChecker
     public static async Task<IntegrityCheckCompareOutcome> CompareIntegrityAsync
     (
         IProgress<IntegrityCheckProgress>? progress,
-        DirectoryInfo                     gamePath,
-        bool                              onlyIndex = false,
-        CancellationToken                 cancellationToken = default
+        DirectoryInfo                      gamePath,
+        bool                               onlyIndex         = false,
+        CancellationToken                  cancellationToken = default
     )
     {
         IntegrityCheckResult remoteIntegrity;
@@ -20,8 +21,12 @@ public static class GameIntegrityChecker
         {
             remoteIntegrity = await DownloadIntegrityCheckForVersion(cancellationToken).ConfigureAwait(false);
             var localVersion = Repository.Ffxiv.GetVer(gamePath);
+
             if (!string.Equals(localVersion, remoteIntegrity.GameVersion, StringComparison.Ordinal))
+            {
+                Log.Information("[IntegrityCheck] 版本不匹配, 本地 {LocalVersion}, 远端 {RemoteVersion}", localVersion, remoteIntegrity.GameVersion);
                 return new IntegrityCheckCompareOutcome { CompareResult = IntegrityCheckCompareResult.ReferenceNotFound };
+            }
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
@@ -65,8 +70,8 @@ public static class GameIntegrityChecker
 
         return new IntegrityCheckCompareOutcome
         {
-            CompareResult  = failed ? IntegrityCheckCompareResult.Invalid : IntegrityCheckCompareResult.Valid,
-            Report         = report,
+            CompareResult   = failed ? IntegrityCheckCompareResult.Invalid : IntegrityCheckCompareResult.Valid,
+            Report          = report,
             RemoteIntegrity = remoteIntegrity
         };
     }
@@ -95,7 +100,7 @@ public static class GameIntegrityChecker
     (
         DirectoryInfo                      gamePath,
         IProgress<IntegrityCheckProgress>? progress,
-        bool                               onlyIndex = false,
+        bool                               onlyIndex         = false,
         CancellationToken                  cancellationToken = default
     )
     {
@@ -123,7 +128,7 @@ public static class GameIntegrityChecker
         var filesToProcess = new List<FileInfo>();
         CollectFiles(directory, rootDirectory, onlyIndex, filesToProcess);
 
-        var results = new ConcurrentDictionary<string, (string Hash, ulong Size)>();
+        var results            = new ConcurrentDictionary<string, (string Hash, ulong Size)>();
         var processedFileCount = 0;
         var options = new ParallelOptions
         {

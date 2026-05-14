@@ -15,9 +15,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Serilog;
 using XIVLauncher.Accounts;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Http.Site;
@@ -48,8 +46,8 @@ public partial class MainWindow
     private int                                  currentBannerIndex;
     private bool                                 isBannerRotationActive;
 
-    private bool everShown;
-    private bool suppressAccountSelectionTracking;
+    private bool          everShown;
+    private bool          suppressAccountSelectionTracking;
     private Point         accountSwitcherDragStartPoint;
     private ListViewItem? draggedAccountSwitcherItem;
     private bool          isAccountSwitcherHiding;
@@ -58,11 +56,11 @@ public partial class MainWindow
     {
         InitializeComponent();
 
-        DataContext                  =  new MainWindowViewModel(this);
-        accountManager               =  Model.AccountManager;
-        launcher                     =  Model.Launcher;
-        AccountListView.ContextMenu!.DataContext = Model.AccountSwitcher;
-        Model.Settings.SettingsSaved += (_, _) => _ = SetupHeadlines();
+        DataContext                              =  new MainWindowViewModel(this);
+        accountManager                           =  Model.AccountManager;
+        launcher                                 =  Model.Launcher;
+        AccountListView.ContextMenu!.DataContext =  Model.AccountSwitcher;
+        Model.Settings.SettingsSaved             += (_, _) => _ = SetupHeadlines();
 
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
@@ -415,7 +413,7 @@ public partial class MainWindow
         if (sender is not ListView listView
             || FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not ListViewItem listViewItem
             || listView.ItemContainerGenerator.ItemFromContainer(listViewItem) is not AccountSwitcherEntry accountEntry
-            || e.LeftButton                   != MouseButtonState.Pressed
+            || e.LeftButton               != MouseButtonState.Pressed
             || draggedAccountSwitcherItem == null)
             return;
 
@@ -449,8 +447,8 @@ public partial class MainWindow
 
         AccountSwitcherAnimationLayer.BeginAnimation(OpacityProperty, null);
         AccountSwitcherAnimationLayerTransform.BeginAnimation(TranslateTransform.YProperty, null);
-        AccountSwitcherAnimationLayer.Opacity           = 0;
-        AccountSwitcherAnimationLayerTransform.Y        = 20;
+        AccountSwitcherAnimationLayer.Opacity    = 0;
+        AccountSwitcherAnimationLayerTransform.Y = 20;
 
         var showStoryboard = new Storyboard();
         var opacityAnim = new DoubleAnimation(0, 1, TimeSpan.FromSeconds(0.35))
@@ -563,10 +561,7 @@ public partial class MainWindow
                         LoginPassword.Password   = MainWindowViewModel.PRESUDO_PASSWORD;
                         Model.LoginPage.Password = MainWindowViewModel.PRESUDO_PASSWORD;
                     }
-                    else
-                    {
-                        Model.LoginPage.IsReadWegameInfo = false;
-                    }
+                    else Model.LoginPage.IsReadWegameInfo = false;
 
                     break;
             }
@@ -676,7 +671,7 @@ public partial class MainWindow
         if (bannerChangeTimer != null || bannerBitmaps is not { Length: > 0 })
             return;
 
-        bannerChangeTimer       =  new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromSeconds(5) };
+        bannerChangeTimer      =  new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromSeconds(5) };
         bannerChangeTimer.Tick += (_, _) => ShowNextBanner();
         bannerChangeTimer.Start();
         isBannerRotationActive = true;

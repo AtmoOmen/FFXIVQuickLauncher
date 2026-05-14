@@ -1,13 +1,12 @@
 using System;
-using System.ComponentModel;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using Microsoft.Win32;
 using Serilog;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows;

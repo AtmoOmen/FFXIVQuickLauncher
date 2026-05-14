@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,7 +15,6 @@ using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
-using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Support;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;

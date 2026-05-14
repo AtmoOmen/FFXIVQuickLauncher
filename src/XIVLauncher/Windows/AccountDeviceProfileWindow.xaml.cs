@@ -1,8 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text.Encodings.Web;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Windows;
 using Microsoft.Win32;
@@ -14,9 +14,9 @@ namespace XIVLauncher.Windows;
 
 public partial class AccountDeviceProfileWindow
 {
-    private AccountDeviceProfileWindowViewModel ViewModel => 
+    private AccountDeviceProfileWindowViewModel ViewModel =>
         (AccountDeviceProfileWindowViewModel)DataContext;
-    
+
     private const int CURRENT_EXCHANGE_FORMAT_VERSION = 1;
 
     private static readonly JsonSerializerOptions ExchangeJsonOptions = new()
@@ -27,16 +27,16 @@ public partial class AccountDeviceProfileWindow
     };
 
     private readonly DialogService dialogService;
-    private Window?                 ownerWindow;
+    private          Window?       ownerWindow;
 
     private bool restoreWindowStateAfterOwnerRestore;
-    
+
     public AccountDeviceProfileWindow(XIVAccount account, AccountManager accountManager, bool isTemporaryAccount = false)
     {
         InitializeComponent();
 
         dialogService = new DialogService(this);
-        DataContext    = new AccountDeviceProfileWindowViewModel(accountManager);
+        DataContext   = new AccountDeviceProfileWindowViewModel(accountManager);
         if (isTemporaryAccount)
             ViewModel.LoadTemporary(account);
         else
@@ -52,7 +52,7 @@ public partial class AccountDeviceProfileWindow
         InitializeComponent();
 
         dialogService = new DialogService(this);
-        DataContext    = new AccountDeviceProfileWindowViewModel(accountManager);
+        DataContext   = new AccountDeviceProfileWindowViewModel(accountManager);
         ViewModel.LoadShared();
         Title = ViewModel.WindowTitle;
 
@@ -81,7 +81,7 @@ public partial class AccountDeviceProfileWindow
             return;
 
         ownerWindow.StateChanged -= OwnerWindow_OnStateChanged;
-        ownerWindow = null;
+        ownerWindow              =  null;
     }
 
     private void OwnerWindow_OnStateChanged(object? sender, EventArgs e) =>
@@ -95,14 +95,14 @@ public partial class AccountDeviceProfileWindow
         if (ownerWindow.WindowState == WindowState.Minimized)
         {
             restoreWindowStateAfterOwnerRestore = WindowState != WindowState.Minimized;
-            WindowState                          = WindowState.Minimized;
+            WindowState                         = WindowState.Minimized;
             return;
         }
 
         if (!restoreWindowStateAfterOwnerRestore || WindowState != WindowState.Minimized)
             return;
 
-        WindowState                          = WindowState.Normal;
+        WindowState                         = WindowState.Normal;
         restoreWindowStateAfterOwnerRestore = false;
     }
 
@@ -140,11 +140,11 @@ public partial class AccountDeviceProfileWindow
                 "设备信息设置",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning,
-                showHelpLinks: false,
-                showDiscordLink: false,
-                showReportLinks: false,
-                showOfficialLauncher: false,
-                parentWindow: this
+                false,
+                false,
+                false,
+                false,
+                this
             );
             return;
         }
@@ -155,11 +155,11 @@ public partial class AccountDeviceProfileWindow
             "设备信息设置",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning,
-            showHelpLinks: false,
-            showDiscordLink: false,
-            showReportLinks: false,
-            showOfficialLauncher: false,
-            parentWindow: this
+            false,
+            false,
+            false,
+            false,
+            this
         );
 
         if (result != MessageBoxResult.Yes)
@@ -183,11 +183,11 @@ public partial class AccountDeviceProfileWindow
                 "设备信息设置",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
-                showHelpLinks: false,
-                showDiscordLink: false,
-                showReportLinks: false,
-                showOfficialLauncher: false,
-                parentWindow: this
+                false,
+                false,
+                false,
+                false,
+                this
             );
         }
     }
@@ -292,11 +292,11 @@ public partial class AccountDeviceProfileWindow
                 "设备信息设置",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
-                showHelpLinks: false,
-                showDiscordLink: false,
-                showReportLinks: false,
-                showOfficialLauncher: false,
-                parentWindow: this
+                false,
+                false,
+                false,
+                false,
+                this
             );
         }
     }

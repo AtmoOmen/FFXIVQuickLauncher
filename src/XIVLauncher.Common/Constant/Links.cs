@@ -14,7 +14,8 @@ public static class Links
 
     public const string DALAMUD_RUNTIME_INFO_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
 
-    public const string DALAMUD_RELEASE_INFO_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/Dalamud-DailyRoutines/Dalamud/releases/latest/data.json";
+    public const string DALAMUD_RELEASE_INFO_URL =
+        $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/Dalamud-DailyRoutines/Dalamud/releases/latest/data.json";
 
     public const string DALAMUD_ASSET_STORE_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/DalamudAssets/master/assetCN.json";
 
@@ -45,7 +46,7 @@ public static class Links
     public const string SDO_SHOPPING_URL = "https://qu.sdo.com/game/1";
 
     public const string RISING_STONE_URL = "https://ff14risingstones.web.sdo.com/pc/#/post";
-    
+
     public const string SDO_BILIBILI_URL = "https://space.bilibili.com/6655514";
 
     public const string SDO_XIAOHONGSHU_URL = "https://www.xiaohongshu.com/user/profile/5f814cbe0000000001003455";

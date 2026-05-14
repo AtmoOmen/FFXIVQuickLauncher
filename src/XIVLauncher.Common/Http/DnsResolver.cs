@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Serilog;
+using Serilog.Events;
 
 namespace XIVLauncher.Common.Http;
 
@@ -224,7 +225,7 @@ internal static class DNSResolver
             selectedCandidates = selected;
         }
 
-        if (Log.IsEnabled(Serilog.Events.LogEventLevel.Verbose))
+        if (Log.IsEnabled(LogEventLevel.Verbose))
         {
             var candidateText = new StringBuilder(selectedCandidates.Count * 32);
 

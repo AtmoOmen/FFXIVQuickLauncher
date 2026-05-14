@@ -36,8 +36,7 @@ public class AdvancedSettingsViewModel : INotifyPropertyChanged
     public void Save()
     {
         App.Settings.Update
-        (
-            settings =>
+        (settings =>
             {
                 settings.TreatNonZeroExitCodeAsFailure = TreatNonZeroExitCodeAsFailure;
                 settings.EnableSkipUpdate              = EnableSkipUpdate;
@@ -45,7 +44,7 @@ public class AdvancedSettingsViewModel : INotifyPropertyChanged
             }
         );
 
-        LogInit.LevelSwitch.MinimumLevel           = EnableVerboseLog ? LogEventLevel.Verbose : LogInit.GetDefaultLevel();
+        LogInit.LevelSwitch.MinimumLevel = EnableVerboseLog ? LogEventLevel.Verbose : LogInit.GetDefaultLevel();
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

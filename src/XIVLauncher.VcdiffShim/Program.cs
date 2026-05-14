@@ -16,10 +16,10 @@ if (!int.TryParse(args[0], out var parentProcessId))
 var channelName = args[1];
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .WriteTo.Console()
-    .WriteTo.File(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XIVLauncherCN", "vcdiff-shim.log"), rollingInterval: RollingInterval.Day)
-    .CreateLogger();
+             .MinimumLevel.Information()
+             .WriteTo.Console()
+             .WriteTo.File(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "XIVLauncherCN", "vcdiff-shim.log"), rollingInterval: RollingInterval.Day)
+             .CreateLogger();
 
 try
 {

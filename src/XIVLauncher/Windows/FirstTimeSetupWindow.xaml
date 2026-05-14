@@ -19,7 +19,7 @@
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance viewModel:FirstTimeSetupViewModel}">
-    
+
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -27,7 +27,7 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Window.Resources>
-    
+
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
@@ -38,7 +38,7 @@
         <Grid.RenderTransform>
             <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
         </Grid.RenderTransform>
-        
+
         <Border Padding="24">
             <TabControl
                 x:Name="SetupTabControl"
@@ -56,14 +56,16 @@
                 <TabItem Header="路径">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
-                            <materialDesign:PackIcon Kind="FolderSearchOutline" Width="32" Height="32" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" 
+                            <materialDesign:PackIcon Kind="FolderSearchOutline" Width="32" Height="32"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                     VerticalAlignment="Center" Margin="0,0,16,0" />
+                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                        Style="{StaticResource MaterialDesignHeadline5TextBlock}"
-                                       Text="请选择游戏目录" 
-                                       VerticalAlignment="Center" 
+                                       Text="请选择游戏目录"
+                                       VerticalAlignment="Center"
                                        FontWeight="SemiBold" />
                         </StackPanel>
-                        
+
                         <components:FolderEntry
                             Margin="0,0,0,32"
                             Description="选择文件夹"
@@ -77,8 +79,10 @@
                 <TabItem Header="Dalamud">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
-                            <materialDesign:PackIcon Kind="PuzzleOutline" Width="32" Height="32" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" 
+                            <materialDesign:PackIcon Kind="PuzzleOutline" Width="32" Height="32"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                     VerticalAlignment="Center" Margin="0,0,16,0" />
+                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                        Style="{StaticResource MaterialDesignHeadline5TextBlock}"
                                        Text="配置 Dalamud"
                                        VerticalAlignment="Center"
@@ -87,11 +91,11 @@
 
                         <materialDesign:Card UniformCornerRadius="8" Margin="0,0,0,32">
                             <StackPanel Margin="16">
-                                <TextBlock Text="Dalamud 是游戏内插件框架, 配合插件可以为游戏提供各种便利化功能" 
+                                <TextBlock Text="Dalamud 是游戏内插件框架, 配合插件可以为游戏提供各种便利化功能"
                                            TextWrapping="Wrap"
                                            Margin="0,0,0,16"
-                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"/>
-                                <CheckBox Content="启用 Dalamud" 
+                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                <CheckBox Content="启用 Dalamud"
                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                           IsChecked="{Binding EnableDalamud}" />
                             </StackPanel>

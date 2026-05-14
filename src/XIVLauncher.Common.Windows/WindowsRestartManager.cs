@@ -128,7 +128,7 @@ public class WindowsRestartManager : IDisposable
     private static extern int RmRestart(int dwSessionHandle, int dwRestartFlags, RmWriteStatusCallback fnStatus);
 
     [DllImport("rstrtmgr")]
-    private static extern int RmGetList(int dwSessionHandle, out int nProcInfoNeeded, ref int nProcInfo, [In, Out] RmProcessInfo[] rgAffectedApps, out RmRebootReason dwRebootReasons);
+    private static extern int RmGetList(int dwSessionHandle, out int nProcInfoNeeded, ref int nProcInfo, [In] [Out] RmProcessInfo[] rgAffectedApps, out RmRebootReason dwRebootReasons);
 
     [DllImport("rstrtmgr", CharSet = CharSet.Unicode)]
     private static extern int RmRegisterResources

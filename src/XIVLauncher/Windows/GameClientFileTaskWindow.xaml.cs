@@ -1,6 +1,6 @@
 using System.ComponentModel;
-using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
@@ -14,8 +14,8 @@ public partial class GameClientFileTaskWindow
     public GameClientFileTaskWindow(GameClientFileTaskWindowViewModel viewModel)
     {
         InitializeComponent();
-        DataContext = viewModel;
-        MouseMove += GameClientFileTaskWindow_OnMouseMove;
+        DataContext =  viewModel;
+        MouseMove   += GameClientFileTaskWindow_OnMouseMove;
     }
 
     private void GameClientFileTaskWindow_OnMouseMove(object sender, MouseEventArgs e)
@@ -31,10 +31,7 @@ public partial class GameClientFileTaskWindow
 
         e.Cancel = true;
 
-        if (ViewModel.IsRunning)
-        {
-            ViewModel.RequestClose();
-        }
+        if (ViewModel.IsRunning) ViewModel.RequestClose();
         else
         {
             ViewModel.RequestClose();
@@ -45,15 +42,12 @@ public partial class GameClientFileTaskWindow
 
     private void PlayCloseAnimationAndClose()
     {
-        if (FindResource("WindowCloseAnimation") is System.Windows.Media.Animation.Storyboard storyboard)
+        if (FindResource("WindowCloseAnimation") is Storyboard storyboard)
         {
             var closeStoryboard = storyboard.Clone();
             closeStoryboard.Completed += (s, ev) => Close();
             closeStoryboard.Begin(this);
         }
-        else
-        {
-            Close();
-        }
+        else Close();
     }
 }

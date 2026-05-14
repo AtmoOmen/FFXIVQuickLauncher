@@ -11,9 +11,8 @@ using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Runtime;
 using XIVLauncher.Common.Util;
-using XIVLauncher.PlatformAbstractions;
-using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.GamePatchV3;
+using XIVLauncher.Windows.GameClientFiles;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
 
@@ -126,10 +125,10 @@ public sealed class GameClientFileTaskService
 
         try
         {
-            var assemblyLocation      = AppContext.BaseDirectory;
-            var shimExecutablePath    = Path.Combine(assemblyLocation, "VcdiffShim", "XIVLauncher.VcdiffShim.exe");
-            var adminAccessRequired   = GameRepairer.AdminAccessRequired(App.Settings.GamePath.FullName);
-            var shimRuntimePath       = DotNetRuntimeManager.GetRuntimeDirectory("win-x86");
+            var assemblyLocation    = AppContext.BaseDirectory;
+            var shimExecutablePath  = Path.Combine(assemblyLocation, "VcdiffShim", "XIVLauncher.VcdiffShim.exe");
+            var adminAccessRequired = GameRepairer.AdminAccessRequired(App.Settings.GamePath.FullName);
+            var shimRuntimePath     = DotNetRuntimeManager.GetRuntimeDirectory("win-x86");
 
             ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, "正在准备运行时"));
             var runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(cancellationTokenSource.Token).ConfigureAwait(false);
@@ -139,7 +138,7 @@ public sealed class GameClientFileTaskService
                                           runtimeVersion,
                                           "win-x86",
                                           "补丁安装器 .NET 运行时",
-                                          message => ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, message)),
+                                          message => ApplySnapshot(viewModel,                CreateRunningSnapshot(TITLE, message)),
                                           (total, downloaded, _) => ApplySnapshot(viewModel, CreateRuntimeDownloadSnapshot(TITLE, total, downloaded)),
                                           cancellationTokenSource.Token
                                       )
@@ -303,8 +302,8 @@ public sealed class GameClientFileTaskService
 
         while (true)
         {
-            var repairer = new GameRepairer(App.Settings.GamePath.FullName, TimeSpan.FromMilliseconds(100));
-            var repairerBox = new StrongBox<GameRepairer?>(repairer);
+            var repairer              = new GameRepairer(App.Settings.GamePath.FullName, TimeSpan.FromMilliseconds(100));
+            var repairerBox           = new StrongBox<GameRepairer?>(repairer);
             var cancellationRequested = false;
 
             using var pollCancellationTokenSource = new CancellationTokenSource();
@@ -384,8 +383,8 @@ public sealed class GameClientFileTaskService
 
         while (true)
         {
-            var installer = new GameInstaller(App.Settings.GamePath.FullName, TimeSpan.FromMilliseconds(100));
-            var installerBox = new StrongBox<GameInstaller?>(installer);
+            var installer             = new GameInstaller(App.Settings.GamePath.FullName, TimeSpan.FromMilliseconds(100));
+            var installerBox          = new StrongBox<GameInstaller?>(installer);
             var cancellationRequested = false;
 
             using var pollCancellationTokenSource = new CancellationTokenSource();
@@ -490,19 +489,19 @@ public sealed class GameClientFileTaskService
             },
             GameRepairer.RepairState.Repairing => new GameClientFileTaskSnapshot
             {
-                Title              = "修复游戏文件",
-                PhaseText          = repairer.CurrentMetaInstallState == SdoFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在修复游戏文件",
-                DetailText         = repairer.CurrentFile,
-                Progress           = repairer.Total == 0 ? 0 : 100.0 * repairer.Progress / repairer.Total,
+                Title = "修复游戏文件",
+                PhaseText = repairer.CurrentMetaInstallState == SdoFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在修复游戏文件",
+                DetailText = repairer.CurrentFile,
+                Progress = repairer.Total == 0 ? 0 : 100.0 * repairer.Progress / repairer.Total,
                 IsProgressIndeterminate = false,
-                StatusText         = $"{Math.Min(repairer.TaskIndex + 1, repairer.TaskCount)}/{repairer.TaskCount} - {APIHelper.BytesToString(repairer.Progress)}/{APIHelper.BytesToString(repairer.Total)}",
-                SpeedText          = GetDownloaderSpeedText(repairer.CurrentMetaInstallState, repairer.Speed),
-                EtaText            = GetDownloaderEtaText(repairer.CurrentMetaInstallState, repairer.Total - repairer.Progress, repairer.Speed),
-                Items              = repairer.IsDownloading ? GetRepairerItems(repairer) : [],
-                PrimaryButtonText  = "取消",
-                IsPrimaryButtonVisible   = true,
-                IsPrimaryButtonEnabled   = true,
-                IsRunning                = true
+                StatusText = $"{Math.Min(repairer.TaskIndex + 1, repairer.TaskCount)}/{repairer.TaskCount} - {APIHelper.BytesToString(repairer.Progress)}/{APIHelper.BytesToString(repairer.Total)}",
+                SpeedText = GetDownloaderSpeedText(repairer.CurrentMetaInstallState, repairer.Speed),
+                EtaText = GetDownloaderEtaText(repairer.CurrentMetaInstallState, repairer.Total - repairer.Progress, repairer.Speed),
+                Items = repairer.IsDownloading ? GetRepairerItems(repairer) : [],
+                PrimaryButtonText = "取消",
+                IsPrimaryButtonVisible = true,
+                IsPrimaryButtonEnabled = true,
+                IsRunning = true
             },
             _ => new GameClientFileTaskSnapshot
             {
@@ -539,18 +538,19 @@ public sealed class GameClientFileTaskService
             },
             GameInstaller.InstallState.Installing => new GameClientFileTaskSnapshot
             {
-                Title              = "安装游戏文件",
-                PhaseText          = installer.CurrentMetaInstallState == SdoFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在下载游戏文件",
-                DetailText         = installer.CurrentFile,
-                Progress           = installer.Total == 0 ? 0 : 100.0 * installer.Progress / installer.Total,
+                Title                   = "安装游戏文件",
+                PhaseText               = installer.CurrentMetaInstallState == SdoFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在下载游戏文件",
+                DetailText              = installer.CurrentFile,
+                Progress                = installer.Total == 0 ? 0 : 100.0 * installer.Progress / installer.Total,
                 IsProgressIndeterminate = false,
-                StatusText         = $"{Math.Min(installer.TaskIndex + 1, installer.TaskCount)}/{installer.TaskCount} - {APIHelper.BytesToString(installer.Progress)}/{APIHelper.BytesToString(installer.Total)}",
-                SpeedText          = GetDownloaderSpeedText(installer.CurrentMetaInstallState, installer.Speed),
-                EtaText            = GetDownloaderEtaText(installer.CurrentMetaInstallState, installer.Total - installer.Progress, installer.Speed),
-                PrimaryButtonText  = "取消",
-                IsPrimaryButtonVisible   = true,
-                IsPrimaryButtonEnabled   = true,
-                IsRunning                = true
+                StatusText =
+                    $"{Math.Min(installer.TaskIndex + 1, installer.TaskCount)}/{installer.TaskCount} - {APIHelper.BytesToString(installer.Progress)}/{APIHelper.BytesToString(installer.Total)}",
+                SpeedText              = GetDownloaderSpeedText(installer.CurrentMetaInstallState, installer.Speed),
+                EtaText                = GetDownloaderEtaText(installer.CurrentMetaInstallState, installer.Total - installer.Progress, installer.Speed),
+                PrimaryButtonText      = "取消",
+                IsPrimaryButtonVisible = true,
+                IsPrimaryButtonEnabled = true,
+                IsRunning              = true
             },
             _ => new GameClientFileTaskSnapshot
             {
@@ -612,14 +612,14 @@ public sealed class GameClientFileTaskService
         state switch
         {
             SdoFileDownloader.InstallTaskState.Connecting => "正在连接",
-            _                                              => $"{APIHelper.BytesToString(speed)}/s"
+            _                                             => $"{APIHelper.BytesToString(speed)}/s"
         };
 
     private static string GetDownloaderEtaText(SdoFileDownloader.InstallTaskState state, long remaining, long speed) =>
         state switch
         {
             SdoFileDownloader.InstallTaskState.Connecting => string.Empty,
-            _                                              => FormatEstimatedTime(remaining, speed)
+            _                                             => FormatEstimatedTime(remaining, speed)
         };
 
     private static GameClientFileTaskSnapshot CreateInstallCompletedSnapshot(GameInstaller installer) =>
@@ -666,7 +666,7 @@ public sealed class GameClientFileTaskService
         {
             Title                  = "修复游戏文件",
             PhaseText              = "修复未完成",
-            DetailText             = $"修复失败: 可能需要重新安装游戏",
+            DetailText             = "修复失败: 可能需要重新安装游戏",
             PrimaryButtonText      = "重试",
             IsPrimaryButtonVisible = true,
             IsPrimaryButtonEnabled = true,

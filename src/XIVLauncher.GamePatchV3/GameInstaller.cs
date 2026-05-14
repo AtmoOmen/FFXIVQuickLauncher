@@ -1,23 +1,22 @@
-using System.Diagnostics;
 using Serilog;
 
 namespace XIVLauncher.GamePatchV3;
 
 public sealed class GameInstaller
 {
-    public long    Speed                     { get; private set; }
-    public int     TaskIndex                 { get; private set; }
-    public long    Progress                  { get; private set; }
-    public long    Total                     { get; private set; }
-    public int     TaskCount                 { get; private set; }
-    public string  CurrentFile               { get; private set; } = string.Empty;
+    public long                               Speed                   { get; private set; }
+    public int                                TaskIndex               { get; private set; }
+    public long                               Progress                { get; private set; }
+    public long                               Total                   { get; private set; }
+    public int                                TaskCount               { get; private set; }
+    public string                             CurrentFile             { get; private set; } = string.Empty;
     public SdoFileDownloader.InstallTaskState CurrentMetaInstallState { get; private set; } = SdoFileDownloader.InstallTaskState.NotStarted;
-    public InstallState State                { get; private set; } = InstallState.NotStarted;
+    public InstallState                       State                   { get; private set; } = InstallState.NotStarted;
 
-    private readonly string   gamePath;
-    private readonly TimeSpan progressUpdateInterval;
+    private readonly string                  gamePath;
+    private readonly TimeSpan                progressUpdateInterval;
     private readonly List<Tuple<long, long>> reportedProgresses = [];
-    private CancellationTokenSource cts = new();
+    private          CancellationTokenSource cts                = new();
 
     public GameInstaller(string gamePath, TimeSpan progressUpdateInterval)
     {
@@ -36,12 +35,12 @@ public sealed class GameInstaller
             var remoteIntegrity = await GameIntegrityChecker.DownloadIntegrityCheckForVersion(token).ConfigureAwait(false);
 
             var targetRelativePaths = remoteIntegrity.Hashes
-                                                      .Where(x => !string.IsNullOrWhiteSpace(x.Key))
-                                                      .Select(x => NormalizeSdoTargetRelativePath(x.Key))
-                                                      .ToList();
+                                                     .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+                                                     .Select(x => NormalizeSdoTargetRelativePath(x.Key))
+                                                     .ToList();
 
-            using var downloader = CreateAndConfigureDownloader();
-            var installProgressTaskIndex = 0;
+            using var downloader               = CreateAndConfigureDownloader();
+            var       installProgressTaskIndex = 0;
 
             void UpdateInstallProgress(int sourceIndex, long progress, long max, SdoFileDownloader.InstallTaskState state)
             {
@@ -58,7 +57,7 @@ public sealed class GameInstaller
                     SdoFileDownloader.InstallTaskState.Connecting  => SdoFileDownloader.InstallTaskState.Connecting,
                     SdoFileDownloader.InstallTaskState.Downloading => SdoFileDownloader.InstallTaskState.Downloading,
                     SdoFileDownloader.InstallTaskState.Complete    => SdoFileDownloader.InstallTaskState.Complete,
-                    _                                               => SdoFileDownloader.InstallTaskState.NotStarted
+                    _                                              => SdoFileDownloader.InstallTaskState.NotStarted
                 };
                 RecordProgressForEstimation();
             }
@@ -69,8 +68,8 @@ public sealed class GameInstaller
             {
                 downloader.ConstructFromRemoteIntegrity(remoteIntegrity);
 
-                TaskCount     = targetRelativePaths.Count;
-                State         = InstallState.Installing;
+                TaskCount               = targetRelativePaths.Count;
+                State                   = InstallState.Installing;
                 CurrentMetaInstallState = SdoFileDownloader.InstallTaskState.Connecting;
 
                 for (var fileIndex = 0; fileIndex < targetRelativePaths.Count; fileIndex++)
@@ -109,10 +108,8 @@ public sealed class GameInstaller
         }
     }
 
-    public void Cancel()
-    {
+    public void Cancel() =>
         cts.Cancel();
-    }
 
     private SdoFileDownloader CreateAndConfigureDownloader()
     {

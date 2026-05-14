@@ -14,7 +14,7 @@
         TextElement.FontWeight="Regular"
         TextElement.FontSize="14"
         d:DataContext="{d:DesignInstance viewModel:AdvancedSettingsViewModel}">
-        
+
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -22,7 +22,7 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Window.Resources>
-    
+
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
@@ -33,15 +33,17 @@
         <Grid.RenderTransform>
             <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
         </Grid.RenderTransform>
-        
+
         <Border Padding="24">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
-                    <materialDesign:PackIcon Kind="CogOutline" Width="32" Height="32" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" VerticalAlignment="Center" Margin="0,0,16,0" />
-                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" 
+                    <materialDesign:PackIcon Kind="CogOutline" Width="32" Height="32"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                             VerticalAlignment="Center" Margin="0,0,16,0" />
+                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                Style="{StaticResource MaterialDesignHeadline5TextBlock}"
-                               Text="高级设置" 
-                               VerticalAlignment="Center" 
+                               Text="高级设置"
+                               VerticalAlignment="Center"
                                FontWeight="SemiBold" />
                 </StackPanel>
 

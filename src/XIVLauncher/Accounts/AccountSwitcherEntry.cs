@@ -35,7 +35,7 @@ internal class AccountSwitcherEntry
         if (string.IsNullOrWhiteSpace(extension))
             throw new InvalidOperationException("所选头像文件缺少可识别的扩展名。");
 
-        var imageBytes = File.ReadAllBytes(sourcePath);
+        var imageBytes            = File.ReadAllBytes(sourcePath);
         var profileImageDirectory = GetProfileImageDirectory();
         Directory.CreateDirectory(profileImageDirectory);
         RemoveCustomProfileImage(account);
@@ -65,9 +65,9 @@ internal class AccountSwitcherEntry
 
     private static ImageSource LoadProfileImage(string imagePath)
     {
-        using var stream = File.OpenRead(imagePath);
-        var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-        var frame = decoder.Frames.FirstOrDefault();
+        using var stream  = File.OpenRead(imagePath);
+        var       decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+        var       frame   = decoder.Frames.FirstOrDefault();
         if (frame == null)
             return DefaultImage;
 

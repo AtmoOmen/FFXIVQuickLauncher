@@ -1,6 +1,5 @@
 using Serilog;
 using Serilog.Events;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.ArgReader;

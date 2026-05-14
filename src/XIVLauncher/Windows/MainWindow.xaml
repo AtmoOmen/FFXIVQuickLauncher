@@ -358,7 +358,7 @@
                                                              Height="20"
                                                              Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                 </Button>
-                                
+
                                 <Button Style="{StaticResource HeaderUtilityButtonStyle}"
                                         ToolTip="更新"
                                         Command="{Binding LoginPage.LoginNoStartCommand}">
@@ -367,7 +367,7 @@
                                                              Height="20"
                                                              Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                 </Button>
-                                
+
                             </StackPanel>
 
                             <StackPanel Grid.Column="1"
@@ -868,7 +868,7 @@
                                                     Command="{Binding AccountSwitcherButtonCommand}"
                                                     CommandParameter="{Binding RelativeSource={RelativeSource Self}}">
                                                 <materialDesign:PackIcon Kind="AccountGroup" Width="18"
-                                                                        Height="18" />
+                                                                         Height="18" />
                                             </Button>
 
                                             <Button Grid.Row="1"
@@ -1560,11 +1560,11 @@
                                                     Click="OpenExternalSiteButton_OnClick">
                                                 <StackPanel Orientation="Horizontal">
                                                     <mahIcon:PackIconSimpleIcons Width="16"
-                                                                                 Height="16"
-                                                                                 Kind="TikTok"
-                                                                                 Margin="0,0,8,0"
-                                                                                 VerticalAlignment="Center"
-                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                            Height="16"
+                                                            Kind="TikTok"
+                                                            Margin="0,0,8,0"
+                                                            VerticalAlignment="Center"
+                                                            Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                                     <TextBlock Text="抖音" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
@@ -1573,11 +1573,11 @@
                                                     Click="OpenExternalSiteButton_OnClick">
                                                 <StackPanel Orientation="Horizontal">
                                                     <mahIcon:PackIconSimpleIcons Width="16"
-                                                                                 Height="16"
-                                                                                 Kind="Xiaohongshu"
-                                                                                 Margin="0,0,8,0"
-                                                                                 VerticalAlignment="Center"
-                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                            Height="16"
+                                                            Kind="Xiaohongshu"
+                                                            Margin="0,0,8,0"
+                                                            VerticalAlignment="Center"
+                                                            Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                                     <TextBlock Text="小红书" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
@@ -1586,11 +1586,11 @@
                                                     Click="OpenExternalSiteButton_OnClick">
                                                 <StackPanel Orientation="Horizontal">
                                                     <mahIcon:PackIconSimpleIcons Width="16"
-                                                                                 Height="16"
-                                                                                 Kind="SinaWeibo"
-                                                                                 Margin="0,0,8,0"
-                                                                                 VerticalAlignment="Center"
-                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                            Height="16"
+                                                            Kind="SinaWeibo"
+                                                            Margin="0,0,8,0"
+                                                            VerticalAlignment="Center"
+                                                            Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                                     <TextBlock Text="微博" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>
@@ -1599,11 +1599,11 @@
                                                     Click="OpenExternalSiteButton_OnClick">
                                                 <StackPanel Orientation="Horizontal">
                                                     <mahIcon:PackIconSimpleIcons Width="16"
-                                                                                 Height="16"
-                                                                                 Kind="Bilibili"
-                                                                                 Margin="0,0,8,0"
-                                                                                 VerticalAlignment="Center"
-                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                            Height="16"
+                                                            Kind="Bilibili"
+                                                            Margin="0,0,8,0"
+                                                            VerticalAlignment="Center"
+                                                            Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                                                     <TextBlock Text="哔哩哔哩" VerticalAlignment="Center" />
                                                 </StackPanel>
                                             </Button>

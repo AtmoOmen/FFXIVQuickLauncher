@@ -23,7 +23,7 @@
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         </ResourceDictionary>
     </Window.Resources>
-    
+
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
@@ -34,9 +34,11 @@
         <Grid.RenderTransform>
             <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
         </Grid.RenderTransform>
-        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" UniformCornerRadius="12" materialDesign:ElevationAssist.Elevation="Dp8">
+        <materialDesign:Card Background="{DynamicResource MaterialDesign.Brush.Background}" UniformCornerRadius="12"
+                             materialDesign:ElevationAssist.Elevation="Dp8">
             <StackPanel Margin="24">
-                <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold" HorizontalAlignment="Center" Text="{Binding HeaderText}" Margin="0,0,0,24" />
+                <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" Text="{Binding HeaderText}" Margin="0,0,0,24" />
 
                 <ProgressBar IsIndeterminate="{Binding IsProgressIndeterminate}"
                              Value="{Binding ProgressValue}"

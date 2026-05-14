@@ -12,8 +12,8 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Threading;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Serilog;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
@@ -27,9 +27,8 @@ using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Common.Windows;
-using XIVLauncher.GamePatchV3;
 using XIVLauncher.Game;
-using XIVLauncher.PlatformAbstractions;
+using XIVLauncher.GamePatchV3;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Windows.Services;
@@ -69,27 +68,27 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public bool IsLoggingIn { get; set; }
 
-    private DalamudLauncherFactory        DalamudLauncherFactory   { get; }
-    private MainWindowDialogProvider      DialogProvider           { get; }
-    private MainWindowAccountDraftFactory AccountDraftFactory      { get; }
-    private GameLaunchService             GameLaunchService        { get; }
-    private GameClientFileTaskService     GameClientFileTaskService { get; }
-    private readonly SyncCommand          refreshDalamudInfoCommand;
-    private CancellationTokenSource?      LoginCancelSource        { get; set; }
-    private bool                          IsLoginCanceledByUser    { get; set; }
-    private LoginCardType?                LoginCardAfterCompletion { get; set; }
+    private          DalamudLauncherFactory        DalamudLauncherFactory    { get; }
+    private          MainWindowDialogProvider      DialogProvider            { get; }
+    private          MainWindowAccountDraftFactory AccountDraftFactory       { get; }
+    private          GameLaunchService             GameLaunchService         { get; }
+    private          GameClientFileTaskService     GameClientFileTaskService { get; }
+    private readonly SyncCommand                   refreshDalamudInfoCommand;
+    private          CancellationTokenSource?      LoginCancelSource        { get; set; }
+    private          bool                          IsLoginCanceledByUser    { get; set; }
+    private          LoginCardType?                LoginCardAfterCompletion { get; set; }
 
     public MainWindowViewModel(Window window)
     {
-        Window                       = window;
-        Settings                     = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
-        DalamudLauncherFactory       = new DalamudLauncherFactory();
-        DialogProvider               = new MainWindowDialogProvider(window);
-        AccountDraftFactory          = new MainWindowAccountDraftFactory();
-        Launcher                     = new();
-        GameLaunchService            = new GameLaunchService(window);
-        GameClientFileTaskService    = new GameClientFileTaskService(window);
-        AccountSwitcher              = new AccountSwitcherViewModel
+        Window                    = window;
+        Settings                  = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
+        DalamudLauncherFactory    = new DalamudLauncherFactory();
+        DialogProvider            = new MainWindowDialogProvider(window);
+        AccountDraftFactory       = new MainWindowAccountDraftFactory();
+        Launcher                  = new();
+        GameLaunchService         = new GameLaunchService(window);
+        GameClientFileTaskService = new GameClientFileTaskService(window);
+        AccountSwitcher = new AccountSwitcherViewModel
         (
             AccountManager,
             new DialogService(window),
@@ -589,6 +588,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                     accountToSave.SdoAutoLoginSessionKey = await AccountManager.Encrypt(oAuthLogin.AutoLoginSessionKey);
 
                 var dcTravelListener = DCTravelListener;
+
                 if (dcTravelListener != null && !string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
                 {
                     dcTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
@@ -731,13 +731,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             var gamePath = App.Settings.GamePath;
             return await Launcher.LoginClient.LoginWithPatchCheck
                    (
-                        async ct =>
-                        {
-                            var checkResult = await GameUpdater.Check(gamePath, false, ct).ConfigureAwait(false);
-                            return checkResult.NeedsUpdate
-                                       ? new LoginResult { State = LoginState.NeedsPatchGame, OAuthLogin = new() }
-                                       : new LoginResult { State = LoginState.Ok, OAuthLogin = null };
-                        },
+                       async ct =>
+                       {
+                           var checkResult = await GameUpdater.Check(gamePath, false, ct).ConfigureAwait(false);
+                           return checkResult.NeedsUpdate
+                                      ? new LoginResult { State = LoginState.NeedsPatchGame, OAuthLogin = new() }
+                                      : new LoginResult { State = LoginState.Ok, OAuthLogin             = null };
+                       },
                        type,
                        fallbackLoginType,
                        requestLoginType => LoginRequest.Create
@@ -865,10 +865,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                                 "XIVLauncherCN (Soil)",
                                 MessageBoxButton.YesNo,
                                 parentWindow: Window
-                            ) == MessageBoxResult.Yes)
-                        {
-                            await GameClientFileTaskService.RunAsync(GameClientFileTaskKind.FreshInstall).ConfigureAwait(false);
-                        }
+                            )
+                            == MessageBoxResult.Yes) await GameClientFileTaskService.RunAsync(GameClientFileTaskKind.FreshInstall).ConfigureAwait(false);
 
                         return null;
                     }

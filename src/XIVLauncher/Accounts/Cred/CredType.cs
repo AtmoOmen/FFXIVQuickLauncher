@@ -19,5 +19,5 @@ public static class CredTypeExtension
                 CredType.WindowsHello       => "Windows Hello",
                 _                           => type.ToString()
             };
-    } 
+    }
 }

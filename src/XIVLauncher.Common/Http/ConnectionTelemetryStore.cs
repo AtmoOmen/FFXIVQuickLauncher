@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Net;
 using System.Net.Sockets;
 
 namespace XIVLauncher.Common.Http;
@@ -135,7 +134,7 @@ internal static class ConnectionTelemetryStore
             var latencyMs = Math.Clamp((long)Math.Round(latency.TotalMilliseconds), MIN_RECORDED_LATENCY_MS, MAX_RECORDED_LATENCY_MS);
 
             Interlocked.Exchange(ref consecutiveFailures, 0);
-            Interlocked.Exchange(ref lastSuccessTick, Environment.TickCount64);
+            Interlocked.Exchange(ref lastSuccessTick,     Environment.TickCount64);
             Interlocked.Increment(ref successCount);
 
             while (true)

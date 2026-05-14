@@ -15,7 +15,8 @@ public sealed class FFXIVProcess
     public string ProcessName => UnderlyingProcess.ProcessName;
     public int    ExitCode    => UnderlyingProcess.ExitCode;
     public string DisplayName { get; init; } = $"{p.Id} ({p.StartTime})";
-    public bool   HasInjected
+
+    public bool HasInjected
     {
         get;
         set

@@ -14,30 +14,28 @@ public sealed class GamePatchInstaller : IDisposable
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
-        NumberHandling           = JsonNumberHandling.AllowReadingFromString,
+        NumberHandling              = JsonNumberHandling.AllowReadingFromString,
         PropertyNameCaseInsensitive = true
     };
 
     private readonly HttpClient client = new();
 
-    public GamePatchInstaller()
-    {
+    public GamePatchInstaller() =>
         client.DefaultRequestHeaders.UserAgent.ParseAdd(USER_AGENT);
-    }
 
     public void Dispose() =>
         client.Dispose();
 
     public async Task InstallAsync
     (
-        GameUpdatePlan              plan,
-        DirectoryInfo               gamePath,
-        DirectoryInfo               patchPath,
-        VcdiffClient                vcdiffClient,
-        bool                        keepPatches,
-        TimeSpan                    progressUpdateInterval,
+        GameUpdatePlan                plan,
+        DirectoryInfo                 gamePath,
+        DirectoryInfo                 patchPath,
+        VcdiffClient                  vcdiffClient,
+        bool                          keepPatches,
+        TimeSpan                      progressUpdateInterval,
         IProgress<GamePatchProgress>? progress,
-        CancellationToken           cancellationToken
+        CancellationToken             cancellationToken
     )
     {
         var packageRoot = Path.Combine(patchPath.FullName, "v3");
@@ -89,7 +87,7 @@ public sealed class GamePatchInstaller : IDisposable
 
         for (var packageIndex = 0; packageIndex < plan.Packages.Count; packageIndex++)
         {
-            var package = plan.Packages[packageIndex];
+            var package            = plan.Packages[packageIndex];
             var packageSourceFiles = string.Equals(sourceVersion, package.From, StringComparison.Ordinal) ? sourceFiles : null;
             var packageTargetFiles = string.Equals(sourceVersion, package.To,   StringComparison.Ordinal) ? sourceFiles : null;
             var packageName = string.IsNullOrWhiteSpace(package.Name)
@@ -122,7 +120,8 @@ public sealed class GamePatchInstaller : IDisposable
                 }
             );
 
-            var fileListJson = await client.GetStringAsync(CdnUrlSigner.Sign(new Uri(new Uri(plan.BaseUrl.TrimEnd('/') + "/"), package.FileListUrl.TrimStart('/'))), cancellationToken).ConfigureAwait(false);
+            var fileListJson = await client.GetStringAsync(CDNLinkSigner.Sign(new Uri(new Uri(plan.BaseUrl.TrimEnd('/') + "/"), package.FileListUrl.TrimStart('/'))), cancellationToken).ConfigureAwait
+                                   (false);
             var fileList = JsonSerializer.Deserialize<GamePackageFileList>(fileListJson, SerializerOptions)
                            ?? throw new InvalidDataException("未能解析 V3 更新清单");
 
@@ -154,7 +153,7 @@ public sealed class GamePatchInstaller : IDisposable
 
                 await DownloadFileAsync
                     (
-                        CdnUrlSigner.Sign(new Uri(new Uri(downloadBaseUrl.TrimEnd('/') + "/"), entry.Url.TrimStart('/'))),
+                        CDNLinkSigner.Sign(new Uri(new Uri(downloadBaseUrl.TrimEnd('/') + "/"), entry.Url.TrimStart('/'))),
                         localFilePath,
                         entry.Md5,
                         downloaded,
@@ -168,23 +167,24 @@ public sealed class GamePatchInstaller : IDisposable
                 downloaded += entry.Size;
             }
 
-            List<KeyValuePair<string, string>>? deltaMap = null;
-            var deltaEntries    = new Dictionary<string, (int PackageFileIndex, string EntryName)>(StringComparer.OrdinalIgnoreCase);
-            var packageArchives = new List<ZipArchive>(packageFiles.Count);
+            List<KeyValuePair<string, string>>? deltaMap        = null;
+            var                                 deltaEntries    = new Dictionary<string, (int PackageFileIndex, string EntryName)>(StringComparer.OrdinalIgnoreCase);
+            var                                 packageArchives = new List<ZipArchive>(packageFiles.Count);
 
             try
             {
                 for (var packageFileIndex = 0; packageFileIndex < packageFiles.Count; packageFileIndex++)
                 {
-                    var archive = ZipFile.OpenRead(packageFiles[packageFileIndex]);
+                    var archive = await ZipFile.OpenReadAsync(packageFiles[packageFileIndex], cancellationToken);
                     packageArchives.Add(archive);
 
                     if (deltaMap == null)
                     {
                         var mapEntry = archive.GetEntry("patch_delta_direct.dat");
+
                         if (mapEntry != null)
                         {
-                            await using var stream   = mapEntry.Open();
+                            await using var stream   = await mapEntry.OpenAsync(cancellationToken);
                             var             document = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken).ConfigureAwait(false);
 
                             deltaMap = document.Descendants("DeltaPathSubItem")
@@ -215,8 +215,8 @@ public sealed class GamePatchInstaller : IDisposable
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var targetRelativePath = deltaMap[deltaIndex].Key;
-                    var deltaEntryPath     = deltaMap[deltaIndex].Value;
+                    var targetRelativePath   = deltaMap[deltaIndex].Key;
+                    var deltaEntryPath       = deltaMap[deltaIndex].Value;
                     var normalizedTargetPath = targetRelativePath.TrimStart('\\', '/').Replace('\\', '/');
                     if (!deltaEntries.TryGetValue(deltaEntryPath.Replace('\\', '/'), out var entryInfo))
                         throw new FileNotFoundException($"更新包缺少差分文件: {deltaEntryPath}");
@@ -232,6 +232,7 @@ public sealed class GamePatchInstaller : IDisposable
 
                     var expectedTargetMd5  = string.Empty;
                     var expectedTargetSize = -1L;
+
                     if (packageTargetFiles != null && packageTargetFiles.TryGetValue(normalizedTargetPath, out var targetFile))
                     {
                         expectedTargetMd5  = targetFile.Md5;
@@ -247,6 +248,7 @@ public sealed class GamePatchInstaller : IDisposable
                     if (!string.IsNullOrWhiteSpace(expectedTargetMd5))
                     {
                         var targetInfo = new FileInfo(targetPath);
+
                         if ((expectedTargetSize < 0 || targetInfo.Length == expectedTargetSize) && await IsFileValidAsync(targetPath, expectedTargetMd5, cancellationToken).ConfigureAwait(false))
                         {
                             applied++;
@@ -272,26 +274,27 @@ public sealed class GamePatchInstaller : IDisposable
                         if (!packageSourceFiles.TryGetValue(normalizedTargetPath, out var sourceFile))
                             throw new InvalidDataException($"完整性清单缺少更新源文件: {targetRelativePath}");
 
-                        var targetInfo = new FileInfo(targetPath);
+                        var targetInfo          = new FileInfo(targetPath);
                         var sourceValidateTicks = Stopwatch.GetTimestamp();
-                        var sourceFileSize = sourceFile.Size;
+                        var sourceFileSize      = sourceFile.Size;
                         var sourceValidateProgress = new Progress<long>
-                                                      (
-                                                          value => progress?.Report
-                                                          (
-                                                              new()
-                                                              {
-                                                                  PhaseText      = $"正在校验更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                                                                  CurrentFile    = targetRelativePath,
-                                                                  Progress       = value,
-                                                                  Total          = sourceFileSize,
-                                                                  IsByteProgress = true
-                                                              }
-                                                          )
-                                                      );
+                        (value => progress?.Report
+                         (
+                             new()
+                             {
+                                 PhaseText      = $"正在校验更新文件 {packageIndex + 1}/{plan.Packages.Count}",
+                                 CurrentFile    = targetRelativePath,
+                                 Progress       = value,
+                                 Total          = sourceFileSize,
+                                 IsByteProgress = true
+                             }
+                         )
+                        );
 
                         Log.Information("[V3Patch] 正在校验源文件 {Path}, 大小 {Size}", targetRelativePath, sourceFile.Size);
-                        if (targetInfo.Length != sourceFile.Size || !await IsFileValidAsync(targetPath, sourceFile.Md5, cancellationToken, sourceValidateProgress, progressUpdateInterval).ConfigureAwait(false))
+
+                        if (targetInfo.Length != sourceFile.Size
+                            || !await IsFileValidAsync(targetPath, sourceFile.Md5, cancellationToken, sourceValidateProgress, progressUpdateInterval).ConfigureAwait(false))
                         {
                             Log.Warning("[V3Patch] 源文件校验失败 {Path}, 实际大小 {ActualSize}, 期望大小 {ExpectedSize}", targetRelativePath, targetInfo.Length, sourceFile.Size);
                             throw new InvalidDataException($"当前文件状态与更新包起点不一致: {targetRelativePath}");
@@ -317,17 +320,19 @@ public sealed class GamePatchInstaller : IDisposable
                         }
                     );
 
-                    var extractTicks = Stopwatch.GetTimestamp();
-                    var extracted    = 0L;
-                    var lastExtracted = 0L;
+                    var extractTicks     = Stopwatch.GetTimestamp();
+                    var extracted        = 0L;
+                    var lastExtracted    = 0L;
                     var lastExtractTicks = Stopwatch.GetTimestamp();
-                    var minExtractTicks = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
+                    var minExtractTicks  = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
                     var deltaEntryLength = deltaEntry.Length;
-                    var extractBuffer = new byte[FILE_STREAM_BUFFER_SIZE];
+                    var extractBuffer    = new byte[FILE_STREAM_BUFFER_SIZE];
 
                     Log.Information("[V3Patch] 正在解压差分 {Entry}, 目标 {Path}, 大小 {Size}", deltaEntryPath, targetRelativePath, deltaEntryLength);
-                    await using (var deltaSource = deltaEntry.Open())
-                    await using (var deltaTarget = new FileStream(deltaFilePath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan))
+
+                    await using (var deltaSource = await deltaEntry.OpenAsync(cancellationToken))
+                    await using (var deltaTarget = new FileStream
+                                     (deltaFilePath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan))
                     {
                         while (true)
                         {
@@ -356,7 +361,7 @@ public sealed class GamePatchInstaller : IDisposable
                                 }
                             );
 
-                            lastExtracted = extracted;
+                            lastExtracted    = extracted;
                             lastExtractTicks = ticks;
                         }
 
@@ -379,20 +384,19 @@ public sealed class GamePatchInstaller : IDisposable
                     );
 
                     var deltaProgress = new Progress<(long Progress, long Total)>
-                                        (
-                                            value => progress?.Report
-                                            (
-                                                new()
-                                                {
-                                                    PhaseText      = $"正在安装更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                                                    CurrentFile    = targetRelativePath,
-                                                    Progress       = value.Progress,
-                                                    Total          = value.Total,
-                                                    StatusText     = string.Empty,
-                                                    IsByteProgress = value.Total > 0
-                                                }
-                                            )
-                                        );
+                    (value => progress?.Report
+                     (
+                         new()
+                         {
+                             PhaseText      = $"正在安装更新文件 {packageIndex + 1}/{plan.Packages.Count}",
+                             CurrentFile    = targetRelativePath,
+                             Progress       = value.Progress,
+                             Total          = value.Total,
+                             StatusText     = string.Empty,
+                             IsByteProgress = value.Total > 0
+                         }
+                     )
+                    );
 
                     try
                     {
@@ -448,12 +452,11 @@ public sealed class GamePatchInstaller : IDisposable
                         else
                         {
                             var directoryPath = Path.GetDirectoryName(normalizedTargetPath.Replace('/', '\\')) ?? string.Empty;
-                            var fileName      = Path.GetFileName(normalizedTargetPath);
                             var fileKeyInput  = $"{SdoInfos.APP_ID}_{sourceVersion}_\\{normalizedTargetPath.Replace('/', '\\')}";
                             var fileKeyBytes  = MD5.HashData(Encoding.Unicode.GetBytes(fileKeyInput));
                             var fileKeyHex    = Convert.ToHexString(fileKeyBytes).ToLowerInvariant();
                             var downloadUri   = new Uri($"{sourceBaseUrl.TrimEnd('/')}/{directoryPath.Replace('\\', '/')}/{fileKeyHex}");
-                            var signedUri     = CdnUrlSigner.Sign(downloadUri);
+                            var signedUri     = CDNLinkSigner.Sign(downloadUri);
 
                             Log.Information("[V3Patch] 正在直接下载完整文件 {Path}, 地址 {Url}", targetRelativePath, signedUri.GetLeftPart(UriPartial.Path));
                             progress?.Report
@@ -470,13 +473,15 @@ public sealed class GamePatchInstaller : IDisposable
                             );
 
                             var tempDownloadPath = string.Concat(targetPath, ".fix");
+
                             try
                             {
                                 using var response = await client.GetAsync(signedUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                                 response.EnsureSuccessStatusCode();
 
                                 await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-                                await using var sink   = new FileStream(tempDownloadPath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                                await using var sink = new FileStream
+                                    (tempDownloadPath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan);
                                 await source.CopyToAsync(sink, cancellationToken).ConfigureAwait(false);
                                 await sink.FlushAsync(cancellationToken).ConfigureAwait(false);
 
@@ -484,13 +489,21 @@ public sealed class GamePatchInstaller : IDisposable
                             }
                             catch
                             {
-                                try { File.Delete(tempDownloadPath); } catch { }
+                                try
+                                {
+                                    File.Delete(tempDownloadPath);
+                                }
+                                catch
+                                {
+                                }
+
                                 throw;
                             }
 
                             Log.Information("[V3Patch] 直接下载完整文件完成 {Path}", targetRelativePath);
                         }
                     }
+
                     File.Delete(deltaFilePath);
 
                     applied++;
@@ -529,14 +542,14 @@ public sealed class GamePatchInstaller : IDisposable
 
     private async Task DownloadFileAsync
     (
-        Uri                       sourceUrl,
-        string                    targetPath,
-        string                    expectedMd5,
-        long                      completedBytes,
-        long                      totalBytes,
-        TimeSpan                  progressUpdateInterval,
+        Uri                           sourceUrl,
+        string                        targetPath,
+        string                        expectedMd5,
+        long                          completedBytes,
+        long                          totalBytes,
+        TimeSpan                      progressUpdateInterval,
         IProgress<GamePatchProgress>? progress,
-        CancellationToken         cancellationToken
+        CancellationToken             cancellationToken
     )
     {
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath) ?? throw new InvalidOperationException());
@@ -557,9 +570,9 @@ public sealed class GamePatchInstaller : IDisposable
                 await using var target = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan);
                 var             buffer = new byte[FILE_STREAM_BUFFER_SIZE];
                 var             fileDownloaded = 0L;
-                var             lastProgress   = 0L;
-                var             lastTicks      = Stopwatch.GetTimestamp();
-                var             minTicks       = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
+                var             lastProgress = 0L;
+                var             lastTicks = Stopwatch.GetTimestamp();
+                var             minTicks = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
 
                 while (true)
                 {
@@ -620,17 +633,18 @@ public sealed class GamePatchInstaller : IDisposable
 
     private static async Task<bool> IsFileValidAsync
     (
-        string                 filePath,
-        string                 expectedMd5,
-        CancellationToken      cancellationToken,
-        IProgress<long>?       progress = null,
-        TimeSpan               progressUpdateInterval = default
+        string            filePath,
+        string            expectedMd5,
+        CancellationToken cancellationToken,
+        IProgress<long>?  progress               = null,
+        TimeSpan          progressUpdateInterval = default
     )
     {
         if (string.IsNullOrWhiteSpace(expectedMd5))
             return true;
 
         await using var stream = File.OpenRead(filePath);
+
         if (progress == null)
         {
             var directHash = await MD5.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
@@ -667,9 +681,9 @@ public sealed class GamePatchInstaller : IDisposable
 
     #region Constants
 
-    private const int FILE_STREAM_BUFFER_SIZE = 131072;
-    private const string TEMP_EXTENSION = ".tmp";
-    private const string USER_AGENT = "FF14v3autopatch";
+    private const int    FILE_STREAM_BUFFER_SIZE = 131072;
+    private const string TEMP_EXTENSION          = ".tmp";
+    private const string USER_AGENT              = "FF14v3autopatch";
 
     #endregion
 }

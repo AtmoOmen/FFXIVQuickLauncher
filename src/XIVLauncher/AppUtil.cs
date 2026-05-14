@@ -6,9 +6,9 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using XIVLauncher.Common.Windows;
+using XIVLauncher.GamePatchV3;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Windows;
-using XIVLauncher.GamePatchV3;
 
 namespace XIVLauncher;
 
@@ -34,7 +34,7 @@ public static class AppUtil
             return bitmapImage;
         }
     }
-    
+
     public static string? GetGitHash()
     {
         var asm   = typeof(AppUtil).Assembly;
@@ -59,11 +59,11 @@ public static class AppUtil
     public static string GetFromResources(string resourceName)
     {
         var asm = typeof(AppUtil).Assembly;
-        
+
         using var stream = asm.GetManifestResourceStream(resourceName);
         if (stream == null)
             return string.Empty;
-        
+
         using var reader = new StreamReader(stream);
 
         return reader.ReadToEnd();

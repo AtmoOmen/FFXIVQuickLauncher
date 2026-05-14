@@ -39,10 +39,7 @@ public partial class CaptchaInputWindow : Window
 
     private void TopBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ButtonState == MouseButtonState.Pressed)
-        {
-            DragMove();
-        }
+        if (e.ButtonState == MouseButtonState.Pressed) DragMove();
     }
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
@@ -68,8 +65,8 @@ public partial class CaptchaInputWindow : Window
         if (imageBytes == null || imageBytes.Length == 0)
             return null;
 
-        using var stream = new MemoryStream(imageBytes, writable: false);
-        var bitmap = new BitmapImage();
+        using var stream = new MemoryStream(imageBytes, false);
+        var       bitmap = new BitmapImage();
         bitmap.BeginInit();
         bitmap.CacheOption  = BitmapCacheOption.OnLoad;
         bitmap.StreamSource = stream;
@@ -162,7 +159,7 @@ public partial class CaptchaInputWindow : Window
 
     private void Cancel()
     {
-        ResultText = null;
+        ResultText   = null;
         DialogResult = false;
     }
 

@@ -27,7 +27,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
 
     public XLHttpClientFileDownloader()
     {
-        httpClient = XLHttpClientFactory.Create(ConnectTimeout, 50, DecompressionMethods.All);
+        httpClient         = XLHttpClientFactory.Create(ConnectTimeout, 50, DecompressionMethods.All);
         httpClient.Timeout = Timeout.InfiniteTimeSpan;
     }
 

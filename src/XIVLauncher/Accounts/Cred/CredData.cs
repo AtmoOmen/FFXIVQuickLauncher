@@ -15,7 +15,7 @@ public class CredData
     public string LoginSalt            { get; set; }
 
     private static readonly JsonSerializerOptions CredDataJsonOptions = new() { IncludeFields = true, PropertyNameCaseInsensitive = true };
-    
+
     [JsonConstructor]
     public CredData(string packageName, string account, string passwordProtectedKey, string loginSalt)
     {
@@ -32,12 +32,12 @@ public class CredData
             if (File.Exists(filename))
             {
                 var data = JsonSerializer.Deserialize<CredData>(File.ReadAllText(filename), CredDataJsonOptions);
-                
+
                 PackageName          = data!.PackageName;
                 Account              = data.Account;
                 PasswordProtectedKey = data.PasswordProtectedKey;
                 LoginSalt            = data.LoginSalt;
-                
+
                 Log.Information("[Cred] Loaded keys from {Filename}", filename);
                 return;
             }
@@ -51,7 +51,7 @@ public class CredData
         PasswordProtectedKey = EncryptionHelper.GetRandomBase64String(128);
         Account              = EncryptionHelper.GetRandomHexString(8);
         LoginSalt            = EncryptionHelper.GenerateSalt();
-        
+
         Log.Information("[Cred] Make new keys");
         var directory = Path.GetDirectoryName(filename);
         if (!string.IsNullOrWhiteSpace(directory))
@@ -59,7 +59,7 @@ public class CredData
 
         var text = JsonSerializer.Serialize(this, CredDataJsonOptions);
         File.WriteAllText(filename, text, new UTF8Encoding(false));
-        
+
         Log.Information("[Cred] Save keys from {Filename}", filename);
     }
 }

@@ -55,7 +55,7 @@ public partial class AccountProfileWindow
 
     private void ConfirmButton_OnClick(object sender, RoutedEventArgs e)
     {
-        ResultPath   = ViewModel.SelectedFilePath;
+        ResultPath = ViewModel.SelectedFilePath;
         ViewModel.ApplyChanges();
         DialogResult = true;
     }

@@ -13,7 +13,7 @@ internal sealed class ArgReaderApp : IAsyncDisposable
     private readonly SharedMemoryRpc             rpc;
     private          GameArgumentInterop.Reader? argReader;
     private readonly TaskCompletionSource        exitSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    
+
     private readonly FrozenDictionary<PatcherIpcOpCode, Action<PatcherIpcEnvelope>> handlers;
 
     private int isStopping;
@@ -42,7 +42,7 @@ internal sealed class ArgReaderApp : IAsyncDisposable
                 Data   = DateTime.Now
             }
         );
-        
+
         Log.Information("[ArgReader] 已发送 Hello");
         return exitSignal.Task;
     }
@@ -92,11 +92,11 @@ internal sealed class ArgReaderApp : IAsyncDisposable
     private void HandleOpenProcess(PatcherIpcEnvelope envelope)
     {
         Log.Information("[ArgReader] 打开进程: {ProcessId}", envelope.Data);
-        
+
         var processID = ConvertToProcessID(envelope.Data);
         var process   = Process.GetProcessById(processID);
         argReader = new GameArgumentInterop.Reader(process);
-        
+
         Send
         (
             new PatcherIpcEnvelope
@@ -105,7 +105,7 @@ internal sealed class ArgReaderApp : IAsyncDisposable
                 Data   = new GameArgumentInterop.LoginData()
             }
         );
-        
+
         Log.Information("[ArgReader] 已发送 ArgReadOk");
     }
 
@@ -115,7 +115,7 @@ internal sealed class ArgReaderApp : IAsyncDisposable
             throw new InvalidOperationException("[ArgReader] 未打开进程");
 
         Log.Information("[ArgReader] 读取参数");
-        
+
         var data = argReader.ReadLoginData();
         Send
         (
@@ -125,7 +125,7 @@ internal sealed class ArgReaderApp : IAsyncDisposable
                 Data   = data
             }
         );
-        
+
         Log.Information("[ArgReader] 已发送 ArgReadOk");
     }
 

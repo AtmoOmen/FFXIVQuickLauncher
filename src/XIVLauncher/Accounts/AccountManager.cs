@@ -25,7 +25,7 @@ namespace XIVLauncher.Accounts;
 public class AccountManager
 {
     public const int DEFAULT_DEVICE_PROFILE_ROTATION_DAYS = 7;
-    
+
     public XIVAccount? CurrentAccount
     {
         get
@@ -43,25 +43,22 @@ public class AccountManager
     public ICredProvider CredProvider { get; private set; }
 
     public CredType CurrentCredType { get; private set; } = DEFAULT_CRED_TYPE;
-    
+
     public ObservableCollection<XIVAccount> Accounts { get; } = [];
 
     private SQLiteConnection Database
     {
-        get
-        {
-            return field ?? throw new InvalidOperationException("数据库尚未初始化");
-        }
+        get => field ?? throw new InvalidOperationException("数据库尚未初始化");
         set;
     }
 
-    public string CurrentAccountID => 
+    public string CurrentAccountID =>
         setting.CurrentAccountID;
 
-    public bool HasCurrentAccountSelection => 
+    public bool HasCurrentAccountSelection =>
         !string.IsNullOrWhiteSpace(setting.CurrentAccountID);
 
-    public bool HasUnavailableSavedSecrets => 
+    public bool HasUnavailableSavedSecrets =>
         unavailableSavedSecretAccountIds.Count != 0;
 
     private const CredType DEFAULT_CRED_TYPE = CredType.WindowsCredManager;
@@ -71,9 +68,9 @@ public class AccountManager
     private static readonly string DatabasePath                  = Path.Combine(Paths.RoamingPath, "accounts.db");
 
     private static readonly JsonSerializerOptions DeviceProfilePresetStoreJsonOptions = new() { WriteIndented = true };
-    
+
     private readonly LauncherSettingsV3 setting;
-    private readonly CredData credData;
+    private readonly CredData           credData;
 
     private DeviceProfilePresetStoreState? deviceProfilePresetStore;
 
@@ -93,15 +90,15 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 规范化设备预设轮换天数，保证值始终落在有效范围内
+    ///     规范化设备预设轮换天数，保证值始终落在有效范围内
     /// </summary>
     /// <param name="rotationDays">待规范化的轮换天数</param>
     /// <returns>有效的轮换天数</returns>
     public static int NormalizeDeviceProfileRotationDays(int rotationDays) =>
         rotationDays < 1 ? DEFAULT_DEVICE_PROFILE_ROTATION_DAYS : rotationDays;
-    
+
     /// <summary>
-    /// 将单个账号写入数据库
+    ///     将单个账号写入数据库
     /// </summary>
     /// <param name="account">待保存账号</param>
     public void Save(XIVAccount account)
@@ -120,7 +117,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 将当前内存中的所有账号写入数据库
+    ///     将当前内存中的所有账号写入数据库
     /// </summary>
     public void Save()
     {
@@ -129,7 +126,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 初始化数据库连接并执行表结构迁移
+    ///     初始化数据库连接并执行表结构迁移
     /// </summary>
     public void SetupDb()
     {
@@ -143,7 +140,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 从磁盘加载账号数据并修复旧数据
+    ///     从磁盘加载账号数据并修复旧数据
     /// </summary>
     public void Load()
     {
@@ -177,10 +174,10 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 使用当前凭据提供程序加密文本
+    ///     使用当前凭据提供程序加密文本
     /// </summary>
     /// <param name="text">待加密文本</param>
-    /// <returns>加密后的文本，失败时返回 <see langword="null"/></returns>
+    /// <returns>加密后的文本，失败时返回 <see langword="null" /></returns>
     public async Task<string?> Encrypt(string? text)
     {
         try
@@ -206,10 +203,10 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 使用当前凭据提供程序解密文本
+    ///     使用当前凭据提供程序解密文本
     /// </summary>
     /// <param name="text">待解密文本</param>
-    /// <returns>解密后的文本，失败时返回 <see langword="null"/></returns>
+    /// <returns>解密后的文本，失败时返回 <see langword="null" /></returns>
     public async Task<string?> Decrypt(string? text)
     {
         try
@@ -235,7 +232,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 按启动阶段默认值初始化凭据提供程序
+    ///     按启动阶段默认值初始化凭据提供程序
     /// </summary>
     /// <param name="requestedType">请求使用的凭据类型，允许为空</param>
     /// <returns>实际应用结果</returns>
@@ -243,15 +240,15 @@ public class AccountManager
         ChangeCredTypeAsync(requestedType.GetValueOrDefault(DEFAULT_CRED_TYPE), true);
 
     /// <summary>
-    /// 判断指定凭据类型在当前设备上是否可用
+    ///     判断指定凭据类型在当前设备上是否可用
     /// </summary>
     /// <param name="type">凭据类型</param>
-    /// <returns>可用则返回 <see langword="true"/></returns>
+    /// <returns>可用则返回 <see langword="true" /></returns>
     public async Task<bool> IsCredTypeSupportedAsync(CredType type) =>
         await GetCredProvider(type).IsSupported();
 
     /// <summary>
-    /// 切换自动登录使用的凭据类型
+    ///     切换自动登录使用的凭据类型
     /// </summary>
     /// <param name="requestedType">目标凭据类型</param>
     /// <param name="isStartup">是否处于启动阶段</param>
@@ -363,15 +360,15 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 判断账号是否持有当前会话不可读取的旧密文
+    ///     判断账号是否持有当前会话不可读取的旧密文
     /// </summary>
     /// <param name="account">账号对象</param>
-    /// <returns>存在不可用旧密文则返回 <see langword="true"/></returns>
+    /// <returns>存在不可用旧密文则返回 <see langword="true" /></returns>
     public bool HasUnavailableSecrets(XIVAccount? account) =>
         account is not null && unavailableSavedSecretAccountIds.Contains(account.ID);
 
     /// <summary>
-    /// 添加账号或更新同一账号的现有信息
+    ///     添加账号或更新同一账号的现有信息
     /// </summary>
     /// <param name="account">待保存账号</param>
     public void AddAccount(XIVAccount account)
@@ -410,11 +407,11 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 按用户名和账号类型查找账号
+    ///     按用户名和账号类型查找账号
     /// </summary>
     /// <param name="userName">用户名</param>
     /// <param name="accountType">账号类型</param>
-    /// <returns>匹配账号，不存在则返回 <see langword="null"/></returns>
+    /// <returns>匹配账号，不存在则返回 <see langword="null" /></returns>
     public XIVAccount? FindAccount(string? userName, XIVAccountType accountType)
     {
         if (string.IsNullOrWhiteSpace(userName))
@@ -426,7 +423,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 获取设备预设列表，按显示名称升序排列
+    ///     获取设备预设列表，按显示名称升序排列
     /// </summary>
     /// <returns>只读预设列表</returns>
     public IReadOnlyList<DeviceProfilePreset> GetDeviceProfilePresets()
@@ -438,10 +435,10 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 按预设 ID 查找设备预设
+    ///     按预设 ID 查找设备预设
     /// </summary>
     /// <param name="presetId">预设 ID</param>
-    /// <returns>匹配预设，不存在则返回 <see langword="null"/></returns>
+    /// <returns>匹配预设，不存在则返回 <see langword="null" /></returns>
     public DeviceProfilePreset? FindDeviceProfilePreset(string? presetId)
     {
         if (string.IsNullOrWhiteSpace(presetId))
@@ -451,14 +448,14 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 获取共享设备预设
+    ///     获取共享设备预设
     /// </summary>
     /// <returns>共享设备预设</returns>
     public DeviceProfilePreset GetSharedDeviceProfilePreset() =>
         GetSharedDeviceProfilePreset(GetDeviceProfilePresetStoreState());
 
     /// <summary>
-    /// 按用户名和账号类型解析设备配置
+    ///     按用户名和账号类型解析设备配置
     /// </summary>
     /// <param name="userName">用户名</param>
     /// <param name="accountType">账号类型</param>
@@ -472,7 +469,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 按账户解析设备配置
+    ///     按账户解析设备配置
     /// </summary>
     /// <param name="account">账号</param>
     /// <returns>解析后的设备配置</returns>
@@ -487,9 +484,9 @@ public class AccountManager
 
         return ResolveDeviceProfile(sharedPreset, trackedAccount, isTrackedAccount);
     }
-    
+
     /// <summary>
-    /// 更新账号的设备预设开关和轮换策略
+    ///     更新账号的设备预设开关和轮换策略
     /// </summary>
     /// <param name="account">目标账号</param>
     /// <param name="dynamicEnabled">是否启用动态设备预设</param>
@@ -507,7 +504,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 保存账号使用的设备预设选择
+    ///     保存账号使用的设备预设选择
     /// </summary>
     /// <param name="account">目标账号</param>
     /// <param name="snapshot">设备快照</param>
@@ -523,7 +520,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 将设备快照应用到账号，但不直接保存
+    ///     将设备快照应用到账号，但不直接保存
     /// </summary>
     /// <param name="account">目标账号</param>
     /// <param name="snapshot">设备快照</param>
@@ -534,7 +531,7 @@ public class AccountManager
         AssignPresetToAccount(account, snapshot, NormalizeGeneratedUtcTicks(generatedUtcTicks), remark);
 
     /// <summary>
-    /// 保存共享设备预设选择
+    ///     保存共享设备预设选择
     /// </summary>
     /// <param name="snapshot">设备快照</param>
     /// <param name="generatedUtcTicks">生成时间戳</param>
@@ -559,7 +556,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 保存共享设备预设选择，直接指定预设
+    ///     保存共享设备预设选择，直接指定预设
     /// </summary>
     /// <param name="preset">目标预设</param>
     /// <returns>实际保存的预设</returns>
@@ -582,7 +579,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 显式创建新的设备预设
+    ///     显式创建新的设备预设
     /// </summary>
     /// <param name="snapshot">设备快照</param>
     /// <param name="generatedUtcTicks">生成时间戳</param>
@@ -609,13 +606,13 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 删除设备预设
+    ///     删除设备预设
     /// </summary>
     /// <param name="presetId">预设 ID</param>
     /// <returns>删除后应继续使用的预设</returns>
     public DeviceProfilePreset DeleteDeviceProfilePreset(string presetId)
     {
-        var state = GetDeviceProfilePresetStoreState();
+        var state         = GetDeviceProfilePresetStoreState();
         var removedPreset = FindPresetById(state, presetId) ?? throw new InvalidOperationException("目标预设不存在。");
         if (state.Presets.Count <= 1)
             throw new InvalidOperationException("至少需要保留一个预设。");
@@ -633,11 +630,11 @@ public class AccountManager
         (
             new DeviceProfilePresetStoreState
             {
-                Version        = state.Version,
+                Version = state.Version,
                 SharedPresetId = string.Equals(state.SharedPresetId, presetId, StringComparison.Ordinal)
                                      ? replacementPreset.Id
                                      : state.SharedPresetId,
-                Presets        = presets
+                Presets = presets
             }
         );
 
@@ -653,7 +650,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 保存账号设备预设选择，直接指定预设
+    ///     保存账号设备预设选择，直接指定预设
     /// </summary>
     /// <param name="account">目标账号</param>
     /// <param name="preset">目标预设</param>
@@ -672,7 +669,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 将解析后的设备配置回写到账号
+    ///     将解析后的设备配置回写到账号
     /// </summary>
     /// <param name="account">目标账号</param>
     /// <param name="resolvedDeviceProfile">解析结果</param>
@@ -691,7 +688,7 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 删除账号并清理关联数据
+    ///     删除账号并清理关联数据
     /// </summary>
     /// <param name="account">待删除账号</param>
     public void RemoveAccount(XIVAccount account)
@@ -749,11 +746,11 @@ public class AccountManager
     }
 
     /// <summary>
-    /// 清空当前账号选择
+    ///     清空当前账号选择
     /// </summary>
     public void ClearCurrentAccount() =>
         setting.CurrentAccountID = string.Empty;
-    
+
     private ResolvedDeviceProfile ResolveDeviceProfile(DeviceProfilePreset sharedPreset, XIVAccount? account, bool saveChanges)
     {
         if (account == null)
@@ -877,7 +874,7 @@ public class AccountManager
 
     private void Accounts_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
         Save();
-    
+
     private XIVAccount GetTrackedAccount(XIVAccount account) =>
         Accounts.FirstOrDefault(existing => existing.ID == account.ID) ?? account;
 

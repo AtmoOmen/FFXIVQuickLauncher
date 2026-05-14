@@ -168,7 +168,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         set => SetProperty(ref field, value);
     } = (int)DPIAwareness.Unaware;
 
-
     public decimal? SpeedLimitMb
     {
         get;
@@ -297,7 +296,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     {
         var patchPath = Paths.ResolvePatchPath(App.Settings.PatchPath, Paths.RoamingPath);
 
-        GamePath = App.Settings.GamePath?.FullName ?? string.Empty;
+        GamePath  = App.Settings.GamePath?.FullName ?? string.Empty;
         PatchPath = patchPath.FullName;
 
         LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
@@ -338,12 +337,12 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var gamePath              = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
-        var patchPath             = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
-        var addonEntries          = AddonEntries.ToList();
-        var dalamudLoadMethod      = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
-        var dpiAwareness           = (DPIAwareness)DpiAwarenessIndex;
-        var speedLimitBytes        = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
+        var gamePath          = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
+        var patchPath         = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
+        var addonEntries      = AddonEntries.ToList();
+        var dalamudLoadMethod = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
+        var dpiAwareness      = (DPIAwareness)DpiAwarenessIndex;
+        var speedLimitBytes   = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
 
         var requestedCredType   = SelectedCredType;
         var credTypeApplyResult = await App.AccountManager.ChangeCredTypeAsync(requestedCredType);
@@ -365,26 +364,25 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         }
 
         App.Settings.Update
-        (
-            settings =>
+        (settings =>
             {
-                settings.GamePath                            = gamePath;
-                settings.PatchPath                           = patchPath;
-                settings.LauncherLanguage                    = LauncherLanguage.SimplifiedChinese;
-                settings.AddonList                           = addonEntries;
-                settings.AskBeforePatchInstall               = AskBeforePatching;
-                settings.ExitLauncherWhenGameExit            = ExitLauncherAfterGameExit;
-                settings.KeepPatches                         = KeepPatches;
+                settings.GamePath                             = gamePath;
+                settings.PatchPath                            = patchPath;
+                settings.LauncherLanguage                     = LauncherLanguage.SimplifiedChinese;
+                settings.AddonList                            = addonEntries;
+                settings.AskBeforePatchInstall                = AskBeforePatching;
+                settings.ExitLauncherWhenGameExit             = ExitLauncherAfterGameExit;
+                settings.KeepPatches                          = KeepPatches;
                 settings.RequireDeviceProfileSetupForNewLogin = RequireDeviceProfileSetupForNewAccountLogin;
-                settings.DalamudEnabled                      = EnableHooks;
-                settings.DalamudInjectionDelayMS             = DalamudInjectionDelayMs ?? 0;
-                settings.ManualInjectDelayMs                 = ManualInjectDelayMs     ?? 0;
-                settings.DalamudLoadMethod                   = dalamudLoadMethod;
-                settings.AdditionalLaunchArgs                = LaunchArgs;
-                settings.DPIAwareness                        = dpiAwareness;
-                settings.SpeedLimitBytes                     = speedLimitBytes;
-                settings.GitHubToken                         = GitHubToken;
-                settings.CredType                            = credTypeApplyResult.AppliedCredType;
+                settings.DalamudEnabled                       = EnableHooks;
+                settings.DalamudInjectionDelayMS              = DalamudInjectionDelayMs ?? 0;
+                settings.ManualInjectDelayMs                  = ManualInjectDelayMs     ?? 0;
+                settings.DalamudLoadMethod                    = dalamudLoadMethod;
+                settings.AdditionalLaunchArgs                 = LaunchArgs;
+                settings.DPIAwareness                         = dpiAwareness;
+                settings.SpeedLimitBytes                      = speedLimitBytes;
+                settings.GitHubToken                          = GitHubToken;
+                settings.CredType                             = credTypeApplyResult.AppliedCredType;
             }
         );
 

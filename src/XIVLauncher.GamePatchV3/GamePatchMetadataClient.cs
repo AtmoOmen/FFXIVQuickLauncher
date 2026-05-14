@@ -17,7 +17,7 @@ public sealed class GamePatchMetadataClient : IDisposable
     public void Dispose() =>
         client.Dispose();
 
-    public async Task<GameUpdatePlan?> BuildUpdatePlan(DirectoryInfo gamePath, string currentGameVersion, bool forceUpdate, CancellationToken cancellationToken = default)
+    public async Task<GameUpdatePlan?> BuildUpdatePlan(string currentGameVersion, bool forceUpdate, CancellationToken cancellationToken = default)
     {
         var normalizedGameVersion = currentGameVersion.Trim().Trim('\uFEFF').Trim();
         Log.Information("[V3Patch] 正在构建更新计划, 当前游戏版本 {CurrentGameVersion}, 强制更新 {ForceUpdate}", normalizedGameVersion, forceUpdate);
@@ -27,7 +27,6 @@ public sealed class GamePatchMetadataClient : IDisposable
         var currentMapping     = versionMapping.GetValueOrDefault(normalizedGameVersion);
         var currentVersion     = currentMapping?.V    ?? string.Empty;
         var currentViewVersion = currentMapping?.View ?? normalizedGameVersion;
-
 
         if (string.IsNullOrWhiteSpace(currentVersion))
             throw new InvalidDataException($"无法确定当前游戏数据版本, 游戏版本 {normalizedGameVersion}, 请运行游戏文件修复后重试");
@@ -95,10 +94,10 @@ public sealed class GamePatchMetadataClient : IDisposable
             throw new InvalidDataException("client_all_files_list.dat 头部格式无效");
 
         var versionMapping = await DownloadVersionMapping(cancellationToken).ConfigureAwait(false);
+        Log.Information("[V3Patch] 版本映射条目数 {MappingCount}, 目标数据版本 {DataVersion}", versionMapping.Count, headerParts[2]);
         var gameVersion = versionMapping
                           .FirstOrDefault(entry => string.Equals(entry.Value.V, headerParts[2], StringComparison.Ordinal))
-                          .Key
-                          ?? string.Empty;
+                          .Key;
 
         var result = new IntegrityCheckResult
         {
@@ -151,8 +150,8 @@ public sealed class GamePatchMetadataClient : IDisposable
 
     private static string ResolveTargetViewVersion
     (
-        RemoteVersion                              remoteVersion,
-        GameVersionArea                            targetArea,
+        RemoteVersion                                    remoteVersion,
+        GameVersionArea                                  targetArea,
         IReadOnlyDictionary<string, VersionMappingEntry> versionMapping
     )
     {

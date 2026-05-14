@@ -4,7 +4,7 @@ using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.GamePatchV3;
 
-public static class CdnUrlSigner
+public static class CDNLinkSigner
 {
     public static Uri Sign(Uri uri)
     {

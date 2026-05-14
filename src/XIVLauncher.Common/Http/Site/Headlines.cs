@@ -7,10 +7,17 @@ namespace XIVLauncher.Common.Http.Site;
 
 public partial class Headlines
 {
-    [JsonProperty("news")]   public News[]   News   { get; set; }
-    [JsonProperty("topics")] public News[]   Topics { get; set; }
-    [JsonProperty("pinned")] public News[]   Pinned { get; set; }
-    [JsonProperty("banner")] public Banner[] Banner { get; set; }
+    [JsonProperty("news")]
+    public News[] News { get; set; }
+
+    [JsonProperty("topics")]
+    public News[] Topics { get; set; }
+
+    [JsonProperty("pinned")]
+    public News[] Pinned { get; set; }
+
+    [JsonProperty("banner")]
+    public Banner[] Banner { get; set; }
 }
 
 public partial class Headlines

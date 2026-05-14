@@ -11,7 +11,7 @@ public class AsyncCommand
     Func<bool>?         canExecute = null
 ) : ICommand
 {
-    private bool isExecuting;
+    private bool          isExecuting;
     private EventHandler? canExecuteChanged;
 
     public bool CanExecute(object? parameter) =>

@@ -33,7 +33,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
     public ICommand RemoveAccountCommand => removeAccountCommand;
 
     public ICommand SetProfilePictureCommand => setProfilePictureCommand;
-    
+
     public ICommand ConfigureDeviceProfileCommand => configureDeviceProfileCommand;
 
     public AccountSwitcherEntry? SelectedEntry
@@ -121,7 +121,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 
     public void RefreshEntries(string? selectedAccountId = null, bool useCurrentAccountSelection = true)
     {
-        ContextEntry      =   null;
+        ContextEntry = null;
         if (useCurrentAccountSelection)
             selectedAccountId ??= SelectedEntry?.Account.ID;
         if (string.IsNullOrWhiteSpace(selectedAccountId) && useCurrentAccountSelection && accountManager.HasCurrentAccountSelection)
@@ -235,7 +235,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 
         RefreshEntries(SelectedEntry?.Account.ID);
     }
-    
+
     private static bool HasSavedSecret(XIVAccount account) =>
         account.AutoLogin
         || !string.IsNullOrWhiteSpace(account.SdoPassword)

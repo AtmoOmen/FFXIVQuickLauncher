@@ -1,18 +1,15 @@
 namespace XIVLauncher.GamePatchV3;
 
 public class ReusableByteBufferManager
+(
+    int arraySize,
+    int maxBuffers
+)
 {
-    private static readonly int[]                       ArraySizes = new[] { 1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22 };
+    private static readonly int[]                       ArraySizes = [1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22];
     private static readonly ReusableByteBufferManager[] Instances  = ArraySizes.Select(x => new ReusableByteBufferManager(x, 2 * Environment.ProcessorCount)).ToArray();
 
-    private readonly int          arraySize;
-    private readonly Allocation[] buffers;
-
-    public ReusableByteBufferManager(int arraySize, int maxBuffers)
-    {
-        this.arraySize = arraySize;
-        buffers        = new Allocation[maxBuffers];
-    }
+    private readonly Allocation[] buffers   = new Allocation[maxBuffers];
 
     public static Allocation GetBuffer(bool clear = false) =>
         Instances[0].Allocate(clear);

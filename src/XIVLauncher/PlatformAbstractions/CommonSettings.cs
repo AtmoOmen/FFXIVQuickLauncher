@@ -15,11 +15,11 @@ public class CommonSettings : ISettings
         }
     }
 
-    public         ClientLanguage?    ClientLanguage          => Common.ClientLanguage.ChineseSimplified;
-    public         bool?              KeepPatches             => App.Settings.KeepPatches;
-    public         DirectoryInfo      PatchPath               => App.Settings.PatchPath;
-    public         DirectoryInfo      GamePath                => App.Settings.GamePath;
-    public         long               SpeedLimitBytes         => App.Settings.SpeedLimitBytes;
-    public         int                DalamudInjectionDelayMs => (int)App.Settings.DalamudInjectionDelayMS;
-    private static CommonSettings     instance;
+    public         ClientLanguage? ClientLanguage          => Common.ClientLanguage.ChineseSimplified;
+    public         bool?           KeepPatches             => App.Settings.KeepPatches;
+    public         DirectoryInfo   PatchPath               => App.Settings.PatchPath;
+    public         DirectoryInfo   GamePath                => App.Settings.GamePath;
+    public         long            SpeedLimitBytes         => App.Settings.SpeedLimitBytes;
+    public         int             DalamudInjectionDelayMs => (int)App.Settings.DalamudInjectionDelayMS;
+    private static CommonSettings  instance;
 }

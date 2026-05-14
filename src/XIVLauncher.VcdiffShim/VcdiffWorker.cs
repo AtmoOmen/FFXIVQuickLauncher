@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -17,7 +16,7 @@ public class VcdiffWorker : IDisposable
     public VcdiffWorker(int monitorProcessId, string channelName)
     {
         parentProcess = Process.GetProcessById(monitorProcessId);
-        rpcBuffer = new(channelName, HandleRequestAsync);
+        rpcBuffer     = new(channelName, HandleRequestAsync);
     }
 
     public void Dispose()
@@ -55,10 +54,10 @@ public class VcdiffWorker : IDisposable
             return BuildErrorResponse("未知的操作码");
         }
 
-        var sourceFile  = reader.ReadString();
-        var deltaFile   = reader.ReadString();
-        var targetFile  = reader.ReadString();
-        var expectedMd5 = reader.ReadString();
+        var sourceFile   = reader.ReadString();
+        var deltaFile    = reader.ReadString();
+        var targetFile   = reader.ReadString();
+        var expectedMd5  = reader.ReadString();
         var expectedSize = reader.ReadInt64();
 
         Log.Information("[VcdiffShim] 收到差分合并请求, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}", sourceFile, deltaFile, targetFile);
@@ -81,7 +80,7 @@ public class VcdiffWorker : IDisposable
             throw new InvalidOperationException("V3 差分必须在 32 位进程中执行");
 
         var moduleDirectory = Path.Combine(AppContext.BaseDirectory, "Launcher3Modules");
-        var modulePath      = Path.Combine(moduleDirectory, "XDelta3WrapFactory.dll");
+        var modulePath      = Path.Combine(moduleDirectory,          "XDelta3WrapFactory.dll");
 
         if (!File.Exists(modulePath))
             throw new FileNotFoundException("缺少 V3 差分模块", modulePath);
@@ -106,13 +105,18 @@ public class VcdiffWorker : IDisposable
             Log.Information
             (
                 "[VcdiffShim] 差分合并开始, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}, 临时文件 {TempPath}, 期望大小 {ExpectedSize}",
-                sourceFile, deltaFile, targetFile, tempPath, expectedSize
+                sourceFile,
+                deltaFile,
+                targetFile,
+                tempPath,
+                expectedSize
             );
 
             var currentDirectory = Directory.GetCurrentDirectory();
             Directory.SetCurrentDirectory(moduleDirectory);
 
-            IntPtr library = IntPtr.Zero;
+            var library = IntPtr.Zero;
+
             try
             {
                 if (!SetDllDirectory(moduleDirectory))
@@ -129,7 +133,10 @@ public class VcdiffWorker : IDisposable
                     Log.Error
                     (
                         "[VcdiffShim] 差分合并失败, 源 {SourcePath} (大小 {SourceSize}), 差分 {DeltaPath}, 临时目标 {TempPath}",
-                        sourceFile, sourceInfo.Length, deltaFile, tempPath
+                        sourceFile,
+                        sourceInfo.Length,
+                        deltaFile,
+                        tempPath
                     );
                     throw new InvalidDataException($"V3 差分合并失败: 源文件 {sourceInfo.Length} 字节, 差分 {new FileInfo(deltaFile).Length} 字节");
                 }
@@ -206,10 +213,10 @@ public class VcdiffWorker : IDisposable
 
     #region Constants
 
-    private const int    VCDIFF_OPCODE   = 0;
-    private const int    RESULT_PASS     = 0;
-    private const int    RESULT_ERROR    = 2;
-    private const string TEMP_EXTENSION  = ".tmp";
+    private const int    VCDIFF_OPCODE  = 0;
+    private const int    RESULT_PASS    = 0;
+    private const int    RESULT_ERROR   = 2;
+    private const string TEMP_EXTENSION = ".tmp";
 
     #endregion
 }

@@ -33,14 +33,14 @@ public partial class CustomMessageBox
     private readonly Builder _builder;
 
     private CustomMessageBoxViewModel ViewModel => (DataContext as CustomMessageBoxViewModel)!;
-                                                       
+
     private MessageBoxResult result;
     private bool             isClosing;
 
     private CustomMessageBox(Builder builder)
     {
         _builder = builder;
-        result  = _builder.CancelResult;
+        result   = _builder.CancelResult;
 
         InitializeComponent();
 
@@ -312,7 +312,7 @@ public partial class CustomMessageBox
         if (isClosing)
             return;
 
-        e.Cancel   = true;
+        e.Cancel  = true;
         isClosing = true;
 
         if (FindResource("WindowCloseAnimation") is Storyboard storyboard)
@@ -693,10 +693,7 @@ public partial class CustomMessageBox
         {
             MessageBoxResult result;
 
-            if (ParentWindow != null)
-            {
-                result = Dispatcher.CurrentDispatcher == ParentWindow.Dispatcher ? ShowAssumingDispatcherThread() : ParentWindow.Dispatcher.Invoke(ShowAssumingDispatcherThread);
-            }
+            if (ParentWindow != null) result = Dispatcher.CurrentDispatcher == ParentWindow.Dispatcher ? ShowAssumingDispatcherThread() : ParentWindow.Dispatcher.Invoke(ShowAssumingDispatcherThread);
             else
             {
                 if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)

@@ -150,9 +150,9 @@ public static class HappyEyeballsCallback
 
     private static async Task<NetworkStream> WaitForFirstSuccessfulAttemptAsync(IReadOnlyList<Task<NetworkStream>> attempts)
     {
-        var pendingAttempts    = new List<Task<NetworkStream>>(attempts);
-        var canceledException  = default(OperationCanceledException);
-        var failedExceptions   = default(List<Exception>);
+        var pendingAttempts   = new List<Task<NetworkStream>>(attempts);
+        var canceledException = default(OperationCanceledException);
+        var failedExceptions  = default(List<Exception>);
 
         while (pendingAttempts.Count > 0)
         {

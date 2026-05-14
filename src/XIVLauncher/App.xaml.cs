@@ -56,7 +56,7 @@ public partial class App
 
     private StartupOrchestrator? orchestrator;
     private MainWindow?          mainWindow;
-    
+
     private static readonly SearchValues<char> CommandArgsSearchValues = SearchValues.Create(" \t\n\v\"");
 
     private bool isUseFullExceptionHandler;

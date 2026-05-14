@@ -41,7 +41,7 @@ internal class Updates
             );
 
             var updateManager = new UpdateManager(updateSource, updateOptions);
-            var newRelease = await updateManager.CheckForUpdatesAsync();
+            var newRelease    = await updateManager.CheckForUpdatesAsync();
 
             if (newRelease == null)
                 return true;

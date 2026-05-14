@@ -20,8 +20,9 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            
-            <Style x:Key="AnimatedRaisedButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+
+            <Style x:Key="AnimatedRaisedButton" TargetType="Button"
+                   BasedOn="{StaticResource MaterialDesignRaisedButton}">
                 <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
                 <Setter Property="RenderTransform">
                     <Setter.Value>
@@ -42,7 +43,7 @@
             </Style>
         </ResourceDictionary>
     </Window.Resources>
-    
+
     <Window.Triggers>
         <EventTrigger RoutedEvent="FrameworkElement.Loaded">
             <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
@@ -53,7 +54,7 @@
         <Grid.RenderTransform>
             <TranslateTransform x:Name="WindowAnimationLayerTransform" />
         </Grid.RenderTransform>
-        
+
         <Grid Margin="32">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -73,24 +74,24 @@
                                       Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
                                       Filters="EXE File, *.exe;Powershell Script, *.ps1;Shell Script, *.bat"
                                       Margin="0,0,0,16" />
-                
+
                 <TextBox x:Name="CommandLineTextBox"
                          materialDesign:HintAssist.Hint="命令行参数"
                          materialDesign:HintAssist.IsFloating="True"
                          Style="{StaticResource MaterialDesignFloatingHintTextBox}"
                          Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
                          Margin="0,0,0,24" />
-                
+
                 <CheckBox x:Name="AdminCheckBox"
                           Content="以管理员身份运行"
                           IsChecked="{Binding RunAsAdmin}"
                           Margin="0,0,0,12" />
-                
+
                 <CheckBox x:Name="RunOnCloseCheckBox"
                           Content="游戏结束时再运行"
                           IsChecked="{Binding RunOnClose}"
                           Margin="0,0,0,12" />
-                
+
                 <CheckBox x:Name="KillCheckBox"
                           Content="游戏结束时停止运行"
                           IsEnabled="{Binding CanKillAfterClose}"

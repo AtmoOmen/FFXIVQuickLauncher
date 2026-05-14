@@ -72,14 +72,14 @@
     <ItemGroup>
         <PackageReference Include="CalcBinding"/>
         <PackageReference Include="Konscious.Security.Cryptography.Argon2"/>
-        <PackageReference Include="AdysTech.CredentialManager" />
-        <PackageReference Include="Downloader" />
+        <PackageReference Include="AdysTech.CredentialManager"/>
+        <PackageReference Include="Downloader"/>
         <PackageReference Include="Dragablz"/>
         <PackageReference Include="Extended.Wpf.Toolkit"/>
-        <PackageReference Include="MahApps.Metro.IconPacks" />
+        <PackageReference Include="MahApps.Metro.IconPacks"/>
         <PackageReference Include="MaterialDesignThemes"/>
-        <PackageReference Include="MdXaml" />
-        <PackageReference Include="MdXaml.Plugins" />
+        <PackageReference Include="MdXaml"/>
+        <PackageReference Include="MdXaml.Plugins"/>
         <PackageReference Include="Microsoft.WindowsAPICodePack-Shell"/>
         <PackageReference Include="NSec.Cryptography"/>
         <PackageReference Include="Serilog"/>

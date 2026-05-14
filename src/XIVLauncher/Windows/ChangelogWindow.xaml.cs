@@ -5,7 +5,6 @@ using System.Media;
 using System.Windows;
 using Newtonsoft.Json;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
@@ -54,19 +53,25 @@ public partial class ChangelogWindow : Window
 
     public class VersionMeta
     {
-        [JsonProperty("version")] public string Version { get; set; } = string.Empty;
+        [JsonProperty("version")]
+        public string Version { get; set; } = string.Empty;
 
-        [JsonProperty("url")] public string Url { get; set; } = string.Empty;
+        [JsonProperty("url")]
+        public string Url { get; set; } = string.Empty;
 
-        [JsonProperty("changelog")] public string Changelog { get; set; } = string.Empty;
+        [JsonProperty("changelog")]
+        public string Changelog { get; set; } = string.Empty;
 
-        [JsonProperty("when")] public DateTime When { get; set; }
+        [JsonProperty("when")]
+        public DateTime When { get; set; }
     }
 
     public class ReleaseMeta
     {
-        [JsonProperty("releaseVersion")] public VersionMeta ReleaseVersion { get; set; } = new();
+        [JsonProperty("releaseVersion")]
+        public VersionMeta ReleaseVersion { get; set; } = new();
 
-        [JsonProperty("prereleaseVersion")] public VersionMeta PrereleaseVersion { get; set; } = new();
+        [JsonProperty("prereleaseVersion")]
+        public VersionMeta PrereleaseVersion { get; set; } = new();
     }
 }
