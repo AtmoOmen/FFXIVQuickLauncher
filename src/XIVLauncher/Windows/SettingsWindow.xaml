@@ -215,26 +215,6 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
                                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                   Text="下载方式"
-                                                   FontSize="15" />
-                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                   Text="推荐选择 ARIA（HTTP）" Opacity="0.7" FontSize="12" />
-                                    </StackPanel>
-                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding PatchAcquisitionIndex}"
-                                              VerticalAlignment="Center"
-                                              Foreground="{DynamicResource MaterialDesign.Brush.Foreground}">
-                                        <ComboBoxItem Content=".NET（HTTP）" />
-                                        <ComboBoxItem Content="ARIA（HTTP）" />
-                                    </ComboBox>
-                                </Grid>
-
-                                <Grid Margin="0,0,0,24">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" MinWidth="150" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                    Text="速度限制"
                                                    FontSize="15" />
                                     </StackPanel>
