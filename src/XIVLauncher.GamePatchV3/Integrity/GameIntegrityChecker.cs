@@ -61,37 +61,38 @@ public static class GameIntegrityChecker
             return new IntegrityCheckCompareOutcome { CompareResult = IntegrityCheckCompareResult.ReferenceFetchFailure };
         }
 
-        var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex, cancellationToken).ConfigureAwait(false);
-        var report         = string.Empty;
-        var failed         = false;
+        var localIntegrity        = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex, cancellationToken).ConfigureAwait(false);
+        var remoteIntegrityEntries = IntegrityPathMap.BuildEntries(remoteIntegrity);
+        var report                = string.Empty;
+        var failed                = false;
 
-        foreach (var hashEntry in remoteIntegrity.Hashes
+        foreach (var hashEntry in remoteIntegrityEntries
+                                                 .Select(entry => new { entry.CanonicalSdoPath, entry.Hash, entry.Size })
                                                  .Where
                                                  (hashEntry => !onlyIndex
-                                                               || hashEntry.Key.EndsWith(".index",  StringComparison.Ordinal)
-                                                               || hashEntry.Key.EndsWith(".index2", StringComparison.Ordinal)
+                                                               || hashEntry.CanonicalSdoPath.EndsWith(".index",  StringComparison.Ordinal)
+                                                               || hashEntry.CanonicalSdoPath.EndsWith(".index2", StringComparison.Ordinal)
                                                  ))
         {
-            if (localIntegrity.Hashes.TryGetValue(hashEntry.Key, out var localHash))
+            if (localIntegrity.Hashes.TryGetValue(hashEntry.CanonicalSdoPath, out var localHash))
             {
-                if (remoteIntegrity.Sizes.TryGetValue(hashEntry.Key, out var remoteSize)
-                    && localIntegrity.Sizes.TryGetValue(hashEntry.Key, out var localSize)
-                    && localSize != remoteSize)
+                if (localIntegrity.Sizes.TryGetValue(hashEntry.CanonicalSdoPath, out var localSize)
+                    && localSize != hashEntry.Size)
                 {
-                    report += $"Size mismatch: {hashEntry.Key}\n";
+                    report += $"Size mismatch: {hashEntry.CanonicalSdoPath}\n";
                     failed =  true;
                     continue;
                 }
 
-                if (!string.Equals(localHash, hashEntry.Value, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(localHash, hashEntry.Hash, StringComparison.OrdinalIgnoreCase))
                 {
-                    report += $"Mismatch: {hashEntry.Key}\n";
+                    report += $"Mismatch: {hashEntry.CanonicalSdoPath}\n";
                     failed =  true;
                 }
             }
             else
             {
-                report += $"Missing: {hashEntry.Key}\n";
+                report += $"Missing: {hashEntry.CanonicalSdoPath}\n";
                 failed =  true;
             }
         }
@@ -212,10 +213,10 @@ public static class GameIntegrityChecker
         {
             var relativePath = GetRelativePath(file.FullName, rootDirectory);
 
-            if (!relativePath.StartsWith("\\game", StringComparison.Ordinal))
+            if (!GamePathNormalizer.TryNormalizeGameRelativePath(relativePath, out var normalizedGameRelativePath))
                 continue;
 
-            if (relativePath.StartsWith("\\game\\My Games", StringComparison.Ordinal))
+            if (normalizedGameRelativePath.StartsWith("game/My Games/", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             if (onlyIndex && !relativePath.EndsWith(".index", StringComparison.Ordinal) && !relativePath.EndsWith(".index2", StringComparison.Ordinal))

@@ -34,11 +34,10 @@ public sealed class GameInstaller
         {
             State = InstallState.DownloadMeta;
             var remoteIntegrity = await GameIntegrityChecker.DownloadIntegrityCheckForVersion(token).ConfigureAwait(false);
-
-            var targetRelativePaths = remoteIntegrity.Hashes
-                                                     .Where(x => !string.IsNullOrWhiteSpace(x.Key))
-                                                     .Select(x => NormalizeSdoTargetRelativePath(x.Key))
-                                                     .ToList();
+            var installTargets = IntegrityPathMap.BuildEntries(remoteIntegrity);
+            var targetRelativePaths = installTargets
+                                      .Select(x => x.LocalRelativePath)
+                                      .ToList();
 
             using var downloader               = CreateAndConfigureDownloader();
             var       installProgressTaskIndex = 0;
@@ -67,7 +66,7 @@ public sealed class GameInstaller
 
             try
             {
-                downloader.ConstructFromRemoteIntegrity(remoteIntegrity);
+                downloader.ConstructFromRemoteIntegrity(CreateInstallIntegrity(remoteIntegrity, installTargets));
 
                 TaskCount               = targetRelativePaths.Count;
                 State                   = InstallState.Installing;
@@ -75,9 +74,7 @@ public sealed class GameInstaller
 
                 for (var fileIndex = 0; fileIndex < targetRelativePaths.Count; fileIndex++)
                 {
-                    var filePath = targetRelativePaths[fileIndex];
-                    var sdoPath  = $"\\game\\{filePath.Replace('/', '\\')}";
-                    downloader.QueueInstall(fileIndex, sdoPath);
+                    downloader.QueueInstall(fileIndex, installTargets[fileIndex].DownloadPath);
                 }
 
                 await downloader.Install(gamePath, 8, token).ConfigureAwait(false);
@@ -131,10 +128,24 @@ public sealed class GameInstaller
         Speed = elapsedMs == 0 ? 0 : (reportedProgresses.Last().Item2 - reportedProgresses.First().Item2) * 10 * 1000 * 1000 / elapsedMs;
     }
 
-    private static string NormalizeSdoTargetRelativePath(string path)
+    private static Models.IntegrityCheckResult CreateInstallIntegrity(Models.IntegrityCheckResult remoteIntegrity, IEnumerable<IntegrityPathEntry> installTargets)
     {
-        var normalized = path.TrimStart('\\').Replace('\\', Path.DirectorySeparatorChar)["\\game\\".Length..];
-        return normalized;
+        var installIntegrity = new Models.IntegrityCheckResult
+        {
+            GameVersion     = remoteIntegrity.GameVersion,
+            LastGameVersion = remoteIntegrity.LastGameVersion,
+            BaseUrl         = remoteIntegrity.BaseUrl,
+            DataVersion     = remoteIntegrity.DataVersion,
+            AppId           = remoteIntegrity.AppId
+        };
+
+        foreach (var installTarget in installTargets)
+        {
+            installIntegrity.Hashes[installTarget.CanonicalSdoPath] = installTarget.Hash;
+            installIntegrity.Sizes[installTarget.CanonicalSdoPath]  = installTarget.Size;
+        }
+
+        return installIntegrity;
     }
 
     public enum InstallState

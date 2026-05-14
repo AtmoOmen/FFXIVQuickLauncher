@@ -54,7 +54,7 @@ public sealed class GamePatchInstaller : IDisposable
         Log.Information("[V3Patch] 正在获取完整性清单 {Url}", SdoInfos.CLIENT_ALL_FILES_LIST_URL);
         var sourceFilesText = await client.GetStringAsync(SdoInfos.CLIENT_ALL_FILES_LIST_URL, cancellationToken).ConfigureAwait(false);
         var sourceFileLines = sourceFilesText.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries);
-        var sourceFiles     = new Dictionary<string, (long Size, string Md5)>(StringComparer.OrdinalIgnoreCase);
+        var sourceFiles     = new Dictionary<string, (long Size, string Md5, string DownloadPath)>(StringComparer.OrdinalIgnoreCase);
         var sourceBaseUrl   = string.Empty;
         var sourceVersion   = string.Empty;
 
@@ -74,11 +74,10 @@ public sealed class GamePatchInstaller : IDisposable
             if (lineParts.Length < 3)
                 continue;
 
-            var filePath = lineParts[0].TrimStart('\\', '/').Replace('\\', '/');
-            if (!filePath.StartsWith("game/", StringComparison.OrdinalIgnoreCase) || !long.TryParse(lineParts[1], out var fileSize))
+            if (!GamePathNormalizer.TryNormalizeGameRelativePath(lineParts[0], out var gameRelativePath) || !long.TryParse(lineParts[1], out var fileSize))
                 continue;
 
-            sourceFiles[filePath] = (fileSize, lineParts[2]);
+            sourceFiles[gameRelativePath] = (fileSize, lineParts[2], GamePathNormalizer.NormalizeDownloadPath(lineParts[0]));
         }
 
         if (sourceFiles.Count == 0)
@@ -218,7 +217,9 @@ public sealed class GamePatchInstaller : IDisposable
 
                     var targetRelativePath   = deltaMap[deltaIndex].Key;
                     var deltaEntryPath       = deltaMap[deltaIndex].Value;
-                    var normalizedTargetPath = targetRelativePath.TrimStart('\\', '/').Replace('\\', '/');
+                    if (!GamePathNormalizer.TryNormalizeGameRelativePath(targetRelativePath, out var gameRelativePath))
+                        throw new InvalidDataException($"更新包目标路径无效: {targetRelativePath}");
+
                     if (!deltaEntries.TryGetValue(deltaEntryPath.Replace('\\', '/'), out var entryInfo))
                         throw new FileNotFoundException($"更新包缺少差分文件: {deltaEntryPath}");
 
@@ -227,19 +228,21 @@ public sealed class GamePatchInstaller : IDisposable
                     if (deltaEntry == null)
                         throw new FileNotFoundException($"更新包缺少差分文件: {deltaEntryPath}");
 
-                    var targetPath = Path.Combine(gamePath.FullName, targetRelativePath.Replace('\\', Path.DirectorySeparatorChar));
+                    var targetPath = GamePathNormalizer.CombineWithRootPath(gamePath.FullName, gameRelativePath);
                     if (!File.Exists(targetPath))
                         throw new FileNotFoundException($"缺少待更新文件: {targetRelativePath}");
 
                     var expectedTargetMd5  = string.Empty;
                     var expectedTargetSize = -1L;
+                    var targetDownloadPath = GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath);
 
-                    if (packageTargetFiles != null && packageTargetFiles.TryGetValue(normalizedTargetPath, out var targetFile))
+                    if (packageTargetFiles != null && packageTargetFiles.TryGetValue(gameRelativePath, out var targetFile))
                     {
                         expectedTargetMd5  = targetFile.Md5;
                         expectedTargetSize = targetFile.Size;
+                        targetDownloadPath = targetFile.DownloadPath;
                     }
-                    else if (string.Equals(normalizedTargetPath, "game/ffxivgame.ver", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(plan.TargetGameVersion))
+                    else if (string.Equals(gameRelativePath, "game/ffxivgame.ver", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(plan.TargetGameVersion))
                     {
                         var targetVersionBytes = Encoding.ASCII.GetBytes(plan.TargetGameVersion);
                         expectedTargetMd5  = Convert.ToHexString(MD5.HashData(targetVersionBytes));
@@ -272,7 +275,7 @@ public sealed class GamePatchInstaller : IDisposable
 
                     if (packageSourceFiles != null)
                     {
-                        if (!packageSourceFiles.TryGetValue(normalizedTargetPath, out var sourceFile))
+                        if (!packageSourceFiles.TryGetValue(gameRelativePath, out var sourceFile))
                             throw new InvalidDataException($"完整性清单缺少更新源文件: {targetRelativePath}");
 
                         var targetInfo          = new FileInfo(targetPath);
@@ -428,7 +431,7 @@ public sealed class GamePatchInstaller : IDisposable
                                 }
                             );
 
-                            var sdoTargetPath = "\\" + normalizedTargetPath.Replace('/', '\\');
+                            var sdoTargetPath = targetDownloadPath;
                             var targetIntegrity = new IntegrityCheckResult
                             {
                                 BaseUrl     = sourceBaseUrl,
@@ -452,8 +455,11 @@ public sealed class GamePatchInstaller : IDisposable
                         }
                         else
                         {
-                            var directoryPath = Path.GetDirectoryName(normalizedTargetPath.Replace('/', '\\')) ?? string.Empty;
-                            var fileKeyInput  = $"{SdoInfos.APP_ID}_{sourceVersion}_\\{normalizedTargetPath.Replace('/', '\\')}";
+                            var canonicalSdoPath = packageSourceFiles != null && packageSourceFiles.TryGetValue(gameRelativePath, out var sourceFileForDownload)
+                                                       ? sourceFileForDownload.DownloadPath
+                                                       : GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath);
+                            var directoryPath    = Path.GetDirectoryName(canonicalSdoPath.TrimStart('\\'))?.Replace('\\', '/') ?? string.Empty;
+                            var fileKeyInput     = $"{SdoInfos.APP_ID}_{sourceVersion}_{canonicalSdoPath}";
                             var fileKeyBytes  = MD5.HashData(Encoding.Unicode.GetBytes(fileKeyInput));
                             var fileKeyHex    = Convert.ToHexString(fileKeyBytes).ToLowerInvariant();
                             var downloadUri   = new Uri($"{sourceBaseUrl.TrimEnd('/')}/{directoryPath.Replace('\\', '/')}/{fileKeyHex}");

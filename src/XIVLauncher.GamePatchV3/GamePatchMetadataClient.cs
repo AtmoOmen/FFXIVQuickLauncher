@@ -117,12 +117,10 @@ public sealed class GamePatchMetadataClient : IDisposable
             if (lineParts.Length < 3)
                 continue;
 
-            var filePath = lineParts[0];
-            if (!filePath.StartsWith('\\'))
-                filePath = "\\" + filePath;
-            if (!filePath.StartsWith(@"\game\", StringComparison.Ordinal))
+            if (!GamePathNormalizer.TryNormalizeGameRelativePath(lineParts[0], out var gameRelativePath))
                 continue;
 
+            var filePath = GamePathNormalizer.NormalizeDownloadPath(lineParts[0]);
             result.Hashes[filePath] = lineParts[2];
             result.Sizes[filePath]  = ulong.Parse(lineParts[1]);
         }

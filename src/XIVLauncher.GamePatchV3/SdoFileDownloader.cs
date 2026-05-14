@@ -224,8 +224,13 @@ public class SdoFileDownloader : IDisposable
     private static long GetReportSize(ulong size) =>
         size > long.MaxValue ? long.MaxValue : (long)size;
 
-    private static string GetLocalPath(string gameRootPath, string relativePath) =>
-        Path.Combine(gameRootPath, relativePath.TrimStart('\\'));
+    private static string GetLocalPath(string gameRootPath, string relativePath)
+    {
+        if (!GamePathNormalizer.TryNormalizeGameRelativePath(relativePath, out var gameRelativePath))
+            throw new InvalidOperationException($"Invalid game path: {relativePath}");
+
+        return GamePathNormalizer.CombineWithRootPath(gameRootPath, gameRelativePath);
+    }
 
     private void ReportVerifyProgress(int index, int count, long progress, long max)
     {
@@ -263,7 +268,7 @@ public class SdoFileDownloader : IDisposable
 
     private Uri GetDownloadUrl(string filePath)
     {
-        filePath = filePath.Replace(Path.DirectorySeparatorChar, '\\').TrimStart('\\');
+        filePath = GamePathNormalizer.NormalizeDownloadPath(filePath).TrimStart('\\');
         var pathEnd       = filePath.LastIndexOf('\\');
         var directoryPath = pathEnd < 0 ? string.Empty : filePath[..pathEnd].Replace('\\', '/');
         var uri           = new Uri($"{downloadBaseUrl}/{directoryPath}/{GetFileKey(filePath)}");

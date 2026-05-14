@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Serilog;
 using XIVLauncher.GamePatchV3.Integrity;
+using XIVLauncher.GamePatchV3.Models;
 
 namespace XIVLauncher.GamePatchV3.Repair;
 
@@ -56,11 +57,10 @@ public sealed class GameRepairer
         {
             State = RepairState.DownloadMeta;
             var remoteIntegrity = await GameIntegrityChecker.DownloadIntegrityCheckForVersion(token).ConfigureAwait(false);
-
-            var targetRelativePaths = remoteIntegrity.Hashes
-                                                     .Where(x => !string.IsNullOrWhiteSpace(x.Key))
-                                                     .Select(x => NormalizeSdoTargetRelativePath(x.Key))
-                                                     .ToList();
+            var repairTargets   = IntegrityPathMap.BuildEntries(remoteIntegrity);
+            var targetRelativePaths = repairTargets
+                                      .Select(x => x.LocalRelativePath)
+                                      .ToList();
             var fileBroken = Enumerable.Repeat(false, targetRelativePaths.Count).ToList();
 
             using var downloader               = CreateAndConfigureDownloader();
@@ -104,7 +104,7 @@ public sealed class GameRepairer
 
             try
             {
-                downloader.ConstructFromRemoteIntegrity(remoteIntegrity);
+                downloader.ConstructFromRemoteIntegrity(CreateRepairIntegrity(remoteIntegrity, repairTargets));
 
                 State = RepairState.Repairing;
 
@@ -135,13 +135,13 @@ public sealed class GameRepairer
 
                         for (var brokenFileIndex = 0; brokenFileIndex < targetRelativePaths.Count; brokenFileIndex++)
                         {
-                            var filePath = targetRelativePaths[brokenFileIndex];
-                            if (!brokenFileSet.Contains($@"\game\{filePath}"))
+                            var repairTarget = repairTargets[brokenFileIndex];
+                            if (!brokenFileSet.Contains(repairTarget.CanonicalSdoPath))
                                 continue;
 
                             fileBroken[brokenFileIndex] = true;
-                            UpdateInstallProgressEntry(brokenFileIndex, filePath, 0, 0);
-                            downloader.QueueInstall(brokenFileIndex, $@"\game\{filePath}");
+                            UpdateInstallProgressEntry(brokenFileIndex, repairTarget.LocalRelativePath, 0, 0);
+                            downloader.QueueInstall(brokenFileIndex, repairTarget.DownloadPath);
                         }
 
                         CurrentMetaInstallState = SdoFileDownloader.InstallTaskState.Connecting;
@@ -275,16 +275,25 @@ public sealed class GameRepairer
 
     private static void MoveFileToRecycler(string source, string target)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(target) ?? throw new InvalidOperationException());
-
-        if (File.Exists(source)) File.Move(source, target);
-        else if (Directory.Exists(source))
+        if (File.Exists(source))
         {
-            var sourceParentDir = Path.GetDirectoryName(source) ?? throw new InvalidOperationException();
-            Directory.Move(source, target);
-            if (Directory.GetFileSystemEntries(sourceParentDir).Length == 0)
-                Directory.Delete(sourceParentDir);
+            var fileTargetDir = Path.GetDirectoryName(target) ?? throw new InvalidOperationException();
+            Directory.CreateDirectory(fileTargetDir);
+            File.Move(source, target);
+            return;
         }
+
+        if (!Directory.Exists(source))
+            return;
+
+        var normalizedTarget = target.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var targetParentDir  = Path.GetDirectoryName(normalizedTarget) ?? throw new InvalidOperationException();
+        Directory.CreateDirectory(targetParentDir);
+
+        var sourceParentDir = Path.GetDirectoryName(source) ?? throw new InvalidOperationException();
+        Directory.Move(source, normalizedTarget);
+        if (Directory.GetFileSystemEntries(sourceParentDir).Length == 0)
+            Directory.Delete(sourceParentDir);
     }
 
     private void RecordProgressForEstimation()
@@ -313,10 +322,24 @@ public sealed class GameRepairer
             currentInstallProgressBySourceIndex[sourceIndex] = new InstallProgressEntry(filePath, effectiveProgress, total);
     }
 
-    private static string NormalizeSdoTargetRelativePath(string path)
+    private static IntegrityCheckResult CreateRepairIntegrity(IntegrityCheckResult remoteIntegrity, IEnumerable<IntegrityPathEntry> repairTargets)
     {
-        var normalized = path.TrimStart('\\').Replace('\\', Path.DirectorySeparatorChar)["\\game\\".Length..];
-        return normalized;
+        var repairIntegrity = new IntegrityCheckResult
+        {
+            GameVersion     = remoteIntegrity.GameVersion,
+            LastGameVersion = remoteIntegrity.LastGameVersion,
+            BaseUrl         = remoteIntegrity.BaseUrl,
+            DataVersion     = remoteIntegrity.DataVersion,
+            AppId           = remoteIntegrity.AppId
+        };
+
+        foreach (var repairTarget in repairTargets)
+        {
+            repairIntegrity.Hashes[repairTarget.CanonicalSdoPath] = repairTarget.Hash;
+            repairIntegrity.Sizes[repairTarget.CanonicalSdoPath]  = repairTarget.Size;
+        }
+
+        return repairIntegrity;
     }
 
     public enum RepairState
