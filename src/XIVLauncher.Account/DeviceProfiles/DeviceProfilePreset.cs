@@ -1,6 +1,6 @@
 using XIVLauncher.Common.Game.Login;
 
-namespace XIVLauncher.Accounts.DeviceProfiles;
+namespace XIVLauncher.Account.DeviceProfiles;
 
 public sealed class DeviceProfilePreset
 {

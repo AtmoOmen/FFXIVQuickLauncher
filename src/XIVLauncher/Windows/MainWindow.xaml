@@ -10,11 +10,11 @@
     xmlns:data="clr-namespace:System.Windows.Data;assembly=PresentationFramework"
     xmlns:system="clr-namespace:System;assembly=mscorlib"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
-    xmlns:accounts="clr-namespace:XIVLauncher.Accounts"
     xmlns:site="clr-namespace:XIVLauncher.Common.Http.Site;assembly=XIVLauncher.Common"
     xmlns:constant="clr-namespace:XIVLauncher.Common.Constant;assembly=XIVLauncher.Common"
     xmlns:models="clr-namespace:XIVLauncher.Windows.ViewModel.MainWindow.Models"
     xmlns:transitions="clr-namespace:XIVLauncher.Xaml.Transitions"
+    xmlns:mainWindow="clr-namespace:XIVLauncher.Windows.ViewModel.MainWindow"
     mc:Ignorable="d"
     Title="XIVLauncherCN (Soil)"
     Width="780"
@@ -1060,7 +1060,7 @@
 
                                                                 <ListView.ItemTemplate>
                                                                     <DataTemplate x:Name="AccountDataTemplate"
-                                                                            DataType="accounts:AccountSwitcherEntry">
+                                                                            DataType="mainWindow:AccountSwitcherEntry">
                                                                         <Grid>
                                                                             <Grid.ColumnDefinitions>
                                                                                 <ColumnDefinition Width="Auto" />

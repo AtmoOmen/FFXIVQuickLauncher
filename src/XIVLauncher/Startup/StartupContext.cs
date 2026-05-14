@@ -1,6 +1,6 @@
 using System.Windows.Threading;
-using XIVLauncher.Accounts;
-using XIVLauncher.Accounts.Cred;
+using XIVLauncher.Account;
+using XIVLauncher.Account.Cred;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Settings;
 

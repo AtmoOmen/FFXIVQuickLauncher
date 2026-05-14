@@ -2,7 +2,7 @@ using System;
 using SQLite;
 using XIVLauncher.Common.Game;
 
-namespace XIVLauncher.Accounts;
+namespace XIVLauncher.Account;
 
 public class XIVAccount : IEquatable<XIVAccount>
 {

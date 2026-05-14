@@ -1,4 +1,4 @@
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
 

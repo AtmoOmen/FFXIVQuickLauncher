@@ -6,7 +6,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Windows;
 using Microsoft.Win32;
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel;
 

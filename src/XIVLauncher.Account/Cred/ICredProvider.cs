@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace XIVLauncher.Accounts.Cred;
+namespace XIVLauncher.Account.Cred;
 
 public interface ICredProvider
 {

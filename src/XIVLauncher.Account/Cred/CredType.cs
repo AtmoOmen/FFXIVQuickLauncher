@@ -1,4 +1,4 @@
-﻿namespace XIVLauncher.Accounts.Cred;
+﻿namespace XIVLauncher.Account.Cred;
 
 public enum CredType
 {

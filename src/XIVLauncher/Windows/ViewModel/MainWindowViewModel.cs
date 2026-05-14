@@ -15,7 +15,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Serilog;
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Constant;

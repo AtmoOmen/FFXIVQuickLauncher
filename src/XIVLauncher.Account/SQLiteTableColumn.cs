@@ -1,4 +1,4 @@
-namespace XIVLauncher.Accounts;
+namespace XIVLauncher.Account;
 
 public sealed class SQLiteTableColumn
 {

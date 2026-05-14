@@ -1,5 +1,5 @@
 using System.Windows;
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Providers;
 

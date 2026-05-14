@@ -1,12 +1,10 @@
-using System;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using Windows.Security.Credentials;
 using Windows.Security.Cryptography;
 using Serilog;
 
-namespace XIVLauncher.Accounts.Cred.CredProviders;
+namespace XIVLauncher.Account.Cred.Providers;
 
 public class WindowsHello
 (
@@ -17,7 +15,7 @@ public class WindowsHello
 
     public string GetName() => "WindowsHello";
 
-    public string GetDescription() => "使用生物识别身份验证加密，可以使用面部、虹膜或指纹（或 PIN 码）。";
+    public string GetDescription() => "使用生物识别身份验证加密, 可以使用面部、虹膜、指纹或 PIN 码";
 
     private EncryptionHelper? encryptionHelper;
 

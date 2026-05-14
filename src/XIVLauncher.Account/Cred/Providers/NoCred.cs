@@ -1,20 +1,12 @@
-using System.Threading.Tasks;
-
-namespace XIVLauncher.Accounts.Cred.CredProviders;
+namespace XIVLauncher.Account.Cred.Providers;
 
 internal class NoCred : ICredProvider
 {
-    public NoCred(CredData cred)
-    {
-    }
-
     public string GetName() => "无加密";
 
-    public string GetDescription() => "";
+    public string GetDescription() => string.Empty;
 
-    public async Task ClearCache()
-    {
-    }
+    public async Task ClearCache() { }
 
     public async Task<string?> Decrypt(string? text) =>
         text;
@@ -25,8 +17,5 @@ internal class NoCred : ICredProvider
     public async Task<bool> IsSupported() =>
         true;
 
-    public async Task Unregister()
-    {
-
-    }
+    public async Task Unregister() { }
 }

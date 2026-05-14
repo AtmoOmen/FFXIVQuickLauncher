@@ -1,5 +1,5 @@
 using System.Windows;
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 using XIVLauncher.Common.Addon.Implementations;
 
 namespace XIVLauncher.Windows.Services;

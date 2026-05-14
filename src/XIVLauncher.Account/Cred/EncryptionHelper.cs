@@ -5,8 +5,7 @@ using NSec.Cryptography;
 using Serilog;
 using Argon2id = Konscious.Security.Cryptography.Argon2id;
 
-namespace XIVLauncher.Accounts.Cred;
-// https://github.com/timokoessler/2FAGuard/blob/6be544ed50b782493a30be9e9e2dcef719767e40/Guard.Core/Security/EncryptionHelper.cs
+namespace XIVLauncher.Account.Cred;
 
 public sealed class EncryptionHelper
 {

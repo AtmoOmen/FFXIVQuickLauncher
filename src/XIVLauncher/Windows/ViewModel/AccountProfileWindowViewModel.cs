@@ -2,8 +2,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Windows.ViewModel.MainWindow;
 
 namespace XIVLauncher.Windows.ViewModel;
 

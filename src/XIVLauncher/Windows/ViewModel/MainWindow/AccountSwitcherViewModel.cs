@@ -12,7 +12,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Xaml;
@@ -209,6 +209,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
             return;
 
         var selectedAccountId = SelectedEntry?.Account.ID;
+        AccountSwitcherEntry.RemoveCustomProfileImage(activeEntry.Account);
         accountManager.RemoveAccount(activeEntry.Account);
         RefreshEntries(selectedAccountId == activeEntry.Account.ID ? null : selectedAccountId);
     }

@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Serilog;
 
-namespace XIVLauncher.Accounts.Cred;
+namespace XIVLauncher.Account.Cred;
 
 public class CredData
 {

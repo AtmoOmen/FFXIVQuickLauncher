@@ -118,7 +118,8 @@ internal static class DNSResolver
 
     private static async Task<CacheEntry> ResolveCandidatesAsync(string hostname)
     {
-        var isCloudflareTarget = hostname.Equals(CLOUDFLARE_TARGET_HOST, StringComparison.OrdinalIgnoreCase);
+        var isCloudflareTarget = hostname.Equals(CloudflareTargetHost,               StringComparison.OrdinalIgnoreCase)
+                                 || hostname.Equals(CLOUDFLARE_TARGET_HOST_FALLBACK, StringComparison.OrdinalIgnoreCase);
         var directAddresses    = await ResolveDirectAddressesAsync(hostname, isCloudflareTarget).ConfigureAwait(false);
 
         if (directAddresses.Count == 0 && !isCloudflareTarget)
@@ -285,7 +286,9 @@ internal static class DNSResolver
 
     private const int DNS_RESOLVE_TIMEOUT_SECONDS = 4;
 
-    private const string CLOUDFLARE_TARGET_HOST = "gh.atmoomen.top";
+    public static string CloudflareTargetHost { get; set; } = "gh.atmoomen.top";
+
+    private const string CLOUDFLARE_TARGET_HOST_FALLBACK = "gh.atmoomen.top";
 
     private const int HOST_CACHE_SECONDS = 75;
 

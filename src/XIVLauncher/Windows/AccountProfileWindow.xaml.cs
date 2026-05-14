@@ -1,7 +1,7 @@
 using System;
 using System.Windows;
 using Microsoft.Win32;
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;

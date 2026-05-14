@@ -5,9 +5,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 
-namespace XIVLauncher.Accounts;
+namespace XIVLauncher.Windows.ViewModel.MainWindow;
 
 internal class AccountSwitcherEntry
 {

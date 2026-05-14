@@ -8,19 +8,16 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Windows;
 using Serilog;
 using SQLite;
-using XIVLauncher.Accounts.Cred;
-using XIVLauncher.Accounts.Cred.CredProviders;
-using XIVLauncher.Accounts.DeviceProfiles;
+using XIVLauncher.Account.Cred;
+using XIVLauncher.Account.Cred.Providers;
+using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Settings;
-using XIVLauncher.Windows;
 
-namespace XIVLauncher.Accounts;
+namespace XIVLauncher.Account;
 
 public class AccountManager
 {
@@ -69,14 +66,14 @@ public class AccountManager
 
     private static readonly JsonSerializerOptions DeviceProfilePresetStoreJsonOptions = new() { WriteIndented = true };
 
-    private readonly LauncherSettingsV3 setting;
+    private readonly IAccountSettingsStore setting;
     private readonly CredData           credData;
 
     private DeviceProfilePresetStoreState? deviceProfilePresetStore;
 
     private readonly HashSet<string> unavailableSavedSecretAccountIds = [];
 
-    public AccountManager(LauncherSettingsV3 setting)
+    public AccountManager(IAccountSettingsStore setting)
     {
         this.setting = setting;
 
@@ -190,13 +187,6 @@ public class AccountManager
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to encrypt text");
-            CustomMessageBox.Show
-            (
-                ex.ToString(),
-                "XIVLauncher Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
         }
 
         return null;
@@ -218,14 +208,7 @@ public class AccountManager
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to encrypt text");
-            CustomMessageBox.Show
-            (
-                ex.ToString(),
-                "XIVLauncher Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
+            Log.Error(ex, "Failed to decrypt text");
         }
 
         return null;
@@ -701,8 +684,6 @@ public class AccountManager
         if (string.Equals(setting.CurrentAccountID, account.ID, StringComparison.Ordinal))
             setting.CurrentAccountID = string.Empty;
 
-        AccountSwitcherEntry.RemoveCustomProfileImage(account);
-
         var profileIconPath = Path.Combine
         (
             Paths.RoamingPath,
@@ -868,7 +849,7 @@ public class AccountManager
         {
             CredType.WindowsCredManager => new CredentialManager(credData),
             CredType.WindowsHello       => new WindowsHello(credData),
-            CredType.NoEncryption       => new NoCred(credData),
+            CredType.NoEncryption       => new NoCred(),
             _                           => throw new ArgumentOutOfRangeException(nameof(type), type, "未知的凭据类型")
         };
 

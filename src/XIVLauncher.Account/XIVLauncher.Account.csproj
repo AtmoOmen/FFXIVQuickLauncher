@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Product>XIVLauncher.Accounts</Product>
+        <AssemblyTitle>XIVLauncher.Accounts</AssemblyTitle>
+        <Description>Account management, credential providers, and device profiles for XIVLauncher.</Description>
+        <VersionPrefix>1.0.0</VersionPrefix>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <PropertyGroup Label="Configuration" Condition="'$(Configuration)'=='Release'">
+        <AppOutputBase>$(MSBuildProjectDirectory)\</AppOutputBase>
+        <PathMap>$(AppOutputBase)=C:\goatsoft\xl\XIVLauncher.Accounts\</PathMap>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <Deterministic>true</Deterministic>
+        <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AdysTech.CredentialManager"/>
+        <PackageReference Include="Konscious.Security.Cryptography.Argon2"/>
+        <PackageReference Include="NSec.Cryptography"/>
+        <PackageReference Include="Serilog"/>
+        <PackageReference Include="sqlite-net-pcl"/>
+    </ItemGroup>
+</Project>

@@ -11,7 +11,7 @@ using CommandLine;
 using Serilog;
 using Serilog.Events;
 using Velopack;
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;

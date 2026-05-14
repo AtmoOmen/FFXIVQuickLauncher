@@ -5,7 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using Serilog;
-using XIVLauncher.Accounts.Cred;
+using XIVLauncher.Account;
+using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Dalamud;
@@ -18,7 +19,7 @@ namespace XIVLauncher.Settings;
 /// <summary>
 ///     启动器配置 V3 版本
 /// </summary>
-public sealed class LauncherSettingsV3
+public sealed class LauncherSettingsV3 : IAccountSettingsStore
 {
     private static readonly JsonSerializerOptions JsonOptions    = CreateJsonOptions();
     private static readonly UTF8Encoding          Utf8WithoutBom = new(false);

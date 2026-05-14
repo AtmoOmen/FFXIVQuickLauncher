@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using Serilog;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Encryption;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.PlatformAbstractions;

@@ -29,6 +29,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\XIVLauncher.Common.Http\XIVLauncher.Common.Http.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="CommandLineParser"/>
         <PackageReference Include="Downloader"/>
         <PackageReference Include="EmbedIO"/>

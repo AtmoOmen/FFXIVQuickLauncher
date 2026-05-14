@@ -71,8 +71,6 @@
 
     <ItemGroup>
         <PackageReference Include="CalcBinding"/>
-        <PackageReference Include="Konscious.Security.Cryptography.Argon2"/>
-        <PackageReference Include="AdysTech.CredentialManager"/>
         <PackageReference Include="Downloader"/>
         <PackageReference Include="Dragablz"/>
         <PackageReference Include="Extended.Wpf.Toolkit"/>
@@ -81,22 +79,25 @@
         <PackageReference Include="MdXaml"/>
         <PackageReference Include="MdXaml.Plugins"/>
         <PackageReference Include="Microsoft.WindowsAPICodePack-Shell"/>
-        <PackageReference Include="NSec.Cryptography"/>
         <PackageReference Include="Serilog"/>
         <PackageReference Include="Serilog.Sinks.Async"/>
         <PackageReference Include="Serilog.Sinks.Console"/>
         <PackageReference Include="Serilog.Sinks.File"/>
         <PackageReference Include="SharedMemory"/>
-        <PackageReference Include="sqlite-net-pcl"/>
         <PackageReference Include="Stylet"/>
         <PackageReference Include="Velopack"/>
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\XIVLauncher.Account\XIVLauncher.Account.csproj" />
         <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj"/>
         <ProjectReference Include="..\XIVLauncher.Common.Windows\XIVLauncher.Common.Windows.csproj"/>
         <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
         <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Accounts\" />
     </ItemGroup>
 
     <Target Name="CopyVcdiffShimToOutput" AfterTargets="Build">

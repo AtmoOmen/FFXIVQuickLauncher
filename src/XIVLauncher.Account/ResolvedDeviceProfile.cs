@@ -1,6 +1,6 @@
 using XIVLauncher.Common.Game.Login;
 
-namespace XIVLauncher.Accounts;
+namespace XIVLauncher.Account;
 
 public sealed record ResolvedDeviceProfile
 (

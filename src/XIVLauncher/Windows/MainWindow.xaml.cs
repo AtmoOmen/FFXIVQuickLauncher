@@ -14,13 +14,14 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Serilog;
-using XIVLauncher.Accounts;
+using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
+using XIVLauncher.Windows.ViewModel.MainWindow;
 using XIVLauncher.Windows.ViewModel.MainWindow.Models;
 using XIVLauncher.Xaml;
 
