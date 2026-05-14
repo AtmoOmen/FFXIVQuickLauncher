@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace XIVLauncher.Common.PlatformAbstractions;
+namespace XIVLauncher.Common.Game;
 
 public interface IGameRunner
 {

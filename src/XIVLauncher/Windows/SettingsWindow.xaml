@@ -519,16 +519,15 @@
                                     <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                Text="加载方式"
                                                FontSize="15" Margin="0,0,0,16" />
-                                    <RadioButton x:Name="EntryPointDalamudLoadMethodRadioButton"
-                                                 Content="新版：兼容部分需要更早加载的插件和辅助软件" GroupName="dalamudLoadMethod"
-                                                 IsChecked="{Binding UseEntryPointLoadMethod}"
-                                                 ToolTip="通过入口点重写方式加载 Dalamud, 通常兼容性更好。" Margin="0,0,0,12"
-                                                 Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
-                                    <RadioButton x:Name="DllInjectDalamudLoadMethodRadioButton"
-                                                 Content="传统：旧版 DLL 注入方式, 部分环境下更稳定" GroupName="dalamudLoadMethod"
-                                                 IsChecked="{Binding UseDllInjectLoadMethod}"
-                                                 ToolTip="通过 DLL 注入方式加载 Dalamud, 兼容性取决于本机环境。"
-                                                 Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                    <RadioButton
+                                        Content="入口点覆写" GroupName="dalamudLoadMethod"
+                                        IsChecked="{Binding UseEntryPointLoadMethod}"
+                                        Margin="0,0,0,12"
+                                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                    <RadioButton
+                                        Content="动态链接库注入" GroupName="dalamudLoadMethod"
+                                        IsChecked="{Binding UseDllInjectLoadMethod}"
+                                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
                                 </StackPanel>
                             </materialDesign:Card>
 

@@ -23,7 +23,6 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Game;

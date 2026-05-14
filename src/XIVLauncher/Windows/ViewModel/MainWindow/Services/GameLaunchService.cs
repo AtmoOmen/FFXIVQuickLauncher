@@ -9,7 +9,6 @@ using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Http;
-using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Support;
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;

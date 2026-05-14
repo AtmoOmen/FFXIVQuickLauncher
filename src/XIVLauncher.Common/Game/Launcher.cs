@@ -3,7 +3,6 @@ using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Game;
