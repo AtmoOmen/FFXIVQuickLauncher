@@ -220,6 +220,7 @@ public class StartupOrchestrator
             var shouldContinueStartup = await updateMgr.Run
                                         (
                                             EnvironmentSettings.IsPreRelease,
+                                            updateWindow,
                                             changelogWindow,
                                             CloseUpdateWindow
                                         ).ConfigureAwait(false);

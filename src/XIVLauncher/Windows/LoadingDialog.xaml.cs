@@ -104,6 +104,24 @@ public partial class LoadingDialog
         );
     }
 
+    public void ReportProgress(int progress)
+    {
+        Dispatcher.Invoke
+        (() =>
+            {
+                if (IsClosed)
+                    return;
+
+                var clampedProgress = Math.Clamp(progress, 0, 100);
+
+                ViewModel.IsProgressIndeterminate = false;
+                ViewModel.ProgressValue           = clampedProgress;
+                ViewModel.IsPercentageTextVisible = true;
+                ViewModel.PercentageText          = $"{clampedProgress}%";
+            }
+        );
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);

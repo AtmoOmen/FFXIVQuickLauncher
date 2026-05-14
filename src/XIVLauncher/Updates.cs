@@ -19,7 +19,7 @@ internal class Updates
     LauncherSettingsV3 settings
 )
 {
-    public async Task<bool> Run(bool downloadPrerelease, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)
+    public async Task<bool> Run(bool downloadPrerelease, LoadingDialog? loadingDialog, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)
     {
         _ = downloadPrerelease;
 
@@ -41,13 +41,28 @@ internal class Updates
             );
 
             var updateManager = new UpdateManager(updateSource, updateOptions);
+            loadingDialog?.SetMessage("正在检查启动器更新...");
             var newRelease    = await updateManager.CheckForUpdatesAsync();
 
             if (newRelease == null)
                 return true;
 
             var changelog = newRelease.TargetFullRelease.NotesMarkdown;
-            await updateManager.DownloadUpdatesAsync(newRelease);
+            loadingDialog?.SetMessage("正在下载启动器更新...");
+            loadingDialog?.ReportProgress(0);
+
+            await updateManager.DownloadUpdatesAsync
+            (
+                newRelease,
+                progress =>
+                {
+                    loadingDialog?.SetMessage("正在下载启动器更新...");
+                    loadingDialog?.ReportProgress(progress);
+                }
+            );
+
+            loadingDialog?.SetMessage("正在安装启动器更新...");
+            loadingDialog?.ReportProgress(100);
 
             if (changelogWindow == null)
             {

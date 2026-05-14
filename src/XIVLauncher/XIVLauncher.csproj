@@ -95,10 +95,6 @@
         <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj"/>
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Accounts\" />
-    </ItemGroup>
-
     <Target Name="CopyVcdiffShimToOutput" AfterTargets="Build">
         <ItemGroup>
             <VcdiffShimOutput Include="$(MSBuildProjectDirectory)\..\bin\VcdiffShim\**\*"/>
