@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -8,9 +8,7 @@ using System.Threading;
 using Serilog;
 using XIVLauncher.Common.Game.Exceptions;
 
-// ReSharper disable InconsistentNaming
-
-namespace XIVLauncher.Common.Windows;
+namespace XIVLauncher.Common;
 
 public static class NativeAclFix
 {
@@ -42,6 +40,7 @@ public static class NativeAclFix
             throw new Win32Exception(Marshal.GetLastWin32Error());
 
         var psecDesc = Marshal.AllocHGlobal(Marshal.SizeOf<PInvoke.SECURITY_DESCRIPTOR>());
+
         Marshal.StructureToPtr(secDesc, psecDesc, true);
 
         var lpProcessInformation = new PInvoke.PROCESS_INFORMATION();
@@ -104,7 +103,6 @@ public static class NativeAclFix
 
             PInvoke.ResumeThread(lpProcessInformation.hThread);
 
-            // Ensure that the game main window is prepared
             try
             {
                 do
@@ -197,7 +195,7 @@ public static class NativeAclFix
         if (!PInvoke.PrivilegeCheck(TokenHandle, ref RequiredPrivileges, out var bResult))
             throw new Win32Exception(Marshal.GetLastWin32Error());
 
-        if (bResult) // SeDebugPrivilege is enabled; try disabling it
+        if (bResult)
         {
             var TokenPrivileges = new PInvoke.TOKEN_PRIVILEGES
             {
@@ -240,26 +238,17 @@ public static class NativeAclFix
         return hwnd;
     }
 
-    // Definitions taken from PInvoke.net (with some changes)
     private static class PInvoke
     {
-        #region Constants
-
         public const uint STANDARD_RIGHTS_ALL = 0x001F0000;
         public const uint SPECIFIC_RIGHTS_ALL = 0x0000FFFF;
         public const uint PROCESS_VM_WRITE    = 0x0020;
-
         public const uint GRANT_ACCESS = 1;
-
         public const uint SECURITY_DESCRIPTOR_REVISION = 1;
-
         public const uint CREATE_SUSPENDED = 0x00000004;
-
         public const uint TOKEN_QUERY             = 0x0008;
         public const uint TOKEN_ADJUST_PRIVILEGES = 0x0020;
-
         public const uint PRIVILEGE_SET_ALL_NECESSARY = 1;
-
         public const uint SE_PRIVILEGE_ENABLED = 0x00000002;
         public const uint SE_PRIVILEGE_REMOVED = 0x00000004;
 
@@ -319,10 +308,6 @@ public static class NativeAclFix
             PROTECTED_SACL_SECURITY_INFORMATION   = 0x40000000
         }
 
-        #endregion
-
-        #region Structures
-
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto, Pack = 0)]
         public struct TRUSTEE : IDisposable
         {
@@ -354,7 +339,7 @@ public static class NativeAclFix
         {
             public byte   Revision;
             public byte   Sbz1;
-            public UInt16 Control;
+            public ushort Control;
             public IntPtr Owner;
             public IntPtr Group;
             public IntPtr Sacl;
@@ -364,20 +349,20 @@ public static class NativeAclFix
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct STARTUPINFO
         {
-            public Int32  cb;
+            public int    cb;
             public string lpReserved;
             public string lpDesktop;
             public string lpTitle;
-            public Int32  dwX;
-            public Int32  dwY;
-            public Int32  dwXSize;
-            public Int32  dwYSize;
-            public Int32  dwXCountChars;
-            public Int32  dwYCountChars;
-            public Int32  dwFillAttribute;
-            public Int32  dwFlags;
-            public Int16  wShowWindow;
-            public Int16  cbReserved2;
+            public int    dwX;
+            public int    dwY;
+            public int    dwXSize;
+            public int    dwYSize;
+            public int    dwXCountChars;
+            public int    dwYCountChars;
+            public int    dwFillAttribute;
+            public int    dwFlags;
+            public short  wShowWindow;
+            public short  cbReserved2;
             public IntPtr lpReserved2;
             public IntPtr hStdInput;
             public IntPtr hStdOutput;
@@ -390,7 +375,7 @@ public static class NativeAclFix
             public IntPtr hProcess;
             public IntPtr hThread;
             public int    dwProcessId;
-            public UInt32 dwThreadId;
+            public uint   dwThreadId;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -404,15 +389,15 @@ public static class NativeAclFix
         [StructLayout(LayoutKind.Sequential)]
         public struct LUID
         {
-            public UInt32 LowPart;
-            public Int32  HighPart;
+            public uint LowPart;
+            public int  HighPart;
         }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct PRIVILEGE_SET
         {
-            public UInt32 PrivilegeCount;
-            public UInt32 Control;
+            public uint PrivilegeCount;
+            public uint Control;
 
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
             public LUID_AND_ATTRIBUTES[] Privilege;
@@ -427,65 +412,26 @@ public static class NativeAclFix
         [StructLayout(LayoutKind.Sequential)]
         public struct TOKEN_PRIVILEGES
         {
-            public UInt32 PrivilegeCount;
+            public uint PrivilegeCount;
 
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
             public LUID_AND_ATTRIBUTES[] Privileges;
         }
 
-        #endregion
-
-        #region Methods
+        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern void BuildExplicitAccessWithName(ref EXPLICIT_ACCESS pExplicitAccess, string pTrusteeName, uint AccessPermissions, uint AccessMode, uint Inheritance);
 
         [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        public static extern void BuildExplicitAccessWithName
-        (
-            ref EXPLICIT_ACCESS pExplicitAccess,
-            string              pTrusteeName,
-            uint                AccessPermissions,
-            uint                AccessMode,
-            uint                Inheritance
-        );
-
-        [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        public static extern int SetEntriesInAcl
-        (
-            int                 cCountOfExplicitEntries,
-            ref EXPLICIT_ACCESS pListOfExplicitEntries,
-            IntPtr              OldAcl,
-            out IntPtr          NewAcl
-        );
+        public static extern int SetEntriesInAcl(int cCountOfExplicitEntries, ref EXPLICIT_ACCESS pListOfExplicitEntries, IntPtr OldAcl, out IntPtr NewAcl);
 
         [DllImport("advapi32.dll", SetLastError = true)]
-        public static extern bool InitializeSecurityDescriptor
-        (
-            out SECURITY_DESCRIPTOR pSecurityDescriptor,
-            uint                    dwRevision
-        );
+        public static extern bool InitializeSecurityDescriptor(out SECURITY_DESCRIPTOR pSecurityDescriptor, uint dwRevision);
 
         [DllImport("advapi32.dll", SetLastError = true)]
-        public static extern bool SetSecurityDescriptorDacl
-        (
-            ref SECURITY_DESCRIPTOR pSecurityDescriptor,
-            bool                    bDaclPresent,
-            IntPtr                  pDacl,
-            bool                    bDaclDefaulted
-        );
+        public static extern bool SetSecurityDescriptorDacl(ref SECURITY_DESCRIPTOR pSecurityDescriptor, bool bDaclPresent, IntPtr pDacl, bool bDaclDefaulted);
 
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        public static extern bool CreateProcess
-        (
-            string                       lpApplicationName,
-            string                       lpCommandLine,
-            ref SECURITY_ATTRIBUTES      lpProcessAttributes,
-            IntPtr                       lpThreadAttributes,
-            bool                         bInheritHandles,
-            uint                         dwCreationFlags,
-            IntPtr                       lpEnvironment,
-            string                       lpCurrentDirectory,
-            [In] ref STARTUPINFO         lpStartupInfo,
-            out      PROCESS_INFORMATION lpProcessInformation
-        );
+        public static extern bool CreateProcess(string lpApplicationName, string lpCommandLine, ref SECURITY_ATTRIBUTES lpProcessAttributes, IntPtr lpThreadAttributes, bool bInheritHandles, uint dwCreationFlags, IntPtr lpEnvironment, string lpCurrentDirectory, [In] ref STARTUPINFO lpStartupInfo, out PROCESS_INFORMATION lpProcessInformation);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool CloseHandle(IntPtr hObject);
@@ -494,63 +440,24 @@ public static class NativeAclFix
         public static extern uint ResumeThread(IntPtr hThread);
 
         [DllImport("advapi32.dll", SetLastError = true)]
-        public static extern bool OpenProcessToken
-        (
-            IntPtr     ProcessHandle,
-            uint       DesiredAccess,
-            out IntPtr TokenHandle
-        );
+        public static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
 
         [DllImport("advapi32.dll", SetLastError = true)]
         public static extern bool LookupPrivilegeValue(string lpSystemName, string lpName, ref LUID lpLuid);
 
         [DllImport("advapi32.dll", SetLastError = true)]
-        public static extern bool PrivilegeCheck
-        (
-            IntPtr            ClientToken,
-            ref PRIVILEGE_SET RequiredPrivileges,
-            out bool          pfResult
-        );
+        public static extern bool PrivilegeCheck(IntPtr ClientToken, ref PRIVILEGE_SET RequiredPrivileges, out bool pfResult);
 
         [DllImport("advapi32.dll", SetLastError = true)]
-        public static extern bool AdjustTokenPrivileges
-        (
-            IntPtr               TokenHandle,
-            bool                 DisableAllPrivileges,
-            ref TOKEN_PRIVILEGES NewState,
-            uint                 BufferLengthInBytes,
-            IntPtr               PreviousState,
-            uint                 ReturnLengthInBytes
-        );
+        public static extern bool AdjustTokenPrivileges(IntPtr TokenHandle, bool DisableAllPrivileges, ref TOKEN_PRIVILEGES NewState, uint BufferLengthInBytes, IntPtr PreviousState, uint ReturnLengthInBytes);
 
         [DllImport("advapi32.dll", SetLastError = true)]
-        public static extern uint GetSecurityInfo
-        (
-            IntPtr               handle,
-            SE_OBJECT_TYPE       ObjectType,
-            SECURITY_INFORMATION SecurityInfo,
-            IntPtr               pSidOwner,
-            IntPtr               pSidGroup,
-            out IntPtr           pDacl,
-            IntPtr               pSacl,
-            IntPtr               pSecurityDescriptor
-        );
+        public static extern uint GetSecurityInfo(IntPtr handle, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, IntPtr pSidOwner, IntPtr pSidGroup, out IntPtr pDacl, IntPtr pSacl, IntPtr pSecurityDescriptor);
 
         [DllImport("advapi32.dll", SetLastError = true)]
-        public static extern uint SetSecurityInfo
-        (
-            IntPtr               handle,
-            SE_OBJECT_TYPE       ObjectType,
-            SECURITY_INFORMATION SecurityInfo,
-            IntPtr               psidOwner,
-            IntPtr               psidGroup,
-            IntPtr               pDacl,
-            IntPtr               pSacl
-        );
+        public static extern uint SetSecurityInfo(IntPtr handle, SE_OBJECT_TYPE ObjectType, SECURITY_INFORMATION SecurityInfo, IntPtr psidOwner, IntPtr psidGroup, IntPtr pDacl, IntPtr pSacl);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr GetCurrentProcess();
-
-        #endregion
     }
 }

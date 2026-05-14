@@ -91,7 +91,6 @@
     <ItemGroup>
         <ProjectReference Include="..\XIVLauncher.Account\XIVLauncher.Account.csproj" />
         <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj"/>
-        <ProjectReference Include="..\XIVLauncher.Common.Windows\XIVLauncher.Common.Windows.csproj"/>
         <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
         <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj"/>
     </ItemGroup>

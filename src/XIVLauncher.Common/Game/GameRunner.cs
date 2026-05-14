@@ -7,9 +7,9 @@ using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.PlatformAbstractions;
 
-namespace XIVLauncher.Common.Windows;
+namespace XIVLauncher.Common;
 
-public class WindowsGameRunner
+public class GameRunner
 (
     DalamudLauncher dalamudLauncher,
     bool            dalamudOk,

@@ -2,7 +2,6 @@ using System.IO;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
-using XIVLauncher.Common.Windows;
 using XIVLauncher.Support;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Factories;
@@ -12,7 +11,7 @@ public sealed class DalamudLauncherFactory
     public static DalamudLauncher Create(DirectoryInfo gamePath, DalamudLoadMethod loadMethod, bool noPlugins, bool noThird) =>
         new
         (
-            new WindowsDalamudRunner(),
+            new DalamudRunner(),
             App.DalamudUpdater,
             loadMethod,
             gamePath,

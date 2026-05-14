@@ -9,34 +9,27 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using Exception = System.Exception;
 
-// ReSharper disable FieldCanBeMadeReadOnly.Local
-// ReSharper disable MemberCanBePrivate.Local
+namespace XIVLauncher.Common;
 
-namespace XIVLauncher.Common.Windows;
-
-public class WindowsRestartManager : IDisposable
+public class RestartManager : IDisposable
 {
-    private const int RM_SESSION_KEY_LEN    = 16; // sizeof GUID
-    private const int CCH_RM_SESSION_KEY    = RM_SESSION_KEY_LEN * 2;
-    private const int CCH_RM_MAX_APP_NAME   = 255;
-    private const int CCH_RM_MAX_SVC_NAME   = 63;
-    private const int RM_INVALID_TS_SESSION = -1;
-    private const int RM_INVALID_PROCESS    = -1;
-    private const int ERROR_MORE_DATA       = 234;
+    private const int CCH_RM_SESSION_KEY  = RM_SESSION_KEY_LEN * 2;
+    private const int CCH_RM_MAX_APP_NAME = 255;
+    private const int CCH_RM_MAX_SVC_NAME = 63;
+    private const int ERROR_MORE_DATA     = 234;
+    private const int RM_SESSION_KEY_LEN  = 16;
 
     private readonly int    sessionHandle;
     private readonly string sessionKey;
 
-    public WindowsRestartManager()
+    public RestartManager()
     {
         var sessKey = new StringBuilder(CCH_RM_SESSION_KEY + 1);
         ThrowOnFailure(RmStartSession(out sessionHandle, 0, sessKey));
         sessionKey = sessKey.ToString();
     }
 
-    #region Disposal
-
-    ~WindowsRestartManager() =>
+    ~RestartManager() =>
         ReleaseUnmanagedResources();
 
     public void Dispose()
@@ -44,8 +37,6 @@ public class WindowsRestartManager : IDisposable
         ReleaseUnmanagedResources();
         GC.SuppressFinalize(this);
     }
-
-    #endregion
 
     public void Register(IEnumerable<FileInfo> files = null, IEnumerable<Process> processes = null, IEnumerable<string> serviceNames = null)
     {
@@ -110,8 +101,6 @@ public class WindowsRestartManager : IDisposable
         }
 
         ThrowOnFailure(err);
-
-        // should not reach
         throw new InvalidOperationException();
     }
 
@@ -156,87 +145,37 @@ public class WindowsRestartManager : IDisposable
     [StructLayout(LayoutKind.Sequential)]
     public struct RmUniqueProcess
     {
-        public int      dwProcessId;      // PID
-        public FILETIME ProcessStartTime; // Process creation time
+        public int      dwProcessId;
+        public FILETIME ProcessStartTime;
     }
 
     public enum RmAppType
     {
-        /// <summary>
-        ///     Application type cannot be classified in known categories
-        /// </summary>
         RmUnknownApp = 0,
-
-        /// <summary>
-        ///     Application is a windows application that displays a top-level window
-        /// </summary>
         RmMainWindow = 1,
-
-        /// <summary>
-        ///     Application is a windows app but does not display a top-level window
-        /// </summary>
         RmOtherWindow = 2,
-
-        /// <summary>
-        ///     Application is an NT service
-        /// </summary>
         RmService = 3,
-
-        /// <summary>
-        ///     Application is Explorer
-        /// </summary>
         RmExplorer = 4,
-
-        /// <summary>
-        ///     Application is Console application
-        /// </summary>
         RmConsole = 5,
-
-        /// <summary>
-        ///     Application is critical system process where a reboot is required to restart
-        /// </summary>
         RmCritical = 1000
     }
 
     [Flags]
     public enum RmRebootReason
     {
-        /// <summary>
-        ///     A system restart is not required.
-        /// </summary>
         RmRebootReasonNone = 0x0,
-
-        /// <summary>
-        ///     The current user does not have sufficient privileges to shut down one or more processes.
-        /// </summary>
         RmRebootReasonPermissionDenied = 0x1,
-
-        /// <summary>
-        ///     One or more processes are running in another Terminal Services session.
-        /// </summary>
         RmRebootReasonSessionMismatch = 0x2,
-
-        /// <summary>
-        ///     A system restart is needed because one or more processes to be shut down are critical processes.
-        /// </summary>
         RmRebootReasonCriticalProcess = 0x4,
-
-        /// <summary>
-        ///     A system restart is needed because one or more services to be shut down are critical services.
-        /// </summary>
         RmRebootReasonCriticalService = 0x8,
-
-        /// <summary>
-        ///     A system restart is needed because the current process must be shut down.
-        /// </summary>
         RmRebootReasonDetectedSelf = 0x10
     }
 
     [Flags]
     private enum RmShutdownType
     {
-        RmForceShutdown          = 0x1, // Force app shutdown
-        RmShutdownOnlyRegistered = 0x10 // Only shutdown apps if all apps registered for restart
+        RmForceShutdown          = 0x1,
+        RmShutdownOnlyRegistered = 0x10
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

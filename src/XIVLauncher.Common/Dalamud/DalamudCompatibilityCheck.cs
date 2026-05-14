@@ -5,9 +5,9 @@ using Microsoft.Win32;
 using Serilog;
 using XIVLauncher.Common.PlatformAbstractions;
 
-namespace XIVLauncher.Common.Windows;
+namespace XIVLauncher.Common;
 
-public class WindowsDalamudCompatibilityCheck : IDalamudCompatibilityCheck
+public class DalamudCompatibilityCheck : IDalamudCompatibilityCheck
 {
     public void EnsureCompatibility()
     {
@@ -54,9 +54,6 @@ public class WindowsDalamudCompatibilityCheck : IDalamudCompatibilityCheck
 
     private static bool CheckVcRedists()
     {
-        // snipped from https://stackoverflow.com/questions/12206314/detect-if-visual-c-redistributable-for-visual-studio-2012-is-installed
-        // and https://github.com/bitbeans/RedistributableChecker
-
         var vc2022Paths = new List<string>
         {
             @"SOFTWARE\Microsoft\DevDiv\VC\Servicing\14.0\RuntimeMinimum",
@@ -73,11 +70,7 @@ public class WindowsDalamudCompatibilityCheck : IDalamudCompatibilityCheck
             @"SOFTWARE\Classes\Installer\Dependencies\VC,redist.x64,amd64,14.30,bundle",
             @"SOFTWARE\Classes\Installer\Dependencies\VC,redist.x64,amd64,14.29,bundle",
             @"SOFTWARE\Classes\Installer\Dependencies\VC,redist.x64,amd64,14.28,bundle",
-            // technically, this was introduced in VCrun2017 with 14.16
-            // but we shouldn't go that far
-            // here's a legacy vcrun2017 check
             @"Installer\Dependencies\,,amd64,14.0,bundle",
-            // here's one for vcrun2015
             @"SOFTWARE\Classes\Installer\Dependencies\{d992c12e-cab2-426f-bde3-fb8c53950b0d}"
         };
 
@@ -117,7 +110,6 @@ public class WindowsDalamudCompatibilityCheck : IDalamudCompatibilityCheck
                 Log.Error("Cound not find " + path);
         }
 
-        // Display our findings
         if (!passedRegistry)
             Log.Error("Failed all registry checks to find any Visual C++ 2015-2022 Runtimes.");
 

@@ -13,9 +13,9 @@ using Serilog;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.PlatformAbstractions;
 
-namespace XIVLauncher.Common.Windows;
+namespace XIVLauncher.Common;
 
-public class WindowsDalamudRunner : IDalamudRunner
+public class DalamudRunner : IDalamudRunner
 {
     public static void Inject(FileInfo runner, int gamePid, IDictionary<string, string> environment, DalamudStartInfo startInfo, bool safeMode = false, bool noThirdPlugins = false)
     {
@@ -137,7 +137,6 @@ public class WindowsDalamudRunner : IDalamudRunner
         var fullCommandLine = $"\"{runner.FullName}\" {joinedArguments}";
         var envVars         = SafeGetEnvVars();
 
-        // Merge specified env vars into existing env var dict
         foreach (var keyValuePair in environment)
         {
             if (envVars.ContainsKey(keyValuePair.Key))
@@ -163,7 +162,6 @@ public class WindowsDalamudRunner : IDalamudRunner
             var pipeSecAttr = Kernel32.SECURITY_ATTRIBUTES.Create();
             pipeSecAttr.bInheritHandle = 1;
 
-            // Create the pipe used to capture stdout
             if (!Kernel32.CreatePipe
                 (
                     out var tempOutputHandle,
@@ -177,7 +175,6 @@ public class WindowsDalamudRunner : IDalamudRunner
 
             var currentProcHandle = Kernel32.GetCurrentProcess();
 
-            // Duplicate the pipe's handle, so that we can still access it even if the child process closes it
             if (!DuplicateHandle
                 (
                     currentProcHandle.DangerousGetHandle(),
@@ -195,7 +192,6 @@ public class WindowsDalamudRunner : IDalamudRunner
             kernelStartupInfo.dwFlags    = Kernel32.StartupInfoFlags.STARTF_USESTDHANDLES;
             kernelStartupInfo.hStdOutput = childOutputPipeHandle.DangerousGetHandle();
 
-            // Start process
             fixed (char* environmentBlockPtr = environmentBlock)
             {
                 const Kernel32.CreateProcessFlags FLAGS = Kernel32.CreateProcessFlags.CREATE_NO_WINDOW | Kernel32.CreateProcessFlags.CREATE_UNICODE_ENVIRONMENT;
@@ -220,15 +216,12 @@ public class WindowsDalamudRunner : IDalamudRunner
 
             Log.Verbose("=> Started process");
 
-            // Close thread handle, it will leak otherwise
             if (kernelProcessInfo.hThread != IntPtr.Zero && kernelProcessInfo.hThread != new IntPtr(-1))
                 Kernel32.CloseHandle(kernelProcessInfo.hThread);
 
-            // Create stdout stream reader with our pipe
             var       stdoutEncoding = new UTF8Encoding(false);
             using var stdoutStream   = new StreamReader(new FileStream(new SafeFileHandle(parentOutputPipeHandle, false), FileAccess.Read, 4096, false), stdoutEncoding, true, 4096);
 
-            // Wait for the process to exit
             const int WAIT_INJECTOR_TIMEOUT_MS = 60 * 1000;
             var       res                      = Kernel32.WaitForSingleObject(new SafeProcessHandle(kernelProcessInfo.hProcess, false), WAIT_INJECTOR_TIMEOUT_MS);
 
@@ -242,14 +235,12 @@ public class WindowsDalamudRunner : IDalamudRunner
 
             Log.Verbose("=> WaitForSingleObject() complete");
 
-            // Check the exit code
             if (!Kernel32.GetExitCodeProcess(kernelProcessInfo.hProcess, out var exitCode))
                 throw new Win32Exception();
 
             if (exitCode != 0)
                 throw new DalamudRunnerException($"Injector exit code was {exitCode}");
 
-            // Check if the stream is empty, if not, read a line from it(json with pid/handle)
             if (stdoutStream.EndOfStream)
                 throw new DalamudRunnerException("Injector output stream was empty");
 
@@ -296,10 +287,7 @@ public class WindowsDalamudRunner : IDalamudRunner
 
             Log.Verbose("=> Closing handles");
 
-            // Close our own pipe, the child will have closed its
             Kernel32.CloseHandle(parentOutputPipeHandle);
-
-            // Close the child process handle
             Kernel32.CloseHandle(kernelProcessInfo.hProcess);
 
             if (loadMethod == DalamudLoadMethod.DllInject)
@@ -348,53 +336,6 @@ public class WindowsDalamudRunner : IDalamudRunner
         }
     }
 
-    /// <summary>
-    ///     Duplicates an object handle.
-    /// </summary>
-    /// <param name="hSourceProcessHandle">
-    ///     A handle to the process with the handle to be duplicated.
-    ///     The handle must have the PROCESS_DUP_HANDLE access right.
-    /// </param>
-    /// <param name="hSourceHandle">
-    ///     The handle to be duplicated. This is an open object handle that is valid in the context of the source process.
-    ///     For a list of objects whose handles can be duplicated, see the following Remarks section.
-    /// </param>
-    /// <param name="hTargetProcessHandle">
-    ///     A handle to the process that is to receive the duplicated handle.
-    ///     The handle must have the PROCESS_DUP_HANDLE access right.
-    /// </param>
-    /// <param name="lpTargetHandle">
-    ///     A pointer to a variable that receives the duplicate handle. This handle value is valid in the context of the target
-    ///     process.
-    ///     If hSourceHandle is a pseudo handle returned by GetCurrentProcess or GetCurrentThread, DuplicateHandle converts it
-    ///     to a real handle to a process or thread, respectively.
-    ///     If lpTargetHandle is NULL, the function duplicates the handle, but does not return the duplicate handle value to
-    ///     the caller. This behavior exists only for backward compatibility with previous versions of this function. You
-    ///     should not use this feature, as you will lose system resources until the target process terminates.
-    ///     This parameter is ignored if hTargetProcessHandle is NULL.
-    /// </param>
-    /// <param name="dwDesiredAccess">
-    ///     The access requested for the new handle. For the flags that can be specified for each object type, see the
-    ///     following Remarks section.
-    ///     This parameter is ignored if the dwOptions parameter specifies the DUPLICATE_SAME_ACCESS flag. Otherwise, the flags
-    ///     that can be specified depend on the type of object whose handle is to be duplicated.
-    ///     This parameter is ignored if hTargetProcessHandle is NULL.
-    /// </param>
-    /// <param name="bInheritHandle">
-    ///     A variable that indicates whether the handle is inheritable. If TRUE, the duplicate handle can be inherited by new
-    ///     processes created by the target process. If FALSE, the new handle cannot be inherited.
-    ///     This parameter is ignored if hTargetProcessHandle is NULL.
-    /// </param>
-    /// <param name="dwOptions">
-    ///     Optional actions.
-    /// </param>
-    /// <returns>
-    ///     If the function succeeds, the return value is nonzero.
-    ///     If the function fails, the return value is zero. To get extended error information, call GetLastError.
-    /// </returns>
-    /// <remarks>
-    ///     See https://docs.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-duplicatehandle.
-    /// </remarks>
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DuplicateHandle
@@ -438,16 +379,6 @@ public class WindowsDalamudRunner : IDalamudRunner
         return new ExistingProcess(inheritableCurrentProcessHandle);
     }
 
-    // ReSharper disable SuggestVarOrType_SimpleTypes
-
-    /*
-     * .NET Framework BUG: ProcessStartInfo.EnvironmentVariables can't handle
-     * env vars with the same name, but different casing. This is usually forbidden
-     * on Windows but we all know what that means.
-     *
-     * New code taken from .NET Core
-     * https://github.com/dotnet/runtime/blob/2c62994efb2495dcaef2312de3ab25ea4792b23a/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/ProcessStartInfo.cs#L97-L110
-     */
     private static IDictionary<string, string> SafeGetEnvVars()
     {
         IDictionary envVars = Environment.GetEnvironmentVariables();
@@ -461,7 +392,6 @@ public class WindowsDalamudRunner : IDalamudRunner
             )
         );
 
-        // Manual use of IDictionaryEnumerator instead of foreach to avoid DictionaryEntry box allocations.
         IDictionaryEnumerator e = envVars.GetEnumerator();
 
         Debug.Assert(!(e is IDisposable), "Environment.GetEnvironmentVariables should not be IDisposable.");
@@ -475,7 +405,6 @@ public class WindowsDalamudRunner : IDalamudRunner
         return envDict;
     }
 
-    // https://github.com/dotnet/runtime/blob/2c62994efb2495dcaef2312de3ab25ea4792b23a/src/libraries/System.Diagnostics.Process/src/System/Collections/Specialized/DictionaryWrapper.cs#L8
     private sealed class DictionaryWrapper : IDictionary<string, string?>, IDictionary
     {
         public ICollection<string>  Keys   => _contents.Keys;
@@ -550,19 +479,12 @@ public class WindowsDalamudRunner : IDalamudRunner
         }
     }
 
-    // https://github.com/dotnet/runtime/blob/2c62994efb2495dcaef2312de3ab25ea4792b23a/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Windows.cs#L860-L879
     private static string GetEnvironmentVariablesBlock(IDictionary<string, string> sd)
     {
-        // https://docs.microsoft.com/en-us/windows/win32/procthread/changing-environment-variables
-        // "All strings in the environment block must be sorted alphabetically by name. The sort is
-        //  case-insensitive, Unicode order, without regard to locale. Because the equal sign is a
-        //  separator, it must not be used in the name of an environment variable."
-
         var keys = new string[sd.Count];
         sd.Keys.CopyTo(keys, 0);
         Array.Sort(keys, StringComparer.OrdinalIgnoreCase);
 
-        // Join the null-terminated "key=val\0" strings
         var result = new StringBuilder(8 * keys.Length);
 
         foreach (var key in keys)
@@ -570,22 +492,11 @@ public class WindowsDalamudRunner : IDalamudRunner
 
         return result.ToString();
     }
-    // ReSharper restore SuggestVarOrType_SimpleTypes
 
-    /// <summary>
-    ///     DUPLICATE_* values for DuplicateHandle's dwDesiredAccess.
-    /// </summary>
     [Flags]
     private enum DuplicateOptions : uint
     {
-        /// <summary>
-        ///     Closes the source handle. This occurs regardless of any error status returned.
-        /// </summary>
         CloseSource = 0x00000001,
-
-        /// <summary>
-        ///     Ignores the dwDesiredAccess parameter. The duplicate handle has the same access as the source handle.
-        /// </summary>
-        SameAccess = 0x00000002
+        SameAccess  = 0x00000002
     }
 }

@@ -5,10 +5,8 @@ using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Media.Imaging;
-using XIVLauncher.Common.Windows;
-using XIVLauncher.GamePatchV3;
+using XIVLauncher.Common;
 using XIVLauncher.GamePatchV3.Repair;
-using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Windows;
 
 namespace XIVLauncher;
@@ -74,11 +72,11 @@ public static class AppUtil
     {
         try
         {
-            var gamePath = Path.Combine(CommonSettings.Instance.GamePath.FullName, "game");
+            var gamePath = Path.Combine(App.Settings.GamePath.FullName, "game");
 
             while (true)
             {
-                using var restartManager = new WindowsRestartManager();
+                using var restartManager = new RestartManager();
                 restartManager.Register(GameRepairer.GetRelevantFiles(gamePath));
 
                 var programs = restartManager.GetInterferingProcesses(out _).ToArray();

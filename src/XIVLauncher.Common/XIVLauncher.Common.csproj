@@ -22,7 +22,7 @@
 
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net10.0-windows</TargetFramework>
         <LangVersion>latest</LangVersion>
         <Deterministic>true</Deterministic>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -38,6 +38,7 @@
         <PackageReference Include="EmbedIO"/>
         <PackageReference Include="Iced"/>
         <PackageReference Include="Newtonsoft.Json"/>
+        <PackageReference Include="PInvoke.Kernel32"/>
         <PackageReference Include="Reloaded.Memory"/>
         <PackageReference Include="Reloaded.Memory.Buffers"/>
         <PackageReference Include="Reloaded.Memory.Sigscan"/>

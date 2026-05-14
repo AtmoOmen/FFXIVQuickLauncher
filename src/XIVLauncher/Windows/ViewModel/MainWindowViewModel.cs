@@ -26,7 +26,6 @@ using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
-using XIVLauncher.Common.Windows;
 using XIVLauncher.Game;
 using XIVLauncher.GamePatchV3;
 using XIVLauncher.GamePatchV3.Update;
@@ -1301,7 +1300,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         if (App.Settings.DalamudEnabled && !forceNoDalamud)
             dalamudOk = EnsureDalamudUpdate(dalamudLauncher, App.Settings.GamePath, false);
 
-        var gameRunner = new WindowsGameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
+        var gameRunner = new GameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
         stopwatch.Stop();
 
         if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
@@ -1433,7 +1432,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     private void EnsureDalamudCompatibility()
     {
-        var dalamudCompatCheck = new WindowsDalamudCompatibilityCheck();
+        var dalamudCompatCheck = new DalamudCompatibilityCheck();
 
         try
         {

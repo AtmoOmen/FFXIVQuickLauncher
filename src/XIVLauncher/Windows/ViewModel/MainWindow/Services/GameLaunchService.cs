@@ -6,11 +6,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
+using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Common.PlatformAbstractions;
-using XIVLauncher.Common.Windows;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel.MainWindow.Factories;
 
@@ -143,7 +143,7 @@ public sealed class GameLaunchService
 
     public void EnsureDalamudCompatibility()
     {
-        var dalamudCompatCheck = new WindowsDalamudCompatibilityCheck();
+        var dalamudCompatCheck = new DalamudCompatibilityCheck();
 
         try
         {
