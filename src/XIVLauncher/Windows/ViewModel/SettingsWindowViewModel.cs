@@ -16,7 +16,6 @@ using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Addon.Implementations;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
-using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
@@ -169,11 +168,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         set => SetProperty(ref field, value);
     } = (int)DPIAwareness.Unaware;
 
-    public int PatchAcquisitionIndex
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
 
     public decimal? SpeedLimitMb
     {
@@ -312,7 +306,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherWhenGameExit;
         KeepPatches                                 = App.Settings.KeepPatches;
         RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewLogin;
-        PatchAcquisitionIndex                       = (int)App.Settings.PatchAcquisitionMethod;
         DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMS;
         ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
         UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod != DalamudLoadMethod.DllInject;
@@ -348,7 +341,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         var gamePath              = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
         var patchPath             = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
         var addonEntries          = AddonEntries.ToList();
-        var patchAcquisitionMethod = (AcquisitionMethod)PatchAcquisitionIndex;
         var dalamudLoadMethod      = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
         var dpiAwareness           = (DPIAwareness)DpiAwarenessIndex;
         var speedLimitBytes        = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
@@ -384,7 +376,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
                 settings.ExitLauncherWhenGameExit            = ExitLauncherAfterGameExit;
                 settings.KeepPatches                         = KeepPatches;
                 settings.RequireDeviceProfileSetupForNewLogin = RequireDeviceProfileSetupForNewAccountLogin;
-                settings.PatchAcquisitionMethod              = patchAcquisitionMethod;
                 settings.DalamudEnabled                      = EnableHooks;
                 settings.DalamudInjectionDelayMS             = DalamudInjectionDelayMs ?? 0;
                 settings.ManualInjectDelayMs                 = ManualInjectDelayMs     ?? 0;

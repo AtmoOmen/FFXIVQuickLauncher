@@ -10,7 +10,6 @@ using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Settings.Converters;
 using XIVLauncher.Xaml;
 
@@ -230,15 +229,6 @@ public sealed class LauncherSettingsV3
         get;
         set => Set(ref field, value);
     } = 0;
-
-    /// <summary>
-    ///     补丁获取方式
-    /// </summary>
-    public AcquisitionMethod PatchAcquisitionMethod
-    {
-        get;
-        set => Set(ref field, value);
-    } = AcquisitionMethod.Aria;
 
     /// <summary>
     ///     是否保留补丁文件

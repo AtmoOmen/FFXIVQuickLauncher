@@ -24,11 +24,10 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Common.Game.Patch;
-using XIVLauncher.Common.Game.Update;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Common.Windows;
+using XIVLauncher.GamePatchV3;
 using XIVLauncher.Game;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Support;
@@ -460,44 +459,21 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             }
         };
 
-        var         attemptedV3AutoUpdate = false;
-        LoginResult loginResult;
+        var loginResult = await LoginToGameAsync
+                          (
+                              finalLoginType,
+                              loginType,
+                              username,
+                              secret!,
+                              loginAutoLogin,
+                              deviceProfileSnapshot,
+                              dcTraveler
+                          ).ConfigureAwait(false);
+        if (loginResult == null)
+            return;
 
-        while (true)
-        {
-            var nextLoginResult = await LoginToGameAsync
-                                  (
-                                      finalLoginType,
-                                      loginType,
-                                      username,
-                                      secret!,
-                                      loginAutoLogin,
-                                      deviceProfileSnapshot,
-                                      dcTraveler
-                                  ).ConfigureAwait(false);
-            if (nextLoginResult == null)
-                return;
-
-            loginResult       = nextLoginResult;
-            loginResult.Area  = LoginPage.Area;
-            loginResult.Areas = LoginPage.LoginAreas;
-
-            if (!attemptedV3AutoUpdate
-                && loginResult.State            == LoginState.NeedsPatchGame
-                && loginResult.V3GameUpdatePlan != null)
-            {
-                if (!ConfirmGamePatchInstall())
-                    return;
-
-                if (!await InstallGamePatchAsync().ConfigureAwait(false))
-                    return;
-
-                attemptedV3AutoUpdate = true;
-                continue;
-            }
-
-            break;
-        }
+        loginResult.Area  = LoginPage.Area;
+        loginResult.Areas = LoginPage.LoginAreas;
 
         var oAuthLogin = loginResult.OAuthLogin;
 
@@ -645,9 +621,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         Log.Information
         (
-            "[MainWindow] 登录结果: {State} {NumPatches} {Playable}",
+            "[MainWindow] 登录结果: {State} {Playable}",
             loginResult.State,
-            loginResult.PendingPatches?.Length,
             oAuthLogin?.Playable
         );
 
@@ -756,7 +731,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             var gamePath = App.Settings.GamePath;
             return await Launcher.LoginClient.LoginWithPatchCheck
                    (
-                       _ => UpdateClient.Check(gamePath, false, loginCts.Token),
+                        async ct =>
+                        {
+                            var checkResult = await GameUpdater.Check(gamePath, false, ct).ConfigureAwait(false);
+                            return checkResult.NeedsUpdate
+                                       ? new LoginResult { State = LoginState.NeedsPatchGame, OAuthLogin = new() }
+                                       : new LoginResult { State = LoginState.Ok, OAuthLogin = null };
+                        },
                        type,
                        fallbackLoginType,
                        requestLoginType => LoginRequest.Create

@@ -9,17 +9,11 @@ using System.Windows;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game.Integrity;
-using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Common.Game.Patch;
-using XIVLauncher.Common.Game.Patch.V3;
-using XIVLauncher.Common.Game.Update;
-using XIVLauncher.Common.Patching.IndexedZiPatch;
-using XIVLauncher.Common.Patching.SdoFileDownload;
 using XIVLauncher.Common.Runtime;
 using XIVLauncher.Common.Util;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Windows.GameClientFiles;
+using XIVLauncher.GamePatchV3;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
 
@@ -79,13 +73,13 @@ public sealed class GameClientFileTaskService
         SetRunningHandler(viewModel, () => ctsBox.Value?.Cancel());
         ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, "正在检查游戏更新"));
 
-        LoginResult loginResult;
+        GameUpdateCheckResult checkResult;
 
         try
         {
             Log.Information("[GameClientFileTask] 正在检查游戏更新");
-            loginResult = await UpdateClient.Check(gamePath, false, cancellationTokenSource.Token).ConfigureAwait(false);
-            Log.Information("[GameClientFileTask] 更新检查完成, 状态 {State}, 存在 V3 计划 {HasV3Plan}", loginResult.State, loginResult.V3GameUpdatePlan != null);
+            checkResult = await GameUpdater.Check(gamePath, false, cancellationTokenSource.Token).ConfigureAwait(false);
+            Log.Information("[GameClientFileTask] 更新检查完成, 需要更新 {NeedsUpdate}", checkResult.NeedsUpdate);
         }
         catch (OperationCanceledException)
         {
@@ -97,16 +91,16 @@ public sealed class GameClientFileTaskService
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "检查游戏更新失败", ex.Message), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
         }
 
-        if (loginResult.State != LoginState.NeedsPatchGame)
+        if (!checkResult.NeedsUpdate)
             return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "更新检查已完成", "当前没有待安装的更新内容"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
 
-        if (loginResult.V3GameUpdatePlan == null)
+        if (checkResult.UpdatePlan == null)
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "获取游戏更新计划失败"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
-        return await RunV3GamePatchUpdateAsync(viewModel, loginResult.V3GameUpdatePlan).ConfigureAwait(false);
+        return await RunGamePatchUpdateAsync(viewModel, checkResult.UpdatePlan).ConfigureAwait(false);
     }
 
-    private async Task<GameClientFileTaskResult> RunV3GamePatchUpdateAsync(GameClientFileTaskWindowViewModel viewModel, V3GameUpdatePlan updatePlan)
+    private async Task<GameClientFileTaskResult> RunGamePatchUpdateAsync(GameClientFileTaskWindowViewModel viewModel, GameUpdatePlan updatePlan)
     {
         const string TITLE = "更新游戏文件";
 
@@ -128,24 +122,24 @@ public sealed class GameClientFileTaskService
         var       ctsBox                  = new StrongBox<CancellationTokenSource?>(cancellationTokenSource);
         SetRunningHandler(viewModel, () => ctsBox.Value?.Cancel());
 
-        var progress = new Progress<V3GamePatchProgress>(value => ApplySnapshot(viewModel, CreateV3GamePatchSnapshot(value)));
+        var progress = new Progress<GamePatchProgress>(value => ApplySnapshot(viewModel, CreateGamePatchSnapshot(value)));
 
         try
         {
             var assemblyLocation      = AppContext.BaseDirectory;
-            var workerExecutablePath  = Path.Combine(assemblyLocation, "PatchInstaller", "XIVLauncher.PatchInstaller.exe");
-            var adminAccessRequired   = PatchVerifier.AdminAccessRequired(App.Settings.GamePath.FullName);
-            var patchInstallerRuntime = DotNetRuntimeManager.GetRuntimeDirectory("win-x86");
+            var shimExecutablePath    = Path.Combine(assemblyLocation, "VcdiffShim", "XIVLauncher.VcdiffShim.exe");
+            var adminAccessRequired   = GameRepairer.AdminAccessRequired(App.Settings.GamePath.FullName);
+            var shimRuntimePath       = DotNetRuntimeManager.GetRuntimeDirectory("win-x86");
 
-            ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, "正在准备补丁安装器运行时"));
+            ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, "正在准备运行时"));
             var runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(cancellationTokenSource.Token).ConfigureAwait(false);
             await DotNetRuntimeManager.EnsureRuntimeAsync
                                       (
-                                          patchInstallerRuntime,
+                                          shimRuntimePath,
                                           runtimeVersion,
                                           "win-x86",
                                           "补丁安装器 .NET 运行时",
-                                          message => ApplySnapshot(viewModel,                CreateRunningSnapshot(TITLE, message)),
+                                          message => ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, message)),
                                           (total, downloaded, _) => ApplySnapshot(viewModel, CreateRuntimeDownloadSnapshot(TITLE, total, downloaded)),
                                           cancellationTokenSource.Token
                                       )
@@ -153,30 +147,24 @@ public sealed class GameClientFileTaskService
 
             Log.Information
             (
-                "[GameClientFileTask] 准备安装 V3 更新, 当前 {CurrentGameVersion}/{CurrentDataVersion}, 目标 {TargetGameVersion}/{TargetDataVersion}, 包数量 {PackageCount}, 提权 {AdminAccessRequired}, Worker {WorkerPath}",
+                "[GameClientFileTask] 准备安装更新, 当前 {CurrentGameVersion}/{CurrentDataVersion}, 目标 {TargetGameVersion}/{TargetDataVersion}, 包数量 {PackageCount}, 提权 {AdminAccessRequired}",
                 updatePlan.CurrentGameVersion,
                 updatePlan.CurrentDataVersion,
                 updatePlan.TargetGameVersion,
                 updatePlan.TargetDataVersion,
                 updatePlan.Packages.Count,
-                adminAccessRequired,
-                workerExecutablePath
+                adminAccessRequired
             );
 
-            using var fileInstaller = new SdoFileDownloadRemoteInstaller
-            (
-                workerExecutablePath,
-                adminAccessRequired,
-                patchInstallerRuntime.FullName
-            );
-            using var patchInstaller = new V3GamePatchInstaller();
+            using var vcdiffClient   = new VcdiffClient(shimExecutablePath, shimRuntimePath.FullName, adminAccessRequired);
+            using var patchInstaller = new GamePatchInstaller();
 
             await patchInstaller.InstallAsync
                                 (
                                     updatePlan,
                                     App.Settings.GamePath,
                                     App.Settings.PatchPath,
-                                    fileInstaller,
+                                    vcdiffClient,
                                     App.Settings.KeepPatches,
                                     TimeSpan.FromMilliseconds(100),
                                     progress,
@@ -184,7 +172,7 @@ public sealed class GameClientFileTaskService
                                 )
                                 .ConfigureAwait(false);
 
-            Log.Information("[GameClientFileTask] V3 游戏更新安装完成");
+            Log.Information("[GameClientFileTask] 游戏更新安装完成");
             return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "游戏更新已完成", "所有更新内容已安装完成"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -193,7 +181,7 @@ public sealed class GameClientFileTaskService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[GameClientFileTask] V3 游戏更新失败");
+            Log.Error(ex, "[GameClientFileTask] 游戏更新失败");
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "游戏更新失败", ex.Message), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
         }
     }
@@ -211,7 +199,7 @@ public sealed class GameClientFileTaskService
         if (GameHelpers.CheckIsGameOpen())
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "官方启动器或游戏正在运行", "请关闭相关进程后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
-        return await RunPatchVerifierAsync(viewModel, PatchVerifierMode.Repair).ConfigureAwait(false);
+        return await RunRepairerAsync(viewModel).ConfigureAwait(false);
     }
 
     private async Task<GameClientFileTaskResult> RunFreshInstallAsync(GameClientFileTaskWindowViewModel viewModel)
@@ -230,7 +218,7 @@ public sealed class GameClientFileTaskService
         gamePath.CreateSubdirectory("game");
         gamePath.CreateSubdirectory("boot");
 
-        return await RunPatchVerifierAsync(viewModel, PatchVerifierMode.FreshInstall).ConfigureAwait(false);
+        return await RunInstallerAsync(viewModel).ConfigureAwait(false);
     }
 
     private async Task<GameClientFileTaskResult> RunIntegrityCheckAsync(GameClientFileTaskWindowViewModel viewModel)
@@ -250,7 +238,7 @@ public sealed class GameClientFileTaskService
         try
         {
             var progress = new Progress<IntegrityCheckProgress>(value => ApplySnapshot(viewModel, CreateIntegrityCheckRunningSnapshot(TITLE, value)));
-            outcome = await IntegrityCheck.CompareIntegrityAsync(progress, gamePath, false, cancellationTokenSource.Token).ConfigureAwait(false);
+            outcome = await GameIntegrityChecker.CompareIntegrityAsync(progress, gamePath, false, cancellationTokenSource.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -301,26 +289,25 @@ public sealed class GameClientFileTaskService
         }
     }
 
-    private async Task<GameClientFileTaskResult> RunPatchVerifierAsync(GameClientFileTaskWindowViewModel viewModel, PatchVerifierMode mode)
+    private async Task<GameClientFileTaskResult> RunRepairerAsync(GameClientFileTaskWindowViewModel viewModel)
     {
-        var title      = mode switch { PatchVerifierMode.Update => "更新游戏文件", PatchVerifierMode.FreshInstall => "安装游戏文件", _ => "修复游戏文件" };
-        var actionText = mode switch { PatchVerifierMode.Update => "更新", PatchVerifierMode.FreshInstall => "安装", _ => "修复" };
+        const string TITLE = "修复游戏文件";
 
         using var mutex = new Mutex(false, "XivLauncherIsPatching");
 
         if (!mutex.WaitOne(0, false))
-            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(title, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
-        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => $"关闭以下进程以{actionText}游戏"))
-            return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(title, $"已取消{actionText}"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以修复游戏"))
+            return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消修复"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
 
         while (true)
         {
-            using var verify                      = new PatchVerifier(CommonSettings.Instance, mode, TimeSpan.FromMilliseconds(100));
-            using var pollCancellationTokenSource = new CancellationTokenSource();
-            var       verifyBox                   = new StrongBox<PatchVerifier?>(verify);
-
+            var repairer = new GameRepairer(App.Settings.GamePath.FullName, TimeSpan.FromMilliseconds(100));
+            var repairerBox = new StrongBox<GameRepairer?>(repairer);
             var cancellationRequested = false;
+
+            using var pollCancellationTokenSource = new CancellationTokenSource();
             SetRunningHandler
             (
                 viewModel,
@@ -329,32 +316,35 @@ public sealed class GameClientFileTaskService
                     if (cancellationRequested)
                         return;
 
-                    var currentVerify = verifyBox.Value;
-                    if (currentVerify == null)
+                    var currentRepairer = repairerBox.Value;
+                    if (currentRepairer == null)
                         return;
 
                     cancellationRequested = true;
-                    ApplySnapshot(viewModel, CreateDisabledCancelSnapshot(CreatePatchVerifierSnapshot(mode, currentVerify)));
-                    _ = currentVerify.Cancel();
+                    ApplySnapshot(viewModel, CreateDisabledCancelSnapshot(CreateRepairerSnapshot(currentRepairer)));
+                    currentRepairer.Cancel();
                 }
             );
 
-            var pollingTask = PollPatchVerifierAsync(viewModel, mode, verify, pollCancellationTokenSource.Token);
+            var pollingTask = PollRepairerAsync(viewModel, repairer, pollCancellationTokenSource.Token);
+            var runTask     = repairer.RunAsync();
 
-            verify.Start();
-            await verify.WaitForCompletion().ConfigureAwait(false);
+            try
+            {
+                await runTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
 
             pollCancellationTokenSource.Cancel();
             await AwaitPollingTaskAsync(pollingTask).ConfigureAwait(false);
 
-            switch (verify.State)
+            switch (repairer.State)
             {
-                case PatchVerifier.VerifyState.Done when mode == PatchVerifierMode.Update:
-                    return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(title, "游戏更新已完成", "所有更新内容已安装完成"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
-
-                case PatchVerifier.VerifyState.Done when mode == PatchVerifierMode.FreshInstall:
+                case GameRepairer.RepairState.Done:
                 {
-                    var action = await WaitForChoiceAsync(viewModel, CreateFreshInstallCompletedSnapshot(verify)).ConfigureAwait(false);
+                    var action = await WaitForChoiceAsync(viewModel, CreateRepairCompletedSnapshot(repairer)).ConfigureAwait(false);
 
                     if (action == GameClientFileTaskWindowAction.Primary)
                         return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Success, ShouldLaunchGame = true };
@@ -362,91 +352,164 @@ public sealed class GameClientFileTaskService
                     return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Success };
                 }
 
-                case PatchVerifier.VerifyState.Done:
+                case GameRepairer.RepairState.Error:
                 {
-                    var action = await WaitForChoiceAsync(viewModel, CreateRepairCompletedSnapshot(verify)).ConfigureAwait(false);
-
-                    if (action == GameClientFileTaskWindowAction.Primary)
-                        return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Success, ShouldLaunchGame = true };
-
-                    return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Success };
-                }
-
-                case PatchVerifier.VerifyState.Error:
-                {
-                    var action = await WaitForChoiceAsync(viewModel, CreatePatchVerifierFailureSnapshot(mode, verify)).ConfigureAwait(false);
+                    var action = await WaitForChoiceAsync(viewModel, CreateRepairFailureSnapshot(repairer)).ConfigureAwait(false);
                     if (action == GameClientFileTaskWindowAction.Primary)
                         continue;
 
                     return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
                 }
 
-                case PatchVerifier.VerifyState.Cancelled:
-                    return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(title, $"已取消{actionText}"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+                case GameRepairer.RepairState.Cancelled:
+                    return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消修复"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
 
                 default:
-                    return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(title, $"{actionText}失败", "任务未能正常完成"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+                    return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "修复失败", "任务未能正常完成"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
             }
         }
     }
 
-    private async Task PollPatchVerifierAsync(GameClientFileTaskWindowViewModel viewModel, PatchVerifierMode mode, PatchVerifier verify, CancellationToken cancellationToken)
+    private async Task<GameClientFileTaskResult> RunInstallerAsync(GameClientFileTaskWindowViewModel viewModel)
+    {
+        const string TITLE = "安装游戏文件";
+
+        using var mutex = new Mutex(false, "XivLauncherIsPatching");
+
+        if (!mutex.WaitOne(0, false))
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+
+        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以安装游戏"))
+            return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消安装"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+
+        while (true)
+        {
+            var installer = new GameInstaller(App.Settings.GamePath.FullName, TimeSpan.FromMilliseconds(100));
+            var installerBox = new StrongBox<GameInstaller?>(installer);
+            var cancellationRequested = false;
+
+            using var pollCancellationTokenSource = new CancellationTokenSource();
+            SetRunningHandler
+            (
+                viewModel,
+                () =>
+                {
+                    if (cancellationRequested)
+                        return;
+
+                    var currentInstaller = installerBox.Value;
+                    if (currentInstaller == null)
+                        return;
+
+                    cancellationRequested = true;
+                    ApplySnapshot(viewModel, CreateDisabledCancelSnapshot(CreateInstallerSnapshot(currentInstaller)));
+                    currentInstaller.Cancel();
+                }
+            );
+
+            var pollingTask = PollInstallerAsync(viewModel, installer, pollCancellationTokenSource.Token);
+            var runTask     = installer.RunAsync();
+
+            try
+            {
+                await runTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+
+            pollCancellationTokenSource.Cancel();
+            await AwaitPollingTaskAsync(pollingTask).ConfigureAwait(false);
+
+            switch (installer.State)
+            {
+                case GameInstaller.InstallState.Done:
+                {
+                    var action = await WaitForChoiceAsync(viewModel, CreateInstallCompletedSnapshot(installer)).ConfigureAwait(false);
+
+                    if (action == GameClientFileTaskWindowAction.Primary)
+                        return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Success, ShouldLaunchGame = true };
+
+                    return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Success };
+                }
+
+                case GameInstaller.InstallState.Error:
+                {
+                    var action = await WaitForChoiceAsync(viewModel, CreateInstallFailureSnapshot(installer)).ConfigureAwait(false);
+                    if (action == GameClientFileTaskWindowAction.Primary)
+                        continue;
+
+                    return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
+                }
+
+                case GameInstaller.InstallState.Cancelled:
+                    return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消安装"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+
+                default:
+                    return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "安装失败", "任务未能正常完成"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task PollRepairerAsync(GameClientFileTaskWindowViewModel viewModel, GameRepairer repairer, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            ApplySnapshot(viewModel, CreatePatchVerifierSnapshot(mode, verify));
+            ApplySnapshot(viewModel, CreateRepairerSnapshot(repairer));
             await Task.Delay(100, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private static GameClientFileTaskSnapshot CreatePatchVerifierSnapshot(PatchVerifierMode mode, PatchVerifier verify)
+    private async Task PollInstallerAsync(GameClientFileTaskWindowViewModel viewModel, GameInstaller installer, CancellationToken cancellationToken)
     {
-        var title       = mode switch { PatchVerifierMode.Update => "更新游戏文件", PatchVerifierMode.FreshInstall => "安装游戏文件", _ => "修复游戏文件" };
-        var listLabel   = mode switch { PatchVerifierMode.Update => "更新清单", PatchVerifierMode.FreshInstall => "游戏文件清单", _ => "修复清单" };
-        var verifyLabel = mode switch { PatchVerifierMode.Update => "校验", PatchVerifierMode.FreshInstall => "下载", _ => "验证" };
-        var applyLabel  = mode switch { PatchVerifierMode.Update => "更新", PatchVerifierMode.FreshInstall => "安装", _ => "修复" };
-
-        return verify.State switch
+        while (!cancellationToken.IsCancellationRequested)
         {
-            PatchVerifier.VerifyState.DownloadMeta => new GameClientFileTaskSnapshot
+            ApplySnapshot(viewModel, CreateInstallerSnapshot(installer));
+            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static GameClientFileTaskSnapshot CreateRepairerSnapshot(GameRepairer repairer)
+    {
+        return repairer.State switch
+        {
+            GameRepairer.RepairState.DownloadMeta => new GameClientFileTaskSnapshot
             {
-                Title                   = title,
-                PhaseText               = $"正在获取{listLabel}",
-                DetailText              = verify.CurrentFile,
-                Progress                = verify.Total == 0 ? 0 : 100.0 * verify.Progress / verify.Total,
+                Title                   = "修复游戏文件",
+                PhaseText               = "正在获取修复清单",
+                DetailText              = repairer.CurrentFile,
+                Progress                = repairer.Total == 0 ? 0 : 100.0 * repairer.Progress / repairer.Total,
                 IsProgressIndeterminate = false,
-                StatusText              = $"{APIHelper.BytesToString(verify.Progress)}/{APIHelper.BytesToString(verify.Total)}",
-                SpeedText               = $"{APIHelper.BytesToString(verify.Speed)}/s",
-                EtaText                 = FormatEstimatedTime(verify.Total - verify.Progress, verify.Speed),
+                StatusText              = $"{APIHelper.BytesToString(repairer.Progress)}/{APIHelper.BytesToString(repairer.Total)}",
+                SpeedText               = $"{APIHelper.BytesToString(repairer.Speed)}/s",
+                EtaText                 = FormatEstimatedTime(repairer.Total - repairer.Progress, repairer.Speed),
                 PrimaryButtonText       = "取消",
                 IsPrimaryButtonVisible  = true,
                 IsPrimaryButtonEnabled  = true,
                 IsRunning               = true
             },
-            PatchVerifier.VerifyState.VerifyAndRepair => new GameClientFileTaskSnapshot
+            GameRepairer.RepairState.Repairing => new GameClientFileTaskSnapshot
             {
-                Title                   = title,
-                PhaseText               = verify.CurrentMetaInstallState == IndexedZiPatchInstaller.InstallTaskState.NotStarted ? $"正在{verifyLabel}游戏文件" : $"正在{applyLabel}游戏文件",
-                DetailText              = verify.CurrentFile,
-                Progress                = verify.Total == 0 ? 0 : 100.0 * verify.Progress / verify.Total,
+                Title              = "修复游戏文件",
+                PhaseText          = repairer.CurrentMetaInstallState == SdoFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在修复游戏文件",
+                DetailText         = repairer.CurrentFile,
+                Progress           = repairer.Total == 0 ? 0 : 100.0 * repairer.Progress / repairer.Total,
                 IsProgressIndeterminate = false,
-                StatusText =
-                    $"{Math.Min(verify.TaskIndex + 1, verify.TaskCount)}/{verify.TaskCount} - {APIHelper.BytesToString(verify.Progress)}/{APIHelper.BytesToString(verify.Total)}",
-                SpeedText              = GetPatchVerifierSpeedText(verify),
-                EtaText                = GetPatchVerifierEtaText(verify),
-                Items                  = verify.IsDownloading ? GetPatchVerifierItems(verify) : [],
-                PrimaryButtonText      = "取消",
-                IsPrimaryButtonVisible = true,
-                IsPrimaryButtonEnabled = true,
-                IsRunning              = true
+                StatusText         = $"{Math.Min(repairer.TaskIndex + 1, repairer.TaskCount)}/{repairer.TaskCount} - {APIHelper.BytesToString(repairer.Progress)}/{APIHelper.BytesToString(repairer.Total)}",
+                SpeedText          = GetDownloaderSpeedText(repairer.CurrentMetaInstallState, repairer.Speed),
+                EtaText            = GetDownloaderEtaText(repairer.CurrentMetaInstallState, repairer.Total - repairer.Progress, repairer.Speed),
+                Items              = repairer.IsDownloading ? GetRepairerItems(repairer) : [],
+                PrimaryButtonText  = "取消",
+                IsPrimaryButtonVisible   = true,
+                IsPrimaryButtonEnabled   = true,
+                IsRunning                = true
             },
             _ => new GameClientFileTaskSnapshot
             {
-                Title                   = title,
-                PhaseText               = $"正在准备{applyLabel}任务",
-                Progress                = verify.State == PatchVerifier.VerifyState.Done ? 100 : 0,
-                IsProgressIndeterminate = verify.State != PatchVerifier.VerifyState.Done,
-                StatusText              = verify.TaskCount == 0 ? string.Empty : $"{Math.Min(verify.TaskIndex + 1, verify.TaskCount)}/{verify.TaskCount}",
+                Title                   = "修复游戏文件",
+                PhaseText               = "正在准备修复任务",
+                Progress                = repairer.State == GameRepairer.RepairState.Done ? 100 : 0,
+                IsProgressIndeterminate = repairer.State != GameRepairer.RepairState.Done,
                 PrimaryButtonText       = "取消",
                 IsPrimaryButtonVisible  = true,
                 IsPrimaryButtonEnabled  = true,
@@ -455,7 +518,55 @@ public sealed class GameClientFileTaskService
         };
     }
 
-    private static GameClientFileTaskSnapshot CreateV3GamePatchSnapshot(V3GamePatchProgress progress)
+    private static GameClientFileTaskSnapshot CreateInstallerSnapshot(GameInstaller installer)
+    {
+        return installer.State switch
+        {
+            GameInstaller.InstallState.DownloadMeta => new GameClientFileTaskSnapshot
+            {
+                Title                   = "安装游戏文件",
+                PhaseText               = "正在获取游戏文件清单",
+                DetailText              = installer.CurrentFile,
+                Progress                = installer.Total == 0 ? 0 : 100.0 * installer.Progress / installer.Total,
+                IsProgressIndeterminate = false,
+                StatusText              = $"{APIHelper.BytesToString(installer.Progress)}/{APIHelper.BytesToString(installer.Total)}",
+                SpeedText               = $"{APIHelper.BytesToString(installer.Speed)}/s",
+                EtaText                 = FormatEstimatedTime(installer.Total - installer.Progress, installer.Speed),
+                PrimaryButtonText       = "取消",
+                IsPrimaryButtonVisible  = true,
+                IsPrimaryButtonEnabled  = true,
+                IsRunning               = true
+            },
+            GameInstaller.InstallState.Installing => new GameClientFileTaskSnapshot
+            {
+                Title              = "安装游戏文件",
+                PhaseText          = installer.CurrentMetaInstallState == SdoFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在下载游戏文件",
+                DetailText         = installer.CurrentFile,
+                Progress           = installer.Total == 0 ? 0 : 100.0 * installer.Progress / installer.Total,
+                IsProgressIndeterminate = false,
+                StatusText         = $"{Math.Min(installer.TaskIndex + 1, installer.TaskCount)}/{installer.TaskCount} - {APIHelper.BytesToString(installer.Progress)}/{APIHelper.BytesToString(installer.Total)}",
+                SpeedText          = GetDownloaderSpeedText(installer.CurrentMetaInstallState, installer.Speed),
+                EtaText            = GetDownloaderEtaText(installer.CurrentMetaInstallState, installer.Total - installer.Progress, installer.Speed),
+                PrimaryButtonText  = "取消",
+                IsPrimaryButtonVisible   = true,
+                IsPrimaryButtonEnabled   = true,
+                IsRunning                = true
+            },
+            _ => new GameClientFileTaskSnapshot
+            {
+                Title                   = "安装游戏文件",
+                PhaseText               = "正在准备安装任务",
+                Progress                = installer.State == GameInstaller.InstallState.Done ? 100 : 0,
+                IsProgressIndeterminate = installer.State != GameInstaller.InstallState.Done,
+                PrimaryButtonText       = "取消",
+                IsPrimaryButtonVisible  = true,
+                IsPrimaryButtonEnabled  = true,
+                IsRunning               = true
+            }
+        };
+    }
+
+    private static GameClientFileTaskSnapshot CreateGamePatchSnapshot(GamePatchProgress progress)
     {
         var statusText = progress.StatusText;
 
@@ -483,47 +594,40 @@ public sealed class GameClientFileTaskService
         };
     }
 
-    private static IReadOnlyList<GameClientFileTaskItemSnapshot> GetPatchVerifierItems(PatchVerifier verify) =>
-        verify.GetCurrentInstallProgressEntries()
-              .OrderBy(entry => entry.Key)
-              .Take(8)
-              .Select
-              (entry => new GameClientFileTaskItemSnapshot
-                  {
-                      Title           = entry.Value.FilePath,
-                      Progress        = entry.Value.Total == 0 ? 0 : 100.0 * entry.Value.Progress / entry.Value.Total,
-                      IsIndeterminate = false
-                  }
-              )
-              .ToArray();
+    private static IReadOnlyList<GameClientFileTaskItemSnapshot> GetRepairerItems(GameRepairer repairer) =>
+        repairer.GetCurrentInstallProgressEntries()
+                .OrderBy(entry => entry.Key)
+                .Take(8)
+                .Select
+                (entry => new GameClientFileTaskItemSnapshot
+                    {
+                        Title           = entry.Value.FilePath,
+                        Progress        = entry.Value.Total == 0 ? 0 : 100.0 * entry.Value.Progress / entry.Value.Total,
+                        IsIndeterminate = false
+                    }
+                )
+                .ToArray();
 
-    private static string GetPatchVerifierSpeedText(PatchVerifier verify) =>
-        verify.CurrentMetaInstallState switch
+    private static string GetDownloaderSpeedText(SdoFileDownloader.InstallTaskState state, long speed) =>
+        state switch
         {
-            IndexedZiPatchInstaller.InstallTaskState.WaitingForReattempt => "请等待后重试",
-            IndexedZiPatchInstaller.InstallTaskState.Connecting          => "正在连接",
-            IndexedZiPatchInstaller.InstallTaskState.Finishing           => "正在结束",
-            _                                                            => $"{APIHelper.BytesToString(verify.Speed)}/s"
+            SdoFileDownloader.InstallTaskState.Connecting => "正在连接",
+            _                                              => $"{APIHelper.BytesToString(speed)}/s"
         };
 
-    private static string GetPatchVerifierEtaText(PatchVerifier verify) =>
-        verify.CurrentMetaInstallState switch
+    private static string GetDownloaderEtaText(SdoFileDownloader.InstallTaskState state, long remaining, long speed) =>
+        state switch
         {
-            IndexedZiPatchInstaller.InstallTaskState.WaitingForReattempt => string.Empty,
-            IndexedZiPatchInstaller.InstallTaskState.Connecting          => string.Empty,
-            IndexedZiPatchInstaller.InstallTaskState.Finishing           => string.Empty,
-            _                                                            => FormatEstimatedTime(verify.Total - verify.Progress, verify.Speed)
+            SdoFileDownloader.InstallTaskState.Connecting => string.Empty,
+            _                                              => FormatEstimatedTime(remaining, speed)
         };
 
-    private static GameClientFileTaskSnapshot CreateFreshInstallCompletedSnapshot(PatchVerifier verify)
-    {
-        var detailText = $"游戏文件安装完成, 共下载 {verify.NumBrokenFiles} 个文件";
-
-        return new GameClientFileTaskSnapshot
+    private static GameClientFileTaskSnapshot CreateInstallCompletedSnapshot(GameInstaller installer) =>
+        new()
         {
             Title                  = "安装游戏文件",
             PhaseText              = "安装已完成",
-            DetailText             = detailText,
+            DetailText             = $"游戏文件安装完成, 共下载 {installer.TaskCount} 个文件",
             PrimaryButtonText      = "启动游戏",
             IsPrimaryButtonVisible = true,
             IsPrimaryButtonEnabled = true,
@@ -531,25 +635,23 @@ public sealed class GameClientFileTaskService
             IsCloseButtonVisible   = true,
             IsCloseButtonEnabled   = true
         };
-    }
 
-    private static GameClientFileTaskSnapshot CreateRepairCompletedSnapshot(PatchVerifier verify)
+    private static GameClientFileTaskSnapshot CreateRepairCompletedSnapshot(GameRepairer repairer)
     {
-        var detailText = verify.NumBrokenFiles switch
+        var detailText = repairer.NumBrokenFiles switch
         {
             0 => "未检测到任何损坏的游戏文件",
-            _ => $"已成功修复 {verify.NumBrokenFiles} 个游戏文件"
+            _ => $"已成功修复 {repairer.NumBrokenFiles} 个游戏文件"
         };
 
-        if (verify.MovedFiles.Count != 0)
-            detailText = $"{detailText}\n已将 {verify.MovedFiles.Count} 个非原始游戏文件移动至\n{verify.MovedFileToDir}";
+        if (repairer.MovedFiles.Count != 0)
+            detailText = $"{detailText}\n已将 {repairer.MovedFiles.Count} 个非原始游戏文件移动至\n{repairer.MovedFileToDir}";
 
         return new GameClientFileTaskSnapshot
         {
             Title                  = "修复游戏文件",
             PhaseText              = "修复已完成",
             DetailText             = detailText,
-            StatusText             = verify.MovedFiles.Count == 0 ? string.Empty : string.Join("\n", verify.MovedFiles.Select(file => $"* {file}")),
             PrimaryButtonText      = "启动游戏",
             IsPrimaryButtonVisible = true,
             IsPrimaryButtonEnabled = true,
@@ -559,22 +661,12 @@ public sealed class GameClientFileTaskService
         };
     }
 
-    private static GameClientFileTaskSnapshot CreatePatchVerifierFailureSnapshot(PatchVerifierMode mode, PatchVerifier verify)
-    {
-        var actionText = mode switch { PatchVerifierMode.Update => "更新", PatchVerifierMode.FreshInstall => "安装", _ => "修复" };
-        var detailText = verify.LastException switch
+    private static GameClientFileTaskSnapshot CreateRepairFailureSnapshot(GameRepairer repairer) =>
+        new()
         {
-            null                                                                                    => $"{actionText}失败: 未知错误, 可能需要重新安装游戏",
-            _ when verify.LastException.ToString().Contains("Data error", StringComparison.Ordinal) => $"{actionText}失败: 检查游戏文件过程中硬盘报错, 可能存在物理故障",
-            _                                                                                       => $"{actionText}失败: {verify.LastException.Message}"
-        };
-
-        return new GameClientFileTaskSnapshot
-        {
-            Title                  = mode switch { PatchVerifierMode.Update => "更新游戏文件", PatchVerifierMode.FreshInstall => "安装游戏文件", _ => "修复游戏文件" },
-            PhaseText              = $"{actionText}未完成",
-            DetailText             = detailText,
-            StatusText             = verify.LastException?.GetType().Name ?? string.Empty,
+            Title                  = "修复游戏文件",
+            PhaseText              = "修复未完成",
+            DetailText             = $"修复失败: 可能需要重新安装游戏",
             PrimaryButtonText      = "重试",
             IsPrimaryButtonVisible = true,
             IsPrimaryButtonEnabled = true,
@@ -582,7 +674,20 @@ public sealed class GameClientFileTaskService
             IsCloseButtonVisible   = true,
             IsCloseButtonEnabled   = true
         };
-    }
+
+    private static GameClientFileTaskSnapshot CreateInstallFailureSnapshot(GameInstaller installer) =>
+        new()
+        {
+            Title                  = "安装游戏文件",
+            PhaseText              = "安装未完成",
+            DetailText             = "安装失败: 可能需要检查网络连接",
+            PrimaryButtonText      = "重试",
+            IsPrimaryButtonVisible = true,
+            IsPrimaryButtonEnabled = true,
+            CloseButtonText        = "关闭",
+            IsCloseButtonVisible   = true,
+            IsCloseButtonEnabled   = true
+        };
 
     private static GameClientFileTaskSnapshot CreateIntegrityCheckRunningSnapshot(string title, IntegrityCheckProgress progress)
     {

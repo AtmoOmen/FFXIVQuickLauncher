@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Product>XIVLauncher Game Patch V3</Product>
+        <AssemblyTitle>XIVLauncher Game Patch V3</AssemblyTitle>
+        <Description>Core game patching operations: update, integrity check, repair, fresh install.</Description>
+        <VersionPrefix>1.0.0</VersionPrefix>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <Deterministic>true</Deterministic>
+        <DefineConstants>$(DefineConstants);WIN32</DefineConstants>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Serilog" />
+        <PackageReference Include="Serilog.Sinks.Async" />
+        <PackageReference Include="Serilog.Sinks.Console" />
+        <PackageReference Include="Serilog.Sinks.File" />
+        <PackageReference Include="SharedMemory" />
+        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />
+    </ItemGroup>
+</Project>

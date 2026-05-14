@@ -20,7 +20,6 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Login;
-using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;

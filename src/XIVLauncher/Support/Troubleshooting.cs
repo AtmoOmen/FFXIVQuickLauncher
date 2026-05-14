@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Dalamud;
-using XIVLauncher.Common.Game.Integrity;
+using XIVLauncher.GamePatchV3;
 
 namespace XIVLauncher.Support;
 
@@ -60,7 +60,7 @@ public static class Troubleshooting
                 integrity = TroubleshootingPayload.IndexIntegrityResult.NoGame;
             else
             {
-                var result = IntegrityCheck.CompareIntegrityAsync(null!, gamePath, true).Result;
+                var result = GameIntegrityChecker.CompareIntegrityAsync(null!, gamePath, true).Result;
 
                 integrity = result.CompareResult switch
                 {

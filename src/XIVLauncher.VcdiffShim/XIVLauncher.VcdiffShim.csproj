@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Product>XIVLauncher Vcdiff Shim</Product>
+        <AssemblyTitle>XIVLauncher Vcdiff Shim</AssemblyTitle>
+        <Description>32-bit vcdiff merge worker for V3 game patching.</Description>
+        <VersionPrefix>1.0.0</VersionPrefix>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+        <PlatformTarget>x86</PlatformTarget>
+        <LangVersion>latest</LangVersion>
+        <Deterministic>true</Deterministic>
+        <OutputPath>..\bin\VcdiffShim\</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+        <SelfContained>false</SelfContained>
+    </PropertyGroup>
+    <ItemGroup>
+        <Content Include="Launcher3Modules\*.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <TargetPath>Launcher3Modules\%(Filename)%(Extension)</TargetPath>
+        </Content>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Serilog"/>
+        <PackageReference Include="Serilog.Sinks.Async"/>
+        <PackageReference Include="Serilog.Sinks.Console"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="SharedMemory"/>
+    </ItemGroup>
+</Project>

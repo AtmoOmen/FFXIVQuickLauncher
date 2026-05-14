@@ -96,16 +96,16 @@
         <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj"/>
         <ProjectReference Include="..\XIVLauncher.Common.Windows\XIVLauncher.Common.Windows.csproj"/>
         <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
-        <ProjectReference Include="..\XIVLauncher.PatchInstaller\XIVLauncher.PatchInstaller.csproj" ReferenceOutputAssembly="false" Private="false"/>
+        <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj"/>
     </ItemGroup>
 
-    <Target Name="CopyPatchInstallerToOutput" AfterTargets="Build">
+    <Target Name="CopyVcdiffShimToOutput" AfterTargets="Build">
         <ItemGroup>
-            <PatchInstallerOutput Include="$(MSBuildProjectDirectory)\..\bin\PatchInstaller\**\*"/>
+            <VcdiffShimOutput Include="$(MSBuildProjectDirectory)\..\bin\VcdiffShim\**\*"/>
         </ItemGroup>
 
-        <RemoveDir Directories="$(OutDir)PatchInstaller"/>
-        <Copy SourceFiles="@(PatchInstallerOutput)" DestinationFiles="@(PatchInstallerOutput->'$(OutDir)PatchInstaller\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true"/>
+        <RemoveDir Directories="$(OutDir)VcdiffShim"/>
+        <Copy SourceFiles="@(VcdiffShimOutput)" DestinationFiles="@(VcdiffShimOutput->'$(OutDir)VcdiffShim\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true"/>
     </Target>
 
     <!-- Git -->

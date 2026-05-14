@@ -22,7 +22,12 @@
     <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
     <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
   </Project>
-  <Project Path="XIVLauncher.PatchInstaller/XIVLauncher.PatchInstaller.csproj">
+  <Project Path="XIVLauncher.GamePatchV3/XIVLauncher.GamePatchV3.csproj">
+    <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
+    <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
+    <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
+  </Project>
+  <Project Path="XIVLauncher.VcdiffShim/XIVLauncher.VcdiffShim.csproj">
     <BuildType Solution="ReleaseNoUpdate|*" Project="Release" />
   </Project>
   <Project Path="XIVLauncher/XIVLauncher.csproj">
