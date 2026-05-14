@@ -15,6 +15,9 @@ using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
+#if !XL_NOUPDATE
+using XIVLauncher.Common.Http;
+#endif
 using XIVLauncher.Common.Support;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
@@ -105,8 +108,8 @@ public class StartupOrchestrator
 
     private static void OnSerilogLogLine
     (
-        object?                                                                                   sender,
-        (string Line, LogEventLevel Level, DateTimeOffset TimeStamp, System.Exception? Exception) e
+        object?                                                                            sender,
+        (string Line, LogEventLevel Level, DateTimeOffset TimeStamp, Exception? Exception) e
     )
     {
         if (e.Exception == null)
