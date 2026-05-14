@@ -12,6 +12,11 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Runtime;
 using XIVLauncher.Common.Util;
 using XIVLauncher.GamePatchV3;
+using XIVLauncher.GamePatchV3.Install;
+using XIVLauncher.GamePatchV3.Integrity;
+using XIVLauncher.GamePatchV3.Models;
+using XIVLauncher.GamePatchV3.Repair;
+using XIVLauncher.GamePatchV3.Update;
 using XIVLauncher.Windows.GameClientFiles;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
@@ -79,6 +84,18 @@ public sealed class GameClientFileTaskService
             Log.Information("[GameClientFileTask] 正在检查游戏更新");
             checkResult = await GameUpdater.Check(gamePath, false, cancellationTokenSource.Token).ConfigureAwait(false);
             Log.Information("[GameClientFileTask] 更新检查完成, 需要更新 {NeedsUpdate}", checkResult.NeedsUpdate);
+        }
+        catch (UnsupportedGameVersionException ex)
+        {
+            Log.Warning(ex, "[GameClientFileTask] 当前游戏版本不受更新功能支持");
+            var action = await WaitForChoiceAsync
+                         (
+                             viewModel,
+                             CreateChoiceSnapshot(TITLE, "当前游戏版本无法直接增量更新", ex.Message, "开始修复", "关闭")
+                         ).ConfigureAwait(false);
+            return action == GameClientFileTaskWindowAction.Primary
+                       ? await RunRepairAsync(viewModel).ConfigureAwait(false)
+                       : new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
         }
         catch (OperationCanceledException)
         {
@@ -251,8 +268,29 @@ public sealed class GameClientFileTaskService
 
         switch (outcome.CompareResult)
         {
+            case IntegrityCheckCompareResult.VersionUnsupported:
+            {
+                var action = await WaitForChoiceAsync
+                             (
+                                 viewModel,
+                                 CreateChoiceSnapshot
+                                 (
+                                     TITLE,
+                                     "当前游戏版本无法直接检查完整性",
+                                     $"当前游戏数据版本过旧或无法识别\n请先使用“修复游戏文件”更新到最新版本, 或重新下载完整游戏",
+                                     "开始修复",
+                                     "关闭"
+                                 )
+                             ).ConfigureAwait(false);
+
+                if (action == GameClientFileTaskWindowAction.Primary)
+                    return await RunRepairAsync(viewModel).ConfigureAwait(false);
+
+                return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
+            }
+
             case IntegrityCheckCompareResult.ReferenceNotFound:
-                return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "当前游戏版本还没有可用的参考报告", "请稍后再试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+                return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "当前游戏版本没有可用的完整性参考", "请先更新游戏后再重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
             case IntegrityCheckCompareResult.ReferenceFetchFailure:
                 return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "下载完整性检查参考文件失败", "请检查网络连接后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);

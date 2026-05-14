@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using XIVLauncher.Common.Windows;
 using XIVLauncher.GamePatchV3;
+using XIVLauncher.GamePatchV3.Repair;
 using XIVLauncher.PlatformAbstractions;
 using XIVLauncher.Windows;
 

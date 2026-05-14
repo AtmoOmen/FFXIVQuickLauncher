@@ -2,8 +2,10 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using Serilog;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Constant;
+using XIVLauncher.GamePatchV3.Models;
 
-namespace XIVLauncher.GamePatchV3;
+namespace XIVLauncher.GamePatchV3.Integrity;
 
 public static class GameIntegrityChecker
 {
@@ -16,15 +18,41 @@ public static class GameIntegrityChecker
     )
     {
         IntegrityCheckResult remoteIntegrity;
+        var                  localVersion = Repository.Ffxiv.GetVer(gamePath).Trim().Trim('\uFEFF').Trim();
 
         try
         {
-            remoteIntegrity = await DownloadIntegrityCheckForVersion(cancellationToken).ConfigureAwait(false);
-            var localVersion = Repository.Ffxiv.GetVer(gamePath);
+            using var metadataClient = new GamePatchMetadataClient();
+            var remoteVersion         = await metadataClient.DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
+            var targetArea            = remoteVersion.Areas.FirstOrDefault(area => area.Id == "0") ?? remoteVersion.Areas.FirstOrDefault();
+            var minimumSupportedDataVersion = targetArea == null
+                                                  ? SdoInfos.DEFAULT_MINIMUM_SUPPORTED_DATA_VERSION
+                                                  : GamePatchMetadataClient.ResolveMinimumSupportedDataVersion(targetArea);
+            var localResolution = GamePatchMetadataClient.ResolveLocalVersion(localVersion, remoteVersion);
 
-            if (!string.Equals(localVersion, remoteIntegrity.GameVersion, StringComparison.Ordinal))
+            if (!GamePatchMetadataClient.IsSupportedDataVersion(localResolution.DataVersion, minimumSupportedDataVersion))
             {
-                Log.Information("[IntegrityCheck] 版本不匹配, 本地 {LocalVersion}, 远端 {RemoteVersion}", localVersion, remoteIntegrity.GameVersion);
+                Log.Information
+                (
+                    "[IntegrityCheck] 当前版本过旧或无法识别, 本地 {LocalVersion}, 数据版本 {DataVersion}, 最低支持 {MinimumSupportedDataVersion}",
+                    localVersion,
+                    localResolution.DataVersion,
+                    minimumSupportedDataVersion
+                );
+                return new IntegrityCheckCompareOutcome { CompareResult = IntegrityCheckCompareResult.VersionUnsupported };
+            }
+
+            remoteIntegrity = await metadataClient.DownloadIntegrityCheck(remoteVersion, cancellationToken).ConfigureAwait(false);
+            if (!string.Equals(localResolution.DataVersion, remoteIntegrity.DataVersion, StringComparison.Ordinal))
+            {
+                Log.Information
+                (
+                    "[IntegrityCheck] 当前版本没有对应的完整性参考, 本地 {LocalVersion}/{LocalDataVersion}, 远端 {RemoteVersion}/{RemoteDataVersion}",
+                    localVersion,
+                    localResolution.DataVersion,
+                    remoteIntegrity.GameVersion,
+                    remoteIntegrity.DataVersion
+                );
                 return new IntegrityCheckCompareOutcome { CompareResult = IntegrityCheckCompareResult.ReferenceNotFound };
             }
         }
@@ -74,12 +102,6 @@ public static class GameIntegrityChecker
             Report          = report,
             RemoteIntegrity = remoteIntegrity
         };
-    }
-
-    public static async Task<Dictionary<string, VersionMappingEntry>> GetVersionMapping(CancellationToken cancellationToken = default)
-    {
-        using var metadataClient = new GamePatchMetadataClient();
-        return await metadataClient.DownloadVersionMapping(cancellationToken).ConfigureAwait(false);
     }
 
     public static async Task<string> GetFileMd5Hash(string filePath, CancellationToken cancellationToken = default)

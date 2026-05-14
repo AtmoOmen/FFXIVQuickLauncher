@@ -9,7 +9,8 @@ public class ReusableByteBufferManager
     private static readonly int[]                       ArraySizes = [1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22];
     private static readonly ReusableByteBufferManager[] Instances  = ArraySizes.Select(x => new ReusableByteBufferManager(x, 2 * Environment.ProcessorCount)).ToArray();
 
-    private readonly Allocation[] buffers   = new Allocation[maxBuffers];
+    private readonly Lock          syncLock = new();
+    private readonly Allocation?[] buffers  = new Allocation?[maxBuffers];
 
     public static Allocation GetBuffer(bool clear = false) =>
         Instances[0].Allocate(clear);
@@ -27,40 +28,33 @@ public class ReusableByteBufferManager
 
     public Allocation Allocate(bool clear = false)
     {
-        Allocation res = null;
-
-        for (var i = 0; i < buffers.Length; i++)
+        lock (syncLock)
         {
-            if (buffers[i] == null)
-                continue;
-
-            lock (buffers.SyncRoot)
+            for (var i = 0; i < buffers.Length; i++)
             {
-                if (buffers[i] == null)
+                var buffer = buffers[i];
+                if (buffer is null)
                     continue;
 
-                res        = buffers[i];
+                if (clear)
+                    buffer.Clear();
+
                 buffers[i] = null;
-                break;
+                buffer.ResetState();
+                return buffer;
             }
         }
 
-        if (res == null)
-            res = new Allocation(this, arraySize);
-        else if (clear)
-            res.Clear();
-        res.ResetState();
-        return res;
+        var allocation = new Allocation(this, arraySize);
+        allocation.ResetState();
+        return allocation;
     }
 
     internal void Return(Allocation buf)
     {
-        for (var i = 0; i < buffers.Length; i++)
+        lock (syncLock)
         {
-            if (buffers[i] != null)
-                continue;
-
-            lock (buffers.SyncRoot)
+            for (var i = 0; i < buffers.Length; i++)
             {
                 if (buffers[i] != null)
                     continue;
@@ -73,14 +67,14 @@ public class ReusableByteBufferManager
 
     public class Allocation : IDisposable
     {
-        public readonly ReusableByteBufferManager BufferManager;
-        public readonly byte[]                    Buffer;
-        public readonly MemoryStream              Stream;
-        public readonly BinaryWriter              Writer;
+        public readonly ReusableByteBufferManager? BufferManager;
+        public readonly byte[]                     Buffer;
+        public readonly MemoryStream               Stream;
+        public readonly BinaryWriter               Writer;
 
-        internal Allocation(ReusableByteBufferManager b, long size)
+        internal Allocation(ReusableByteBufferManager? bufferManager, long size)
         {
-            BufferManager = b;
+            BufferManager = bufferManager;
             Buffer        = new byte[size];
             Stream        = new MemoryStream(Buffer);
             Writer        = new BinaryWriter(Stream);

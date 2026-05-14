@@ -10,7 +10,7 @@ using XIVLauncher.Common.Game.Exceptions;
 
 // ReSharper disable InconsistentNaming
 
-namespace XIVLauncher.Common.Game;
+namespace XIVLauncher.Common.Windows;
 
 public static class NativeAclFix
 {

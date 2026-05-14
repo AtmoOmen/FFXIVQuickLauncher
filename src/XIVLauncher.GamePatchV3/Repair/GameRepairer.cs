@@ -1,7 +1,8 @@
 using System.Text.RegularExpressions;
 using Serilog;
+using XIVLauncher.GamePatchV3.Integrity;
 
-namespace XIVLauncher.GamePatchV3;
+namespace XIVLauncher.GamePatchV3.Repair;
 
 public sealed class GameRepairer
 (
@@ -126,7 +127,7 @@ public sealed class GameRepairer
                     TaskIndex = 0;
                     TaskCount = brokenFiles.Count;
 
-                    if (!(repaired = !brokenFiles.Any()))
+                    if (!(repaired = brokenFiles.Count == 0))
                     {
                         var brokenFileSet = new HashSet<string>(brokenFiles, StringComparer.OrdinalIgnoreCase);
                         CurrentInstallBrokenFileCount = brokenFileSet.Count;
@@ -135,12 +136,12 @@ public sealed class GameRepairer
                         for (var brokenFileIndex = 0; brokenFileIndex < targetRelativePaths.Count; brokenFileIndex++)
                         {
                             var filePath = targetRelativePaths[brokenFileIndex];
-                            if (!brokenFileSet.Contains($"\\game\\{filePath}"))
+                            if (!brokenFileSet.Contains($@"\game\{filePath}"))
                                 continue;
 
                             fileBroken[brokenFileIndex] = true;
                             UpdateInstallProgressEntry(brokenFileIndex, filePath, 0, 0);
-                            downloader.QueueInstall(brokenFileIndex, $"\\game\\{filePath}");
+                            downloader.QueueInstall(brokenFileIndex, $@"\game\{filePath}");
                         }
 
                         CurrentMetaInstallState = SdoFileDownloader.InstallTaskState.Connecting;

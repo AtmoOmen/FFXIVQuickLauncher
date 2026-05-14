@@ -1,4 +1,4 @@
-namespace XIVLauncher.GamePatchV3;
+namespace XIVLauncher.GamePatchV3.Models;
 
 public sealed class IntegrityCheckProgress
 {

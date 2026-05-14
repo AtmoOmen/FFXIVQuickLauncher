@@ -29,6 +29,7 @@ using XIVLauncher.Common.Util;
 using XIVLauncher.Common.Windows;
 using XIVLauncher.Game;
 using XIVLauncher.GamePatchV3;
+using XIVLauncher.GamePatchV3.Update;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Windows.Services;

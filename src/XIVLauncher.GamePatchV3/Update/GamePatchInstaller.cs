@@ -7,8 +7,9 @@ using System.Text.Json.Serialization;
 using System.Xml.Linq;
 using Serilog;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.GamePatchV3.Models;
 
-namespace XIVLauncher.GamePatchV3;
+namespace XIVLauncher.GamePatchV3.Update;
 
 public sealed class GamePatchInstaller : IDisposable
 {

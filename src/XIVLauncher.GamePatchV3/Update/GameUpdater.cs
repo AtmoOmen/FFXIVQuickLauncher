@@ -1,7 +1,8 @@
 using Serilog;
 using XIVLauncher.Common;
+using XIVLauncher.GamePatchV3.Models;
 
-namespace XIVLauncher.GamePatchV3;
+namespace XIVLauncher.GamePatchV3.Update;
 
 public static class GameUpdater
 {

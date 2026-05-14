@@ -1,6 +1,7 @@
 using Serilog;
+using XIVLauncher.GamePatchV3.Integrity;
 
-namespace XIVLauncher.GamePatchV3;
+namespace XIVLauncher.GamePatchV3.Install;
 
 public sealed class GameInstaller
 {

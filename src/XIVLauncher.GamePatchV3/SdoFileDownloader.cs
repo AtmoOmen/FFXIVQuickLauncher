@@ -4,6 +4,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Serilog;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.GamePatchV3.Integrity;
+using XIVLauncher.GamePatchV3.Models;
 
 namespace XIVLauncher.GamePatchV3;
 
