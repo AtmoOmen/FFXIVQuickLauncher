@@ -14,9 +14,11 @@ using XIVLauncher.Common.Util;
 using XIVLauncher.GamePatchV3;
 using XIVLauncher.GamePatchV3.Install;
 using XIVLauncher.GamePatchV3.Integrity;
+using XIVLauncher.GamePatchV3.Integrity.Models;
 using XIVLauncher.GamePatchV3.Models;
 using XIVLauncher.GamePatchV3.Repair;
 using XIVLauncher.GamePatchV3.Update;
+using XIVLauncher.GamePatchV3.Update.Models;
 using XIVLauncher.Windows.GameClientFiles;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
@@ -528,7 +530,7 @@ public sealed class GameClientFileTaskService
             GameRepairer.RepairState.Repairing => new GameClientFileTaskSnapshot
             {
                 Title = "修复游戏文件",
-                PhaseText = repairer.CurrentMetaInstallState == SdoFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在修复游戏文件",
+                PhaseText = repairer.CurrentMetaInstallState == GameFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在修复游戏文件",
                 DetailText = repairer.CurrentFile,
                 Progress = repairer.Total == 0 ? 0 : 100.0 * repairer.Progress / repairer.Total,
                 IsProgressIndeterminate = false,
@@ -577,7 +579,7 @@ public sealed class GameClientFileTaskService
             GameInstaller.InstallState.Installing => new GameClientFileTaskSnapshot
             {
                 Title                   = "安装游戏文件",
-                PhaseText               = installer.CurrentMetaInstallState == SdoFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在下载游戏文件",
+                PhaseText               = installer.CurrentMetaInstallState == GameFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在下载游戏文件",
                 DetailText              = installer.CurrentFile,
                 Progress                = installer.Total == 0 ? 0 : 100.0 * installer.Progress / installer.Total,
                 IsProgressIndeterminate = false,
@@ -646,17 +648,17 @@ public sealed class GameClientFileTaskService
                 )
                 .ToArray();
 
-    private static string GetDownloaderSpeedText(SdoFileDownloader.InstallTaskState state, long speed) =>
+    private static string GetDownloaderSpeedText(GameFileDownloader.InstallTaskState state, long speed) =>
         state switch
         {
-            SdoFileDownloader.InstallTaskState.Connecting => "正在连接",
+            GameFileDownloader.InstallTaskState.Connecting => "正在连接",
             _                                             => $"{APIHelper.BytesToString(speed)}/s"
         };
 
-    private static string GetDownloaderEtaText(SdoFileDownloader.InstallTaskState state, long remaining, long speed) =>
+    private static string GetDownloaderEtaText(GameFileDownloader.InstallTaskState state, long remaining, long speed) =>
         state switch
         {
-            SdoFileDownloader.InstallTaskState.Connecting => string.Empty,
+            GameFileDownloader.InstallTaskState.Connecting => string.Empty,
             _                                             => FormatEstimatedTime(remaining, speed)
         };
 

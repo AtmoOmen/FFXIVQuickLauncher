@@ -7,6 +7,7 @@ using XIVLauncher.Common;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.GamePatchV3;
 using XIVLauncher.GamePatchV3.Integrity;
+using XIVLauncher.GamePatchV3.Integrity.Models;
 using XIVLauncher.GamePatchV3.Models;
 
 namespace XIVLauncher.Support;

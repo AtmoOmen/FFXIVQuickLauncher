@@ -7,7 +7,9 @@ using System.Text.Json.Serialization;
 using System.Xml.Linq;
 using Serilog;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.GamePatchV3.Integrity.Models;
 using XIVLauncher.GamePatchV3.Models;
+using XIVLauncher.GamePatchV3.Update.Models;
 
 namespace XIVLauncher.GamePatchV3.Update;
 
@@ -215,8 +217,8 @@ public sealed class GamePatchInstaller : IDisposable
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var targetRelativePath   = deltaMap[deltaIndex].Key;
-                    var deltaEntryPath       = deltaMap[deltaIndex].Value;
+                    var targetRelativePath = deltaMap[deltaIndex].Key;
+                    var deltaEntryPath     = deltaMap[deltaIndex].Value;
                     if (!GamePathNormalizer.TryNormalizeGameRelativePath(targetRelativePath, out var gameRelativePath))
                         throw new InvalidDataException($"更新包目标路径无效: {targetRelativePath}");
 
@@ -431,18 +433,26 @@ public sealed class GamePatchInstaller : IDisposable
                                 }
                             );
 
-                            var sdoTargetPath = targetDownloadPath;
-                            var targetIntegrity = new IntegrityCheckResult
-                            {
-                                BaseUrl     = sourceBaseUrl,
-                                DataVersion = sourceVersion,
-                                Hashes      = { [sdoTargetPath] = expectedTargetMd5 },
-                                Sizes       = { [sdoTargetPath] = (ulong)expectedTargetSize }
-                            };
-
-                            using var sdoDownloader = new SdoFileDownloader();
+                            var       sdoTargetPath = targetDownloadPath;
+                            using var sdoDownloader = new GameFileDownloader();
                             sdoDownloader.ProgressReportInterval = (int)progressUpdateInterval.TotalMilliseconds;
-                            sdoDownloader.ConstructFromRemoteIntegrity(targetIntegrity);
+                            sdoDownloader.Construct
+                            (
+                                [
+                                    new IntegrityPathEntry
+                                    (
+                                        0,
+                                        sdoTargetPath,
+                                        GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath),
+                                        gameRelativePath,
+                                        gameRelativePath["game/".Length..],
+                                        expectedTargetMd5,
+                                        (ulong)expectedTargetSize
+                                    )
+                                ],
+                                sourceBaseUrl,
+                                sourceVersion
+                            );
                             await sdoDownloader.VerifyFiles(gamePath.FullName, false, 1, cancellationToken).ConfigureAwait(false);
                             sdoDownloader.QueueInstall(0, sdoTargetPath);
                             await sdoDownloader.Install(gamePath.FullName, 1, cancellationToken).ConfigureAwait(false);
@@ -458,8 +468,8 @@ public sealed class GamePatchInstaller : IDisposable
                             var canonicalSdoPath = packageSourceFiles != null && packageSourceFiles.TryGetValue(gameRelativePath, out var sourceFileForDownload)
                                                        ? sourceFileForDownload.DownloadPath
                                                        : GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath);
-                            var directoryPath    = Path.GetDirectoryName(canonicalSdoPath.TrimStart('\\'))?.Replace('\\', '/') ?? string.Empty;
-                            var fileKeyInput     = $"{SdoInfos.APP_ID}_{sourceVersion}_{canonicalSdoPath}";
+                            var directoryPath = Path.GetDirectoryName(canonicalSdoPath.TrimStart('\\'))?.Replace('\\', '/') ?? string.Empty;
+                            var fileKeyInput  = $"{SdoInfos.APP_ID}_{sourceVersion}_{canonicalSdoPath}";
                             var fileKeyBytes  = MD5.HashData(Encoding.Unicode.GetBytes(fileKeyInput));
                             var fileKeyHex    = Convert.ToHexString(fileKeyBytes).ToLowerInvariant();
                             var downloadUri   = new Uri($"{sourceBaseUrl.TrimEnd('/')}/{directoryPath.Replace('\\', '/')}/{fileKeyHex}");

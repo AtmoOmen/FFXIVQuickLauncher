@@ -1,5 +1,6 @@
 using Serilog;
 using XIVLauncher.GamePatchV3.Integrity;
+using XIVLauncher.GamePatchV3.Integrity.Models;
 
 namespace XIVLauncher.GamePatchV3.Install;
 
@@ -11,7 +12,7 @@ public sealed class GameInstaller
     public long                               Total                   { get; private set; }
     public int                                TaskCount               { get; private set; }
     public string                             CurrentFile             { get; private set; } = string.Empty;
-    public SdoFileDownloader.InstallTaskState CurrentMetaInstallState { get; private set; } = SdoFileDownloader.InstallTaskState.NotStarted;
+    public GameFileDownloader.InstallTaskState CurrentMetaInstallState { get; private set; } = GameFileDownloader.InstallTaskState.NotStarted;
     public InstallState                       State                   { get; private set; } = InstallState.NotStarted;
 
     private readonly string                  gamePath;
@@ -34,30 +35,31 @@ public sealed class GameInstaller
         {
             State = InstallState.DownloadMeta;
             var remoteIntegrity = await GameIntegrityChecker.DownloadIntegrityCheckForVersion(token).ConfigureAwait(false);
-            var installTargets = IntegrityPathMap.BuildEntries(remoteIntegrity);
+            var installTargets  = IntegrityPathEntry.BuildEntries(remoteIntegrity);
             var targetRelativePaths = installTargets
                                       .Select(x => x.LocalRelativePath)
                                       .ToList();
 
-            using var downloader               = CreateAndConfigureDownloader();
-            var       installProgressTaskIndex = 0;
+            using var downloader = new GameFileDownloader();
+            downloader.ProgressReportInterval = progressUpdateInterval.TotalMilliseconds > 0 ? (int)progressUpdateInterval.TotalMilliseconds : 250;
+            var installProgressTaskIndex = 0;
 
-            void UpdateInstallProgress(int sourceIndex, long progress, long max, SdoFileDownloader.InstallTaskState state)
+            void UpdateInstallProgress(int sourceIndex, long progress, long max, GameFileDownloader.InstallTaskState state)
             {
                 if (targetRelativePaths.Count <= 0)
                     return;
 
                 CurrentFile = targetRelativePaths[Math.Min(sourceIndex, targetRelativePaths.Count - 1)];
-                if (state == SdoFileDownloader.InstallTaskState.Complete)
+                if (state == GameFileDownloader.InstallTaskState.Complete)
                     TaskIndex = Interlocked.Increment(ref installProgressTaskIndex);
                 Progress = Math.Min(progress, max);
                 Total    = max;
                 CurrentMetaInstallState = state switch
                 {
-                    SdoFileDownloader.InstallTaskState.Connecting  => SdoFileDownloader.InstallTaskState.Connecting,
-                    SdoFileDownloader.InstallTaskState.Downloading => SdoFileDownloader.InstallTaskState.Downloading,
-                    SdoFileDownloader.InstallTaskState.Complete    => SdoFileDownloader.InstallTaskState.Complete,
-                    _                                              => SdoFileDownloader.InstallTaskState.NotStarted
+                    GameFileDownloader.InstallTaskState.Connecting  => GameFileDownloader.InstallTaskState.Connecting,
+                    GameFileDownloader.InstallTaskState.Downloading => GameFileDownloader.InstallTaskState.Downloading,
+                    GameFileDownloader.InstallTaskState.Complete    => GameFileDownloader.InstallTaskState.Complete,
+                    _                                              => GameFileDownloader.InstallTaskState.NotStarted
                 };
                 RecordProgressForEstimation();
             }
@@ -66,16 +68,13 @@ public sealed class GameInstaller
 
             try
             {
-                downloader.ConstructFromRemoteIntegrity(CreateInstallIntegrity(remoteIntegrity, installTargets));
+                downloader.Construct(installTargets, remoteIntegrity.BaseUrl, remoteIntegrity.DataVersion);
 
                 TaskCount               = targetRelativePaths.Count;
                 State                   = InstallState.Installing;
-                CurrentMetaInstallState = SdoFileDownloader.InstallTaskState.Connecting;
+                CurrentMetaInstallState = GameFileDownloader.InstallTaskState.Connecting;
 
-                for (var fileIndex = 0; fileIndex < targetRelativePaths.Count; fileIndex++)
-                {
-                    downloader.QueueInstall(fileIndex, installTargets[fileIndex].DownloadPath);
-                }
+                for (var fileIndex = 0; fileIndex < targetRelativePaths.Count; fileIndex++) downloader.QueueInstall(fileIndex, installTargets[fileIndex].DownloadPath);
 
                 await downloader.Install(gamePath, 8, token).ConfigureAwait(false);
 
@@ -109,14 +108,6 @@ public sealed class GameInstaller
     public void Cancel() =>
         cts.Cancel();
 
-    private SdoFileDownloader CreateAndConfigureDownloader()
-    {
-        return new()
-        {
-            ProgressReportInterval = progressUpdateInterval.TotalMilliseconds > 0 ? (int)progressUpdateInterval.TotalMilliseconds : 250
-        };
-    }
-
     private void RecordProgressForEstimation()
     {
         var now = DateTime.Now.Ticks;
@@ -126,26 +117,6 @@ public sealed class GameInstaller
 
         var elapsedMs = reportedProgresses.Last().Item1 - reportedProgresses.First().Item1;
         Speed = elapsedMs == 0 ? 0 : (reportedProgresses.Last().Item2 - reportedProgresses.First().Item2) * 10 * 1000 * 1000 / elapsedMs;
-    }
-
-    private static Models.IntegrityCheckResult CreateInstallIntegrity(Models.IntegrityCheckResult remoteIntegrity, IEnumerable<IntegrityPathEntry> installTargets)
-    {
-        var installIntegrity = new Models.IntegrityCheckResult
-        {
-            GameVersion     = remoteIntegrity.GameVersion,
-            LastGameVersion = remoteIntegrity.LastGameVersion,
-            BaseUrl         = remoteIntegrity.BaseUrl,
-            DataVersion     = remoteIntegrity.DataVersion,
-            AppId           = remoteIntegrity.AppId
-        };
-
-        foreach (var installTarget in installTargets)
-        {
-            installIntegrity.Hashes[installTarget.CanonicalSdoPath] = installTarget.Hash;
-            installIntegrity.Sizes[installTarget.CanonicalSdoPath]  = installTarget.Size;
-        }
-
-        return installIntegrity;
     }
 
     public enum InstallState

@@ -5,11 +5,11 @@ using System.Text;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.GamePatchV3.Integrity;
-using XIVLauncher.GamePatchV3.Models;
+using XIVLauncher.GamePatchV3.Integrity.Models;
 
 namespace XIVLauncher.GamePatchV3;
 
-public class SdoFileDownloader : IDisposable
+public class GameFileDownloader : IDisposable
 {
     public int ProgressReportInterval { get; set; } = DEFAULT_PROGRESS_REPORT_INTERVAL;
 
@@ -20,14 +20,14 @@ public class SdoFileDownloader : IDisposable
     private readonly List<bool>                        brokenStates    = [];
     private readonly List<ulong>                       sizes           = [];
 
-    private long   lastProgressTimestamp;
-    private string downloadBaseUrl = null!;
-    private string dataVersion     = null!;
+    private          long   lastProgressTimestamp;
+    private          string downloadBaseUrl = null!;
+    private readonly string dataVersion     = null!;
 
     public void Dispose() =>
         client.Dispose();
 
-    public void ConstructFromRemoteIntegrity(IntegrityCheckResult remoteIntegrity)
+    public void Construct(IEnumerable<IntegrityPathEntry> targets, string baseUrl, string dataVersion)
     {
         relativePaths.Clear();
         hashes.Clear();
@@ -35,20 +35,20 @@ public class SdoFileDownloader : IDisposable
         brokenStates.Clear();
         queuedDownloads.Clear();
 
-        downloadBaseUrl = remoteIntegrity.BaseUrl     ?? throw new ArgumentException("Remote integrity must contain a download base URL.", nameof(remoteIntegrity));
-        dataVersion     = remoteIntegrity.DataVersion ?? throw new ArgumentException("Remote integrity must contain a data version.",      nameof(remoteIntegrity));
+        downloadBaseUrl = baseUrl     ?? throw new ArgumentNullException(nameof(baseUrl));
+        dataVersion     = dataVersion ?? throw new ArgumentNullException(nameof(dataVersion));
 
         if (client.DefaultRequestHeaders.UserAgent.Count == 0)
             client.DefaultRequestHeaders.UserAgent.ParseAdd(USER_AGENT);
 
-        foreach (var (relativePath, hash) in remoteIntegrity.Hashes)
+        foreach (var target in targets)
         {
-            if (string.IsNullOrWhiteSpace(relativePath))
+            if (string.IsNullOrWhiteSpace(target.CanonicalSdoPath))
                 continue;
 
-            relativePaths.Add(relativePath);
-            hashes.Add(hash ?? string.Empty);
-            sizes.Add(remoteIntegrity.Sizes is not null && remoteIntegrity.Sizes.TryGetValue(relativePath, out var size) ? size : 0);
+            relativePaths.Add(target.CanonicalSdoPath);
+            hashes.Add(target.Hash ?? string.Empty);
+            sizes.Add(target.Size);
             brokenStates.Add(false);
         }
     }

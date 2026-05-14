@@ -12,9 +12,9 @@ public sealed class VcdiffClient
     bool    asAdmin        = false
 ) : IDisposable
 {
-    private          Process?   workerProcess;
-    private          RpcBuffer? rpcBuffer;
-    private          bool       isDisposed;
+    private Process?   workerProcess;
+    private RpcBuffer? rpcBuffer;
+    private bool       isDisposed;
 
     public void Dispose()
     {

@@ -1,6 +1,6 @@
 using Serilog;
 using XIVLauncher.Common;
-using XIVLauncher.GamePatchV3.Models;
+using XIVLauncher.GamePatchV3.Update.Models;
 
 namespace XIVLauncher.GamePatchV3.Update;
 

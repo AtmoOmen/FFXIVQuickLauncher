@@ -1,8 +1,6 @@
-using XIVLauncher.GamePatchV3.Models;
+namespace XIVLauncher.GamePatchV3.Integrity.Models;
 
-namespace XIVLauncher.GamePatchV3.Integrity;
-
-internal readonly record struct IntegrityPathEntry
+public readonly record struct IntegrityPathEntry
 (
     int    OriginalIndex,
     string DownloadPath,
@@ -11,9 +9,7 @@ internal readonly record struct IntegrityPathEntry
     string LocalRelativePath,
     string Hash,
     ulong  Size
-);
-
-internal static class IntegrityPathMap
+)
 {
     public static List<IntegrityPathEntry> BuildEntries(IntegrityCheckResult remoteIntegrity)
     {
@@ -22,11 +18,23 @@ internal static class IntegrityPathMap
 
         foreach (var entry in remoteIntegrity.Hashes)
         {
-            if (!TryCreateEntry(originalIndex, entry.Key, entry.Value, remoteIntegrity.Sizes is not null && remoteIntegrity.Sizes.TryGetValue(entry.Key, out var size) ? size : 0, out var candidate))
+            if (string.IsNullOrWhiteSpace(entry.Key) || !GamePathNormalizer.TryNormalizeGameRelativePath(entry.Key, out var gameRelativePath))
             {
                 originalIndex++;
                 continue;
             }
+
+            var localRelativePath = gameRelativePath["game/".Length..];
+            var candidate = new IntegrityPathEntry
+            (
+                originalIndex,
+                GamePathNormalizer.NormalizeDownloadPath(entry.Key),
+                GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath),
+                gameRelativePath,
+                localRelativePath,
+                entry.Value,
+                remoteIntegrity.Sizes is not null && remoteIntegrity.Sizes.TryGetValue(entry.Key, out var size) ? size : 0
+            );
 
             if (selectedEntriesByCanonicalPath.TryGetValue(candidate.CanonicalSdoPath, out var existing))
                 selectedEntriesByCanonicalPath[candidate.CanonicalSdoPath] = SelectPreferredEntry(existing, candidate);
@@ -39,26 +47,6 @@ internal static class IntegrityPathMap
         return selectedEntriesByCanonicalPath.Values
                                              .OrderBy(x => x.OriginalIndex)
                                              .ToList();
-    }
-
-    private static bool TryCreateEntry(int originalIndex, string path, string hash, ulong size, out IntegrityPathEntry entry)
-    {
-        entry = default;
-        if (string.IsNullOrWhiteSpace(path) || !GamePathNormalizer.TryNormalizeGameRelativePath(path, out var gameRelativePath))
-            return false;
-
-        var localRelativePath = gameRelativePath["game/".Length..];
-        entry = new IntegrityPathEntry
-        (
-            originalIndex,
-            GamePathNormalizer.NormalizeDownloadPath(path),
-            GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath),
-            gameRelativePath,
-            localRelativePath,
-            hash,
-            size
-        );
-        return true;
     }
 
     private static IntegrityPathEntry SelectPreferredEntry(IntegrityPathEntry existing, IntegrityPathEntry candidate)

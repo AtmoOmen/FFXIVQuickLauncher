@@ -1,4 +1,4 @@
-namespace XIVLauncher.GamePatchV3.Models;
+namespace XIVLauncher.GamePatchV3.Update.Models;
 
 public sealed class GameUpdateCheckResult
 {

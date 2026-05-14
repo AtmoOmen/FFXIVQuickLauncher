@@ -2,7 +2,9 @@ using System.Diagnostics;
 using System.Text.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.GamePatchV3.Integrity.Models;
 using XIVLauncher.GamePatchV3.Models;
+using XIVLauncher.GamePatchV3.Update.Models;
 
 namespace XIVLauncher.GamePatchV3;
 
@@ -22,12 +24,12 @@ public sealed class GamePatchMetadataClient : IDisposable
     {
         var normalizedGameVersion = NormalizeGameVersion(currentGameVersion);
         Log.Information("[V3Patch] 正在构建更新计划, 当前游戏版本 {CurrentGameVersion}, 强制更新 {ForceUpdate}", normalizedGameVersion, forceUpdate);
-        var remoteVersion = await DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
-        var targetArea    = GetTargetArea(remoteVersion);
+        var remoteVersion               = await DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
+        var targetArea                  = GetTargetArea(remoteVersion);
         var minimumSupportedDataVersion = ResolveMinimumSupportedDataVersion(targetArea);
-        var resolved      = ResolveLocalVersion(normalizedGameVersion, remoteVersion);
-        var currentVersion = resolved.DataVersion;
-        var currentViewVersion = resolved.ViewVersion;
+        var resolved                    = ResolveLocalVersion(normalizedGameVersion, remoteVersion);
+        var currentVersion              = resolved.DataVersion;
+        var currentViewVersion          = resolved.ViewVersion;
 
         if (string.IsNullOrWhiteSpace(currentVersion))
             throw new UnsupportedGameVersionException(CreateUnsupportedVersionMessage(normalizedGameVersion, minimumSupportedDataVersion));
@@ -117,7 +119,7 @@ public sealed class GamePatchMetadataClient : IDisposable
             if (lineParts.Length < 3)
                 continue;
 
-            if (!GamePathNormalizer.TryNormalizeGameRelativePath(lineParts[0], out var gameRelativePath))
+            if (!GamePathNormalizer.TryNormalizeGameRelativePath(lineParts[0], out _))
                 continue;
 
             var filePath = GamePathNormalizer.NormalizeDownloadPath(lineParts[0]);
@@ -189,8 +191,8 @@ public sealed class GamePatchMetadataClient : IDisposable
             return NormalizeVersionView(matchedPackage.VersionView);
 
         var matchedArea = remoteVersion.Areas.FirstOrDefault
-        (area => string.Equals(area.Must, dataVersion, StringComparison.Ordinal)
-                 || string.Equals(area.Max, dataVersion,  StringComparison.Ordinal)
+        (area => string.Equals(area.Must,   dataVersion, StringComparison.Ordinal)
+                 || string.Equals(area.Max, dataVersion, StringComparison.Ordinal)
         );
         return matchedArea == null ? string.Empty : NormalizeVersionView(matchedArea.View);
     }
@@ -206,7 +208,7 @@ public sealed class GamePatchMetadataClient : IDisposable
 
         for (var index = 0; index < partCount; index++)
         {
-            var leftValue  = index < leftParts.Length && int.TryParse(leftParts[index], out var parsedLeft) ? parsedLeft : 0;
+            var leftValue  = index < leftParts.Length  && int.TryParse(leftParts[index],  out var parsedLeft) ? parsedLeft : 0;
             var rightValue = index < rightParts.Length && int.TryParse(rightParts[index], out var parsedRight) ? parsedRight : 0;
             var compare    = leftValue.CompareTo(rightValue);
             if (compare != 0)
@@ -236,7 +238,7 @@ public sealed class GamePatchMetadataClient : IDisposable
             return false;
 
         var normalizedVersionView = NormalizeVersionView(versionView);
-        return string.Equals(normalizedVersionView, gameVersion, StringComparison.Ordinal)
+        return string.Equals(normalizedVersionView,                gameVersion, StringComparison.Ordinal)
                || string.Equals(NormalizeGameVersion(versionView), gameVersion, StringComparison.Ordinal);
     }
 

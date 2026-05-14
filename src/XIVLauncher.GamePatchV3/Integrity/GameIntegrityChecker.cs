@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.GamePatchV3.Models;
+using XIVLauncher.GamePatchV3.Integrity.Models;
 
 namespace XIVLauncher.GamePatchV3.Integrity;
 
@@ -23,8 +23,8 @@ public static class GameIntegrityChecker
         try
         {
             using var metadataClient = new GamePatchMetadataClient();
-            var remoteVersion         = await metadataClient.DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
-            var targetArea            = remoteVersion.Areas.FirstOrDefault(area => area.Id == "0") ?? remoteVersion.Areas.FirstOrDefault();
+            var       remoteVersion  = await metadataClient.DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
+            var       targetArea     = remoteVersion.Areas.FirstOrDefault(area => area.Id == "0") ?? remoteVersion.Areas.FirstOrDefault();
             var minimumSupportedDataVersion = targetArea == null
                                                   ? SdoInfos.DEFAULT_MINIMUM_SUPPORTED_DATA_VERSION
                                                   : GamePatchMetadataClient.ResolveMinimumSupportedDataVersion(targetArea);
@@ -43,6 +43,7 @@ public static class GameIntegrityChecker
             }
 
             remoteIntegrity = await metadataClient.DownloadIntegrityCheck(remoteVersion, cancellationToken).ConfigureAwait(false);
+
             if (!string.Equals(localResolution.DataVersion, remoteIntegrity.DataVersion, StringComparison.Ordinal))
             {
                 Log.Information
@@ -61,18 +62,18 @@ public static class GameIntegrityChecker
             return new IntegrityCheckCompareOutcome { CompareResult = IntegrityCheckCompareResult.ReferenceFetchFailure };
         }
 
-        var localIntegrity        = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex, cancellationToken).ConfigureAwait(false);
-        var remoteIntegrityEntries = IntegrityPathMap.BuildEntries(remoteIntegrity);
-        var report                = string.Empty;
-        var failed                = false;
+        var localIntegrity         = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex, cancellationToken).ConfigureAwait(false);
+        var remoteIntegrityEntries = IntegrityPathEntry.BuildEntries(remoteIntegrity);
+        var report                 = string.Empty;
+        var failed                 = false;
 
         foreach (var hashEntry in remoteIntegrityEntries
-                                                 .Select(entry => new { entry.CanonicalSdoPath, entry.Hash, entry.Size })
-                                                 .Where
-                                                 (hashEntry => !onlyIndex
-                                                               || hashEntry.CanonicalSdoPath.EndsWith(".index",  StringComparison.Ordinal)
-                                                               || hashEntry.CanonicalSdoPath.EndsWith(".index2", StringComparison.Ordinal)
-                                                 ))
+                                  .Select(entry => new { entry.CanonicalSdoPath, entry.Hash, entry.Size })
+                                  .Where
+                                  (hashEntry => !onlyIndex
+                                                || hashEntry.CanonicalSdoPath.EndsWith(".index",  StringComparison.Ordinal)
+                                                || hashEntry.CanonicalSdoPath.EndsWith(".index2", StringComparison.Ordinal)
+                                  ))
         {
             if (localIntegrity.Hashes.TryGetValue(hashEntry.CanonicalSdoPath, out var localHash))
             {

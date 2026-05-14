@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Serilog;
 using XIVLauncher.GamePatchV3.Integrity;
-using XIVLauncher.GamePatchV3.Models;
+using XIVLauncher.GamePatchV3.Integrity.Models;
 
 namespace XIVLauncher.GamePatchV3.Repair;
 
@@ -32,7 +32,7 @@ public sealed class GameRepairer
     public int                                NumBrokenFiles                { get; private set; }
     public List<string>                       MovedFiles                    { get; }              = [];
     public string                             MovedFileToDir                { get; private set; } = string.Empty;
-    public SdoFileDownloader.InstallTaskState CurrentMetaInstallState       { get; private set; } = SdoFileDownloader.InstallTaskState.NotStarted;
+    public GameFileDownloader.InstallTaskState CurrentMetaInstallState       { get; private set; } = GameFileDownloader.InstallTaskState.NotStarted;
     public int                                CurrentInstallBrokenFileCount { get; private set; }
     public bool                               IsDownloading                 { get; private set; }
     public RepairState                        State                         { get; private set; } = RepairState.NotStarted;
@@ -57,14 +57,15 @@ public sealed class GameRepairer
         {
             State = RepairState.DownloadMeta;
             var remoteIntegrity = await GameIntegrityChecker.DownloadIntegrityCheckForVersion(token).ConfigureAwait(false);
-            var repairTargets   = IntegrityPathMap.BuildEntries(remoteIntegrity);
+            var repairTargets   = IntegrityPathEntry.BuildEntries(remoteIntegrity);
             var targetRelativePaths = repairTargets
                                       .Select(x => x.LocalRelativePath)
                                       .ToList();
             var fileBroken = Enumerable.Repeat(false, targetRelativePaths.Count).ToList();
 
-            using var downloader               = CreateAndConfigureDownloader();
-            var       installProgressTaskIndex = 0;
+            using var downloader = new GameFileDownloader();
+            downloader.ProgressReportInterval = progressUpdateInterval.TotalMilliseconds > 0 ? (int)progressUpdateInterval.TotalMilliseconds : 250;
+            var installProgressTaskIndex = 0;
 
             void UpdateVerifyProgress(int targetIndex, int count, long progress, long max)
             {
@@ -78,22 +79,22 @@ public sealed class GameRepairer
                 RecordProgressForEstimation();
             }
 
-            void UpdateInstallProgress(int sourceIndex, long progress, long max, SdoFileDownloader.InstallTaskState state)
+            void UpdateInstallProgress(int sourceIndex, long progress, long max, GameFileDownloader.InstallTaskState state)
             {
                 if (targetRelativePaths.Count <= 0)
                     return;
 
                 CurrentFile = targetRelativePaths[Math.Min(sourceIndex, targetRelativePaths.Count - 1)];
-                if (state == SdoFileDownloader.InstallTaskState.Complete)
+                if (state == GameFileDownloader.InstallTaskState.Complete)
                     TaskIndex = Interlocked.Increment(ref installProgressTaskIndex);
                 Progress = Math.Min(progress, max);
                 Total    = max;
                 CurrentMetaInstallState = state switch
                 {
-                    SdoFileDownloader.InstallTaskState.Connecting  => SdoFileDownloader.InstallTaskState.Connecting,
-                    SdoFileDownloader.InstallTaskState.Downloading => SdoFileDownloader.InstallTaskState.Downloading,
-                    SdoFileDownloader.InstallTaskState.Complete    => SdoFileDownloader.InstallTaskState.Complete,
-                    _                                              => SdoFileDownloader.InstallTaskState.NotStarted
+                    GameFileDownloader.InstallTaskState.Connecting  => GameFileDownloader.InstallTaskState.Connecting,
+                    GameFileDownloader.InstallTaskState.Downloading => GameFileDownloader.InstallTaskState.Downloading,
+                    GameFileDownloader.InstallTaskState.Complete    => GameFileDownloader.InstallTaskState.Complete,
+                    _                                              => GameFileDownloader.InstallTaskState.NotStarted
                 };
                 UpdateInstallProgressEntry(sourceIndex, CurrentFile, progress, max);
                 RecordProgressForEstimation();
@@ -104,19 +105,19 @@ public sealed class GameRepairer
 
             try
             {
-                downloader.ConstructFromRemoteIntegrity(CreateRepairIntegrity(remoteIntegrity, repairTargets));
+                downloader.Construct(repairTargets, remoteIntegrity.BaseUrl, remoteIntegrity.DataVersion);
 
                 State = RepairState.Repairing;
 
                 TaskCount               = targetRelativePaths.Count;
-                CurrentMetaInstallState = SdoFileDownloader.InstallTaskState.NotStarted;
+                CurrentMetaInstallState = GameFileDownloader.InstallTaskState.NotStarted;
 
                 const int REATTEMPT_COUNT = 5;
                 var       repaired        = false;
 
                 for (var attemptIndex = 0; attemptIndex < REATTEMPT_COUNT; attemptIndex++)
                 {
-                    CurrentMetaInstallState = SdoFileDownloader.InstallTaskState.NotStarted;
+                    CurrentMetaInstallState = GameFileDownloader.InstallTaskState.NotStarted;
                     Progress                = Total = TaskIndex = 0;
                     reportedProgresses.Clear();
 
@@ -144,7 +145,7 @@ public sealed class GameRepairer
                             downloader.QueueInstall(brokenFileIndex, repairTarget.DownloadPath);
                         }
 
-                        CurrentMetaInstallState = SdoFileDownloader.InstallTaskState.Connecting;
+                        CurrentMetaInstallState = GameFileDownloader.InstallTaskState.Connecting;
                         await downloader.Install(gamePath, 8, token).ConfigureAwait(false);
                         CurrentInstallBrokenFileCount = 0;
                         ResetInstallProgressDisplay();
@@ -190,14 +191,6 @@ public sealed class GameRepairer
 
     public void Cancel() =>
         cts.Cancel();
-
-    private SdoFileDownloader CreateAndConfigureDownloader()
-    {
-        return new()
-        {
-            ProgressReportInterval = progressUpdateInterval.TotalMilliseconds > 0 ? (int)progressUpdateInterval.TotalMilliseconds : 250
-        };
-    }
 
     private async Task MoveUnnecessaryFiles(string path, HashSet<string> targetRelativePaths, CancellationToken cancellationToken)
     {
@@ -320,26 +313,6 @@ public sealed class GameRepairer
         var effectiveProgress = total > 0 ? Math.Min(progress, total) : progress;
         lock (installProgressLock)
             currentInstallProgressBySourceIndex[sourceIndex] = new InstallProgressEntry(filePath, effectiveProgress, total);
-    }
-
-    private static IntegrityCheckResult CreateRepairIntegrity(IntegrityCheckResult remoteIntegrity, IEnumerable<IntegrityPathEntry> repairTargets)
-    {
-        var repairIntegrity = new IntegrityCheckResult
-        {
-            GameVersion     = remoteIntegrity.GameVersion,
-            LastGameVersion = remoteIntegrity.LastGameVersion,
-            BaseUrl         = remoteIntegrity.BaseUrl,
-            DataVersion     = remoteIntegrity.DataVersion,
-            AppId           = remoteIntegrity.AppId
-        };
-
-        foreach (var repairTarget in repairTargets)
-        {
-            repairIntegrity.Hashes[repairTarget.CanonicalSdoPath] = repairTarget.Hash;
-            repairIntegrity.Sizes[repairTarget.CanonicalSdoPath]  = repairTarget.Size;
-        }
-
-        return repairIntegrity;
     }
 
     public enum RepairState
