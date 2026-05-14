@@ -120,8 +120,8 @@ public sealed class GameLaunchService
 
         EnsureDalamudCompatibility();
 
-        var dalamudLauncher = DalamudLauncherFactory.Create(gamePath, DalamudLoadMethod.DllInject, noPlugins, noThird);
-        var dalamudOk       = EnsureDalamudUpdate(dalamudLauncher, App.Settings.GamePath, true);
+        var dalamudSession = DalamudLauncherFactory.Create(gamePath, DalamudLoadMethod.DllInject, noPlugins, noThird);
+        var dalamudOk      = EnsureDalamudUpdate(dalamudSession, App.Settings.GamePath, true);
 
         Troubleshooting.LogTroubleshooting();
 
@@ -137,7 +137,7 @@ public sealed class GameLaunchService
             return false;
         }
 
-        dalamudLauncher.Inject(gamePid, noPlugins);
+        dalamudSession.InjectGame(gamePid, noPlugins);
         return true;
     }
 
@@ -177,13 +177,13 @@ public sealed class GameLaunchService
         }
     }
 
-    private bool EnsureDalamudUpdate(DalamudLauncher dalamudLauncher, DirectoryInfo gamePath, bool appendWafStatusCodeHint)
+    private bool EnsureDalamudUpdate(DalamudSession dalamudSession, DirectoryInfo gamePath, bool appendWafStatusCodeHint)
     {
         try
         {
             App.Dalamud.RunUpdater(true);
-            var dalamudStatus = dalamudLauncher.HoldForUpdate(gamePath);
-            return dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
+            var dalamudStatus = dalamudSession.EnsureReady(gamePath);
+            return dalamudStatus == DalamudSession.DalamudInstallState.Ok;
         }
         catch (Exception ex)
         {

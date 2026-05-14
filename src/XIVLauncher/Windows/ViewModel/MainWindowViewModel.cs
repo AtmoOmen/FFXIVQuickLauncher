@@ -1286,7 +1286,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        var dalamudLauncher = DalamudLauncherFactory.Create
+        var dalamudSession = DalamudLauncherFactory.Create
         (
             App.Settings.GamePath,
             App.Settings.DalamudLoadMethod,
@@ -1298,9 +1298,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         EnsureDalamudCompatibility();
 
         if (App.Settings.DalamudEnabled && !forceNoDalamud)
-            dalamudOk = EnsureDalamudUpdate(dalamudLauncher, App.Settings.GamePath, false);
+            dalamudOk = EnsureDalamudUpdate(dalamudSession, App.Settings.GamePath, false);
 
-        var gameRunner = new GameRunner(dalamudLauncher, dalamudOk, App.Dalamud.Updater.Runtime);
+        var gameRunner = new GameRunner(dalamudSession, dalamudOk, App.Dalamud.Updater.Runtime);
         stopwatch.Stop();
 
         if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
@@ -1466,13 +1466,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private bool EnsureDalamudUpdate(DalamudLauncher dalamudLauncher, DirectoryInfo gamePath, bool appendWafStatusCodeHint)
+    private bool EnsureDalamudUpdate(DalamudSession dalamudSession, DirectoryInfo gamePath, bool appendWafStatusCodeHint)
     {
         try
         {
             App.Dalamud.RunUpdater(true);
-            var dalamudStatus = dalamudLauncher.HoldForUpdate(gamePath);
-            return dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
+            var dalamudStatus = dalamudSession.EnsureReady(gamePath);
+            return dalamudStatus == DalamudSession.DalamudInstallState.Ok;
         }
         catch (Exception ex)
         {

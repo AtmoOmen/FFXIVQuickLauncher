@@ -4,9 +4,9 @@ using Serilog;
 
 namespace XIVLauncher.Dalamud;
 
-public class DalamudLauncher
+public class DalamudSession
 (
-    IDalamudRunner              runner,
+    IDalamudRunner              injector,
     DalamudUpdater              updater,
     DalamudLoadMethod           loadMethod,
     DirectoryInfo               gamePath,
@@ -20,9 +20,9 @@ public class DalamudLauncher
     IDalamudGameVersionProvider gameVersionProvider
 )
 {
-    public DalamudInstallState HoldForUpdate(DirectoryInfo gamePathDir)
+    public DalamudInstallState EnsureReady(DirectoryInfo gamePathDir)
     {
-        Log.Information("[HOOKS] DalamudLauncher::HoldForUpdate(gp:{0})", gamePathDir.FullName);
+        Log.Information("[HOOKS] DalamudSession::EnsureReady(gp:{0})", gamePathDir.FullName);
 
         if (updater.State != DalamudUpdater.DownloadState.Done)
             updater.ShowLoading();
@@ -44,29 +44,11 @@ public class DalamudLauncher
         return DalamudInstallState.Ok;
     }
 
-    public void Inject(int gamePid, bool safeMode = false)
+    public void InjectGame(int gamePid, bool safeMode = false)
     {
-        Log.Information("[HOOKS] DalamudLauncher::Run(gp:{0})", gamePath.FullName);
+        Log.Information("[HOOKS] DalamudSession::InjectGame(gp:{0})", gamePath.FullName);
 
-        var ingamePluginPath = Path.Combine(configDirectory.FullName, "installedPlugins");
-
-        Directory.CreateDirectory(ingamePluginPath);
-
-        if (updater.AssetDirectory == null || updater.Runner == null)
-            throw new DalamudRunnerException("Dalamud 资源尚未准备完成");
-
-        var startInfo = new DalamudStartInfo
-        {
-            PluginDirectory         = ingamePluginPath,
-            ConfigurationPath       = Path.Combine(configDirectory.FullName, "dalamudConfig.json"),
-            LoggingPath             = logPath.FullName,
-            AssetDirectory          = updater.AssetDirectory.FullName,
-            GameVersion             = gameVersionProvider.GetVersion(gamePath),
-            WorkingDirectory        = updater.Runner.Directory?.FullName ?? updater.Runner.DirectoryName ?? Environment.CurrentDirectory,
-            DelayInitializeMs       = injectionDelay,
-            TroubleshootingPackData = troubleshootingData,
-            LauncherDirectory       = Environment.CurrentDirectory
-        };
+        var startInfo = CreateStartInfo();
 
         var launchArguments = new List<string>
         {
@@ -83,9 +65,10 @@ public class DalamudLauncher
             DalamudInjectorArgs.LauncherDirectory(startInfo.LauncherDirectory)
         };
 
-        if (safeMode) launchArguments.Add("--no-plugin");
+        if (safeMode) 
+            launchArguments.Add("--no-plugin");
 
-        var psi = new ProcessStartInfo(updater.Runner.FullName)
+        var psi = new ProcessStartInfo(updater.Runner!.FullName)
         {
             Arguments              = string.Join(" ", launchArguments),
             RedirectStandardOutput = true,
@@ -109,29 +92,11 @@ public class DalamudLauncher
         }
     }
 
-    public Process Run(FileInfo gameExe, string gameArgs, IDictionary<string, string> environment)
+    public Process LaunchGame(FileInfo gameExe, string gameArgs, IDictionary<string, string> environment)
     {
-        Log.Information("[Dalamud Launcher] 开始运行, 游戏路径: {0}", gamePath.FullName);
+        Log.Information("[Dalamud Session] 开始运行, 游戏路径: {0}", gamePath.FullName);
 
-        var ingamePluginPath = Path.Combine(configDirectory.FullName, "installedPlugins");
-
-        Directory.CreateDirectory(ingamePluginPath);
-
-        if (updater.AssetDirectory == null || updater.Runner == null)
-            throw new DalamudRunnerException("Dalamud 资源尚未准备完成");
-
-        var startInfo = new DalamudStartInfo
-        {
-            PluginDirectory         = ingamePluginPath,
-            ConfigurationPath       = Path.Combine(configDirectory.FullName, "dalamudConfig.json"),
-            LoggingPath             = logPath.FullName,
-            AssetDirectory          = updater.AssetDirectory.FullName,
-            GameVersion             = gameVersionProvider.GetVersion(gamePath),
-            WorkingDirectory        = updater.Runner.Directory?.FullName ?? updater.Runner.DirectoryName ?? Environment.CurrentDirectory,
-            DelayInitializeMs       = injectionDelay,
-            TroubleshootingPackData = troubleshootingData,
-            LauncherDirectory       = Environment.CurrentDirectory
-        };
+        var startInfo = CreateStartInfo();
 
         if (loadMethod != DalamudLoadMethod.ACLonly)
             Log.Information("[HOOKS] DelayInitializeMs: {0}", startInfo.DelayInitializeMs);
@@ -151,7 +116,7 @@ public class DalamudLauncher
                 break;
         }
 
-        var process = runner.Run(updater.Runner, fakeLogin, noPlugin, noThirdPlugin, gameExe, gameArgs, environment, loadMethod, startInfo);
+        var process = injector.Run(updater.Runner!, fakeLogin, noPlugin, noThirdPlugin, gameExe, gameArgs, environment, loadMethod, startInfo);
 
         updater.HideLoading();
 
@@ -159,6 +124,28 @@ public class DalamudLauncher
             Log.Information("[HOOKS] Started dalamud!");
 
         return process ?? throw new DalamudRunnerException("无法启动游戏进程");
+    }
+
+    private DalamudStartInfo CreateStartInfo()
+    {
+        var ingamePluginPath = Path.Combine(configDirectory.FullName, "installedPlugins");
+        Directory.CreateDirectory(ingamePluginPath);
+
+        if (updater.AssetDirectory == null || updater.Runner == null)
+            throw new DalamudRunnerException("Dalamud 资源尚未准备完成");
+
+        return new DalamudStartInfo
+        {
+            PluginDirectory         = ingamePluginPath,
+            ConfigurationPath       = Path.Combine(configDirectory.FullName, "dalamudConfig.json"),
+            LoggingPath             = logPath.FullName,
+            AssetDirectory          = updater.AssetDirectory.FullName,
+            GameVersion             = gameVersionProvider.GetVersion(gamePath),
+            WorkingDirectory        = updater.Runner.Directory?.FullName ?? updater.Runner.DirectoryName ?? Environment.CurrentDirectory,
+            DelayInitializeMs       = injectionDelay,
+            TroubleshootingPackData = troubleshootingData,
+            LauncherDirectory       = Environment.CurrentDirectory
+        };
     }
 
     public enum DalamudInstallState

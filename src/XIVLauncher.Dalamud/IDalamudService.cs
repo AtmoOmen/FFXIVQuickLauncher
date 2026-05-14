@@ -10,7 +10,7 @@ public interface IDalamudService
 
     void EnsureCompatibility();
 
-    DalamudLauncher CreateLauncher(DirectoryInfo gamePath, DalamudLaunchOptions options);
+    DalamudSession CreateLauncher(DirectoryInfo gamePath, DalamudLaunchOptions options);
 
     DalamudStatusSnapshot GetStatusSnapshot();
 }

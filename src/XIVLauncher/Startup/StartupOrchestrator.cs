@@ -311,7 +311,6 @@ public class StartupOrchestrator
                     new(Path.Combine(Paths.RoamingPath, "logs")),
                     new(Environment.CurrentDirectory)
                 ),
-                context.Settings.GitHubToken,
                 dalamudProgressSink,
                 new AppDalamudGameVersionProvider(),
                 new AppDalamudTroubleshootingProvider()

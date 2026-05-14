@@ -7,11 +7,10 @@ using Newtonsoft.Json;
 using PInvoke;
 using Serilog;
 using XIVLauncher.Common;
-using Win32Exception = System.ComponentModel.Win32Exception;
 
 namespace XIVLauncher.Dalamud;
 
-public class DalamudRunner : IDalamudRunner
+public class DalamudInjector : IDalamudRunner
 {
     public static void Inject
     (
@@ -51,12 +50,7 @@ public class DalamudRunner : IDalamudRunner
         };
 
         foreach (var keyValuePair in environment)
-        {
-            if (psi.EnvironmentVariables.ContainsKey(keyValuePair.Key))
-                psi.EnvironmentVariables[keyValuePair.Key] = keyValuePair.Value;
-            else
-                psi.EnvironmentVariables.Add(keyValuePair.Key, keyValuePair.Value);
-        }
+            psi.EnvironmentVariables[keyValuePair.Key] = keyValuePair.Value;
 
         using var dalamudProcess = Process.Start(psi) ?? throw new DalamudRunnerException("无法启动 Dalamud 注入器");
         dalamudProcess.OutputDataReceived += (_, args) =>
@@ -142,12 +136,7 @@ public class DalamudRunner : IDalamudRunner
         var envVars         = SafeGetEnvVars();
 
         foreach (var keyValuePair in environment)
-        {
-            if (envVars.ContainsKey(keyValuePair.Key))
-                envVars[keyValuePair.Key] = keyValuePair.Value;
-            else
-                envVars.Add(keyValuePair.Key, keyValuePair.Value);
-        }
+            envVars[keyValuePair.Key] = keyValuePair.Value;
 
         try
         {
@@ -166,30 +155,15 @@ public class DalamudRunner : IDalamudRunner
             var pipeSecAttr = Kernel32.SECURITY_ATTRIBUTES.Create();
             pipeSecAttr.bInheritHandle = 1;
 
-            if (!Kernel32.CreatePipe
-                (
-                    out var tempOutputHandle,
-                    out var childOutputPipeHandle,
-                    pipeSecAttr,
-                    0
-                ))
-                throw new Win32Exception();
+            if (!Kernel32.CreatePipe(out var tempOutputHandle, out var childOutputPipeHandle, pipeSecAttr, 0))
+                throw new System.ComponentModel.Win32Exception();
 
             Log.Verbose("=> Acquired pipe");
 
             var currentProcHandle = Kernel32.GetCurrentProcess();
 
-            if (!DuplicateHandle
-                (
-                    currentProcHandle.DangerousGetHandle(),
-                    tempOutputHandle.DangerousGetHandle(),
-                    currentProcHandle.DangerousGetHandle(),
-                    out var parentOutputPipeHandle,
-                    0,
-                    false,
-                    DuplicateOptions.SameAccess
-                ))
-                throw new Win32Exception();
+            if (!DuplicateHandle(currentProcHandle.DangerousGetHandle(), tempOutputHandle.DangerousGetHandle(), currentProcHandle.DangerousGetHandle(), out var parentOutputPipeHandle, 0, false, DuplicateOptions.SameAccess))
+                throw new System.ComponentModel.Win32Exception();
 
             Log.Verbose("=> Duplicated pipe handle");
 
@@ -215,7 +189,7 @@ public class DalamudRunner : IDalamudRunner
                 );
 
                 if (!retVal)
-                    throw new Win32Exception();
+                    throw new System.ComponentModel.Win32Exception();
             }
 
             Log.Verbose("=> Started process");
@@ -232,7 +206,7 @@ public class DalamudRunner : IDalamudRunner
             if (res != Kernel32.WaitForSingleObjectResult.WAIT_OBJECT_0)
             {
                 if (res == Kernel32.WaitForSingleObjectResult.WAIT_FAILED)
-                    throw new Win32Exception();
+                    throw new System.ComponentModel.Win32Exception();
 
                 throw new DalamudRunnerException("Injector did not exit in the expected timeout period");
             }
@@ -240,7 +214,7 @@ public class DalamudRunner : IDalamudRunner
             Log.Verbose("=> WaitForSingleObject() complete");
 
             if (!Kernel32.GetExitCodeProcess(kernelProcessInfo.hProcess, out var exitCode))
-                throw new Win32Exception();
+                throw new System.ComponentModel.Win32Exception();
 
             if (exitCode != 0)
                 throw new DalamudRunnerException($"Injector exit code was {exitCode}");
@@ -399,9 +373,10 @@ public class DalamudRunner : IDalamudRunner
             )
         );
 
-        var e = envVars.GetEnumerator();
+        var       e  = envVars.GetEnumerator();
+        using var e1 = e as IDisposable;
 
-        Debug.Assert(!(e is IDisposable), "Environment.GetEnvironmentVariables should not be IDisposable.");
+        Debug.Assert(e is not IDisposable, "Environment.GetEnvironmentVariables should not be IDisposable.");
 
         while (e.MoveNext())
         {
@@ -412,7 +387,10 @@ public class DalamudRunner : IDalamudRunner
         return envDict.ToDictionary(pair => pair.Key, pair => pair.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase);
     }
 
-    private sealed class DictionaryWrapper : IDictionary<string, string?>, IDictionary
+    private sealed class DictionaryWrapper
+    (
+        Dictionary<string, string?> contents
+    ) : IDictionary<string, string?>, IDictionary
     {
         public ICollection<string>  Keys   => contents.Keys;
         public ICollection<string?> Values => contents.Values;
@@ -423,13 +401,9 @@ public class DalamudRunner : IDalamudRunner
         public           bool                        IsSynchronized => ((IDictionary)contents).IsSynchronized;
         public           bool                        IsFixedSize    => ((IDictionary)contents).IsFixedSize;
         public           object                      SyncRoot       => ((IDictionary)contents).SyncRoot;
-        private readonly Dictionary<string, string?> contents;
 
-        ICollection IDictionary.Keys   => contents.Keys;
+        ICollection IDictionary.Keys => contents.Keys;
         ICollection IDictionary.Values => contents.Values;
-
-        public DictionaryWrapper(Dictionary<string, string?> contents) =>
-            this.contents = contents;
 
         public void Add(string key, string? value) => this[key] = value;
 

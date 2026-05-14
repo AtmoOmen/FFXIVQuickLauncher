@@ -5,7 +5,7 @@ namespace XIVLauncher.Windows.ViewModel.MainWindow.Factories;
 
 public sealed class DalamudLauncherFactory
 {
-    public static DalamudLauncher Create(DirectoryInfo gamePath, DalamudLoadMethod loadMethod, bool noPlugins, bool noThird) =>
+    public static DalamudSession Create(DirectoryInfo gamePath, DalamudLoadMethod loadMethod, bool noPlugins, bool noThird) =>
         App.Dalamud.CreateLauncher
         (
             gamePath,

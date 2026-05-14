@@ -12,7 +12,7 @@ namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
 
 public class GameRunner
 (
-    DalamudLauncher dalamudLauncher,
+    DalamudSession dalamudSession,
     bool            dalamudOk,
     DirectoryInfo   dotnetRuntimePath
 ) : IGameRunner
@@ -44,7 +44,7 @@ public class GameRunner
             if (string.IsNullOrWhiteSpace(prevDotnetLookup))
                 environment.Add("DOTNET_MULTILEVEL_LOOKUP", "0");
 
-            return dalamudLauncher.Run(new FileInfo(path), arguments, environment);
+            return dalamudSession.LaunchGame(new FileInfo(path), arguments, environment);
         }
 
         return NativeAclFix.LaunchGame

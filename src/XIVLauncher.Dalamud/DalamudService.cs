@@ -3,8 +3,6 @@ namespace XIVLauncher.Dalamud;
 public sealed class DalamudService : IDalamudService
 {
     private readonly DalamudHostPaths                hostPaths;
-    private readonly string?                         githubToken;
-    private readonly IDalamudProgressSink?           progressSink;
     private readonly IDalamudGameVersionProvider     gameVersionProvider;
     private readonly IDalamudTroubleshootingProvider troubleshootingProvider;
     private readonly IDalamudCompatibilityCheck      compatibilityCheck;
@@ -16,7 +14,6 @@ public sealed class DalamudService : IDalamudService
     public DalamudService
     (
         DalamudHostPaths                hostPaths,
-        string?                         githubToken,
         IDalamudProgressSink?           progressSink,
         IDalamudGameVersionProvider     gameVersionProvider,
         IDalamudTroubleshootingProvider troubleshootingProvider,
@@ -24,13 +21,11 @@ public sealed class DalamudService : IDalamudService
     )
     {
         this.hostPaths               = hostPaths;
-        this.githubToken             = githubToken;
-        this.progressSink            = progressSink;
         this.gameVersionProvider     = gameVersionProvider;
         this.troubleshootingProvider = troubleshootingProvider;
         this.compatibilityCheck      = compatibilityCheck ?? new DalamudCompatibilityCheck();
 
-        Updater = new DalamudUpdater(hostPaths.AddonDirectory, hostPaths.RuntimeDirectory, hostPaths.AssetDirectory, githubToken)
+        Updater = new DalamudUpdater(hostPaths.AddonDirectory, hostPaths.RuntimeDirectory, hostPaths.AssetDirectory)
         {
             ProgressSink = progressSink
         };
@@ -43,10 +38,10 @@ public sealed class DalamudService : IDalamudService
     public void EnsureCompatibility() =>
         compatibilityCheck.EnsureCompatibility();
 
-    public DalamudLauncher CreateLauncher(DirectoryInfo gamePath, DalamudLaunchOptions options) =>
+    public DalamudSession CreateLauncher(DirectoryInfo gamePath, DalamudLaunchOptions options) =>
         new
         (
-            new DalamudRunner(),
+            new DalamudInjector(),
             Updater,
             options.LoadMethod,
             gamePath,

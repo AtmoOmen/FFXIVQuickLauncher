@@ -50,7 +50,6 @@ public class DalamudUpdater
 
     private readonly DirectoryInfo addonDirectory;
     private readonly DirectoryInfo assetDirectory;
-    private readonly string?       githubToken;
 
     private readonly HttpClient httpClient;
 
@@ -58,18 +57,14 @@ public class DalamudUpdater
     (
         DirectoryInfo addonDirectory,
         DirectoryInfo runtimeDirectory,
-        DirectoryInfo assetDirectory,
-        string?       githubToken
+        DirectoryInfo assetDirectory
     )
     {
         this.addonDirectory = addonDirectory;
         Runtime             = runtimeDirectory;
         this.assetDirectory = assetDirectory;
-        this.githubToken    = githubToken;
         httpClient          = XLHttpClientFactory.Create(TimeSpan.FromSeconds(10), 50, DecompressionMethods.All);
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-        if (!string.IsNullOrWhiteSpace(this.githubToken))
-            httpClient.DefaultRequestHeaders.Authorization = new("Bearer", this.githubToken);
     }
 
     public void Run() =>
