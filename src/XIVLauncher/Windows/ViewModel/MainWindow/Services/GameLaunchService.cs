@@ -12,8 +12,6 @@ using XIVLauncher.Common.Http;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Support;
-using XIVLauncher.Windows.ViewModel.MainWindow.Factories;
-
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
 
 public sealed class GameLaunchService
@@ -120,7 +118,18 @@ public sealed class GameLaunchService
 
         EnsureDalamudCompatibility();
 
-        var dalamudSession = DalamudLauncherFactory.Create(gamePath, DalamudLoadMethod.DllInject, noPlugins, noThird);
+        var dalamudSession = App.Dalamud.CreateLauncher
+        (
+            gamePath,
+            new DalamudLaunchOptions
+            (
+                DalamudLoadMethod.DllInject,
+                (int)App.Settings.DalamudInjectionDelayMS,
+                false,
+                noPlugins,
+                noThird
+            )
+        );
         var dalamudOk      = EnsureDalamudUpdate(dalamudSession, App.Settings.GamePath, true);
 
         Troubleshooting.LogTroubleshooting();

@@ -33,7 +33,6 @@ using XIVLauncher.Support;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel.MainWindow;
-using XIVLauncher.Windows.ViewModel.MainWindow.Factories;
 using XIVLauncher.Windows.ViewModel.MainWindow.Providers;
 using XIVLauncher.Windows.ViewModel.MainWindow.Services;
 using XIVLauncher.Xaml;
@@ -68,11 +67,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public bool IsLoggingIn { get; set; }
 
-    private          DalamudLauncherFactory        DalamudLauncherFactory    { get; }
-    private          MainWindowDialogProvider      DialogProvider            { get; }
-    private          MainWindowAccountDraftFactory AccountDraftFactory       { get; }
-    private          GameLaunchService             GameLaunchService         { get; }
-    private          GameClientFileTaskService     GameClientFileTaskService { get; }
+    private          MainWindowDialogProvider  DialogProvider            { get; }
+    private          GameLaunchService         GameLaunchService         { get; }
+    private          GameClientFileTaskService GameClientFileTaskService { get; }
     private readonly SyncCommand                   refreshDalamudInfoCommand;
     private          CancellationTokenSource?      LoginCancelSource        { get; set; }
     private          bool                          IsLoginCanceledByUser    { get; set; }
@@ -82,9 +79,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     {
         Window                    = window;
         Settings                  = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
-        DalamudLauncherFactory    = new DalamudLauncherFactory();
         DialogProvider            = new MainWindowDialogProvider(window);
-        AccountDraftFactory       = new MainWindowAccountDraftFactory();
         Launcher                  = new();
         GameLaunchService         = new GameLaunchService(window);
         GameClientFileTaskService = new GameClientFileTaskService(window);
@@ -417,7 +412,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         if (requiresNewAccountDeviceProfileSetup && loginType != LoginType.QRCode)
         {
-            pendingNewAccount = MainWindowAccountDraftFactory.CreatePendingNewAccount(username, username, accountType, LoginPage.Area);
+            pendingNewAccount = CreatePendingNewAccount(username, username, accountType, LoginPage.Area);
 
             switch (DialogProvider.PromptNewAccountDeviceProfileChoice())
             {
@@ -427,7 +422,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
                 case MessageBoxResult.No:
                 {
-                    var configuredNewAccount = MainWindowAccountDraftFactory.CreateIndependentDeviceProfileDraft(pendingNewAccount);
+                    var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
 
                     if (!DialogProvider.ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount, AccountManager))
                     {
@@ -478,7 +473,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         if (requiresNewAccountDeviceProfileSetup && loginType == LoginType.QRCode && loginResult.State == LoginState.Ok && oAuthLogin != null)
         {
-            pendingNewAccount ??= MainWindowAccountDraftFactory.CreatePendingNewAccount(oAuthLogin.InputUserID, oAuthLogin.SndaID, accountType, LoginPage.Area);
+            pendingNewAccount ??= CreatePendingNewAccount(oAuthLogin.InputUserID, oAuthLogin.SndaID, accountType, LoginPage.Area);
 
             switch (DialogProvider.PromptNewAccountDeviceProfileChoice())
             {
@@ -489,7 +484,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
                 case MessageBoxResult.No:
                 {
-                    var configuredNewAccount = MainWindowAccountDraftFactory.CreateIndependentDeviceProfileDraft(pendingNewAccount);
+                    var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
 
                     if (!DialogProvider.ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount, AccountManager))
                     {
@@ -1286,12 +1281,17 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        var dalamudSession = DalamudLauncherFactory.Create
+        var dalamudSession = App.Dalamud.CreateLauncher
         (
             App.Settings.GamePath,
-            App.Settings.DalamudLoadMethod,
-            noPlugins,
-            noThird
+            new DalamudLaunchOptions
+            (
+                App.Settings.DalamudLoadMethod,
+                (int)App.Settings.DalamudInjectionDelayMS,
+                false,
+                noPlugins,
+                noThird
+            )
         );
 
         var dalamudOk = false;
@@ -1645,6 +1645,34 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private static bool ShouldRequireNewAccountDeviceProfileSetup(XIVAccount? savedAccount) =>
         App.Settings.RequireDeviceProfileSetupForNewLogin
         && savedAccount == null;
+
+    private static XIVAccount CreatePendingNewAccount(string loginAccount, string sndaId, XIVAccountType accountType, LoginArea? area) =>
+        new()
+        {
+            SdoLoginAccount             = loginAccount,
+            WeGameSndaID                = sndaId,
+            AccountType                 = accountType,
+            AreaName                    = area?.AreaName ?? string.Empty,
+            DeviceProfilePresetId       = string.Empty,
+            DeviceProfileDynamicEnabled = false,
+            IsDeviceProfileRotation     = true,
+            DeviceProfileRotationDays   = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS
+        };
+
+    private static XIVAccount CreateIndependentDeviceProfileDraft(XIVAccount account) =>
+        new()
+        {
+            SdoLoginAccount                    = account.SdoLoginAccount,
+            WeGameSndaID                       = account.WeGameSndaID,
+            AccountType                        = account.AccountType,
+            AreaName                           = account.AreaName,
+            UserDefinedName                    = account.UserDefinedName,
+            DeviceProfilePresetId              = account.DeviceProfilePresetId,
+            DeviceProfileDynamicEnabled        = true,
+            IsDeviceProfileRotation            = account.IsDeviceProfileRotation,
+            DeviceProfileRotationDays          = account.DeviceProfileRotationDays,
+            DeviceProfileLastGeneratedUtcTicks = account.DeviceProfileLastGeneratedUtcTicks
+        };
 
     private void SavePendingNewAccountWithoutSecrets(XIVAccount account)
     {
