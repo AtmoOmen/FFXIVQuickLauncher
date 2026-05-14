@@ -14,9 +14,6 @@ public static class GameHelpers
         return File.Exists(Path.Combine(path, "game", "ffxiv_dx11.exe")) && !Repository.Ffxiv.IsBaseVer(gamePath);
     }
 
-    public static bool CanMightNotBeInternationalClient(string path) =>
-        Directory.Exists(Path.Combine(path, "sdo")) || File.Exists(Path.Combine(path, "boot", "FFXIV_Boot.exe"));
-
     public static bool LetChoosePath(string path)
     {
         if (string.IsNullOrEmpty(path))
@@ -57,10 +54,6 @@ public static class GameHelpers
 
     public static bool CheckIsGameOpen()
     {
-#if DEBUG
-        return false;
-#endif
-
         var procs = Process.GetProcesses();
 
         if (procs.Any(x => x.ProcessName == "ffxiv"))
@@ -77,10 +70,4 @@ public static class GameHelpers
 
         return false;
     }
-
-    public static string ToMangledSeBase64(byte[] input) =>
-        Convert.ToBase64String(input)
-               .Replace('+', '-')
-               .Replace('/', '_')
-               .Replace('=', '*');
 }

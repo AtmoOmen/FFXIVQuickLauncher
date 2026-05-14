@@ -479,9 +479,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         try
         {
             if (!string.IsNullOrWhiteSpace(GamePath) && !GameHelpers.LetChoosePath(GamePath))
-                GamePathWarningMessage = "请选择游戏根目录，不要直接选到 Game 或 boot 子目录。";
-            else if (!string.IsNullOrWhiteSpace(GamePath) && GameHelpers.CanMightNotBeInternationalClient(GamePath))
-                GamePathWarningMessage = "当前路径看起来不像国际服客户端，请确认选择的是正确目录。";
+                GamePathWarningMessage = "请选择游戏根目录，不要直接选到 Game 或 boot 子目录";
             else
                 GamePathWarningMessage = string.Empty;
         }
