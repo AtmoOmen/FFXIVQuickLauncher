@@ -42,7 +42,6 @@ public class StartupOrchestrator
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        InitializeRenderMode();
         InitializeLogging();
         ParseCommandLine();
 
@@ -70,19 +69,6 @@ public class StartupOrchestrator
     }
 
     public StartupContext GetContext() => context;
-
-    private static void InitializeRenderMode()
-    {
-        try
-        {
-            if (!EnvironmentSettings.IsHardwareRendered)
-                RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
-        }
-        catch
-        {
-            // ignored
-        }
-    }
 
     private static void InitializeLogging()
     {

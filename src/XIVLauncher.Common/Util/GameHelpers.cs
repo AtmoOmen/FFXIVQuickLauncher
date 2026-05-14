@@ -39,8 +39,7 @@ public static class GameHelpers
             UseShellExecute  = true
         };
 
-        // Start as admin if needed
-        if (!EnvironmentSettings.IsNoRunas && Environment.OSVersion.Version.Major >= 6)
+        if (Environment.OSVersion.Version.Major >= 6)
             startInfo.Verb = "runas";
 
         try
@@ -49,6 +48,7 @@ public static class GameHelpers
         }
         catch (Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
         {
+            // ignored
         }
     }
 
