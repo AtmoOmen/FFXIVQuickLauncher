@@ -28,9 +28,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<AddonEntry> AddonEntries { get; } = [];
 
     public ObservableCollection<CredTypeOptionItem> CredTypeOptions { get; } = [];
-
-    public ICommand IdentifyTokenCommand => identifyTokenCommand;
-
+    
     public ICommand AddAddonCommand => addAddonCommand;
 
     public ICommand RemoveSelectedAddonCommand => removeSelectedAddonCommand;
@@ -43,7 +41,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 
     public ICommand OpenAdvancedSettingsCommand => openAdvancedSettingsCommand;
 
-    private readonly AsyncCommand identifyTokenCommand;
     private readonly SyncCommand  addAddonCommand;
     private readonly SyncCommand  editSelectedAddonCommand;
     private readonly SyncCommand  removeSelectedAddonCommand;
@@ -72,12 +69,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     } = string.Empty;
 
     public string PatchPath
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
-
-    public string GitHubToken
     {
         get;
         set => SetProperty(ref field, value);
@@ -246,7 +237,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         _dialogService         = dialogService         ?? new DialogService();
         _externalLaunchService = externalLaunchService ?? new ExternalLaunchService();
 
-        identifyTokenCommand        = new AsyncCommand(_ => IdentifyTokenAsync());
         addAddonCommand             = new SyncCommand(_ => AddAddon());
         editSelectedAddonCommand    = new SyncCommand(_ => EditSelectedAddon(),   () => CanEditSelectedAddon);
         removeSelectedAddonCommand  = new SyncCommand(_ => RemoveSelectedAddon(), () => SelectedAddonEntry != null);
@@ -281,7 +271,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         CommitLabelText                             = $"{AppUtil.GetGitHash()}";
         SpeedLimitMb                                = (decimal)App.Settings.SpeedLimitBytes / BYTES_TO_MB;
         SelectedCredType                            = App.AccountManager.CurrentCredType;
-        GitHubToken                                 = App.Settings.GitHubToken ?? string.Empty;
 
         ReplaceAddonEntries(App.Settings.AddonList ?? []);
         RefreshGamePathWarning();
@@ -345,7 +334,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
                 settings.AdditionalLaunchArgs                 = LaunchArgs;
                 settings.DPIAwareness                         = dpiAwareness;
                 settings.SpeedLimitBytes                      = speedLimitBytes;
-                settings.GitHubToken                          = GitHubToken;
                 settings.CredType                             = credTypeApplyResult.AppliedCredType;
             }
         );
@@ -355,57 +343,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         SettingsSaved?.Invoke(this, EventArgs.Empty);
         return true;
     }
-
-    public async Task IdentifyTokenAsync()
-    {
-        try
-        {
-            using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
-
-            if (!string.IsNullOrWhiteSpace(GitHubToken))
-                httpClient.DefaultRequestHeaders.Authorization = new("Bearer", GitHubToken);
-
-            var     response = await httpClient.GetAsync(Links.GITHUB_API_RATE_LIMIT_URL);
-            var     json     = await response.Content.ReadAsStringAsync();
-            dynamic parsed   = JObject.Parse(json);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _dialogService.ShowMessage
-                (
-                    $"获取 GitHub API 额度失败，请检查 Token 是否正确。\n{parsed.message}",
-                    "XIVLauncherCN (Soil)",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                );
-                return;
-            }
-
-            int remaining      = parsed.resources.core.remaining;
-            int limit          = parsed.resources.core.limit;
-            int resetTimestamp = parsed.resources.core.reset;
-            var resetTime      = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp).LocalDateTime;
-            var sourceText     = string.IsNullOrWhiteSpace(GitHubToken) ? "当前 IP" : "当前 Token";
-
-            _dialogService.ShowMessage
-            (
-                $"{sourceText} 的可用额度为 {remaining} / {limit}，重置时间：{resetTime:HH:mm:ss}",
-                "XIVLauncherCN (Soil)"
-            );
-        }
-        catch (Exception ex)
-        {
-            _dialogService.ShowMessage
-            (
-                $"获取 GitHub API 额度失败。\n{ex}",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
-        }
-    }
-
+    
     public void AddAddon()
     {
         var result = _dialogService.ShowGenericAddonSetup();

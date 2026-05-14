@@ -280,15 +280,6 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     #region 高级/开发配置
 
     /// <summary>
-    ///     GitHub Token，用于 API 访问
-    /// </summary>
-    public string GitHubToken
-    {
-        get;
-        set => Set(ref field, value);
-    } = string.Empty;
-
-    /// <summary>
     ///     版本升级级别
     /// </summary>
     public int VersionUpgradeLevel

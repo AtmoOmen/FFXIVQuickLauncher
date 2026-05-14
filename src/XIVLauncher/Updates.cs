@@ -1,13 +1,11 @@
 #if !XL_NOAUTOUPDATE
 using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
 using Velopack;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Util;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
 using XIVLauncher.Windows;
@@ -34,7 +32,6 @@ internal class Updates
             var updateSource = new GitHubSource
             (
                 Links.REPO_URL,
-                settings.GitHubToken,
                 true,
                 Links.GITHUB_PROXY_BASE_URL,
                 new XLHttpClientFileDownloader()

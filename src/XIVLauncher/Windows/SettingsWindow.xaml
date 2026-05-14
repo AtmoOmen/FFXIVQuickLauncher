@@ -261,33 +261,6 @@
                             </StackPanel>
                         </materialDesign:Card>
 
-                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="高级"
-                                   Style="{StaticResource MaterialDesignHeadline5TextBlock}" FontWeight="Medium"
-                                   Margin="0,24,0,16" />
-
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                               Text="GitHub Access Token" FontSize="15" />
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                               Text="用于启动器更新用, 建议填入不包含任何权限的令牌" Opacity="0.7" FontSize="12" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <TextBox Width="200" VerticalAlignment="Center"
-                                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                             Text="{Binding GitHubToken, UpdateSourceTrigger=PropertyChanged}"
-                                             materialDesign:HintAssist.Hint="Token" />
-                                    <Button Content="查询额度" Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            Command="{Binding IdentifyTokenCommand}" Margin="16,0,0,0" />
-                                </StackPanel>
-                            </Grid>
-                        </materialDesign:Card>
-
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

@@ -1,3 +1,4 @@
+#if !XL_NOAUTOUPDATE
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +19,6 @@ namespace XIVLauncher.Support;
 public class GitHubSource
 (
     string           repoUrl,
-    string?          accessToken,
     bool             prerelease,
     string           proxyBaseUrl,
     IFileDownloader? downloader = null
@@ -186,9 +186,6 @@ public class GitHubSource
             ["Accept"] = accept
         };
 
-        if (!string.IsNullOrWhiteSpace(accessToken))
-            headers["Authorization"] = $"Bearer {accessToken}";
-
         return headers;
     }
 
@@ -232,3 +229,4 @@ public class GitHubSource
         }
     }
 }
+#endif
