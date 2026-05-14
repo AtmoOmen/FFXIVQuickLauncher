@@ -17,7 +17,15 @@ namespace XIVLauncher.Common;
 
 public class DalamudRunner : IDalamudRunner
 {
-    public static void Inject(FileInfo runner, int gamePid, IDictionary<string, string> environment, DalamudStartInfo startInfo, bool safeMode = false, bool noThirdPlugins = false)
+    public static void Inject
+    (
+        FileInfo                    runner,
+        int                         gamePid,
+        IDictionary<string, string> environment,
+        DalamudStartInfo            startInfo,
+        bool                        safeMode       = false,
+        bool                        noThirdPlugins = false
+    )
     {
         var launchArguments = new List<string>
         {
@@ -28,7 +36,7 @@ public class DalamudRunner : IDalamudRunner
             DalamudInjectorArgs.LoggingPath(startInfo.LoggingPath),
             DalamudInjectorArgs.PluginDirectory(startInfo.PluginDirectory),
             DalamudInjectorArgs.AssetDirectory(startInfo.AssetDirectory),
-            DalamudInjectorArgs.ClientLanguage((int)startInfo.Language),
+            DalamudInjectorArgs.ClientLanguage(4), // 简体中文
             DalamudInjectorArgs.DelayInitialize(startInfo.DelayInitializeMs),
             DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData))),
             DalamudInjectorArgs.LauncherDirectory(startInfo.LauncherDirectory)
@@ -106,7 +114,7 @@ public class DalamudRunner : IDalamudRunner
             DalamudInjectorArgs.LoggingPath(dalamudStartInfo.LoggingPath),
             DalamudInjectorArgs.PluginDirectory(dalamudStartInfo.PluginDirectory),
             DalamudInjectorArgs.AssetDirectory(dalamudStartInfo.AssetDirectory),
-            DalamudInjectorArgs.ClientLanguage((int)dalamudStartInfo.Language),
+            DalamudInjectorArgs.ClientLanguage(4), // 简体中文
             DalamudInjectorArgs.DelayInitialize(dalamudStartInfo.DelayInitializeMs),
             DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(dalamudStartInfo.TroubleshootingPackData))),
             DalamudInjectorArgs.LauncherDirectory(dalamudStartInfo.LauncherDirectory)

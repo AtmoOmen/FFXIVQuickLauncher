@@ -9,7 +9,6 @@ public sealed class DalamudStartInfo
 
     public string         PluginDirectory;
     public string         AssetDirectory;
-    public ClientLanguage Language;
     public int            DelayInitializeMs;
 
     public string GameVersion;

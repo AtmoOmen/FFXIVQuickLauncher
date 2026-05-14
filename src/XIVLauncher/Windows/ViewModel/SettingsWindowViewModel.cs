@@ -17,7 +17,6 @@ using XIVLauncher.Common.Addon.Implementations;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Util;
-using XIVLauncher.Settings;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Xaml;
@@ -26,8 +25,6 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 {
-    public List<GenericCombinedData<LauncherLanguage>> LauncherLanguageList { get; }
-
     public ObservableCollection<AddonEntry> AddonEntries { get; } = [];
 
     public ObservableCollection<CredTypeOptionItem> CredTypeOptions { get; } = [];
@@ -79,24 +76,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         get;
         set => SetProperty(ref field, value);
     } = string.Empty;
-
-    public LauncherLanguage LauncherLanguage
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            LauncherLanguageNoticeVisible = App.Settings.LauncherLanguage != value;
-        }
-    } = LauncherLanguage.SimplifiedChinese;
-
-    public bool LauncherLanguageNoticeVisible
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
 
     public string GitHubToken
     {
@@ -262,22 +241,10 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     private readonly IDialogService         _dialogService;
     private readonly IExternalLaunchService _externalLaunchService;
 
-    private static readonly List<string> LauncherLanguageStrings =
-    [
-        "简体中文",
-        "繁體中文"
-    ];
-
     internal SettingsWindowViewModel(IDialogService? dialogService = null, IExternalLaunchService? externalLaunchService = null)
     {
         _dialogService         = dialogService         ?? new DialogService();
         _externalLaunchService = externalLaunchService ?? new ExternalLaunchService();
-
-        LauncherLanguageList =
-            LauncherLanguageStrings
-                .Zip(Enum.GetValues<LauncherLanguage>())
-                .Select(pair => new GenericCombinedData<LauncherLanguage> { Display = pair.First, Value = pair.Second })
-                .ToList();
 
         identifyTokenCommand        = new AsyncCommand(_ => IdentifyTokenAsync());
         addAddonCommand             = new SyncCommand(_ => AddAddon());
@@ -299,8 +266,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         GamePath  = App.Settings.GamePath?.FullName ?? string.Empty;
         PatchPath = patchPath.FullName;
 
-        LauncherLanguage                            = LauncherLanguage.SimplifiedChinese;
-        LauncherLanguageNoticeVisible               = false;
         AskBeforePatching                           = App.Settings.AskBeforePatchInstall;
         ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherWhenGameExit;
         KeepPatches                                 = App.Settings.KeepPatches;
@@ -368,7 +333,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
             {
                 settings.GamePath                             = gamePath;
                 settings.PatchPath                            = patchPath;
-                settings.LauncherLanguage                     = LauncherLanguage.SimplifiedChinese;
                 settings.AddonList                            = addonEntries;
                 settings.AskBeforePatchInstall                = AskBeforePatching;
                 settings.ExitLauncherWhenGameExit             = ExitLauncherAfterGameExit;
@@ -578,7 +542,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         {
             if (!string.IsNullOrWhiteSpace(GamePath) && !GameHelpers.LetChoosePath(GamePath))
                 GamePathWarningMessage = "请选择游戏根目录，不要直接选到 Game 或 boot 子目录。";
-            else if (!string.IsNullOrWhiteSpace(GamePath) && GameHelpers.CanMightNotBeInternationalClient(GamePath) && App.Settings.Language != ClientLanguage.ChineseSimplified)
+            else if (!string.IsNullOrWhiteSpace(GamePath) && GameHelpers.CanMightNotBeInternationalClient(GamePath))
                 GamePathWarningMessage = "当前路径看起来不像国际服客户端，请确认选择的是正确目录。";
             else
                 GamePathWarningMessage = string.Empty;

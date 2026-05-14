@@ -13,7 +13,6 @@ public class DalamudLauncher
     DirectoryInfo     gamePath,
     DirectoryInfo     configDirectory,
     DirectoryInfo     logPath,
-    ClientLanguage    clientLanguage,
     int               injectionDelay,
     bool              fakeLogin,
     bool              noPlugin,
@@ -47,7 +46,7 @@ public class DalamudLauncher
 
     public void Inject(int gamePid, bool safeMode = false)
     {
-        Log.Information("[HOOKS] DalamudLauncher::Run(gp:{0}, cl:{1})", gamePath.FullName, clientLanguage);
+        Log.Information("[HOOKS] DalamudLauncher::Run(gp:{0})", gamePath.FullName);
 
         var ingamePluginPath = Path.Combine(configDirectory.FullName, "installedPlugins");
 
@@ -55,7 +54,6 @@ public class DalamudLauncher
 
         var startInfo = new DalamudStartInfo
         {
-            Language                = clientLanguage,
             PluginDirectory         = ingamePluginPath,
             ConfigurationPath       = DalamudSettings.GetConfigPath(configDirectory),
             LoggingPath             = logPath.FullName,
@@ -75,7 +73,7 @@ public class DalamudLauncher
             DalamudInjectorArgs.LoggingPath(startInfo.LoggingPath),
             DalamudInjectorArgs.PluginDirectory(startInfo.PluginDirectory),
             DalamudInjectorArgs.AssetDirectory(startInfo.AssetDirectory),
-            DalamudInjectorArgs.ClientLanguage((int)startInfo.Language),
+            DalamudInjectorArgs.ClientLanguage(4), // 简体中文
             DalamudInjectorArgs.DelayInitialize(startInfo.DelayInitializeMs),
             DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData)))
         };
@@ -108,7 +106,7 @@ public class DalamudLauncher
 
     public Process Run(FileInfo gameExe, string gameArgs, IDictionary<string, string> environment)
     {
-        Log.Information("[HOOKS] DalamudLauncher::Run(gp:{0}, cl:{1})", gamePath.FullName, clientLanguage);
+        Log.Information("[Dalamud Launcher] 开始运行, 游戏路径: {0}", gamePath.FullName);
 
         var ingamePluginPath = Path.Combine(configDirectory.FullName, "installedPlugins");
 
@@ -116,7 +114,6 @@ public class DalamudLauncher
 
         var startInfo = new DalamudStartInfo
         {
-            Language                = clientLanguage,
             PluginDirectory         = ingamePluginPath,
             ConfigurationPath       = DalamudSettings.GetConfigPath(configDirectory),
             LoggingPath             = logPath.FullName,

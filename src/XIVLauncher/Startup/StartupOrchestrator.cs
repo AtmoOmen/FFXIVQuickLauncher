@@ -37,7 +37,6 @@ public class StartupOrchestrator
     };
 
     private CommandLineOptions commandLineOptions = new();
-    private FileInfo?          dalamudRunnerOverride;
     private LoadingDialog?     updateWindow;
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
@@ -135,16 +134,7 @@ public class StartupOrchestrator
             if (result.Errors.Any())
                 MessageBox.Show(helpWriter.ToString(), "帮助");
 
-            commandLineOptions = result.Value ?? new CommandLineOptions();
-
-            if (!string.IsNullOrEmpty(commandLineOptions.RoamingPath))
-                Paths.OverrideRoamingPath(commandLineOptions.RoamingPath);
-
-            if (!string.IsNullOrEmpty(commandLineOptions.RunnerOverride))
-                dalamudRunnerOverride = new FileInfo(commandLineOptions.RunnerOverride);
-
-            if (commandLineOptions.DoGenerateLocalizables)
-                Environment.Exit(0);
+            commandLineOptions = result.Value ?? new();
         }
         catch (Exception ex)
         {
@@ -177,9 +167,6 @@ public class StartupOrchestrator
                         settings.CurrentAccountID = commandLineOptions.AccountName;
                         Log.Verbose("账号覆盖: '{AccountName}'", commandLineOptions.AccountName);
                     }
-
-                    if (commandLineOptions.ClientLanguage != null)
-                        settings.Language = ClientLanguage.ChineseSimplified;
                 }
             );
         }
@@ -310,9 +297,6 @@ public class StartupOrchestrator
                 new(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
                 context.Settings.GitHubToken
             );
-
-            if (dalamudRunnerOverride != null)
-                context.DalamudUpdater.RunnerOverride = dalamudRunnerOverride;
 
             var dalamudWindowThread = new Thread(StartDalamudOverlayThread);
             dalamudWindowThread.SetApartmentState(ApartmentState.STA);

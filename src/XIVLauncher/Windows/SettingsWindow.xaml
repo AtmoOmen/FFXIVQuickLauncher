@@ -3,7 +3,6 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:addon="clr-namespace:XIVLauncher.Common.Addon;assembly=XIVLauncher.Common"
-    xmlns:c="clr-namespace:CalcBinding;assembly=CalcBinding"
     xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -298,19 +297,6 @@
                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="一般"
                                    Style="{StaticResource MaterialDesignHeadline5TextBlock}" FontWeight="Medium"
                                    Margin="0,0,0,16" />
-
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}"
-                                             Visibility="{c:Binding LauncherLanguageNoticeVisible, FalseToVisibility=Collapsed}"
-                                             Background="#40FF4500">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="AlertCircleOutline" Margin="0,0,12,0"
-                                                         VerticalAlignment="Center" Width="24" Height="24"
-                                                         Foreground="OrangeRed" />
-                                <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                           Text="修改启动器语言后需要重新启动 XIVLauncher 才会生效" VerticalAlignment="Center"
-                                           FontSize="15" />
-                            </StackPanel>
-                        </materialDesign:Card>
 
                         <materialDesign:Card Style="{StaticResource SettingCardStyle}">
                             <StackPanel>

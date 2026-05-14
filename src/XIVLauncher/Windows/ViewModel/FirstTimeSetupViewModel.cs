@@ -86,7 +86,6 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
                 (settings =>
                     {
                         settings.GamePath       = new DirectoryInfo(GamePath);
-                        settings.Language       = ClientLanguage.ChineseSimplified;
                         settings.DalamudEnabled = EnableDalamud;
                         settings.AddonList      = [];
                     }

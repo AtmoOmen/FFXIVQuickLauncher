@@ -63,15 +63,6 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     } = string.Empty;
 
     /// <summary>
-    ///     游戏客户端语言
-    /// </summary>
-    public ClientLanguage Language
-    {
-        get;
-        set => Set(ref field, value);
-    } = ClientLanguage.ChineseSimplified;
-
-    /// <summary>
     ///     选中的登录方式
     /// </summary>
     public LoginType SelectedLoginType
@@ -274,15 +265,6 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     #endregion
 
     #region 启动器界面配置
-
-    /// <summary>
-    ///     启动器界面语言
-    /// </summary>
-    public LauncherLanguage LauncherLanguage
-    {
-        get;
-        set => Set(ref field, value);
-    } = LauncherLanguage.SimplifiedChinese;
 
     /// <summary>
     ///     主窗口位置和状态
