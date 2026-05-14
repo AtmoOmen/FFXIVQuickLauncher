@@ -8,9 +8,9 @@ using System.Windows;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
-using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Common.PlatformAbstractions;
+using XIVLauncher.Dalamud;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel.MainWindow.Factories;
 
@@ -181,7 +181,7 @@ public sealed class GameLaunchService
     {
         try
         {
-            App.DalamudUpdater.Run(true);
+            App.Dalamud.RunUpdater(true);
             var dalamudStatus = dalamudLauncher.HoldForUpdate(gamePath);
             return dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
         }

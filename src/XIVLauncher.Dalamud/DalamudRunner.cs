@@ -1,19 +1,15 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using Microsoft.Win32.SafeHandles;
 using Newtonsoft.Json;
 using PInvoke;
 using Serilog;
-using XIVLauncher.Common.Dalamud;
-using XIVLauncher.Common.PlatformAbstractions;
+using XIVLauncher.Common;
+using Win32Exception = System.ComponentModel.Win32Exception;
 
-namespace XIVLauncher.Common;
+namespace XIVLauncher.Dalamud;
 
 public class DalamudRunner : IDalamudRunner
 {
@@ -36,7 +32,7 @@ public class DalamudRunner : IDalamudRunner
             DalamudInjectorArgs.LoggingPath(startInfo.LoggingPath),
             DalamudInjectorArgs.PluginDirectory(startInfo.PluginDirectory),
             DalamudInjectorArgs.AssetDirectory(startInfo.AssetDirectory),
-            DalamudInjectorArgs.ClientLanguage(4), // 简体中文
+            DalamudInjectorArgs.ClientLanguage(4),
             DalamudInjectorArgs.DelayInitialize(startInfo.DelayInitializeMs),
             DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData))),
             DalamudInjectorArgs.LauncherDirectory(startInfo.LauncherDirectory)
@@ -114,7 +110,7 @@ public class DalamudRunner : IDalamudRunner
             DalamudInjectorArgs.LoggingPath(dalamudStartInfo.LoggingPath),
             DalamudInjectorArgs.PluginDirectory(dalamudStartInfo.PluginDirectory),
             DalamudInjectorArgs.AssetDirectory(dalamudStartInfo.AssetDirectory),
-            DalamudInjectorArgs.ClientLanguage(4), // 简体中文
+            DalamudInjectorArgs.ClientLanguage(4),
             DalamudInjectorArgs.DelayInitialize(dalamudStartInfo.DelayInitializeMs),
             DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(dalamudStartInfo.TroubleshootingPackData))),
             DalamudInjectorArgs.LauncherDirectory(dalamudStartInfo.LauncherDirectory)
@@ -265,6 +261,9 @@ public class DalamudRunner : IDalamudRunner
                 Log.Verbose("=> Dalamud.Injector output: {Output}", output);
                 var dalamudConsoleOutput = JsonConvert.DeserializeObject<DalamudConsoleOutput>(output);
 
+                if (dalamudConsoleOutput == null)
+                    throw new JsonReaderException("Unable to deserialize Dalamud console output");
+
                 if (dalamudConsoleOutput.Handle == 0)
                 {
                     Log.Warning($"=> Dalamud returned NULL process handle, attempting to recover by creating a new one from pid {dalamudConsoleOutput.Pid}...");
@@ -367,7 +366,7 @@ public class DalamudRunner : IDalamudRunner
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindowVisible(IntPtr hWnd);
 
-    private static Process GetInheritableCurrentProcessHandle()
+    private static Process? GetInheritableCurrentProcessHandle()
     {
         if (!DuplicateHandle
             (
@@ -389,7 +388,7 @@ public class DalamudRunner : IDalamudRunner
 
     private static IDictionary<string, string> SafeGetEnvVars()
     {
-        IDictionary envVars = Environment.GetEnvironmentVariables();
+        var envVars = Environment.GetEnvironmentVariables();
 
         var envDict = new DictionaryWrapper
         (
@@ -400,37 +399,37 @@ public class DalamudRunner : IDalamudRunner
             )
         );
 
-        IDictionaryEnumerator e = envVars.GetEnumerator();
+        var e = envVars.GetEnumerator();
 
         Debug.Assert(!(e is IDisposable), "Environment.GetEnvironmentVariables should not be IDisposable.");
 
         while (e.MoveNext())
         {
-            DictionaryEntry entry = e.Entry;
+            var entry = e.Entry;
             envDict.Add((string)entry.Key, (string?)entry.Value);
         }
 
-        return envDict;
+        return envDict.ToDictionary(pair => pair.Key, pair => pair.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase);
     }
 
     private sealed class DictionaryWrapper : IDictionary<string, string?>, IDictionary
     {
-        public ICollection<string>  Keys   => _contents.Keys;
-        public ICollection<string?> Values => _contents.Values;
+        public ICollection<string>  Keys   => contents.Keys;
+        public ICollection<string?> Values => contents.Values;
 
-        public int Count => _contents.Count;
+        public int Count => contents.Count;
 
-        public           bool                        IsReadOnly     => ((IDictionary)_contents).IsReadOnly;
-        public           bool                        IsSynchronized => ((IDictionary)_contents).IsSynchronized;
-        public           bool                        IsFixedSize    => ((IDictionary)_contents).IsFixedSize;
-        public           object                      SyncRoot       => ((IDictionary)_contents).SyncRoot;
-        private readonly Dictionary<string, string?> _contents;
+        public           bool                        IsReadOnly     => ((IDictionary)contents).IsReadOnly;
+        public           bool                        IsSynchronized => ((IDictionary)contents).IsSynchronized;
+        public           bool                        IsFixedSize    => ((IDictionary)contents).IsFixedSize;
+        public           object                      SyncRoot       => ((IDictionary)contents).SyncRoot;
+        private readonly Dictionary<string, string?> contents;
 
-        ICollection IDictionary.Keys   => _contents.Keys;
-        ICollection IDictionary.Values => _contents.Values;
+        ICollection IDictionary.Keys   => contents.Keys;
+        ICollection IDictionary.Values => contents.Values;
 
         public DictionaryWrapper(Dictionary<string, string?> contents) =>
-            _contents = contents;
+            this.contents = contents;
 
         public void Add(string key, string? value) => this[key] = value;
 
@@ -438,23 +437,23 @@ public class DalamudRunner : IDalamudRunner
 
         public void Add(object key, object? value) => Add((string)key, (string?)value);
 
-        public void Clear() => _contents.Clear();
+        public void Clear() => contents.Clear();
 
         public bool Contains(KeyValuePair<string, string?> item) =>
-            _contents.ContainsKey(item.Key) && _contents[item.Key] == item.Value;
+            contents.ContainsKey(item.Key) && contents[item.Key] == item.Value;
 
         public bool Contains(object key) => ContainsKey((string)key);
 
-        public bool ContainsKey(string key) => _contents.ContainsKey(key);
+        public bool ContainsKey(string key) => contents.ContainsKey(key);
 
-        public bool ContainsValue(string? value) => _contents.ContainsValue(value);
+        public bool ContainsValue(string? value) => contents.ContainsValue(value);
 
         public void CopyTo(KeyValuePair<string, string?>[] array, int arrayIndex) =>
-            ((IDictionary<string, string?>)_contents).CopyTo(array, arrayIndex);
+            ((IDictionary<string, string?>)contents).CopyTo(array, arrayIndex);
 
-        public void CopyTo(Array array, int index) => ((IDictionary)_contents).CopyTo(array, index);
+        public void CopyTo(Array array, int index) => ((IDictionary)contents).CopyTo(array, index);
 
-        public bool Remove(string key) => _contents.Remove(key);
+        public bool Remove(string key) => contents.Remove(key);
 
         public void Remove(object key) => Remove((string)key);
 
@@ -466,18 +465,18 @@ public class DalamudRunner : IDalamudRunner
             return Remove(item.Key);
         }
 
-        public bool TryGetValue(string key, out string? value) => _contents.TryGetValue(key, out value);
+        public bool TryGetValue(string key, out string? value) => contents.TryGetValue(key, out value);
 
-        public IEnumerator<KeyValuePair<string, string?>> GetEnumerator() => _contents.GetEnumerator();
+        public IEnumerator<KeyValuePair<string, string?>> GetEnumerator() => contents.GetEnumerator();
 
-        IEnumerator IEnumerable.GetEnumerator() => _contents.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => contents.GetEnumerator();
 
-        IDictionaryEnumerator IDictionary.GetEnumerator() => _contents.GetEnumerator();
+        IDictionaryEnumerator IDictionary.GetEnumerator() => ((IDictionary)contents).GetEnumerator();
 
         public string? this[string key]
         {
-            get => _contents[key];
-            set => _contents[key] = value;
+            get => contents[key];
+            set => contents[key] = value;
         }
 
         public object? this[object key]

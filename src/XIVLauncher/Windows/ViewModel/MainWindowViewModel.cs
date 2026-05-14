@@ -19,13 +19,13 @@ using XIVLauncher.Account;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.PlatformAbstractions;
 using XIVLauncher.Common.Util;
+using XIVLauncher.Dalamud;
 using XIVLauncher.Game;
 using XIVLauncher.GamePatchV3;
 using XIVLauncher.GamePatchV3.Update;
@@ -96,7 +96,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             () => CloseAccountSwitcher(false)
         );
         AccountSwitcherButtonCommand = new SyncCommand(ExecuteAccountSwitcherButton);
-        refreshDalamudInfoCommand    = new SyncCommand(_ => RefreshDalamudInfo(), () => Settings.EnableHooks && App.DalamudUpdater.State != DalamudUpdater.DownloadState.Unknown);
+        refreshDalamudInfoCommand    = new SyncCommand(_ => RefreshDalamudInfo(), () => Settings.EnableHooks && App.Dalamud.Updater.State != DalamudUpdater.DownloadState.Unknown);
         LoginPage = new LoginPageViewModel
         (
             () => IsLoggingIn,
@@ -122,7 +122,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         LoginPage.RefreshCommandStates();
         InjectPage.RefreshCommandStates();
         UpdateDalamudStatusText();
-        App.DalamudUpdater.StatusChanged += DalamudUpdaterStatusChanged;
+        App.Dalamud.StatusChanged += DalamudUpdaterStatusChanged;
         Settings.SettingsSaved += (_, _) =>
         {
             InjectPage.ReloadSettings();
@@ -1300,7 +1300,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         if (App.Settings.DalamudEnabled && !forceNoDalamud)
             dalamudOk = EnsureDalamudUpdate(dalamudLauncher, App.Settings.GamePath, false);
 
-        var gameRunner = new GameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
+        var gameRunner = new GameRunner(dalamudLauncher, dalamudOk, App.Dalamud.Updater.Runtime);
         stopwatch.Stop();
 
         if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
@@ -1470,7 +1470,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     {
         try
         {
-            App.DalamudUpdater.Run(true);
+            App.Dalamud.RunUpdater(true);
             var dalamudStatus = dalamudLauncher.HoldForUpdate(gamePath);
             return dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
         }
@@ -1531,9 +1531,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     #region 杂项
 
     private void RefreshDalamudInfo() =>
-        App.DalamudUpdater.Run(true);
+        App.Dalamud.RunUpdater(true);
 
-    private void DalamudUpdaterStatusChanged(DalamudUpdater updater)
+    private void DalamudUpdaterStatusChanged(DalamudStatusSnapshot _)
     {
         if (Window.Dispatcher == Dispatcher.CurrentDispatcher)
         {
@@ -1546,7 +1546,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     private void UpdateDalamudStatusText()
     {
-        var updater = App.DalamudUpdater;
+        var updater = App.Dalamud.GetStatusSnapshot();
 
         DalamudStatusText = updater.State switch
         {
@@ -1561,7 +1561,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private void RefreshDalamudInfoCommandState() =>
         refreshDalamudInfoCommand.RaiseCanExecuteChanged();
 
-    private static string GetDalamudLoadingText(DalamudUpdater updater)
+    private static string GetDalamudLoadingText(DalamudStatusSnapshot updater)
     {
         if (updater.LoadingProgress is { } progress)
             return $"Dalamud 正在加载 {progress.ToString("0.##", CultureInfo.InvariantCulture)}%";
@@ -1691,7 +1691,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public void OnWindowClosed(object? sender, object args)
     {
-        App.DalamudUpdater.StatusChanged -= DalamudUpdaterStatusChanged;
+        App.Dalamud.StatusChanged -= DalamudUpdaterStatusChanged;
         InjectPage.StopRefreshing(true);
         CancelLogin();
         Application.Current.Shutdown();

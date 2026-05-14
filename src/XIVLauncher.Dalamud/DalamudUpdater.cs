@@ -9,7 +9,7 @@ using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Runtime;
 using XIVLauncher.Common.Util;
 
-namespace XIVLauncher.Common.Dalamud;
+namespace XIVLauncher.Dalamud;
 
 public class DalamudUpdater
 {
@@ -25,17 +25,14 @@ public class DalamudUpdater
         }
     } = DownloadState.Unknown;
 
-    public Exception?                    EnsurementException   { get; private set; }
-    public FileInfo?                     RunnerOverride        { get; set; }
-    public DirectoryInfo?                AssetDirectory        { get; private set; }
-    public string                        LoadingDetail         { get; private set; } = string.Empty;
-    public long?                         LoadingTotal          { get; private set; }
-    public long                          LoadingDownloaded     { get; private set; }
-    public double?                       LoadingProgress       { get; private set; }
-    public Action?                       ShowLoadingCallback   { get; set; }
-    public Action?                       HideLoadingCallback   { get; set; }
-    public Action<string>?               SetLoadingMessage     { get; set; }
-    public Action<long?, long, double?>? ReportLoadingProgress { get; set; }
+    public Exception?                    EnsurementException { get; private set; }
+    public FileInfo?                     RunnerOverride      { get; set; }
+    public DirectoryInfo?                AssetDirectory      { get; private set; }
+    public string                        LoadingDetail       { get; private set; } = string.Empty;
+    public long?                         LoadingTotal        { get; private set; }
+    public long                          LoadingDownloaded   { get; private set; }
+    public double?                       LoadingProgress     { get; private set; }
+    public IDalamudProgressSink?         ProgressSink        { get; set; }
     public event Action<DalamudUpdater>? StatusChanged;
     public static string                 OnlineHash { get; private set; } = string.Empty;
     public static string                 Version    { get; private set; } = string.Empty;
@@ -227,7 +224,7 @@ public class DalamudUpdater
 
         try
         {
-            var assetResult = await AssetManager.EnsureAssets(this, assetDirectory).ConfigureAwait(true);
+            var assetResult = await DalamudAssetManager.EnsureAssets(this, assetDirectory).ConfigureAwait(true);
             AssetDirectory = assetResult.AssetDir;
             Log.Information("[DUPDATE] 资源文件验证完成: {Path}", AssetDirectory.FullName);
         }
@@ -789,22 +786,22 @@ public class DalamudUpdater
     private void SetLoadingDetail(string message)
     {
         LoadingDetail = message;
-        SetLoadingMessage?.Invoke(message);
+        ProgressSink?.SetLoadingMessage(message);
         NotifyStatusChanged();
     }
 
     public void ShowLoading() =>
-        ShowLoadingCallback?.Invoke();
+        ProgressSink?.ShowLoading();
 
     public void HideLoading() =>
-        HideLoadingCallback?.Invoke();
+        ProgressSink?.HideLoading();
 
     private void ReportLoadingProgressCore(long? size, long downloaded, double? progress)
     {
         LoadingTotal      = size;
         LoadingDownloaded = downloaded;
         LoadingProgress   = progress;
-        ReportLoadingProgress?.Invoke(size, downloaded, progress);
+        ProgressSink?.ReportLoadingProgress(size, downloaded, progress);
         NotifyStatusChanged();
     }
 

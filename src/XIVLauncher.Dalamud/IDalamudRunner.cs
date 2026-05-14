@@ -1,7 +1,6 @@
-﻿using System.Diagnostics;
-using XIVLauncher.Common.Dalamud;
+using System.Diagnostics;
 
-namespace XIVLauncher.Common.PlatformAbstractions;
+namespace XIVLauncher.Dalamud;
 
 public interface IDalamudRunner
 {

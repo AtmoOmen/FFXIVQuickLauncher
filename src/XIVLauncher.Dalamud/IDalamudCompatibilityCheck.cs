@@ -1,4 +1,4 @@
-namespace XIVLauncher.Common.PlatformAbstractions;
+namespace XIVLauncher.Dalamud;
 
 public interface IDalamudCompatibilityCheck
 {

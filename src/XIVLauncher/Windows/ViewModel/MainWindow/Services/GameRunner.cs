@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using Serilog;
-using XIVLauncher.Common.Dalamud;
+using XIVLauncher.Common;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.PlatformAbstractions;
+using XIVLauncher.Dalamud;
 
-namespace XIVLauncher.Common;
+namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
 
 public class GameRunner
 (

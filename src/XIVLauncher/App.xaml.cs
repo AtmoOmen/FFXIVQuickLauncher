@@ -9,8 +9,8 @@ using System.Windows;
 using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Util;
+using XIVLauncher.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Startup;
 using XIVLauncher.Windows;
@@ -41,12 +41,12 @@ public partial class App
         }
     }
 
-    public static DalamudUpdater DalamudUpdater
+    public static DalamudService Dalamud
     {
         get
         {
             var context = GetStartupContext();
-            return context.DalamudUpdater ?? throw new InvalidOperationException("Dalamud 更新器尚未初始化");
+            return context.Dalamud ?? throw new InvalidOperationException("Dalamud 服务尚未初始化");
         }
     }
 

@@ -8,9 +8,9 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Util;
 
-namespace XIVLauncher.Common.Dalamud;
+namespace XIVLauncher.Dalamud;
 
-public class AssetManager
+internal class DalamudAssetManager
 {
     public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir)
     {

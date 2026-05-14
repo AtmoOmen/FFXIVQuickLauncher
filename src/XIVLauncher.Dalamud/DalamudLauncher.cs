@@ -1,23 +1,23 @@
 using System.Diagnostics;
 using System.Text;
 using Serilog;
-using XIVLauncher.Common.PlatformAbstractions;
 
-namespace XIVLauncher.Common.Dalamud;
+namespace XIVLauncher.Dalamud;
 
 public class DalamudLauncher
 (
-    IDalamudRunner    runner,
-    DalamudUpdater    updater,
-    DalamudLoadMethod loadMethod,
-    DirectoryInfo     gamePath,
-    DirectoryInfo     configDirectory,
-    DirectoryInfo     logPath,
-    int               injectionDelay,
-    bool              fakeLogin,
-    bool              noPlugin,
-    bool              noThirdPlugin,
-    string            troubleshootingData
+    IDalamudRunner              runner,
+    DalamudUpdater              updater,
+    DalamudLoadMethod           loadMethod,
+    DirectoryInfo               gamePath,
+    DirectoryInfo               configDirectory,
+    DirectoryInfo               logPath,
+    int                         injectionDelay,
+    bool                        fakeLogin,
+    bool                        noPlugin,
+    bool                        noThirdPlugin,
+    string                      troubleshootingData,
+    IDalamudGameVersionProvider gameVersionProvider
 )
 {
     public DalamudInstallState HoldForUpdate(DirectoryInfo gamePathDir)
@@ -38,7 +38,7 @@ public class DalamudLauncher
             Thread.Yield();
         }
 
-        if (!updater.Runner.Exists)
+        if (updater.Runner == null || !updater.Runner.Exists)
             throw new DalamudRunnerException("Dalamud 本地注入文件不存在, 请重新启动 XIVLauncher 以开始完整性检测与下载流程");
 
         return DalamudInstallState.Ok;
@@ -52,16 +52,20 @@ public class DalamudLauncher
 
         Directory.CreateDirectory(ingamePluginPath);
 
+        if (updater.AssetDirectory == null || updater.Runner == null)
+            throw new DalamudRunnerException("Dalamud 资源尚未准备完成");
+
         var startInfo = new DalamudStartInfo
         {
             PluginDirectory         = ingamePluginPath,
-            ConfigurationPath       = DalamudSettings.GetConfigPath(configDirectory),
+            ConfigurationPath       = Path.Combine(configDirectory.FullName, "dalamudConfig.json"),
             LoggingPath             = logPath.FullName,
             AssetDirectory          = updater.AssetDirectory.FullName,
-            GameVersion             = Repository.Ffxiv.GetVer(gamePath),
-            WorkingDirectory        = updater.Runner.Directory?.FullName,
+            GameVersion             = gameVersionProvider.GetVersion(gamePath),
+            WorkingDirectory        = updater.Runner.Directory?.FullName ?? updater.Runner.DirectoryName ?? Environment.CurrentDirectory,
             DelayInitializeMs       = injectionDelay,
-            TroubleshootingPackData = troubleshootingData
+            TroubleshootingPackData = troubleshootingData,
+            LauncherDirectory       = Environment.CurrentDirectory
         };
 
         var launchArguments = new List<string>
@@ -73,9 +77,10 @@ public class DalamudLauncher
             DalamudInjectorArgs.LoggingPath(startInfo.LoggingPath),
             DalamudInjectorArgs.PluginDirectory(startInfo.PluginDirectory),
             DalamudInjectorArgs.AssetDirectory(startInfo.AssetDirectory),
-            DalamudInjectorArgs.ClientLanguage(4), // 简体中文
+            DalamudInjectorArgs.ClientLanguage(4),
             DalamudInjectorArgs.DelayInitialize(startInfo.DelayInitializeMs),
-            DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData)))
+            DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData))),
+            DalamudInjectorArgs.LauncherDirectory(startInfo.LauncherDirectory)
         };
 
         if (safeMode) launchArguments.Add("--no-plugin");
@@ -112,16 +117,20 @@ public class DalamudLauncher
 
         Directory.CreateDirectory(ingamePluginPath);
 
+        if (updater.AssetDirectory == null || updater.Runner == null)
+            throw new DalamudRunnerException("Dalamud 资源尚未准备完成");
+
         var startInfo = new DalamudStartInfo
         {
             PluginDirectory         = ingamePluginPath,
-            ConfigurationPath       = DalamudSettings.GetConfigPath(configDirectory),
+            ConfigurationPath       = Path.Combine(configDirectory.FullName, "dalamudConfig.json"),
             LoggingPath             = logPath.FullName,
             AssetDirectory          = updater.AssetDirectory.FullName,
-            GameVersion             = Repository.Ffxiv.GetVer(gamePath),
-            WorkingDirectory        = updater.Runner.Directory?.FullName,
+            GameVersion             = gameVersionProvider.GetVersion(gamePath),
+            WorkingDirectory        = updater.Runner.Directory?.FullName ?? updater.Runner.DirectoryName ?? Environment.CurrentDirectory,
             DelayInitializeMs       = injectionDelay,
-            TroubleshootingPackData = troubleshootingData
+            TroubleshootingPackData = troubleshootingData,
+            LauncherDirectory       = Environment.CurrentDirectory
         };
 
         if (loadMethod != DalamudLoadMethod.ACLonly)
@@ -149,7 +158,7 @@ public class DalamudLauncher
         if (loadMethod != DalamudLoadMethod.ACLonly)
             Log.Information("[HOOKS] Started dalamud!");
 
-        return process;
+        return process ?? throw new DalamudRunnerException("无法启动游戏进程");
     }
 
     public enum DalamudInstallState

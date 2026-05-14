@@ -1,6 +1,6 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 
-namespace XIVLauncher.Common.Dalamud;
+namespace XIVLauncher.Dalamud;
 
 public sealed class DalamudConsoleOutput
 {

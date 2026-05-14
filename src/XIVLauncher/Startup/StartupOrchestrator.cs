@@ -14,11 +14,11 @@ using Velopack;
 using XIVLauncher.Account;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Dalamud;
 #if !XL_NOUPDATE
 using XIVLauncher.Common.Http;
 #endif
 using XIVLauncher.Common.Support;
+using XIVLauncher.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
 using XIVLauncher.Windows;
@@ -38,6 +38,7 @@ public class StartupOrchestrator
 
     private CommandLineOptions commandLineOptions = new();
     private LoadingDialog?     updateWindow;
+    private StartupDalamudProgressSink? dalamudProgressSink;
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
@@ -291,23 +292,32 @@ public class StartupOrchestrator
     {
         try
         {
-            context.DalamudUpdater = new DalamudUpdater
-            (
-                new(Path.Combine(Paths.RoamingPath, "addon")),
-                new(Path.Combine(Paths.RoamingPath, "runtime")),
-                new(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
-                context.Settings.GitHubToken
-            );
-
             var dalamudWindowThread = new Thread(StartDalamudOverlayThread);
             dalamudWindowThread.SetApartmentState(ApartmentState.STA);
             dalamudWindowThread.IsBackground = true;
             dalamudWindowThread.Start();
 
-            while (context.DalamudUpdater.ShowLoadingCallback == null)
+            while (dalamudProgressSink == null)
                 Thread.Yield();
 
-            context.DalamudUpdater.Run();
+            context.Dalamud = new DalamudService
+            (
+                new DalamudHostPaths
+                (
+                    new(Path.Combine(Paths.RoamingPath, "addon")),
+                    new(Path.Combine(Paths.RoamingPath, "runtime")),
+                    new(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
+                    new(Path.Combine(Paths.RoamingPath, "dalamudConfig")),
+                    new(Path.Combine(Paths.RoamingPath, "logs")),
+                    new(Environment.CurrentDirectory)
+                ),
+                context.Settings.GitHubToken,
+                dalamudProgressSink,
+                new AppDalamudGameVersionProvider(),
+                new AppDalamudTroubleshootingProvider()
+            );
+
+            context.Dalamud.RunUpdater();
         }
         catch (Exception ex)
         {
@@ -320,10 +330,7 @@ public class StartupOrchestrator
     {
         var overlay = new LoadingDialog("正在更新 Dalamud 框架...", true);
         overlay.Hide();
-        context.DalamudUpdater.ShowLoadingCallback   = overlay.ShowDialog;
-        context.DalamudUpdater.HideLoadingCallback   = overlay.HideDialog;
-        context.DalamudUpdater.SetLoadingMessage     = overlay.SetMessage;
-        context.DalamudUpdater.ReportLoadingProgress = overlay.ReportProgress;
+        dalamudProgressSink = new StartupDalamudProgressSink(overlay);
 
         Dispatcher.Run();
     }

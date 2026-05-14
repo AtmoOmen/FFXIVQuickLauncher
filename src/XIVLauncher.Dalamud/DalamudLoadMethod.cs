@@ -1,4 +1,6 @@
-﻿namespace XIVLauncher.Common.Dalamud;
+using XIVLauncher.Common;
+
+namespace XIVLauncher.Dalamud;
 
 public enum DalamudLoadMethod
 {

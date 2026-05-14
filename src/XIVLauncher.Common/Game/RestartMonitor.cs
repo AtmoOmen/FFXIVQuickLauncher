@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Management;
 using System.Runtime.InteropServices;
 using Serilog;
-using XIVLauncher.Common.Dalamud;
 
 namespace XIVLauncher.Common.Game;
 
@@ -392,17 +391,17 @@ public class RestartMonitor
     }
 
     private static bool IsDalamudLaunchCommand(string commandLine) =>
-        commandLine.Contains($" {DalamudInjectorArgs.LAUNCH}", StringComparison.OrdinalIgnoreCase);
+        commandLine.Contains($" {DALAMUD_LAUNCH_ARGUMENT}", StringComparison.OrdinalIgnoreCase);
 
     private static RestartOptions ParseRestartOptions(string commandLine)
     {
-        if (commandLine.Contains(DalamudInjectorArgs.WITHOUT_DALAMUD, StringComparison.OrdinalIgnoreCase))
+        if (commandLine.Contains(DALAMUD_WITHOUT_ARGUMENT, StringComparison.OrdinalIgnoreCase))
             return new RestartOptions(true, false, false);
 
-        if (commandLine.Contains(DalamudInjectorArgs.NO_PLUGIN, StringComparison.OrdinalIgnoreCase))
+        if (commandLine.Contains(DALAMUD_NO_PLUGIN_ARGUMENT, StringComparison.OrdinalIgnoreCase))
             return new RestartOptions(false, false, true);
 
-        if (commandLine.Contains(DalamudInjectorArgs.NO_THIRD_PARTY, StringComparison.OrdinalIgnoreCase))
+        if (commandLine.Contains(DALAMUD_NO_THIRD_PARTY_ARGUMENT, StringComparison.OrdinalIgnoreCase))
             return new RestartOptions(false, true, false);
 
         return RestartOptions.Normal;
@@ -481,4 +480,9 @@ public class RestartMonitor
 
         return false;
     }
+
+    private const string DALAMUD_LAUNCH_ARGUMENT = "launch";
+    private const string DALAMUD_WITHOUT_ARGUMENT = "--without-dalamud";
+    private const string DALAMUD_NO_PLUGIN_ARGUMENT = "--no-plugin";
+    private const string DALAMUD_NO_THIRD_PARTY_ARGUMENT = "--no-3rd-plugin";
 }
