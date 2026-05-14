@@ -1303,4 +1303,9 @@ public class AccountManager
 
     private static string NormalizePresetRemark(string? remark) =>
         remark?.Trim() ?? string.Empty;
+    
+    private sealed class SQLiteTableColumn
+    {
+        public string name { get; set; } = string.Empty;
+    }
 }
