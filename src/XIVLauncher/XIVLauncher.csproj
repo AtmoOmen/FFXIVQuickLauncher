@@ -4,6 +4,7 @@
         <AssemblyTitle>XIVLauncherCN (Soil)</AssemblyTitle>
         <Description>Custom launcher for the most critically acclaimed MMO's CN server.</Description>
         <VersionPrefix>2.1.0</VersionPrefix>
+        <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -21,8 +22,8 @@
 
     <!-- Assets -->
     <ItemGroup>
-        <Resource Include="Resources\*.*"/>
-        <Resource Include="Resources\Fonts\*.ttf"/>
+        <Resource Include="Resources\*.*" />
+        <Resource Include="Resources\Fonts\*.ttf" />
     </ItemGroup>
 
     <PropertyGroup>
@@ -41,10 +42,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Resource Remove="Resources\aria2c-xl.exe"/>
-        <Resource Remove="Resources\CHANGELOG.txt"/>
-        <Resource Remove="Resources\COPYING.aria2"/>
-        <Resource Remove="Resources\LICENSE.txt"/>
+        <Resource Remove="Resources\aria2c-xl.exe" />
+        <Resource Remove="Resources\CHANGELOG.txt" />
+        <Resource Remove="Resources\COPYING.aria2" />
+        <Resource Remove="Resources\LICENSE.txt" />
     </ItemGroup>
 
     <ItemGroup>
@@ -63,49 +64,49 @@
         <Content Include="Resources\LICENSE.txt">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <None Remove="Resources\7zr.exe"/>
+        <None Remove="Resources\7zr.exe" />
         <Content Include="Resources\7zr.exe">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="CalcBinding"/>
-        <PackageReference Include="Downloader"/>
-        <PackageReference Include="Dragablz"/>
-        <PackageReference Include="Extended.Wpf.Toolkit"/>
-        <PackageReference Include="MahApps.Metro.IconPacks"/>
-        <PackageReference Include="MaterialDesignThemes"/>
-        <PackageReference Include="MdXaml"/>
-        <PackageReference Include="MdXaml.Plugins"/>
-        <PackageReference Include="Microsoft.WindowsAPICodePack-Shell"/>
-        <PackageReference Include="Serilog"/>
-        <PackageReference Include="Serilog.Sinks.Async"/>
-        <PackageReference Include="Serilog.Sinks.Console"/>
-        <PackageReference Include="Serilog.Sinks.File"/>
-        <PackageReference Include="SharedMemory"/>
-        <PackageReference Include="Stylet"/>
-        <PackageReference Include="Velopack"/>
+        <PackageReference Include="CalcBinding" />
+        <PackageReference Include="Downloader" />
+        <PackageReference Include="Dragablz" />
+        <PackageReference Include="Extended.Wpf.Toolkit" />
+        <PackageReference Include="MahApps.Metro.IconPacks" />
+        <PackageReference Include="MaterialDesignThemes" />
+        <PackageReference Include="MdXaml" />
+        <PackageReference Include="MdXaml.Plugins" />
+        <PackageReference Include="Microsoft.WindowsAPICodePack-Shell" />
+        <PackageReference Include="Serilog" />
+        <PackageReference Include="Serilog.Sinks.Async" />
+        <PackageReference Include="Serilog.Sinks.Console" />
+        <PackageReference Include="Serilog.Sinks.File" />
+        <PackageReference Include="SharedMemory" />
+        <PackageReference Include="Stylet" />
+        <PackageReference Include="Velopack" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\XIVLauncher.Account\XIVLauncher.Account.csproj" />
-        <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj"/>
-        <ProjectReference Include="..\XIVLauncher.CompanionApp\XIVLauncher.CompanionApp.csproj"/>
-        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
-        <ProjectReference Include="..\XIVLauncher.DCTravel\XIVLauncher.DCTravel.csproj"/>
-        <ProjectReference Include="..\XIVLauncher.Dalamud\XIVLauncher.Dalamud.csproj"/>
-        <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj"/>
-        <ProjectReference Include="..\XIVLauncher.Login\XIVLauncher.Login.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj" />
+        <ProjectReference Include="..\XIVLauncher.CompanionApp\XIVLauncher.CompanionApp.csproj" />
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />
+        <ProjectReference Include="..\XIVLauncher.DCTravel\XIVLauncher.DCTravel.csproj" />
+        <ProjectReference Include="..\XIVLauncher.Dalamud\XIVLauncher.Dalamud.csproj" />
+        <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj" />
+        <ProjectReference Include="..\XIVLauncher.Login\XIVLauncher.Login.csproj" />
     </ItemGroup>
 
     <Target Name="CopyVcdiffShimToOutput" AfterTargets="Build">
         <ItemGroup>
-            <VcdiffShimOutput Include="$(MSBuildProjectDirectory)\..\bin\VcdiffShim\**\*"/>
+            <VcdiffShimOutput Include="$(MSBuildProjectDirectory)\..\bin\VcdiffShim\**\*" />
         </ItemGroup>
 
-        <RemoveDir Directories="$(OutDir)VcdiffShim"/>
-        <Copy SourceFiles="@(VcdiffShimOutput)" DestinationFiles="@(VcdiffShimOutput->'$(OutDir)VcdiffShim\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true"/>
+        <RemoveDir Directories="$(OutDir)VcdiffShim" />
+        <Copy SourceFiles="@(VcdiffShimOutput)" DestinationFiles="@(VcdiffShimOutput-&gt;'$(OutDir)VcdiffShim\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     </Target>
 
     <!-- Git -->
@@ -115,10 +116,10 @@
             <VerFile>$(IntermediateOutputPath)gitver</VerFile>
         </PropertyGroup>
         <!-- write the hash to the temp file.-->
-        <Exec Command="git -C &quot;$(ProjectDir.Replace('\','\\'))&quot; describe --tags --long --always --dirty &gt; $(VerFile)"/>
+        <Exec Command="git -C &quot;$(ProjectDir.Replace('\','\\'))&quot; describe --tags --long --always --dirty &gt; $(VerFile)" />
         <!-- read the version into the GitVersion itemGroup-->
         <ReadLinesFromFile File="$(VerFile)">
-            <Output TaskParameter="Lines" ItemName="GitVersion"/>
+            <Output TaskParameter="Lines" ItemName="GitVersion" />
         </ReadLinesFromFile>
         <!-- Set the BuildHash property to contain the GitVersion, if it wasn't already set.-->
         <PropertyGroup>
@@ -132,7 +133,7 @@
         </PropertyGroup>
         <!-- includes the CustomAssemblyInfo for compilation into your project -->
         <ItemGroup>
-            <Compile Include="$(CustomAssemblyInfoFile)"/>
+            <Compile Include="$(CustomAssemblyInfoFile)" />
         </ItemGroup>
         <!-- defines the AssemblyMetadata attribute that will be written -->
         <ItemGroup>
@@ -147,7 +148,7 @@
             </AssemblyAttributes>
         </ItemGroup>
         <!-- writes the attribute to the customAssemblyInfo file -->
-        <WriteCodeFragment Language="C#" OutputFile="$(CustomAssemblyInfoFile)" AssemblyAttributes="@(AssemblyAttributes)"/>
+        <WriteCodeFragment Language="C#" OutputFile="$(CustomAssemblyInfoFile)" AssemblyAttributes="@(AssemblyAttributes)" />
     </Target>
 
 </Project>

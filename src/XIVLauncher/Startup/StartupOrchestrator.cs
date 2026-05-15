@@ -1,28 +1,19 @@
-using System;
 using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Media;
 using System.Windows.Threading;
 using CommandLine;
 using Serilog;
 using Serilog.Events;
 using Velopack;
 using XIVLauncher.Account;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
-#if !XL_NOUPDATE
 using XIVLauncher.Common.Http;
-#endif
 using XIVLauncher.Common.Support;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
-using XIVLauncher.Update;
 using XIVLauncher.Windows;
+using UpdateManager = XIVLauncher.Update.UpdateManager;
 using DateTimeOffset = System.DateTimeOffset;
 
 namespace XIVLauncher.Startup;
@@ -37,9 +28,10 @@ public class StartupOrchestrator
         Dispatcher = dispatcher
     };
 
-    private CommandLineOptions commandLineOptions = new();
-    private LoadingDialog?     updateWindow;
+    private CommandLineOptions          commandLineOptions = new();
     private StartupDalamudProgressSink? dalamudProgressSink;
+
+    private LoadingDialog? updateWindow;
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
@@ -53,9 +45,11 @@ public class StartupOrchestrator
 
         cancellationToken.ThrowIfCancellationRequested();
         InitializeVelopack();
-
+        
+#if RELEASE
         cancellationToken.ThrowIfCancellationRequested();
         await CheckUpdatesAsync();
+#endif
 
         if (context.IsRestartingForUpdate)
         {
@@ -182,7 +176,6 @@ public class StartupOrchestrator
 
     private async Task CheckUpdatesAsync()
     {
-#if !XL_NOAUTOUPDATE
         try
         {
             Log.Information("开始检查启动器更新");
@@ -190,7 +183,7 @@ public class StartupOrchestrator
             updateWindow = new();
             updateWindow.Show();
 
-            var              updateMgr       = new Updates(context.Settings);
+            var              updateMgr       = new UpdateManager(context.Settings);
             ChangelogWindow? changelogWindow = null;
 
             try
@@ -219,10 +212,8 @@ public class StartupOrchestrator
         {
             HandleUpdateError(ex);
         }
-#endif
     }
 
-#if !XL_NOAUTOUPDATE
     private static void HandleUpdateError(Exception ex)
     {
         Log.Error(ex, "执行更新检查失败");
@@ -250,7 +241,6 @@ public class StartupOrchestrator
 
         Environment.Exit(0);
     }
-#endif
 
     private void CloseUpdateWindow()
     {

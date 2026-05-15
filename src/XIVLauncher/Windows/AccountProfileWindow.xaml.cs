@@ -1,4 +1,3 @@
-using System;
 using System.Windows;
 using Microsoft.Win32;
 using XIVLauncher.Account;

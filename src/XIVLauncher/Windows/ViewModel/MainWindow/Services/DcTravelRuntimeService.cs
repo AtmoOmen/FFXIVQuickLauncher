@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using Serilog;
 using XIVLauncher.Login;
 using XIVLauncher.Common.Util;

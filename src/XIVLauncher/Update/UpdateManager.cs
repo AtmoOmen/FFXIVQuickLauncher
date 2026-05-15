@@ -1,6 +1,3 @@
-#if !XL_NOAUTOUPDATE
-using System;
-using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
 using Velopack;
@@ -12,12 +9,18 @@ using XIVLauncher.Windows;
 
 namespace XIVLauncher.Update;
 
-internal class Updates
+internal class UpdateManager
 (
     LauncherSettingsV3 settings
 )
 {
-    public async Task<bool> Run(bool downloadPrerelease, LoadingDialog? loadingDialog, ChangelogWindow? changelogWindow, Action? beforeShowChangelog = null)
+    public async Task<bool> Run
+    (
+        bool             downloadPrerelease,
+        LoadingDialog?   loadingDialog,
+        ChangelogWindow? changelogWindow,
+        Action?          beforeShowChangelog = null
+    )
     {
         _ = downloadPrerelease;
 
@@ -37,9 +40,9 @@ internal class Updates
                 new XLHttpClientFileDownloader()
             );
 
-            var updateManager = new UpdateManager(updateSource, updateOptions);
+            var updateManager = new Velopack.UpdateManager(updateSource, updateOptions);
             loadingDialog?.SetMessage("正在检查启动器更新...");
-            var newRelease    = await updateManager.CheckForUpdatesAsync();
+            var newRelease = await updateManager.CheckForUpdatesAsync();
 
             if (newRelease == null)
                 return true;
@@ -131,7 +134,7 @@ internal class Updates
         exception switch
         {
             TimeoutException timeoutException => timeoutException.Message,
-            Exception ex when ex.FindHttpRequestException() is { StatusCode: not null } httpRequestException => (int)httpRequestException.StatusCode switch
+            Exception when exception.FindHttpRequestException() is { StatusCode: not null } httpRequestException => (int)httpRequestException.StatusCode switch
             {
                 403 or 444 or 522 => $"更新源返回错误状态码 {(int)httpRequestException.StatusCode}{Environment.NewLine}{httpRequestException.Message}",
                 _                 => $"更新请求失败, 状态码 {(int)httpRequestException.StatusCode}{Environment.NewLine}{httpRequestException.Message}"
@@ -140,4 +143,3 @@ internal class Updates
             _                          => exception.Message
         };
 }
-#endif

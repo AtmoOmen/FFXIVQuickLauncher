@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace XIVLauncher.Windows.GameClientFiles;
 
 public sealed class GameClientFileTaskSnapshot
