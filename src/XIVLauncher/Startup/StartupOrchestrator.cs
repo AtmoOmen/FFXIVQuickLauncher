@@ -138,6 +138,9 @@ public class StartupOrchestrator
 
         try
         {
+            if (!string.IsNullOrEmpty(commandLineOptions.RoamingPath))
+                Paths.OverrideRoamingPath(commandLineOptions.RoamingPath);
+            
             context.Settings.Update
             (settings =>
                 {
