@@ -13,8 +13,9 @@ using Velopack;
 using Velopack.Logging;
 using Velopack.Sources;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Support;
 
-namespace XIVLauncher.Support;
+namespace XIVLauncher.Update;
 
 public class GitHubSource
 (

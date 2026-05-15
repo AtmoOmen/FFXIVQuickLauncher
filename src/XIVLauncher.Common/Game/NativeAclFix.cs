@@ -1,14 +1,10 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
 using Serilog;
 using XIVLauncher.Common.Game.Exceptions;
 
-namespace XIVLauncher.Common;
+namespace XIVLauncher.Common.Game;
 
 public static class NativeAclFix
 {

@@ -21,6 +21,7 @@ using XIVLauncher.Common.Support;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
+using XIVLauncher.Update;
 using XIVLauncher.Windows;
 using DateTimeOffset = System.DateTimeOffset;
 

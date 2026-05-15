@@ -4,13 +4,13 @@ using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
 using Velopack;
-using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
 using XIVLauncher.Windows;
 
-namespace XIVLauncher;
+namespace XIVLauncher.Update;
 
 internal class Updates
 (

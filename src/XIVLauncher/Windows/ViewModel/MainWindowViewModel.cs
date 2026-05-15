@@ -25,7 +25,6 @@ using XIVLauncher.Login;
 using XIVLauncher.Common.Util;
 using XIVLauncher.DCTravel;
 using XIVLauncher.Dalamud;
-using XIVLauncher.Game;
 using XIVLauncher.GamePatchV3;
 using XIVLauncher.GamePatchV3.Update;
 using XIVLauncher.Support;

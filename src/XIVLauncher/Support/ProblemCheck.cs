@@ -11,7 +11,7 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows;
 
-namespace XIVLauncher.Game;
+namespace XIVLauncher.Support;
 
 internal static class ProblemCheck
 {
