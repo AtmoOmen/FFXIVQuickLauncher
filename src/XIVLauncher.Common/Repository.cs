@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.Common;
 
@@ -39,10 +40,10 @@ public static class RepoExtensions
             var verFile = repo.GetVerFile(gamePath, isBck);
 
             if (!verFile.Exists)
-                return Constants.BASE_GAME_VERSION;
+                return FFXIV.BASE_GAME_VERSION;
 
             var ver = File.ReadAllText(verFile.FullName);
-            return string.IsNullOrWhiteSpace(ver) ? Constants.BASE_GAME_VERSION : ver;
+            return string.IsNullOrWhiteSpace(ver) ? FFXIV.BASE_GAME_VERSION : ver;
         }
 
         public void SetVer(DirectoryInfo gamePath, string newVer, bool isBck = false)
@@ -59,7 +60,7 @@ public static class RepoExtensions
         }
 
         public bool IsBaseVer(DirectoryInfo gamePath) =>
-            repo.GetVer(gamePath) == Constants.BASE_GAME_VERSION;
+            repo.GetVer(gamePath) == FFXIV.BASE_GAME_VERSION;
 
         private DirectoryInfo GetRepoPath(DirectoryInfo gamePath) =>
             repo switch

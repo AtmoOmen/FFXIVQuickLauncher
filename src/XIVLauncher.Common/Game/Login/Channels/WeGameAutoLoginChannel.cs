@@ -1,3 +1,5 @@
+using XIVLauncher.Common.Constant;
+
 namespace XIVLauncher.Common.Game.Login.Channels;
 
 public sealed class WeGameAutoLoginChannel
@@ -14,7 +16,7 @@ public sealed class WeGameAutoLoginChannel
         {
             SndaID       = request.Account,
             SessionID    = request.Secret,
-            MaxExpansion = Constants.MaxExpansion,
+            MaxExpansion = FFXIV.MAX_EXPANSION,
             LoginType    = LoginType.WeGameAuto
         };
 

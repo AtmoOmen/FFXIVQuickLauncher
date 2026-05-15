@@ -49,7 +49,7 @@ public sealed class LoginChannelContext
             InputUserID         = account,
             SndaID              = sid,
             AutoLoginSessionKey = autoLoginSessionKey,
-            MaxExpansion        = Constants.MaxExpansion,
+            MaxExpansion        = FFXIV.MAX_EXPANSION,
             LoginType           = loginType
         };
 
