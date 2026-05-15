@@ -7,7 +7,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <OutputType>Library</OutputType>
-        <TargetFramework>net10.0-windows</TargetFramework>
+        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <Deterministic>true</Deterministic>
     </PropertyGroup>
@@ -20,6 +20,7 @@
     <ItemGroup>
         <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
         <ProjectReference Include="..\XIVLauncher.Common.Http\XIVLauncher.Common.Http.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Login\XIVLauncher.Login.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

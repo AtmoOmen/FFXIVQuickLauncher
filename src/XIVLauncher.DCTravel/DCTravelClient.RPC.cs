@@ -2,8 +2,8 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Serilog;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Http;
+using XIVLauncher.Login;
 
 namespace XIVLauncher.DCTravel;
 

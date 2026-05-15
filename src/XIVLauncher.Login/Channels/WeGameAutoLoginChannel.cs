@@ -1,0 +1,31 @@
+using XIVLauncher.Common.Constant;
+
+namespace XIVLauncher.Login.Channels;
+
+public sealed class WeGameAutoLoginChannel
+(
+    LoginChannelContext context
+) : ILoginChannel
+{
+    public LoginType Type => LoginType.WeGameAuto;
+
+    public Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        _ = context;
+        var oath = new OAuthLoginResult
+        {
+            SndaID       = request.Account,
+            SessionID    = request.Secret,
+            MaxExpansion = FFXIV.MAX_EXPANSION,
+            LoginType    = LoginType.WeGameAuto
+        };
+
+        var result = new LoginResult
+        {
+            OAuthLogin = oath,
+            State      = LoginState.Ok
+        };
+
+        return Task.FromResult(result);
+    }
+}

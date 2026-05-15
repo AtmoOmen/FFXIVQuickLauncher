@@ -16,13 +16,12 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Serilog;
 using XIVLauncher.Account;
-using XIVLauncher.ArgReader;
 using XIVLauncher.Common;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Exceptions;
-using XIVLauncher.Common.Game.Login;
+using XIVLauncher.Login;
 using XIVLauncher.Common.Util;
 using XIVLauncher.DCTravel;
 using XIVLauncher.Dalamud;
@@ -69,6 +68,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private          DcTravelRuntimeService    DcTravelRuntimeService    { get; }
     private          GameLaunchService         GameLaunchService         { get; }
     private          GameClientFileTaskService GameClientFileTaskService { get; }
+    private readonly LoginWorkflowService      loginWorkflowService;
     private readonly SyncCommand                   refreshDalamudInfoCommand;
     private          CancellationTokenSource?      LoginCancelSource        { get; set; }
     private          bool                          IsLoginCanceledByUser    { get; set; }
@@ -80,6 +80,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         Settings                  = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
         DialogProvider            = new MainWindowDialogProvider(window);
         Launcher                  = new();
+        loginWorkflowService      = new LoginWorkflowService(App.AccountManager);
         DcTravelRuntimeService    = new DcTravelRuntimeService
         (
             name =>
@@ -282,327 +283,68 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
 
         App.Settings.FastLogin = LoginPage.IsFastLogin;
+        inputPassword = inputPassword == PRESUDO_PASSWORD ? string.Empty : inputPassword?.Trim() ?? string.Empty;
 
-        var         finalLoginType             = loginType;
-        var         secret                     = string.Empty;
-        var         savedAccount               = FindSavedAccount(loginType, username);
-        var         accountType                = ResolveAccountType(loginType, savedAccount);
-        var         hasUnavailableSavedSecrets = AccountManager.HasUnavailableSecrets(savedAccount);
-        XIVAccount? pendingNewAccount          = null;
+        var loginRequest = new LoginWorkflowRequest
+        {
+            LoginType                           = loginType,
+            Username                            = username,
+            Password                            = inputPassword,
+            DoingAutoLogin                      = doingAutoLogin,
+            ReadWeGameInfo                      = readWeGameInfo,
+            Action                              = action,
+            CurrentArea                         = LoginPage.Area,
+            LoginAreas                          = LoginPage.LoginAreas,
+            LoginCancellationTokenSource        = LoginCancelSource ?? new CancellationTokenSource(),
+            LoginSessionRefreshSink             = DcTravelRuntimeService,
+            Interaction                         = new MainWindowLoginInteraction(Window, LoginPage, DialogProvider),
+            RequireDeviceProfileSetupForNewLogin = App.Settings.RequireDeviceProfileSetupForNewLogin,
+            CheckGameUpdateAsync                = async ct =>
+            {
+                var checkResult = await GameUpdater.Check(App.Settings.GamePath, false, ct).ConfigureAwait(false);
+                return checkResult.NeedsUpdate
+                           ? new LoginResult { State = LoginState.NeedsPatchGame, OAuthLogin = new() }
+                           : new LoginResult { State = LoginState.Ok, OAuthLogin = null };
+            }
+        };
+
+        LoginWorkflowResult? workflowResult;
 
         try
         {
-            inputPassword = inputPassword == PRESUDO_PASSWORD ? string.Empty : inputPassword?.Trim() ?? string.Empty;
-
-            switch (loginType)
-            {
-                case LoginType.Static:
-                    if (!string.IsNullOrEmpty(inputPassword))
-                        secret = inputPassword;
-                    else if (!hasUnavailableSavedSecrets && savedAccount?.SdoPassword is { Length: > 0 } savedPassword)
-                        secret = await AccountManager.Decrypt(savedPassword);
-
-                    ArgumentException.ThrowIfNullOrEmpty(username, "静态登录用户名");
-                    ArgumentException.ThrowIfNullOrEmpty(secret,   "静态登录密码");
-                    finalLoginType = LoginType.Static;
-                    break;
-
-                case LoginType.WeGameAuto:
-                    doingAutoLogin = true;
-
-                    if (readWeGameInfo)
-                    {
-                        var loginData = await ReadWeGameAccountInfoAsync();
-                        if (loginData == null)
-                            return;
-
-                        if (string.IsNullOrEmpty(loginData.SndaID) || string.IsNullOrEmpty(loginData.SessionId))
-                            throw new Exception("获取WeGame登录信息失败");
-                        username = loginData.SndaID;
-                        secret   = loginData.SessionId;
-                        var areaId = loginData.Args.Where(x => x.Contains("AreaID=")).Select(x => x.Split('=')[1]).First();
-                        LoginPage.Area = LoginPage.LoginAreas.FirstOrDefault(x => x.AreaID == areaId) ?? LoginPage.Area;
-                    }
-                    else
-                    {
-                        ArgumentException.ThrowIfNullOrEmpty(username, "已保存账号的 SndaID");
-
-                        if (savedAccount == null)
-                        {
-                            CustomMessageBox.Show
-                            (
-                                "未找到该 SndaID 对应的已保存账号, 请勾选 \"重新从 WeGame 读取 SID\" 后再试",
-                                "XIVLauncherCN (Soil)",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Error,
-                                parentWindow: Window
-                            );
-                            return;
-                        }
-
-                        if (hasUnavailableSavedSecrets || string.IsNullOrWhiteSpace(savedAccount.WeGameSIDSecret))
-                        {
-                            CustomMessageBox.Show
-                            (
-                                "该账号没有可用的已保存 SID, 请勾选 \"重新从 WeGame 读取 SID\" 后再试",
-                                "XIVLauncherCN (Soil)",
-                                MessageBoxButton.OK,
-                                MessageBoxImage.Error,
-                                parentWindow: Window
-                            );
-                            return;
-                        }
-
-                        secret = await AccountManager.Decrypt(savedAccount.WeGameSIDSecret);
-                    }
-
-                    finalLoginType = LoginType.WeGameAuto;
-                    savedAccount   = FindSavedAccount(finalLoginType, username);
-                    accountType    = ResolveAccountType(finalLoginType, savedAccount);
-                    break;
-
-                case LoginType.WeGameManual:
-                    if (!hasUnavailableSavedSecrets && string.IsNullOrEmpty(inputPassword) && savedAccount?.WeGameTokenSecret is { Length: > 0 } weGameTokenSecret)
-                    {
-                        secret         = await AccountManager.CredProvider.Decrypt(weGameTokenSecret);
-                        finalLoginType = LoginType.WeGameManual;
-                    }
-
-                    if (string.IsNullOrEmpty(secret))
-                    {
-                        secret         = inputPassword;
-                        finalLoginType = LoginType.WeGameManual;
-                    }
-
-                    ArgumentException.ThrowIfNullOrEmpty(secret, "WeGame 自动登录密钥");
-                    break;
-
-                case LoginType.Slide:
-                    if (!hasUnavailableSavedSecrets && doingAutoLogin && savedAccount?.SdoAutoLoginSessionKey is { Length: > 0 } slideAutoLoginSessionKey)
-                    {
-                        secret         = await AccountManager.Decrypt(slideAutoLoginSessionKey);
-                        finalLoginType = LoginType.AutoLoginSession;
-                    }
-
-                    if (string.IsNullOrEmpty(secret))
-                        finalLoginType = LoginType.Slide;
-                    ArgumentException.ThrowIfNullOrEmpty(username, "一键登录用户名");
-                    break;
-
-                case LoginType.QRCode:
-                    break;
-            }
+            workflowResult = await loginWorkflowService.ExecuteAsync(loginRequest).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            if (ex is ArgumentException argEx)
-            {
-                Log.Error(ex, "[MainWindow] 加密文本失败");
-                CustomMessageBox.Show
-                (
-                    $"错误: {argEx.ParamName} 不能为空",
-                    "XIVLauncherCN (Soil)",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error
-                );
-                return;
-            }
-
-            throw;
+            HandleLoginWorkflowException(ex, loginType, username);
+            return;
         }
 
-        var requiresNewAccountDeviceProfileSetup   = ShouldRequireNewAccountDeviceProfileSetup(savedAccount);
-        var shouldRequestTemporaryAutoLoginSession = requiresNewAccountDeviceProfileSetup && loginType == LoginType.QRCode;
-        var loginAutoLogin                         = doingAutoLogin || shouldRequestTemporaryAutoLoginSession;
-
-        ResolvedDeviceProfile resolvedDeviceProfile;
-
-        if (requiresNewAccountDeviceProfileSetup && loginType != LoginType.QRCode)
-        {
-            pendingNewAccount = CreatePendingNewAccount(username, username, accountType, LoginPage.Area);
-
-            switch (DialogProvider.PromptNewAccountDeviceProfileChoice())
-            {
-                case MessageBoxResult.Yes:
-                    resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(pendingNewAccount);
-                    break;
-
-                case MessageBoxResult.No:
-                {
-                    var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
-
-                    if (!DialogProvider.ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount, AccountManager))
-                    {
-                        SavePendingNewAccountWithoutSecrets(pendingNewAccount);
-                        return;
-                    }
-
-                    pendingNewAccount     = configuredNewAccount;
-                    resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(configuredNewAccount);
-                    break;
-                }
-
-                default:
-                    return;
-            }
-        }
-        else
-            resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(username, accountType);
-
-        var deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
-
-        var loginResult = await LoginToGameAsync
-                          (
-                              finalLoginType,
-                              loginType,
-                              username,
-                              secret!,
-                              loginAutoLogin,
-                              deviceProfileSnapshot
-                          ).ConfigureAwait(false);
-        if (loginResult == null)
+        if (workflowResult == null)
             return;
 
-        var oAuthLogin = loginResult.OAuthLogin;
-
-        if (requiresNewAccountDeviceProfileSetup && loginType == LoginType.QRCode && loginResult.State == LoginState.Ok && oAuthLogin != null)
-        {
-            pendingNewAccount ??= CreatePendingNewAccount(oAuthLogin.InputUserID, oAuthLogin.SndaID, accountType, LoginPage.Area);
-
-            switch (DialogProvider.PromptNewAccountDeviceProfileChoice())
-            {
-                case MessageBoxResult.Yes:
-                    resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(pendingNewAccount);
-                    deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
-                    break;
-
-                case MessageBoxResult.No:
-                {
-                    var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
-
-                    if (!DialogProvider.ShowTemporaryAccountDeviceProfileSettings(configuredNewAccount, AccountManager))
-                    {
-                        SavePendingNewAccountWithoutSecrets(pendingNewAccount);
-                        return;
-                    }
-
-                    if (string.IsNullOrWhiteSpace(oAuthLogin.AutoLoginSessionKey))
-                    {
-                        CustomMessageBox.Show
-                        (
-                            "首次扫码登录未能获取可用于设备信息重登的会话密钥，本次无法继续启动游戏",
-                            "XIVLauncherCN (Soil)",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Error,
-                            parentWindow: Window
-                        );
-                        return;
-                    }
-
-                    pendingNewAccount     = configuredNewAccount;
-                    resolvedDeviceProfile = AccountManager.ResolveDeviceProfile(configuredNewAccount);
-                    deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
-
-                    var reloginResult = await LoginToGameAsync
-                                        (
-                                            LoginType.AutoLoginSession,
-                                            LoginType.AutoLoginSession,
-                                            oAuthLogin.InputUserID,
-                                            oAuthLogin.AutoLoginSessionKey,
-                                            true,
-                                            deviceProfileSnapshot
-                                        ).ConfigureAwait(false);
-                    if (reloginResult == null)
-                        return;
-
-                    loginResult = reloginResult;
-                    oAuthLogin  = loginResult.OAuthLogin;
-                    break;
-                }
-
-                default:
-                    return;
-            }
-        }
-
-        if (loginResult.State == LoginState.Ok)
-        {
-            var deviceProfileAccount = pendingNewAccount ?? savedAccount;
-
-            var accountToSave = new XIVAccount
-            {
-                AutoLogin                          = loginType == LoginType.WeGameAuto || doingAutoLogin,
-                SdoLoginAccount                    = oAuthLogin?.InputUserID!,
-                WeGameSndaID                       = oAuthLogin?.SndaID!,
-                AccountType                        = accountType,
-                AreaName                           = LoginPage.Area!.AreaName,
-                UserDefinedName                    = deviceProfileAccount?.UserDefinedName                    ?? null!,
-                DeviceProfilePresetId              = deviceProfileAccount?.DeviceProfilePresetId              ?? string.Empty,
-                DeviceProfileDynamicEnabled        = deviceProfileAccount?.DeviceProfileDynamicEnabled        ?? false,
-                IsDeviceProfileRotation            = deviceProfileAccount?.IsDeviceProfileRotation            ?? true,
-                DeviceProfileRotationDays          = deviceProfileAccount?.DeviceProfileRotationDays          ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
-                DeviceProfileLastGeneratedUtcTicks = deviceProfileAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0
-            };
-
-            AccountManager.ApplyResolvedDeviceProfile(accountToSave, resolvedDeviceProfile);
-
-            if (doingAutoLogin && accountToSave.AccountType == XIVAccountType.Sdo)
-            {
-                if (!string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
-                    accountToSave.SdoAutoLoginSessionKey = await AccountManager.Encrypt(oAuthLogin.AutoLoginSessionKey);
-
-                if (!string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
-                {
-                    DcTravelRuntimeService.ConfigureAutoLoginRefresh
-                    (
-                        async () =>
-                        {
-                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey
-                                                 (
-                                                     username,
-                                                     oAuthLogin.AutoLoginSessionKey,
-                                                     DcTravelRuntimeService,
-                                                     deviceProfileSnapshot
-                                                 ).ConfigureAwait(false);
-                            return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
-                        }
-                    );
-                }
-
-                if (finalLoginType == LoginType.Static)
-                    accountToSave.SdoPassword = await AccountManager.Encrypt(secret);
-            }
-
-            if (finalLoginType == LoginType.WeGameAuto)
-                accountToSave.WeGameSIDSecret = await AccountManager.Encrypt(secret);
-            else if (finalLoginType == LoginType.WeGameManual)
-                accountToSave.WeGameTokenSecret = await AccountManager.Encrypt(secret);
-
-            accountToSave.GenerateID();
-            AccountManager.AddAccount(accountToSave);
-            AccountManager.CurrentAccount = accountToSave;
-            AccountManager.Save();
-        }
+        var gameLaunchContext = workflowResult.GameLaunchContext;
+        var oAuthLogin        = gameLaunchContext.LoginResult.OAuthLogin;
 
         Log.Information
         (
             "[MainWindow] 登录结果: {State} {Playable}",
-            loginResult.State,
+            gameLaunchContext.LoginResult.State,
             oAuthLogin?.Playable
         );
 
-        await AccountManager.CredProvider.ClearCache();
-        secret = string.Empty;
+        if (workflowResult.RefreshGameSessionIdByAutoLoginFunc != null)
+            DcTravelRuntimeService.ConfigureAutoLoginRefresh(workflowResult.RefreshGameSessionIdByAutoLoginFunc);
 
-        var gameLaunchContext = new GameLaunchContext(loginResult, LoginPage.Area!, LoginPage.LoginAreas)
-        {
-            DcTravelPort = loginResult.State == LoginState.Ok
-                               ? await DcTravelRuntimeService.StartAsync(App.Settings.DalamudEnabled, loginType == LoginType.WeGameAuto).ConfigureAwait(false)
-                               : 0
-        };
+        gameLaunchContext.DcTravelPort = gameLaunchContext.LoginResult.State == LoginState.Ok
+                                             ? await DcTravelRuntimeService.StartAsync(App.Settings.DalamudEnabled, loginType == LoginType.WeGameAuto).ConfigureAwait(false)
+                                             : 0;
 
         if (await ProcessLoginResultAsync(gameLaunchContext, action).ConfigureAwait(false))
         {
+            if (workflowResult.ShouldShowAutoLoginDisclaimer)
+                DialogProvider.ShowAutoLoginDisclaimer();
+
             if (App.Settings.ExitLauncherWhenGameExit)
                 Environment.Exit(0);
 
@@ -610,291 +352,135 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task<GameArgumentInterop.LoginData?> ReadWeGameAccountInfoAsync()
+    private void HandleLoginWorkflowException(Exception ex, LoginType loginType, string username)
     {
-        try
-        {
-            Process.Start
-            (
-                new ProcessStartInfo
-                {
-                    FileName        = "wegame://StartFor=2000340",
-                    UseShellExecute = true
-                }
-            );
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[MainWindow] 无法启动 WeGame");
-        }
+        Log.Error(ex, "[MainWindow] 尝试登录至游戏失败");
 
-        var pidList = FFXIVProcess.GetGameProcessIDs().ToArray();
+        var msgbox = new CustomMessageBox.Builder()
+                     .WithCaption("登录异常")
+                     .WithImage(MessageBoxImage.Error)
+                     .WithShowHelpLinks()
+                     .WithShowDiscordLink()
+                     .WithParentWindow(Window);
 
-        try
+        if (ex is LoginException sdoLoginEx)
         {
-            await using var argReaderSession = await ArgReaderSession.StartAsync();
-
-            while (true)
+            if (IsLoginCanceledByUser || LoginCancelSource?.IsCancellationRequested == true)
             {
-                if (LoginCancelSource?.IsCancellationRequested ?? false)
-                {
-                    await argReaderSession.StopAsync(false);
-                    return null;
-                }
-
-                await Task.Delay(1000);
-                var newPidList = FFXIVProcess.GetGameProcessIDs().Except(pidList).ToArray();
-                LoginPage.LoginMessage = "请使用 WeGame 登录需要读取的游戏账号并启动游戏";
-#if DEBUG
-                newPidList = FFXIVProcess.GetGameProcessIDs().ToArray();
-#endif
-                if (newPidList.Length == 0)
-                    continue;
-
-                var pid  = newPidList.First();
-                var data = await argReaderSession.ReadLoginDataAsync(pid);
-#if DEBUG
-                LoginPage.LoginMessage = "读取成功";
-#endif
-                await argReaderSession.StopAsync(true);
-                return data;
+                Log.Information("[MainWindow] 手动取消登录");
+                return;
             }
-        }
-        catch (Win32Exception ex)
-        {
-            throw new Win32Exception($"错误: {ex.Message}\n请尝试手动运行 {Path.Combine(AppContext.BaseDirectory, "XIVLauncher.ArgReader.exe")} 后重启 XIVLauncherCN");
-        }
-    }
 
-    private async Task<LoginResult?> LoginToGameAsync
-    (
-        LoginType             type,
-        LoginType             fallbackLoginType,
-        string                username,
-        string                secret,
-        bool                  autoLogin,
-        DeviceProfileSnapshot deviceProfile
-    )
-    {
-        if (IsLoginCanceledByUser)
-            return null;
-
-        if (LoginPage.Area == null || LoginPage.Area.AreaID == "-1")
-        {
-            CustomMessageBox.Show
-            (
-                "获取服务器信息失败, 无法登录",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error,
-                parentWindow: Window
-            );
-
-            return null;
-        }
-
-        try
-        {
-            LoginCancelSource?.Dispose();
-            LoginCancelSource = new();
-            var loginCts = LoginCancelSource;
-            var gamePath = App.Settings.GamePath;
-            return await Launcher.LoginClient.LoginWithPatchCheck
-                   (
-                       async ct =>
-                       {
-                           var checkResult = await GameUpdater.Check(gamePath, false, ct).ConfigureAwait(false);
-                           return checkResult.NeedsUpdate
-                                      ? new LoginResult { State = LoginState.NeedsPatchGame, OAuthLogin = new() }
-                                      : new LoginResult { State = LoginState.Ok, OAuthLogin             = null };
-                       },
-                       type,
-                       fallbackLoginType,
-                       requestLoginType => LoginRequest.Create
-                        (
-                            username,
-                            secret,
-                            autoLogin,
-                            deviceProfile,
-                            DcTravelRuntimeService,
-                            loginCts,
-                           qrBytes =>
-                           {
-                               if (requestLoginType != LoginType.QRCode)
-                                   return;
-
-                               Window.Dispatcher.Invoke
-                               (() =>
-                                   {
-                                       LoginPage.QRCodeBitmapImage = qrBytes.ToBitmapImage();
-                                       LoginPage.IsQrCodeExpired   = false;
-                                   }
-                               );
-                           },
-                           code =>
-                           {
-                               if (requestLoginType != LoginType.Slide)
-                                   return;
-
-                               Log.Information("[MainWindow] 接收到叨鱼确认码: {Code}", code);
-                               LoginPage.LoginMessage = $"确认码: {code}";
-                           },
-                           message => Window.Dispatcher.Invoke(() => LoginPage.LoginMessage = message),
-                           (text, caption, initialText) =>
-                               Window.Dispatcher.Invoke(() => new DialogService(Window).ShowTextInput(text, caption, initialText, Window)),
-                           challenge => Window.Dispatcher.Invoke
-                           (() =>
-                               {
-                                   var dialog = new CaptchaInputWindow(challenge);
-
-                                   if (Window.IsVisible)
-                                   {
-                                       dialog.Owner         = Window;
-                                       dialog.ShowInTaskbar = false;
-                                   }
-
-                                   return dialog.ShowDialog() == true ? dialog.ResultText : null;
-                               }
-                           )
-                       ),
-                       loginCts.Token
-                   ).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[MainWindow] 尝试登录至游戏失败");
-
-            var msgbox = new CustomMessageBox.Builder()
-                         .WithCaption("登录异常")
-                         .WithImage(MessageBoxImage.Error)
-                         .WithShowHelpLinks()
-                         .WithShowDiscordLink()
-                         .WithParentWindow(Window);
-
-            if (ex is LoginException sdoLoginEx)
+            if (loginType == LoginType.QRCode && sdoLoginEx.Message == "二维码不存在或已过期，请重试")
             {
-                if (IsLoginCanceledByUser || LoginCancelSource?.IsCancellationRequested == true)
+                Log.Information("[MainWindow] 二维码已过期，等待手动刷新");
+                Window.Dispatcher.Invoke(() => LoginPage.IsQrCodeExpired = true);
+                LoginCardAfterCompletion = LoginCardType.ScanQRCode;
+                return;
+            }
+
+            if (sdoLoginEx.ErrorCode is (int)LoginExceptionCode.CaptchaVerificationCanceled or (int)LoginExceptionCode.SafePhoneVerificationCanceled)
+            {
+                Log.Information("[MainWindow] 用户主动取消登录验证流程: {ErrorCode}", sdoLoginEx.ErrorCode);
+                return;
+            }
+
+            if (sdoLoginEx.RemoveAutoLoginSessionKey)
+            {
+                Log.Information("[MainWindow] 快速登录失败, 清除 SessionKey: {Username}", username);
+                var account = AccountManager.Accounts.FirstOrDefault(x => x.UserName == username);
+
+                if (account != null)
                 {
-                    Log.Information("[MainWindow] 手动取消登录");
-                    return null;
+                    account.SdoAutoLoginSessionKey = string.Empty;
+                    AccountManager.Save(account);
+                }
+            }
+
+            new CustomMessageBox.Builder()
+                .WithCaption("登录异常")
+                .WithImage(MessageBoxImage.Question)
+                .WithParentWindow(Window)
+                .WithText($"错误: {sdoLoginEx.Message}\n({sdoLoginEx.ErrorCode})")
+                .Show();
+            return;
+        }
+
+        switch (ex)
+        {
+            case IOException:
+                msgbox.WithText("搜寻游戏文件失败, 游戏路径可能设置错误");
+                break;
+
+            case InvalidVersionFilesException:
+                msgbox.WithText("从游戏文件中读取版本信息失败, 可能需要重新安装或修复游戏文件");
+                break;
+
+            case InvalidDataException invalidDataException when invalidDataException.Message.Contains("当前游戏数据版本", StringComparison.Ordinal):
+            {
+                if (App.Settings.GamePath != null && Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
+                {
+                    if (CustomMessageBox.Show
+                        (
+                            "未检测到游戏安装, 是否立即下载安装完整游戏?",
+                            "XIVLauncherCN (Soil)",
+                            MessageBoxButton.YesNo,
+                            parentWindow: Window
+                        )
+                        == MessageBoxResult.Yes)
+                        _ = GameClientFileTaskService.RunAsync(GameClientFileTaskKind.FreshInstall);
+
+                    return;
                 }
 
-                if ((type == LoginType.QRCode || fallbackLoginType == LoginType.QRCode) && sdoLoginEx.Message == "二维码不存在或已过期，请重试")
+                msgbox.WithText("无法确认当前游戏版本, 请先运行游戏文件修复后重试");
+                break;
+            }
+
+            case OAuthLoginException oauthLoginException:
+            {
+                if (loginType == LoginType.QRCode && oauthLoginException.OAuthErrorMessage == "二维码不存在或已过期，请重试")
                 {
                     Log.Information("[MainWindow] 二维码已过期，等待手动刷新");
                     Window.Dispatcher.Invoke(() => LoginPage.IsQrCodeExpired = true);
                     LoginCardAfterCompletion = LoginCardType.ScanQRCode;
-                    return null;
+                    return;
                 }
 
-                if (sdoLoginEx.ErrorCode is (int)LoginExceptionCode.CaptchaVerificationCanceled or (int)LoginExceptionCode.SafePhoneVerificationCanceled)
-                {
-                    Log.Information("[MainWindow] 用户主动取消登录验证流程: {ErrorCode}", sdoLoginEx.ErrorCode);
-                    return null;
-                }
+                LoginPage.LoginMessage = string.Empty;
 
-                if (sdoLoginEx.RemoveAutoLoginSessionKey)
-                {
-                    Log.Information("[MainWindow] 快速登录失败, 清除 SessionKey: {Username}", username);
-                    var account = AccountManager.Accounts.FirstOrDefault(x => x.UserName == username);
+                if (string.IsNullOrWhiteSpace(oauthLoginException.OAuthErrorMessage))
+                    msgbox.WithText("登录账号失败, 请检查用户名和密码");
+                else
+                    msgbox.WithText
+                    (
+                        oauthLoginException.OAuthErrorMessage
+                                           .Replace("\\r\\n", "\n")
+                                           .Replace("\r\n", "\n")
+                    );
 
-                    if (account != null)
-                    {
-                        account.SdoAutoLoginSessionKey = string.Empty;
-                        AccountManager.Save(account);
-                    }
-                }
-
-                msgbox = new CustomMessageBox.Builder()
-                         .WithCaption("登录异常")
-                         .WithImage(MessageBoxImage.Question)
-                         .WithParentWindow(Window)
-                         .WithText($"错误: {sdoLoginEx.Message}\n({sdoLoginEx.ErrorCode})");
-                msgbox.Show();
-                return null;
+                break;
             }
 
-            switch (ex)
-            {
-                case IOException:
-                    msgbox
-                        .WithText("搜寻游戏文件失败, 游戏路径可能设置错误");
-                    break;
+            case HttpRequestException or TaskCanceledException or WebException:
+                msgbox.WithText("连接游戏服务器失败, 请稍后重试");
+                break;
 
-                case InvalidVersionFilesException:
-                    msgbox.WithText("从游戏文件中读取版本信息失败, 可能需要重新安装或修复游戏文件");
-                    break;
+            case InvalidResponseException iex:
+                Log.Error("[MainWindow] 游戏服务器返回无效响应: {Message}\n{Document}", ex.Message, iex.Document);
+                msgbox.WithText("服务器返回无效响应, 请稍后重试");
+                break;
 
-                case InvalidDataException invalidDataException when invalidDataException.Message.Contains("当前游戏数据版本", StringComparison.Ordinal):
-                {
-                    if (App.Settings.GamePath != null && Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
-                    {
-                        if (CustomMessageBox.Show
-                            (
-                                "未检测到游戏安装, 是否立即下载安装完整游戏?",
-                                "XIVLauncherCN (Soil)",
-                                MessageBoxButton.YesNo,
-                                parentWindow: Window
-                            )
-                            == MessageBoxResult.Yes) await GameClientFileTaskService.RunAsync(GameClientFileTaskKind.FreshInstall).ConfigureAwait(false);
-
-                        return null;
-                    }
-
-                    msgbox.WithText("无法确认当前游戏版本, 请先运行游戏文件修复后重试");
-                    break;
-                }
-
-                case OAuthLoginException oauthLoginException:
-                {
-                    if ((type == LoginType.QRCode || fallbackLoginType == LoginType.QRCode) && oauthLoginException.OAuthErrorMessage == "二维码不存在或已过期，请重试")
-                    {
-                        Log.Information("[MainWindow] 二维码已过期，等待手动刷新");
-                        Window.Dispatcher.Invoke(() => LoginPage.IsQrCodeExpired = true);
-                        LoginCardAfterCompletion = LoginCardType.ScanQRCode;
-                        return null;
-                    }
-
-                    LoginPage.LoginMessage = string.Empty;
-
-                    if (string.IsNullOrWhiteSpace(oauthLoginException.OAuthErrorMessage))
-                        msgbox.WithText("登录账号失败, 请检查用户名和密码");
-                    else
-                    {
-                        msgbox.WithText
-                        (
-                            oauthLoginException.OAuthErrorMessage
-                                               .Replace("\\r\\n", "\n")
-                                               .Replace("\r\n",   "\n")
-                        );
-                    }
-
-                    break;
-                }
-
-                case HttpRequestException or TaskCanceledException or WebException:
-                    msgbox.WithText("连接游戏服务器失败, 请稍后重试");
-                    break;
-
-                case InvalidResponseException iex:
-                    Log.Error("[MainWindow] 游戏服务器返回无效响应: {Message}\n{Document}", ex.Message, iex.Document);
-
-                    msgbox.WithText("服务器返回无效响应, 请稍后重试");
-                    break;
-
-                // Actual unexpected error; show error details
-                default:
-                    msgbox.WithShowNewGitHubIssue()
-                          .WithAppendDescription(ex.ToString())
-                          .WithAppendSettingsDescription("Login")
-                          .WithAppendText("\n\n")
-                          .WithAppendText("请检查登录信息, 并在稍后重试");
-                    break;
-            }
-
-            msgbox.Show();
-            return null;
+            default:
+                msgbox.WithShowNewGitHubIssue()
+                      .WithAppendDescription(ex.ToString())
+                      .WithAppendSettingsDescription("Login")
+                      .WithAppendText("\n\n")
+                      .WithAppendText("请检查登录信息, 并在稍后重试");
+                break;
         }
+
+        msgbox.Show();
     }
 
     private bool ConfirmGamePatchInstall()
@@ -1604,71 +1190,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     private void HideLoadingDialog() =>
         IsLoadingDialogOpen = false;
-
-    private static bool ShouldRequireNewAccountDeviceProfileSetup(XIVAccount? savedAccount) =>
-        App.Settings.RequireDeviceProfileSetupForNewLogin
-        && savedAccount == null;
-
-    private static XIVAccount CreatePendingNewAccount(string loginAccount, string sndaId, XIVAccountType accountType, LoginArea? area) =>
-        new()
-        {
-            SdoLoginAccount             = loginAccount,
-            WeGameSndaID                = sndaId,
-            AccountType                 = accountType,
-            AreaName                    = area?.AreaName ?? string.Empty,
-            DeviceProfilePresetId       = string.Empty,
-            DeviceProfileDynamicEnabled = false,
-            IsDeviceProfileRotation     = true,
-            DeviceProfileRotationDays   = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS
-        };
-
-    private static XIVAccount CreateIndependentDeviceProfileDraft(XIVAccount account) =>
-        new()
-        {
-            SdoLoginAccount                    = account.SdoLoginAccount,
-            WeGameSndaID                       = account.WeGameSndaID,
-            AccountType                        = account.AccountType,
-            AreaName                           = account.AreaName,
-            UserDefinedName                    = account.UserDefinedName,
-            DeviceProfilePresetId              = account.DeviceProfilePresetId,
-            DeviceProfileDynamicEnabled        = true,
-            IsDeviceProfileRotation            = account.IsDeviceProfileRotation,
-            DeviceProfileRotationDays          = account.DeviceProfileRotationDays,
-            DeviceProfileLastGeneratedUtcTicks = account.DeviceProfileLastGeneratedUtcTicks
-        };
-
-    private void SavePendingNewAccountWithoutSecrets(XIVAccount account)
-    {
-        account.AutoLogin              = false;
-        account.SdoAutoLoginSessionKey = string.Empty;
-        account.WeGameTokenSecret      = null;
-        account.SdoPassword            = string.Empty;
-        account.WeGameSIDSecret        = null;
-        account.WeGameSessionID        = string.Empty;
-        account.GenerateID();
-        AccountManager.AddAccount(account);
-        AccountManager.CurrentAccount = account;
-        AccountManager.Save();
-    }
-
-    private XIVAccount? FindSavedAccount(LoginType loginType, string username)
-    {
-        if (string.IsNullOrWhiteSpace(username))
-            return null;
-
-        if (loginType == LoginType.AutoLoginSession)
-        {
-            return AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.SdoLoginAccount, username, StringComparison.Ordinal))
-                   ?? AccountManager.Accounts.FirstOrDefault(account => string.Equals(account.UserName,     username, StringComparison.Ordinal));
-        }
-
-        return AccountManager.FindAccount(username, loginType.ToAccountType());
-    }
-
-    private static XIVAccountType ResolveAccountType(LoginType loginType, XIVAccount? savedAccount) =>
-        loginType == LoginType.AutoLoginSession
-            ? savedAccount?.AccountType ?? XIVAccountType.Sdo
-            : loginType.ToAccountType();
 
     #endregion
 

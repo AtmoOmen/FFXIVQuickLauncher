@@ -182,9 +182,6 @@ public class StartupOrchestrator
     private async Task CheckUpdatesAsync()
     {
 #if !XL_NOAUTOUPDATE
-        if (EnvironmentSettings.IsDisableUpdates)
-            return;
-
         try
         {
             Log.Information("开始检查启动器更新");
@@ -206,7 +203,7 @@ public class StartupOrchestrator
 
             var shouldContinueStartup = await updateMgr.Run
                                         (
-                                            EnvironmentSettings.IsPreRelease,
+                                            false,
                                             updateWindow,
                                             changelogWindow,
                                             CloseUpdateWindow

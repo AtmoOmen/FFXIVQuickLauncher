@@ -1,0 +1,166 @@
+using XIVLauncher.Account;
+using XIVLauncher.Common.Game;
+
+namespace XIVLauncher.Login;
+
+internal sealed class NewAccountDeviceProfileCoordinator
+(
+    AccountManager accountManager
+)
+{
+    public DeviceProfilePreparation? Prepare(LoginWorkflowRequest request, ResolvedLoginState resolvedLoginState)
+    {
+        var requiresNewAccountDeviceProfileSetup   = request.RequireDeviceProfileSetupForNewLogin && resolvedLoginState.SavedAccount       == null;
+        var shouldRequestTemporaryAutoLoginSession = requiresNewAccountDeviceProfileSetup         && resolvedLoginState.RequestedLoginType == LoginType.QRCode;
+        var loginAutoLogin                         = resolvedLoginState.DoingAutoLogin || shouldRequestTemporaryAutoLoginSession;
+
+        if (!requiresNewAccountDeviceProfileSetup || resolvedLoginState.RequestedLoginType == LoginType.QRCode)
+        {
+            var resolvedDeviceProfile = accountManager.ResolveDeviceProfile(resolvedLoginState.Username, resolvedLoginState.AccountType);
+            return new DeviceProfilePreparation
+            (
+                resolvedDeviceProfile,
+                null,
+                requiresNewAccountDeviceProfileSetup,
+                loginAutoLogin
+            );
+        }
+
+        var pendingNewAccount = CreatePendingNewAccount
+        (
+            resolvedLoginState.Username,
+            resolvedLoginState.Username,
+            resolvedLoginState.AccountType,
+            resolvedLoginState.Area
+        );
+
+        switch (request.Interaction.PromptNewAccountDeviceProfileChoice())
+        {
+            case NewAccountDeviceProfileChoice.UseShared:
+                return new DeviceProfilePreparation
+                (
+                    accountManager.ResolveDeviceProfile(pendingNewAccount),
+                    pendingNewAccount,
+                    true,
+                    loginAutoLogin
+                );
+
+            case NewAccountDeviceProfileChoice.ConfigurePerAccount:
+            {
+                var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
+
+                if (!request.Interaction.ConfigureTemporaryAccountDeviceProfile(configuredNewAccount, accountManager))
+                {
+                    SavePendingNewAccountWithoutSecrets(pendingNewAccount);
+                    return null;
+                }
+
+                return new DeviceProfilePreparation
+                (
+                    accountManager.ResolveDeviceProfile(configuredNewAccount),
+                    configuredNewAccount,
+                    true,
+                    loginAutoLogin
+                );
+            }
+
+            default:
+                return null;
+        }
+    }
+
+    public PostQrDeviceProfileResult? ApplyAfterQrLogin(LoginWorkflowRequest request, DeviceProfilePreparation preparation, ResolvedLoginState resolvedLoginState, LoginResult loginResult)
+    {
+        if (!preparation.RequiresNewAccountDeviceProfileSetup || resolvedLoginState.RequestedLoginType != LoginType.QRCode || loginResult.State != LoginState.Ok || loginResult.OAuthLogin == null)
+            return new PostQrDeviceProfileResult(loginResult, preparation.ResolvedDeviceProfile, preparation.PendingNewAccount);
+
+        var oAuthLogin = loginResult.OAuthLogin;
+        var pendingNewAccount = preparation.PendingNewAccount
+                                ?? CreatePendingNewAccount(oAuthLogin.InputUserID, oAuthLogin.SndaID, resolvedLoginState.AccountType, resolvedLoginState.Area);
+
+        switch (request.Interaction.PromptNewAccountDeviceProfileChoice())
+        {
+            case NewAccountDeviceProfileChoice.UseShared:
+                return new PostQrDeviceProfileResult(loginResult, accountManager.ResolveDeviceProfile(pendingNewAccount), pendingNewAccount);
+
+            case NewAccountDeviceProfileChoice.ConfigurePerAccount:
+            {
+                var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
+
+                if (!request.Interaction.ConfigureTemporaryAccountDeviceProfile(configuredNewAccount, accountManager))
+                {
+                    SavePendingNewAccountWithoutSecrets(pendingNewAccount);
+                    return null;
+                }
+
+                if (string.IsNullOrWhiteSpace(oAuthLogin.AutoLoginSessionKey))
+                {
+                    request.Interaction.ShowError("首次扫码登录未能获取可用于设备信息重登的会话密钥，本次无法继续启动游戏");
+                    return null;
+                }
+
+                return new PostQrDeviceProfileResult(loginResult, accountManager.ResolveDeviceProfile(configuredNewAccount), configuredNewAccount);
+            }
+
+            default:
+                return null;
+        }
+    }
+
+    private static XIVAccount CreatePendingNewAccount(string loginAccount, string sndaId, XIVAccountType accountType, LoginArea area) =>
+        new()
+        {
+            SdoLoginAccount             = loginAccount,
+            WeGameSndaID                = sndaId,
+            AccountType                 = accountType,
+            AreaName                    = area.AreaName,
+            DeviceProfilePresetId       = string.Empty,
+            DeviceProfileDynamicEnabled = false,
+            IsDeviceProfileRotation     = true,
+            DeviceProfileRotationDays   = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS
+        };
+
+    private static XIVAccount CreateIndependentDeviceProfileDraft(XIVAccount account) =>
+        new()
+        {
+            SdoLoginAccount                    = account.SdoLoginAccount,
+            WeGameSndaID                       = account.WeGameSndaID,
+            AccountType                        = account.AccountType,
+            AreaName                           = account.AreaName,
+            UserDefinedName                    = account.UserDefinedName,
+            DeviceProfilePresetId              = account.DeviceProfilePresetId,
+            DeviceProfileDynamicEnabled        = true,
+            IsDeviceProfileRotation            = account.IsDeviceProfileRotation,
+            DeviceProfileRotationDays          = account.DeviceProfileRotationDays,
+            DeviceProfileLastGeneratedUtcTicks = account.DeviceProfileLastGeneratedUtcTicks
+        };
+
+    private void SavePendingNewAccountWithoutSecrets(XIVAccount account)
+    {
+        account.AutoLogin              = false;
+        account.SdoAutoLoginSessionKey = string.Empty;
+        account.WeGameTokenSecret      = null;
+        account.SdoPassword            = string.Empty;
+        account.WeGameSIDSecret        = null;
+        account.WeGameSessionID        = string.Empty;
+        account.GenerateID();
+        accountManager.AddAccount(account);
+        accountManager.CurrentAccount = account;
+        accountManager.Save();
+    }
+}
+
+internal sealed record DeviceProfilePreparation
+(
+    ResolvedDeviceProfile ResolvedDeviceProfile,
+    XIVAccount?           PendingNewAccount,
+    bool                  RequiresNewAccountDeviceProfileSetup,
+    bool                  LoginAutoLogin
+);
+
+internal sealed record PostQrDeviceProfileResult
+(
+    LoginResult           LoginResult,
+    ResolvedDeviceProfile ResolvedDeviceProfile,
+    XIVAccount?           PendingNewAccount
+);

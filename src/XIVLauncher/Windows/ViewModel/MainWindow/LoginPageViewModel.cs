@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Serilog;
-using XIVLauncher.Common.Game.Login;
+using XIVLauncher.Login;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Xaml;
 

@@ -9,7 +9,6 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using XIVLauncher.Account;
 using XIVLauncher.Account.DeviceProfiles;
-using XIVLauncher.Common.Game.Login;
 
 namespace XIVLauncher.Windows.ViewModel;
 

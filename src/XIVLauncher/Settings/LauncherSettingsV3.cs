@@ -9,7 +9,7 @@ using XIVLauncher.Account;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.CompanionApp;
-using XIVLauncher.Common.Game.Login;
+using XIVLauncher.Login;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Settings.Converters;
 using XIVLauncher.Xaml;

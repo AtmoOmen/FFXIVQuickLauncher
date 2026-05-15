@@ -96,6 +96,7 @@
         <ProjectReference Include="..\XIVLauncher.DCTravel\XIVLauncher.DCTravel.csproj"/>
         <ProjectReference Include="..\XIVLauncher.Dalamud\XIVLauncher.Dalamud.csproj"/>
         <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Login\XIVLauncher.Login.csproj"/>
     </ItemGroup>
 
     <Target Name="CopyVcdiffShimToOutput" AfterTargets="Build">

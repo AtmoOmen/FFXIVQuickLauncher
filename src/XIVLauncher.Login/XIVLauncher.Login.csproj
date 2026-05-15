@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <Product>XIVLauncher.Login</Product>
+        <AssemblyTitle>XIVLauncher.Login</AssemblyTitle>
+        <Description>Login domain and workflow orchestration for XIVLauncher.</Description>
+        <VersionPrefix>1.0.0</VersionPrefix>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <PropertyGroup Label="Configuration" Condition="'$(Configuration)'=='Release'">
+        <AppOutputBase>$(MSBuildProjectDirectory)\</AppOutputBase>
+        <PathMap>$(AppOutputBase)=C:\goatsoft\xl\XIVLauncher.Login\</PathMap>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <Deterministic>true</Deterministic>
+        <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\XIVLauncher.Account\XIVLauncher.Account.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json"/>
+        <PackageReference Include="Serilog"/>
+    </ItemGroup>
+</Project>

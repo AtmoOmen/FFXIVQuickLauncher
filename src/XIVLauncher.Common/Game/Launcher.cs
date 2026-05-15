@@ -2,14 +2,12 @@ using System.Text.RegularExpressions;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Exceptions;
-using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Game;
 
 public partial class Launcher
 {
-    public LoginClient    LoginClient    { get; } = new();
     public RestartMonitor RestartMonitor { get; } = new();
     public HttpClient     MockHttpClient { get; } = new(new HttpClientHandler { UseCookies = true });
 

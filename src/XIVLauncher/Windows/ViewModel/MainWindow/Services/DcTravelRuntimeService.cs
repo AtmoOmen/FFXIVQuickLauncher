@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Serilog;
-using XIVLauncher.Common.Game.Login;
+using XIVLauncher.Login;
 using XIVLauncher.Common.Util;
 using XIVLauncher.DCTravel;
 

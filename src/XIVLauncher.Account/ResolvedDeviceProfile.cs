@@ -1,4 +1,4 @@
-using XIVLauncher.Common.Game.Login;
+using XIVLauncher.Account.DeviceProfiles;
 
 namespace XIVLauncher.Account;
 

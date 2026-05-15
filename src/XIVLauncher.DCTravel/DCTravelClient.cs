@@ -3,7 +3,7 @@ using System.Net;
 using System.Text.Json.Nodes;
 using Serilog;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game.Login;
+using XIVLauncher.Login;
 
 namespace XIVLauncher.DCTravel;
 

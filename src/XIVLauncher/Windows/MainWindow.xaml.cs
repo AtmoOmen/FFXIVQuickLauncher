@@ -17,7 +17,7 @@ using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Common.Game.Login;
+using XIVLauncher.Login;
 using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;

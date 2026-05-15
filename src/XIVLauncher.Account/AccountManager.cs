@@ -15,7 +15,6 @@ using XIVLauncher.Account.Cred.Providers;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Common.Game.Login;
 
 namespace XIVLauncher.Account;
 
