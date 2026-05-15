@@ -31,7 +31,7 @@ public static class Links
 
     public const string SDO_NEWS_BANNER_API_URL = "https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5203&pageIndex=0&pageSize=8";
 
-    public const string SDO_NEWS_LIST_API_URL = "https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5310,5311,5312,5313,5316&pageIndex=0&pageSize=12";
+    public const string SDO_NEWS_LIST_API_URL = "https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=8324,8325,8326,8327,5309,5310,5311,5312,5313&pageIndex=0&pageSize=16";
 
     public const string SDO_LAUNCHER_REFERER_URL = "https://ff.web.sdo.com/project/launcher0904/index.html";
 
