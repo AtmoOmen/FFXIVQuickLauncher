@@ -87,6 +87,9 @@ public class XIVAccount : IEquatable<XIVAccount>
 
     public long DeviceProfileLastGeneratedUtcTicks { get; set; }
 
+    /// <summary>账号在切换器中的手动排序值, 数字越小越靠前</summary>
+    public int SortOrder { get; set; }
+
     #endregion
 
     public void GenerateID() =>

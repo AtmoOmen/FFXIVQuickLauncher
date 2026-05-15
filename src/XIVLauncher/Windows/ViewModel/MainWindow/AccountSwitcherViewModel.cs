@@ -156,12 +156,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
             return;
 
         Entries.Move(fromIndex, toIndex);
-
-        accountManager.Accounts.Clear();
-        foreach (var entry in Entries)
-            accountManager.Accounts.Add(entry.Account);
-
-        accountManager.Save();
+        accountManager.Accounts.Move(fromIndex, toIndex);
         SelectedEntry = Entries[toIndex];
     }
 

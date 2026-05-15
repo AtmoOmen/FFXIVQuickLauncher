@@ -117,6 +117,8 @@ public class AccountManager
     /// </summary>
     public void Save()
     {
+        ApplySequentialSortOrder();
+
         foreach (var item in Accounts)
             Save(item);
     }
@@ -164,7 +166,10 @@ public class AccountManager
             SetupDb();
         }
 
-        var storedAccounts = Database.Table<XIVAccount>().ToArray();
+        var storedAccounts = Database.Table<XIVAccount>()
+                                     .OrderBy(account => account.SortOrder)
+                                     .ThenBy(account => account.Index)
+                                     .ToArray();
 
         Accounts.Clear();
         foreach (var account in storedAccounts)
@@ -390,7 +395,11 @@ public class AccountManager
             existingAccount.DeviceProfileLastGeneratedUtcTicks = account.DeviceProfileLastGeneratedUtcTicks;
         }
         else
+        {
+            account.SortOrder = Accounts.Count;
+
             Accounts.Add(account);
+        }
 
         ClearUnavailableSecrets(account.ID);
     }
@@ -993,6 +1002,7 @@ public class AccountManager
         EnsureColumn(columns, "DeviceProfileLastGeneratedUtcTicks", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(columns, "WeGameTokenSecret",                  "TEXT");
         var addedWeGameLoginAccount = EnsureColumn(columns, "WeGameLoginAccount", "TEXT NOT NULL DEFAULT ''");
+        var addedSortOrder          = EnsureColumn(columns, "SortOrder", "INTEGER NOT NULL DEFAULT 0");
 
         if (addedRotationColumn && columns.Contains("DeviceProfileRotationMode"))
             Database.Execute("UPDATE \"XIVAccount\" SET \"IsDeviceProfileRotation\" = CASE WHEN \"DeviceProfileRotationMode\" = 0 THEN 1 ELSE 0 END");
@@ -1001,6 +1011,9 @@ public class AccountManager
             Database.Execute("UPDATE \"XIVAccount\" SET \"WeGameLoginAccount\" = COALESCE(\"LoginAccount\", '') WHERE \"AccountType\" = 1");
 
         Database.Execute("UPDATE \"XIVAccount\" SET \"WeGameLoginAccount\" = COALESCE(\"LoginAccount\", '') WHERE \"AccountType\" = 1 AND (\"WeGameLoginAccount\" IS NULL OR \"WeGameLoginAccount\" = '')");
+
+        if (addedSortOrder)
+            Database.Execute("UPDATE \"XIVAccount\" SET \"SortOrder\" = COALESCE(\"index\", 0)");
     }
 
     private bool EnsureColumn(HashSet<string> columns, string columnName, string definition)
@@ -1011,6 +1024,12 @@ public class AccountManager
         Database.Execute($"ALTER TABLE \"XIVAccount\" ADD COLUMN \"{columnName}\" {definition}");
         columns.Add(columnName);
         return true;
+    }
+
+    private void ApplySequentialSortOrder()
+    {
+        for (var i = 0; i < Accounts.Count; i++)
+            Accounts[i].SortOrder = i;
     }
 
     private static bool HasDeviceProfile(DeviceProfileSnapshot snapshot) =>
