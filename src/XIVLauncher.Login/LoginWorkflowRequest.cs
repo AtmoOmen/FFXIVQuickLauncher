@@ -12,6 +12,8 @@ public sealed class LoginWorkflowRequest
 
     public required bool ReadWeGameInfo { get; init; }
 
+    public required bool ForceWeGameTokenRecapture { get; init; }
+
     public required LoginAfterAction Action { get; init; }
 
     public required LoginArea CurrentArea { get; init; }

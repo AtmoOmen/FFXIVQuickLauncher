@@ -1,0 +1,3 @@
+[submodule "src/ApkalluCaller"]
+	path = src/ApkalluCaller
+	url = https://github.com/ottercorp/ApkalluCaller

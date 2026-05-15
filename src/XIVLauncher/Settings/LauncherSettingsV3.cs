@@ -87,6 +87,15 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     } = true;
 
     /// <summary>
+    ///     WeGame 登录器目录缓存
+    /// </summary>
+    public string WeGameLauncherPath
+    {
+        get;
+        set => Set(ref field, value);
+    } = string.Empty;
+
+    /// <summary>
     ///     是否加密启动参数 V2
     /// </summary>
     public bool EncryptArgumentsV2

@@ -112,6 +112,57 @@
         <Copy SourceFiles="@(VcdiffShimOutput)" DestinationFiles="@(VcdiffShimOutput-&gt;'$(OutDir)VcdiffShim\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     </Target>
 
+    <Target Name="CopyApkalluCallerStageToOutput" AfterTargets="Build" Condition="Exists('$(ApkalluCallerStage)')">
+        <Copy SourceFiles="$(ApkalluCallerStage)"
+              DestinationFiles="$(OutDir)Resources\version.dll"
+              SkipUnchangedFiles="true" />
+    </Target>
+
+    <PropertyGroup>
+        <ApkalluCallerDir>$(MSBuildProjectDirectory)\..\ApkalluCaller</ApkalluCallerDir>
+        <ApkalluCallerTarget>i686-pc-windows-msvc</ApkalluCallerTarget>
+        <ApkalluCallerOutput>$(ApkalluCallerDir)\target\$(ApkalluCallerTarget)\release\version.dll</ApkalluCallerOutput>
+        <ApkalluCallerStage>$(MSBuildProjectDirectory)\Resources\version.dll</ApkalluCallerStage>
+        <ApkalluCallerSource>$(ApkalluCallerDir)\src\lib.rs</ApkalluCallerSource>
+        <SkipApkalluCaller Condition="'$(SkipApkalluCaller)' == ''">false</SkipApkalluCaller>
+    </PropertyGroup>
+
+    <Target Name="BuildApkalluCaller"
+            BeforeTargets="BeforeBuild"
+            Condition="'$(SkipApkalluCaller)' != 'true'">
+        <Error Condition="!Exists('$(ApkalluCallerDir)\Cargo.toml')"
+               Text="ApkalluCaller submodule not initialized. Run 'git submodule update --init --recursive' from the repo root, or pass /p:SkipApkalluCaller=true to skip (WeGame token capture will be unavailable)." />
+
+        <Exec Command="cargo --version" ConsoleToMsBuild="true" IgnoreExitCode="true">
+            <Output TaskParameter="ExitCode" PropertyName="_CargoExitCode" />
+        </Exec>
+        <Error Condition="'$(_CargoExitCode)' != '0'"
+               Text="'cargo' not found on PATH. Install the Rust toolchain from https://rustup.rs and reopen Visual Studio, or pass /p:SkipApkalluCaller=true." />
+
+        <Exec Command="rustup target add $(ApkalluCallerTarget)"
+              WorkingDirectory="$(ApkalluCallerDir)"
+              ConsoleToMsBuild="true" />
+
+        <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $path = '$(ApkalluCallerSource)'; $utf8 = [System.Text.UTF8Encoding]::new($false); $content = [System.IO.File]::ReadAllText($path, $utf8); $patched = $content.Replace('_mm_pause();', 'unsafe { _mm_pause(); }'); if ($patched -ne $content) { [System.IO.File]::WriteAllText($path, $patched, $utf8) }&quot;"
+              WorkingDirectory="$(ApkalluCallerDir)"
+              ConsoleToMsBuild="true" />
+
+        <Exec Command="cargo build --release --target $(ApkalluCallerTarget)"
+              WorkingDirectory="$(ApkalluCallerDir)"
+              ConsoleToMsBuild="true" />
+
+        <Error Condition="!Exists('$(ApkalluCallerOutput)')"
+               Text="ApkalluCaller build succeeded but '$(ApkalluCallerOutput)' is missing." />
+
+        <Copy SourceFiles="$(ApkalluCallerOutput)"
+              DestinationFiles="$(ApkalluCallerStage)"
+              SkipUnchangedFiles="true" />
+
+        <Exec Command="git -C &quot;$(ApkalluCallerDir)&quot; checkout -- src/lib.rs"
+              WorkingDirectory="$(ApkalluCallerDir)"
+              ConsoleToMsBuild="true" />
+    </Target>
+
     <!-- Git -->
     <Target Name="GetGitHash" BeforeTargets="WriteGitHash" Condition="'$(BuildHash)' == ''">
         <PropertyGroup>

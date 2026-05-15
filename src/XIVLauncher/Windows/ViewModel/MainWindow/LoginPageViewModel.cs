@@ -325,6 +325,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     {
         LoginType.QRCode     => true,
         LoginType.WeGameAuto => IsReadWegameInfo || !string.IsNullOrWhiteSpace(Username),
+        LoginType.WeGameManual => !string.IsNullOrWhiteSpace(Username) || !string.IsNullOrWhiteSpace(Password) || IsReadWegameInfo || IsFastLogin,
         _                    => !string.IsNullOrWhiteSpace(Username) && (!IsPasswordVisible || !string.IsNullOrWhiteSpace(Password))
     };
 
@@ -362,9 +363,14 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 
                 case LoginType.WeGameManual:
                     IsPasswordVisible = true;
-                    UsernameHint      = "SndaID";
-                    UsernameToolTip   = "输入 WeGame 账号对应的 SndaID";
-                    PasswordHint      = "登录令牌";
+                    IsReadWegameInfoVisible = true;
+                    FastLoginText           = "保存密码";
+                    ReadWeGameInfoText      = "强制重新抓包";
+                    IsReadWegameInfo        = false;
+                    UsernameHint            = "账号 ID（可选）";
+                    UsernameToolTip         = "优先使用已保存账号或自动抓取得到的 WeGame 账号 ID";
+                    PasswordHint            = "登录令牌（可选）";
+                    ReadWeGameInfoToolTip   = "勾选后跳过已保存令牌, 直接重新抓取";
                     break;
 
                 case LoginType.WeGameAuto:

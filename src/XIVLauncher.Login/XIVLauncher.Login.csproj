@@ -30,5 +30,6 @@
     <ItemGroup>
         <PackageReference Include="Newtonsoft.Json"/>
         <PackageReference Include="Serilog"/>
+        <PackageReference Include="StreamJsonRpc"/>
     </ItemGroup>
 </Project>

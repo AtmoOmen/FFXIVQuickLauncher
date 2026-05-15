@@ -8,5 +8,7 @@ public sealed class LoginWorkflowResult
 
     public required bool ShouldShowAutoLoginDisclaimer { get; init; }
 
+    public required bool UsedSavedWeGameToken { get; init; }
+
     public Func<Task<string>>? RefreshGameSessionIdByAutoLoginFunc { get; init; }
 }

@@ -79,7 +79,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         Settings                  = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
         DialogProvider            = new MainWindowDialogProvider(window);
         Launcher                  = new();
-        loginWorkflowService      = new LoginWorkflowService(App.AccountManager);
+        loginWorkflowService      = new LoginWorkflowService(App.AccountManager, new WeGameTokenCaptureCoordinator());
         DcTravelRuntimeService    = new DcTravelRuntimeService
         (
             name =>
@@ -291,6 +291,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             Password                            = inputPassword,
             DoingAutoLogin                      = doingAutoLogin,
             ReadWeGameInfo                      = readWeGameInfo,
+            ForceWeGameTokenRecapture           = loginType == LoginType.WeGameManual && readWeGameInfo,
             Action                              = action,
             CurrentArea                         = LoginPage.Area,
             LoginAreas                          = LoginPage.LoginAreas,
@@ -307,7 +308,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             }
         };
 
-        LoginWorkflowResult? workflowResult;
+        LoginWorkflowResult? workflowResult = null;
 
         try
         {
@@ -315,7 +316,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            HandleLoginWorkflowException(ex, loginType, username);
+            await HandleLoginWorkflowExceptionAsync(ex, loginType, username, workflowResult?.UsedSavedWeGameToken == true).ConfigureAwait(false);
             return;
         }
 
@@ -336,7 +337,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             DcTravelRuntimeService.ConfigureAutoLoginRefresh(workflowResult.RefreshGameSessionIdByAutoLoginFunc);
 
         gameLaunchContext.DcTravelPort = gameLaunchContext.LoginResult.State == LoginState.Ok
-                                             ? await DcTravelRuntimeService.StartAsync(App.Settings.DalamudEnabled, loginType == LoginType.WeGameAuto).ConfigureAwait(false)
+                                             ? await DcTravelRuntimeService.StartAsync(App.Settings.DalamudEnabled, resolvedLoginTypeShouldSkipDcTravel(loginType)).ConfigureAwait(false)
                                              : 0;
 
         if (await ProcessLoginResultAsync(gameLaunchContext, action).ConfigureAwait(false))
@@ -351,9 +352,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private void HandleLoginWorkflowException(Exception ex, LoginType loginType, string username)
+    private static bool resolvedLoginTypeShouldSkipDcTravel(LoginType loginType) =>
+        loginType == LoginType.WeGameAuto;
+
+    private async Task HandleLoginWorkflowExceptionAsync(Exception ex, LoginType loginType, string username, bool usedSavedWeGameToken)
     {
         Log.Error(ex, "[MainWindow] 尝试登录至游戏失败");
+        await ClearInvalidSavedWeGameTokenAsync(ex, loginType, username, usedSavedWeGameToken).ConfigureAwait(false);
 
         var msgbox = new CustomMessageBox.Builder()
                      .WithCaption("登录异常")
@@ -480,6 +485,27 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
 
         msgbox.Show();
+    }
+
+    private async Task ClearInvalidSavedWeGameTokenAsync(Exception ex, LoginType loginType, string username, bool usedSavedWeGameToken)
+    {
+        if (ex is not LoginException)
+            return;
+
+        if (loginType != LoginType.WeGameManual || !usedSavedWeGameToken)
+            return;
+
+        var account = AccountManager.Accounts.FirstOrDefault
+        (
+            item => item.AccountType == XIVAccountType.WeGame
+                    && string.Equals(item.SdoLoginAccount, username, StringComparison.Ordinal)
+        );
+
+        if (account?.WeGameTokenSecret == null)
+            return;
+
+        account.WeGameTokenSecret = null;
+        AccountManager.Save(account);
     }
 
     private bool ConfirmGamePatchInstall()

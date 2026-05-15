@@ -11,10 +11,10 @@ public sealed class LoginWorkflowService
     private readonly SavedAccountLoginResolver          savedAccountLoginResolver;
     private readonly NewAccountDeviceProfileCoordinator newAccountDeviceProfileCoordinator;
 
-    public LoginWorkflowService(AccountManager accountManager)
+    public LoginWorkflowService(AccountManager accountManager, IWeGameTokenCaptureCoordinator weGameTokenCaptureCoordinator)
     {
         this.accountManager                = accountManager;
-        savedAccountLoginResolver          = new(accountManager, new WeGameLoginDataReader());
+        savedAccountLoginResolver          = new(accountManager, new WeGameLoginDataReader(), weGameTokenCaptureCoordinator);
         newAccountDeviceProfileCoordinator = new(accountManager);
     }
 
@@ -98,6 +98,30 @@ public sealed class LoginWorkflowService
                         return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
                     };
                 }
+                else if (accountToSave.AccountType == XIVAccountType.WeGame
+                         && accountToSave.AutoLogin
+                         && resolvedLoginState.FinalLoginType == LoginType.WeGameManual
+                         && loginResult.OAuthLogin?.InputUserID is { Length: > 0 } inputUserId
+                         && resolvedLoginState.Secret is { Length: > 0 } weGameToken)
+                {
+                    refreshGameSessionIdByAutoLoginFunc = async () =>
+                    {
+                        var newLoginResult = await loginClient.LoginAsync
+                                             (
+                                                 LoginType.WeGameManual,
+                                                 new LoginRequest
+                                                 {
+                                                     Account                 = inputUserId,
+                                                     Secret                  = weGameToken,
+                                                     AutoLogin               = false,
+                                                     DeviceProfile           = deviceProfileSnapshot,
+                                                     LoginSessionRefreshSink = request.LoginSessionRefreshSink
+                                                 }
+                                             ).ConfigureAwait(false);
+                        return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
+                    };
+                }
+
             }
         }
 
@@ -106,6 +130,7 @@ public sealed class LoginWorkflowService
             GameLaunchContext                   = new GameLaunchContext(loginResult, resolvedLoginState.Area, request.LoginAreas),
             IsAccountPersisted                  = isAccountPersisted,
             ShouldShowAutoLoginDisclaimer       = shouldShowAutoLoginDisclaimer,
+            UsedSavedWeGameToken                = resolvedLoginState.RequestedLoginType == LoginType.WeGameManual && resolvedLoginState.UsedSavedCredential,
             RefreshGameSessionIdByAutoLoginFunc = refreshGameSessionIdByAutoLoginFunc
         };
     }
@@ -193,7 +218,7 @@ public sealed class LoginWorkflowService
 
         if (resolvedLoginState.FinalLoginType == LoginType.WeGameAuto)
             accountToSave.WeGameSIDSecret = await accountManager.Encrypt(resolvedLoginState.Secret);
-        else if (resolvedLoginState.FinalLoginType == LoginType.WeGameManual)
+        else if (resolvedLoginState.FinalLoginType == LoginType.WeGameManual && resolvedLoginState.DoingAutoLogin)
             accountToSave.WeGameTokenSecret = await accountManager.Encrypt(resolvedLoginState.Secret);
 
         accountToSave.GenerateID();

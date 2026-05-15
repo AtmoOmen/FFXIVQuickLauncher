@@ -17,6 +17,7 @@
     <PackageVersion Include="MdXaml" Version="1.27.0" />
     <PackageVersion Include="MdXaml.Plugins" Version="1.27.0" />
     <PackageVersion Include="Microsoft.WindowsAPICodePack-Shell" Version="1.1.0" />
+    <PackageVersion Include="StreamJsonRpc" Version="2.24.84" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="NSec.Cryptography" Version="25.4.0" />
     <PackageVersion Include="PInvoke.Kernel32" Version="0.7.124" />

@@ -1,5 +1,6 @@
 using System.Windows;
 using XIVLauncher.Account;
+using Microsoft.WindowsAPICodePack.Dialogs;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Providers;
 
@@ -40,4 +41,28 @@ public sealed class MainWindowDialogProvider
 
         return dialog.ShowDialog() == true;
     }
+
+    public string? PromptWeGameInstallDirectory()
+    {
+        using var dialog = new CommonOpenFileDialog
+        {
+            Multiselect      = false,
+            IsFolderPicker   = true,
+            EnsurePathExists = true,
+            Title            = "请选择 WeGame 版最终幻想 14 安装目录"
+        };
+
+        return dialog.ShowDialog() == CommonFileDialogResult.Ok
+                   ? dialog.FileName
+                   : null;
+    }
+
+    public MessageBoxResult PromptElevatedVersionDllCopy() =>
+        CustomMessageBox.Builder
+                        .NewFrom("写入 WeGame 安装目录失败, 需要管理员权限\n点击\"确定\"后系统会弹出权限确认窗口, 请同意继续")
+                        .WithImage(MessageBoxImage.Warning)
+                        .WithButtons(MessageBoxButton.OKCancel)
+                        .WithCaption("WeGame 登录")
+                        .WithParentWindow(window)
+                        .Show();
 }

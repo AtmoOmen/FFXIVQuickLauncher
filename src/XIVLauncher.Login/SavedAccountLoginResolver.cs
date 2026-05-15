@@ -5,8 +5,9 @@ namespace XIVLauncher.Login;
 
 internal sealed class SavedAccountLoginResolver
 (
-    AccountManager        accountManager,
-    WeGameLoginDataReader weGameLoginDataReader
+    AccountManager                 accountManager,
+    WeGameLoginDataReader          weGameLoginDataReader,
+    IWeGameTokenCaptureCoordinator weGameTokenCaptureCoordinator
 )
 {
     public async Task<ResolvedLoginState?> ResolveAsync(LoginWorkflowRequest request)
@@ -19,6 +20,7 @@ internal sealed class SavedAccountLoginResolver
         var savedAccount          = FindSavedAccount(request.LoginType, username);
         var accountType           = ResolveAccountType(request.LoginType, savedAccount);
         var hasUnavailableSecrets = accountManager.HasUnavailableSecrets(savedAccount);
+        var usedSavedCredential   = false;
 
         switch (request.LoginType)
         {
@@ -92,16 +94,34 @@ internal sealed class SavedAccountLoginResolver
                 break;
 
             case LoginType.WeGameManual:
-                if (!hasUnavailableSecrets && string.IsNullOrEmpty(request.Password) && savedAccount?.WeGameTokenSecret is { Length: > 0 } weGameTokenSecret)
+                if (!request.ForceWeGameTokenRecapture
+                    && !hasUnavailableSecrets
+                    && string.IsNullOrEmpty(request.Password)
+                    && savedAccount?.WeGameTokenSecret is { Length: > 0 } weGameTokenSecret)
                 {
-                    secret         = await accountManager.CredProvider.Decrypt(weGameTokenSecret) ?? string.Empty;
+                    secret         = await accountManager.Decrypt(weGameTokenSecret) ?? string.Empty;
+                    username       = savedAccount?.SdoLoginAccount ?? username;
                     finalLoginType = LoginType.WeGameManual;
+                    usedSavedCredential = !string.IsNullOrWhiteSpace(secret);
                 }
 
                 if (string.IsNullOrWhiteSpace(secret))
                 {
-                    secret         = request.Password;
-                    finalLoginType = LoginType.WeGameManual;
+                    if (!string.IsNullOrWhiteSpace(request.Password))
+                    {
+                        secret         = request.Password;
+                        finalLoginType = LoginType.WeGameManual;
+                    }
+                    else
+                    {
+                        var captureResult = await weGameTokenCaptureCoordinator.CaptureAsync(request.Interaction, request.LoginCancellationTokenSource);
+                        if (captureResult == null)
+                            return null;
+
+                        username       = captureResult.UserId;
+                        secret         = captureResult.Token;
+                        finalLoginType = LoginType.WeGameManual;
+                    }
                 }
 
                 if (string.IsNullOrWhiteSpace(secret))
@@ -109,6 +129,14 @@ internal sealed class SavedAccountLoginResolver
                     request.Interaction.ShowError("错误: WeGame 自动登录密钥 不能为空");
                     return null;
                 }
+
+                savedAccount = accountManager.Accounts.FirstOrDefault
+                (
+                    account => account.AccountType == XIVAccountType.WeGame
+                               && string.Equals(account.SdoLoginAccount, username, StringComparison.Ordinal)
+                ) ?? savedAccount;
+
+                accountType = XIVAccountType.WeGame;
 
                 break;
 
@@ -147,7 +175,8 @@ internal sealed class SavedAccountLoginResolver
             selectedArea,
             savedAccount,
             accountType,
-            hasUnavailableSecrets
+            hasUnavailableSecrets,
+            usedSavedCredential
         );
     }
 
@@ -181,5 +210,6 @@ internal sealed record ResolvedLoginState
     LoginArea      Area,
     XIVAccount?    SavedAccount,
     XIVAccountType AccountType,
-    bool           HasUnavailableSavedSecrets
+    bool           HasUnavailableSavedSecrets,
+    bool           UsedSavedCredential = false
 );

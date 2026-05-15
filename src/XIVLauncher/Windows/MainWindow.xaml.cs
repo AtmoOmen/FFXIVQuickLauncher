@@ -551,7 +551,9 @@ public partial class MainWindow
                                                   : LoginType.WeGameAuto;
 
                     Model.LoginPage.SelectLoginType(nextWeGameLoginType);
-                    Model.LoginPage.Username = account.UserName;
+                    Model.LoginPage.Username = nextWeGameLoginType == LoginType.WeGameManual
+                                                   ? account.SdoLoginAccount
+                                                   : account.UserName;
 
                     if (nextWeGameLoginType == LoginType.WeGameManual)
                     {

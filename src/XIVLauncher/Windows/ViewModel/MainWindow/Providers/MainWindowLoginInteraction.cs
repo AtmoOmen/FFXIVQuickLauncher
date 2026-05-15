@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Diagnostics;
+using System.ComponentModel;
 using XIVLauncher.Account;
 using XIVLauncher.Login;
 using XIVLauncher.Windows.Services;
@@ -68,4 +70,54 @@ public sealed class MainWindowLoginInteraction
             MessageBoxImage.Error,
             parentWindow: window
         );
+
+    public string? GetSavedWeGameLauncherPath() =>
+        App.Settings.WeGameLauncherPath;
+
+    public void SaveWeGameLauncherPath(string path) =>
+        App.Settings.WeGameLauncherPath = path;
+
+    public string? PromptWeGameInstallDirectory(string? currentPath) =>
+        window.Dispatcher.Invoke(dialogProvider.PromptWeGameInstallDirectory);
+
+    public async Task<bool> TryElevatedCopyVersionDllAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken)
+    {
+        var result = window.Dispatcher.Invoke(dialogProvider.PromptElevatedVersionDllCopy);
+        if (result != MessageBoxResult.OK)
+            return false;
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName        = "cmd.exe",
+            Arguments       = $"/C copy /Y \"{sourcePath}\" \"{destinationPath}\"",
+            Verb            = "runas",
+            UseShellExecute = true,
+            WindowStyle     = ProcessWindowStyle.Hidden,
+            CreateNoWindow  = true
+        };
+
+        try
+        {
+            using var process = Process.Start(startInfo);
+            if (process == null)
+            {
+                ShowError("启动复制进程失败");
+                return false;
+            }
+
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+            if (process.ExitCode != 0 || !WeGameLoginCapturer.HashEquals(sourcePath, destinationPath))
+            {
+                ShowError("复制 version.dll 失败, 请稍后再试");
+                return false;
+            }
+
+            return true;
+        }
+        catch (Win32Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
 }

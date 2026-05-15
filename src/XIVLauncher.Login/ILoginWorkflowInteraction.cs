@@ -19,4 +19,12 @@ public interface ILoginWorkflowInteraction
     bool ConfigureTemporaryAccountDeviceProfile(XIVAccount account, AccountManager accountManager);
 
     void ShowError(string message);
+
+    string? GetSavedWeGameLauncherPath();
+
+    void SaveWeGameLauncherPath(string path);
+
+    string? PromptWeGameInstallDirectory(string? currentPath);
+
+    Task<bool> TryElevatedCopyVersionDllAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken);
 }
