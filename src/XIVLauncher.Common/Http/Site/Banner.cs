@@ -6,13 +6,13 @@ namespace XIVLauncher.Common.Http.Site;
 public class Banner
 {
     [JsonProperty("Title")]
-    public string Title { get; set; }
+    public string Title { get; set; } = null!;
 
     [JsonProperty("HomeImagePath")]
-    public Uri LsbBanner { get; set; }
+    public Uri LsbBanner { get; set; } = null!;
 
     [JsonProperty("OutLink")]
-    public Uri Link { get; set; }
+    public Uri Link { get; set; } = null!;
 
     [JsonProperty("order_priority")]
     public int? OrderPriority { get; set; }
@@ -38,8 +38,8 @@ public class Banner
 
                 var value = pair.Length > 1 ? Uri.UnescapeDataString(pair[1]) : string.Empty;
                 return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var newsId)
-                    ? newsId
-                    : null;
+                           ? newsId
+                           : null;
             }
 
             return null;

@@ -9,16 +9,16 @@ namespace XIVLauncher.Common.Http.Site;
 public partial class Headlines
 {
     [JsonProperty("news")]
-    public News[] News { get; set; }
+    public required News[] News { get; set; }
 
     [JsonProperty("topics")]
-    public News[] Topics { get; set; }
+    public News[] Topics { get; set; } = null!;
 
     [JsonProperty("pinned")]
-    public News[] Pinned { get; set; }
+    public News[] Pinned { get; set; } = null!;
 
     [JsonProperty("banner")]
-    public Banner[] Banner { get; set; }
+    public Banner[] Banner { get; set; } = null!;
 }
 
 public partial class Headlines
@@ -26,31 +26,34 @@ public partial class Headlines
     public static async Task<Headlines> GetHeadlinesAsync(Launcher game)
     {
         var banners = await GetBannersAsync(game);
-        var bannerTitles = new HashSet<string>(banners
-            .Where(banner => !string.IsNullOrWhiteSpace(banner.Title))
-            .Select(banner => banner.Title), StringComparer.Ordinal);
-        var bannerNewsIds = new HashSet<int>(banners
-            .Select(banner => banner.NewsId)
-            .Where(newsId => newsId.HasValue)
-            .Select(newsId => newsId!.Value));
+        var bannerTitles = new HashSet<string>
+        (
+            banners
+                .Where(banner => !string.IsNullOrWhiteSpace(banner.Title))
+                .Select(banner => banner.Title),
+            StringComparer.Ordinal
+        );
+        var bannerNewsIds = new HashSet<int>
+        (
+            banners
+                .Select(banner => banner.NewsId)
+                .Where(newsId => newsId.HasValue)
+                .Select(newsId => newsId!.Value)
+        );
 
         var headlines = new Headlines
         {
             Banner = banners,
             News = (await GetNewsAsync(game))
-                .Where(news => !IsBannerNews(news, bannerTitles, bannerNewsIds))
-                .ToArray()
+                   .Where(news => !IsBannerNews(news, bannerTitles, bannerNewsIds))
+                   .ToArray()
         };
 
         return headlines;
     }
 
-    private static bool IsBannerNews(News news, HashSet<string> bannerTitles, HashSet<int> bannerNewsIds)
-    {
-        return bannerTitles.Contains(news.Title) ||
-               int.TryParse(news.Id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var newsId) &&
-               bannerNewsIds.Contains(newsId);
-    }
+    private static bool IsBannerNews(News news, HashSet<string> bannerTitles, HashSet<int> bannerNewsIds) =>
+        bannerTitles.Contains(news.Title) || int.TryParse(news.ID, NumberStyles.Integer, CultureInfo.InvariantCulture, out var newsId) && bannerNewsIds.Contains(newsId);
 
     private static async Task<Banner[]> GetBannersAsync(Launcher game)
     {
@@ -60,7 +63,7 @@ public partial class Headlines
         );
 
         var sdoBanner = JsonConvert.DeserializeObject<BannerRoot>(json);
-        return sdoBanner.Banners;
+        return sdoBanner?.Banners ?? [];
     }
 
     private static async Task<News[]> GetNewsAsync(Launcher game)
@@ -71,6 +74,6 @@ public partial class Headlines
         );
 
         var sdoNews = JsonConvert.DeserializeObject<NewsRoot>(json);
-        return sdoNews.News;
+        return sdoNews?.News ?? [];
     }
 }

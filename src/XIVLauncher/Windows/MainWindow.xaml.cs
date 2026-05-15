@@ -295,8 +295,8 @@ public partial class MainWindow
 
         if (!string.IsNullOrEmpty(item.Url))
             Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
-        else if (!string.IsNullOrEmpty(item.Id))
-            Process.Start(new ProcessStartInfo(Links.SDO_NEWS_ARTICLE_BASE_URL + item.Id) { UseShellExecute = true });
+        else if (!string.IsNullOrEmpty(item.ID))
+            Process.Start(new ProcessStartInfo(Links.SDO_NEWS_ARTICLE_BASE_URL + item.ID) { UseShellExecute = true });
 
     }
 
