@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
 using XIVLauncher.Common;
-using XIVLauncher.Common.CompanionApp;
+using XIVLauncher.CompanionApp;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Support;

@@ -8,7 +8,7 @@ using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
-using XIVLauncher.Common.CompanionApp;
+using XIVLauncher.CompanionApp;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Settings.Converters;

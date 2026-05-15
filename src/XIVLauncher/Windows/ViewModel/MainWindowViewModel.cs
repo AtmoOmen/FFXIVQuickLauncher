@@ -18,7 +18,7 @@ using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.ArgReader;
 using XIVLauncher.Common;
-using XIVLauncher.Common.CompanionApp;
+using XIVLauncher.CompanionApp;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.DCTravel;

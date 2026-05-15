@@ -1,6 +1,6 @@
 using System.Windows;
 using XIVLauncher.Account;
-using XIVLauncher.Common.CompanionApp;
+using XIVLauncher.CompanionApp;
 
 namespace XIVLauncher.Windows.Services;
 

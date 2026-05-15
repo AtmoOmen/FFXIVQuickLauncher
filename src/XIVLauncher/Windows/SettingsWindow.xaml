@@ -2,7 +2,7 @@
     x:Class="XIVLauncher.Windows.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:companionApp="clr-namespace:XIVLauncher.Common.CompanionApp;assembly=XIVLauncher.Common"
+    xmlns:companionApp="clr-namespace:XIVLauncher.CompanionApp;assembly=XIVLauncher.CompanionApp"
     xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"

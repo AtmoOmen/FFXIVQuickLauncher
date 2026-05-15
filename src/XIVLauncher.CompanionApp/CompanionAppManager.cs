@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Serilog;
 
-namespace XIVLauncher.Common.CompanionApp;
+namespace XIVLauncher.CompanionApp;
 
 public sealed class CompanionAppManager
 {

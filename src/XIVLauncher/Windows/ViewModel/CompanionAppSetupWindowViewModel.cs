@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using XIVLauncher.Common.CompanionApp;
+using XIVLauncher.CompanionApp;
 
 namespace XIVLauncher.Windows.ViewModel;
 

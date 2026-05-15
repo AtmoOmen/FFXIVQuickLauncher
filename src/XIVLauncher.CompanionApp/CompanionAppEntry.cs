@@ -1,4 +1,4 @@
-namespace XIVLauncher.Common.CompanionApp;
+namespace XIVLauncher.CompanionApp;
 
 public sealed class CompanionAppEntry
 {

@@ -1,5 +1,5 @@
 using System.Windows;
-using XIVLauncher.Common.CompanionApp;
+using XIVLauncher.CompanionApp;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;

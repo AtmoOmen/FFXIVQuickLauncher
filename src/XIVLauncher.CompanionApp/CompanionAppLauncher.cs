@@ -3,7 +3,7 @@ using System.Diagnostics;
 using Serilog;
 using XIVLauncher.Common.Util;
 
-namespace XIVLauncher.Common.CompanionApp;
+namespace XIVLauncher.CompanionApp;
 
 internal static class CompanionAppLauncher
 {
