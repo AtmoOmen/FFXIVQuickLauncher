@@ -1,7 +1,7 @@
 using Serilog.Core;
 using Serilog.Events;
 
-namespace XIVLauncher.Common.Support;
+namespace XIVLauncher.Support;
 
 /// <summary>
 ///     Serilog event sink.

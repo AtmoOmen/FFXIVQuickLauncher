@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Serilog.Events;
-using XIVLauncher.Common.Support;
+using XIVLauncher.Support;
 
 namespace XIVLauncher.Windows.ViewModel;
 

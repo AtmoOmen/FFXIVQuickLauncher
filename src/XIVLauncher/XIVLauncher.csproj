@@ -72,6 +72,7 @@
 
     <ItemGroup>
         <PackageReference Include="CalcBinding" />
+        <PackageReference Include="CommandLineParser" />
         <PackageReference Include="Downloader" />
         <PackageReference Include="Dragablz" />
         <PackageReference Include="Extended.Wpf.Toolkit" />
@@ -81,8 +82,10 @@
         <PackageReference Include="MdXaml.Plugins" />
         <PackageReference Include="Microsoft.WindowsAPICodePack-Shell" />
         <PackageReference Include="Serilog" />
+        <PackageReference Include="Serilog.Enrichers.Sensitive" />
         <PackageReference Include="Serilog.Sinks.Async" />
         <PackageReference Include="Serilog.Sinks.Console" />
+        <PackageReference Include="Serilog.Sinks.Debug" />
         <PackageReference Include="Serilog.Sinks.File" />
         <PackageReference Include="SharedMemory" />
         <PackageReference Include="Stylet" />

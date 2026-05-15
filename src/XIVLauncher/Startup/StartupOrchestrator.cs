@@ -8,7 +8,6 @@ using Velopack;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
-using XIVLauncher.Common.Support;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;

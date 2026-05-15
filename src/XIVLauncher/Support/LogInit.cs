@@ -5,7 +5,7 @@ using Serilog.Core;
 using Serilog.Enrichers.Sensitive;
 using Serilog.Events;
 
-namespace XIVLauncher.Common.Support;
+namespace XIVLauncher.Support;
 
 public static class LogInit
 {
