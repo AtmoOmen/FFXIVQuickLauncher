@@ -75,10 +75,7 @@ public static class AppUtil
 
             while (true)
             {
-                using var restartManager = new RestartManager();
-                restartManager.Register(GameRepairer.GetRelevantFiles(gamePath));
-
-                var programs = restartManager.GetInterferingProcesses(out _).ToArray();
+                var programs = FileLockDetector.GetLockingProcesses(GameRepairer.GetRelevantFiles(gamePath)).ToArray();
                 if (programs.Length == 0)
                     return true;
 
@@ -90,9 +87,9 @@ public static class AppUtil
                         {
                             var process = x.Process;
                             if (process == null)
-                                return $"{x.AppName} ({x.UniqueProcess.dwProcessId})";
+                                return $"{x.AppName} ({x.ProcessID})";
 
-                            var pid     = x.UniqueProcess.dwProcessId;
+                            var pid     = x.ProcessID;
                             var exeName = process.MainModule?.ModuleName ?? "??";
                             var title   = process.MainWindowTitle;
 
