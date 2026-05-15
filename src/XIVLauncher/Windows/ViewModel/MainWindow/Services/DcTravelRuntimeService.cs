@@ -26,11 +26,11 @@ public sealed class DcTravelRuntimeService : ILoginSessionRefreshSink
     public void Bind(LoginSessionRefreshContext context) =>
         Client.BindLoginSessionRefresh(context);
 
-    public async Task<int> StartAsync(bool enableDalamud, bool skipForWeGameAuto)
+    public async Task<int> StartAsync(bool enableDalamud, bool skipDcTravel)
     {
         Stop();
 
-        if (!enableDalamud || skipForWeGameAuto)
+        if (!enableDalamud || skipDcTravel)
             return 0;
 
         try
@@ -53,10 +53,10 @@ public sealed class DcTravelRuntimeService : ILoginSessionRefreshSink
         }
     }
 
-    public void ConfigureAutoLoginRefresh(Func<Task<string>> refreshGameSessionIdByAutoLoginFunc)
+    public void ConfigureQuickLoginRefresh(Func<Task<string>> refreshGameSessionIdByQuickLoginFunc)
     {
-        ArgumentNullException.ThrowIfNull(refreshGameSessionIdByAutoLoginFunc);
-        Client.RefreshGameSessionIDByAutoLoginFunc = refreshGameSessionIdByAutoLoginFunc;
+        ArgumentNullException.ThrowIfNull(refreshGameSessionIdByQuickLoginFunc);
+        Client.RefreshGameSessionIDByQuickLoginFunc = refreshGameSessionIdByQuickLoginFunc;
     }
 
     public void Stop()

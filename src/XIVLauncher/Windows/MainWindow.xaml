@@ -1154,14 +1154,14 @@
                                                                                             TargetType="materialDesign:PackIcon">
                                                                                             <Style.Triggers>
                                                                                                 <DataTrigger
-                                                                                                    Binding="{Binding Account.AutoLogin}"
+                                                                                                    Binding="{Binding Account.QuickLoginEnabled}"
                                                                                                     Value="True">
                                                                                                     <Setter
                                                                                                         Property="Kind"
                                                                                                         Value="AccountKeyOutline" />
                                                                                                 </DataTrigger>
                                                                                                 <DataTrigger
-                                                                                                    Binding="{Binding Account.AutoLogin}"
+                                                                                                    Binding="{Binding Account.QuickLoginEnabled}"
                                                                                                     Value="False">
                                                                                                     <Setter
                                                                                                         Property="Visibility"

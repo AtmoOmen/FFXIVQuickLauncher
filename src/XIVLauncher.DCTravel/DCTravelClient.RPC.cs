@@ -24,10 +24,10 @@ public partial class DCTravelClient
         {
             if (ex.ErrorCode == (int)LoginExceptionCode.OutdatedLoginInfo)
             {
-                if (RefreshGameSessionIDByAutoLoginFunc != null)
-                    return await RefreshGameSessionIDByAutoLoginFunc();
+                if (RefreshGameSessionIDByQuickLoginFunc != null)
+                    return await RefreshGameSessionIDByQuickLoginFunc();
 
-                throw new Exception("登录过期且未开启自动登录, 请重新使用 XIVLauncher 登录游戏");
+                throw new Exception("登录过期且未开启快速登录, 请重新使用 XIVLauncher 登录游戏");
             }
 
             throw;

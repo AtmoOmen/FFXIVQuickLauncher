@@ -55,7 +55,7 @@ public sealed class StaticLoginChannel
 
             request.ShowLoginMessage?.Invoke("正在校验登录验证码…");
 
-            result = await context.CheckCodeLoginAsync(captchaGuid, captchaText.Trim(), request.AutoLogin).ConfigureAwait(false);
+            result = await context.CheckCodeLoginAsync(captchaGuid, captchaText.Trim(), request.QuickLoginEnabled).ConfigureAwait(false);
             if (result.ReturnCode != 0 || result.ErrorType != 0)
                 throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
@@ -106,7 +106,7 @@ public sealed class StaticLoginChannel
 
         request.ShowLoginMessage?.Invoke("正在校验安全手机短信验证码…");
 
-        var confirmLoginResult = await context.ConfirmSafePhoneLoginAsync(request.Account, flowId, verifyCode.Trim(), request.AutoLogin).ConfigureAwait(false);
+        var confirmLoginResult = await context.ConfirmSafePhoneLoginAsync(request.Account, flowId, verifyCode.Trim(), request.QuickLoginEnabled).ConfigureAwait(false);
         if (confirmLoginResult.ReturnCode != 0 || confirmLoginResult.ErrorType != 0)
             throw new LoginException(confirmLoginResult.ReturnCode, confirmLoginResult.Data.FailReason);
 

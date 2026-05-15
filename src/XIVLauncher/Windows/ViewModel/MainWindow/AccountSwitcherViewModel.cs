@@ -76,12 +76,12 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 
             var selectedAccountId = SelectedEntry?.Account.ID;
             var account           = FindTrackedAccount(activeEntry.Account);
-            account.AutoLogin = !value;
+            account.QuickLoginEnabled = !value;
 
             if (value)
             {
                 account.SdoPassword       = string.Empty;
-                account.WeGameTokenSecret = null;
+                account.WeGameQuickLoginSecret = null;
             }
 
             accountManager.Save();
@@ -235,12 +235,10 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
     }
 
     private static bool HasSavedSecret(XIVAccount account) =>
-        account.AutoLogin
+        account.QuickLoginEnabled
         || !string.IsNullOrWhiteSpace(account.SdoPassword)
-        || !string.IsNullOrWhiteSpace(account.WeGameTokenSecret)
-        || !string.IsNullOrWhiteSpace(account.SdoAutoLoginSessionKey)
-        || !string.IsNullOrWhiteSpace(account.WeGameSIDSecret)
-        || !string.IsNullOrWhiteSpace(account.WeGameSessionID);
+        || !string.IsNullOrWhiteSpace(account.WeGameQuickLoginSecret)
+        || !string.IsNullOrWhiteSpace(account.SdoQuickLoginSecret);
 
     public void ConfigureSelectedDeviceProfile()
     {

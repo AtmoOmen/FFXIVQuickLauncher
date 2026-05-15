@@ -5,7 +5,7 @@ public sealed class SessionKeyLoginChannel
     LoginChannelContext context
 ) : ILoginChannel
 {
-    public LoginType Type => LoginType.AutoLoginSession;
+    public LoginType Type => LoginType.QuickLogin;
 
     public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
@@ -23,12 +23,12 @@ public sealed class SessionKeyLoginChannel
         {
             context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt, guid);
             var sessionId = await context.GetSessionIdAsync(tgt, guid).ConfigureAwait(false);
-            return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, newAutoLoginSessionKey, LoginType.AutoLoginSession);
+            return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, newAutoLoginSessionKey, LoginType.QuickLogin);
         }
         catch (Exception ex)
         {
             if (ex is LoginException loginException)
-                loginException.RemoveAutoLoginSessionKey = true;
+                loginException.RemoveQuickLoginSecret = true;
 
             throw;
         }

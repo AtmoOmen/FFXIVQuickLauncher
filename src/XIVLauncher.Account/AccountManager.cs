@@ -148,6 +148,16 @@ public class AccountManager
         {
             Log.Error(ex, "Failed to load VFS database, starting fresh");
 
+            try
+            {
+                Database.Close();
+                Database.Dispose();
+            }
+            catch
+            {
+                // ignored
+            }
+
             if (File.Exists(DatabasePath))
                 File.Delete(DatabasePath);
 
@@ -301,10 +311,8 @@ public class AccountManager
                 }
 
                 item.SdoPassword            = await ConvertSecretAsync(oldCred, newCred, item.SdoPassword,            item.ID, "登录密码")   ?? string.Empty;
-                item.SdoAutoLoginSessionKey = await ConvertSecretAsync(oldCred, newCred, item.SdoAutoLoginSessionKey, item.ID, "自动登录密钥") ?? string.Empty;
-                item.WeGameSIDSecret        = await ConvertSecretAsync(oldCred, newCred, item.WeGameSIDSecret,   item.ID, "WeGame SID");
-                item.WeGameTokenSecret      = await ConvertSecretAsync(oldCred, newCred, item.WeGameTokenSecret, item.ID, "WeGame Token");
-                item.WeGameSessionID        = await ConvertSecretAsync(oldCred, newCred, item.WeGameSessionID, item.ID, "游戏会话 ID") ?? string.Empty;
+                item.SdoQuickLoginSecret    = await ConvertSecretAsync(oldCred, newCred, item.SdoQuickLoginSecret, item.ID, "盛趣快速登录凭据") ?? string.Empty;
+                item.WeGameQuickLoginSecret = await ConvertSecretAsync(oldCred, newCred, item.WeGameQuickLoginSecret, item.ID, "WeGame 快速登录凭据");
             }
 
             CurrentCredType = requestedType;
@@ -367,12 +375,11 @@ public class AccountManager
             Log.Verbose("Updating account...");
             existingAccount.ID                                 = account.ID;
             existingAccount.SdoPassword                        = account.SdoPassword;
-            existingAccount.AutoLogin                          = account.AutoLogin;
-            existingAccount.SdoAutoLoginSessionKey             = account.SdoAutoLoginSessionKey;
-            existingAccount.WeGameTokenSecret                  = account.WeGameTokenSecret;
-            existingAccount.WeGameSIDSecret                    = account.WeGameSIDSecret;
+            existingAccount.WeGameLoginAccount                 = account.WeGameLoginAccount;
+            existingAccount.QuickLoginEnabled                  = account.QuickLoginEnabled;
+            existingAccount.SdoQuickLoginSecret                = account.SdoQuickLoginSecret;
+            existingAccount.WeGameQuickLoginSecret             = account.WeGameQuickLoginSecret;
             existingAccount.AreaName                           = account.AreaName;
-            existingAccount.WeGameSessionID                    = account.WeGameSessionID;
             existingAccount.DeviceProfileDeviceId              = account.DeviceProfileDeviceId;
             existingAccount.DeviceProfileMacAddress            = account.DeviceProfileMacAddress;
             existingAccount.DeviceProfileHostName              = account.DeviceProfileHostName;
@@ -676,7 +683,7 @@ public class AccountManager
     public void RemoveAccount(XIVAccount account)
     {
         account.SdoPassword       = string.Empty;
-        account.WeGameTokenSecret = null;
+        account.WeGameQuickLoginSecret = null;
         ClearUnavailableSecrets(account.ID);
         Accounts.Remove(account);
 
@@ -838,10 +845,8 @@ public class AccountManager
 
     private static bool HasStoredSecrets(XIVAccount account) =>
         !string.IsNullOrWhiteSpace(account.SdoPassword)
-        || !string.IsNullOrWhiteSpace(account.SdoAutoLoginSessionKey)
-        || !string.IsNullOrWhiteSpace(account.WeGameTokenSecret)
-        || !string.IsNullOrWhiteSpace(account.WeGameSIDSecret)
-        || !string.IsNullOrWhiteSpace(account.WeGameSessionID);
+        || !string.IsNullOrWhiteSpace(account.SdoQuickLoginSecret)
+        || !string.IsNullOrWhiteSpace(account.WeGameQuickLoginSecret);
 
     private ICredProvider GetCredProvider(CredType type) =>
         type switch
@@ -987,9 +992,15 @@ public class AccountManager
         EnsureColumn(columns, "DeviceProfileRotationDays",          $"INTEGER NOT NULL DEFAULT {DEFAULT_DEVICE_PROFILE_ROTATION_DAYS}");
         EnsureColumn(columns, "DeviceProfileLastGeneratedUtcTicks", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumn(columns, "WeGameTokenSecret",                  "TEXT");
+        var addedWeGameLoginAccount = EnsureColumn(columns, "WeGameLoginAccount", "TEXT NOT NULL DEFAULT ''");
 
         if (addedRotationColumn && columns.Contains("DeviceProfileRotationMode"))
             Database.Execute("UPDATE \"XIVAccount\" SET \"IsDeviceProfileRotation\" = CASE WHEN \"DeviceProfileRotationMode\" = 0 THEN 1 ELSE 0 END");
+
+        if (addedWeGameLoginAccount)
+            Database.Execute("UPDATE \"XIVAccount\" SET \"WeGameLoginAccount\" = COALESCE(\"LoginAccount\", '') WHERE \"AccountType\" = 1");
+
+        Database.Execute("UPDATE \"XIVAccount\" SET \"WeGameLoginAccount\" = COALESCE(\"LoginAccount\", '') WHERE \"AccountType\" = 1 AND (\"WeGameLoginAccount\" IS NULL OR \"WeGameLoginAccount\" = '')");
     }
 
     private bool EnsureColumn(HashSet<string> columns, string columnName, string definition)

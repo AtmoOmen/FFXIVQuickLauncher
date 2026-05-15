@@ -31,12 +31,12 @@ public sealed class QRCodeLoginChannel
         var newAccount = await context.GetAccountGroupAsync(tgt!, sndaId!).ConfigureAwait(false);
         account = string.IsNullOrEmpty(account) ? newAccount : account;
         string? autoLoginSessionKey = null;
-        if (request.AutoLogin)
+        if (request.QuickLoginEnabled)
             (tgt, autoLoginSessionKey) = await context.AccountGroupLoginAsync(tgt!, sndaId!, AUTO_LOGIN_KEEP_DAYS).ConfigureAwait(false);
 
         context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt!, guid);
         var sessionId = await context.GetSessionIdAsync(tgt!, guid).ConfigureAwait(false);
-        return LoginChannelContext.BuildOkLoginResult(account!, sndaId!, sessionId, request.AutoLogin ? autoLoginSessionKey : null, LoginType.QRCode);
+        return LoginChannelContext.BuildOkLoginResult(account!, sndaId!, sessionId, request.QuickLoginEnabled ? autoLoginSessionKey : null, LoginType.QRCode);
     }
 
     private async Task<(string sndaId, string tgt, string account)> WaitForScanAsync(string codeKey, string guid, CancellationTokenSource qrCodeExpiration, CancellationTokenSource userCancel)

@@ -9,7 +9,7 @@ namespace XIVLauncher.DCTravel;
 
 public partial class DCTravelClient
 {
-    public Func<Task<string>>?         RefreshGameSessionIDByAutoLoginFunc { get; set; }
+    public Func<Task<string>>?         RefreshGameSessionIDByQuickLoginFunc { get; set; }
     public Action<string>?             SetSdoAreaFunc                      { get; set; }
     public CancellationTokenSource     KeepAliveCancelSource               { get; private set; }
     public LoginSessionRefreshContext? LoginSessionRefreshContext          { get; private set; }

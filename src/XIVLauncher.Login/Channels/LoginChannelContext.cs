@@ -47,7 +47,7 @@ public sealed class LoginChannelContext
             SessionID           = sessionID,
             InputUserID         = account,
             SndaID              = sid,
-            AutoLoginSessionKey = autoLoginSessionKey,
+            QuickLoginSecret    = autoLoginSessionKey,
             MaxExpansion        = FFXIV.MAX_EXPANSION,
             LoginType           = loginType
         };
@@ -161,7 +161,7 @@ public sealed class LoginChannelContext
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason, true);
 
-        return (result.Data.SndaID, result.Data.Tgt, result.Data.AutoLoginSessionKey);
+        return (result.Data.SndaID, result.Data.Tgt, result.Data.QuickLoginSecret);
     }
 
     public async Task<(string SID, string TGT, string Key)> ThirdPartyLoginAsync
@@ -184,7 +184,7 @@ public sealed class LoginChannelContext
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
-        return (result.Data.SndaID, result.Data.Tgt, result.Data.AutoLoginSessionKey);
+        return (result.Data.SndaID, result.Data.Tgt, result.Data.QuickLoginSecret);
     }
 
     public async Task<string?> GetAccountGroupAsync(string tgt, string sid)
@@ -217,7 +217,7 @@ public sealed class LoginChannelContext
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
-        return (result.Data.Tgt, result.Data.AutoLoginSessionKey);
+        return (result.Data.Tgt, result.Data.QuickLoginSecret);
     }
 
     public async Task CancelPushMessageLoginAsync(string pushMSGSessionKey, string guid) =>

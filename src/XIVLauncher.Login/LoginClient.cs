@@ -33,7 +33,7 @@ public sealed class LoginClient
             DeviceProfile           = deviceProfile,
             LoginSessionRefreshSink = loginSessionRefreshSink
         };
-        return await LoginAsync(LoginType.AutoLoginSession, request).ConfigureAwait(false);
+        return await LoginAsync(LoginType.QuickLogin, request).ConfigureAwait(false);
     }
 
     public async Task<LoginResult> LoginWithPatchCheck
@@ -51,7 +51,7 @@ public sealed class LoginClient
         if (checkResult.State == LoginState.NeedsPatchGame)
             return checkResult;
 
-        if (loginType == LoginType.AutoLoginSession)
+        if (loginType == LoginType.QuickLogin)
         {
             try
             {

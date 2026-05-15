@@ -49,10 +49,10 @@ public class LoginResponse
 
         [JsonConverter(typeof(MaskMiddleConverter))]
         [JsonProperty("autoLoginSessionKey")]
-        public string AutoLoginSessionKey = null!;
+        public string QuickLoginSecret = null!;
 
         [JsonProperty("autoLoginMaxAge")]
-        public int AutoLoginMaxAge;
+        public int QuickLoginMaxAge;
 
         [JsonConverter(typeof(MaskMiddleConverter))]
         [JsonProperty("inputUserId")]

@@ -521,7 +521,7 @@ public partial class MainWindow
             var hasUnavailableSecrets = accountManager.HasUnavailableSecrets(account);
             var selectedArea          = Model.LoginPage.LoginAreas.FirstOrDefault(x => x.AreaName == account.AreaName);
 
-            Model.LoginPage.IsFastLogin = account.AutoLogin;
+            Model.LoginPage.IsFastLogin = account.QuickLoginEnabled;
             Model.LoginPage.Area        = selectedArea ?? Model.LoginPage.Area;
             LoginPassword.Password      = string.Empty;
             Model.LoginPage.Password    = string.Empty;
@@ -546,21 +546,16 @@ public partial class MainWindow
                     break;
 
                 case XIVAccountType.WeGame:
-                    var nextWeGameLoginType = !hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.WeGameTokenSecret)
-                                                  ? LoginType.WeGameManual
-                                                  : LoginType.WeGameAuto;
+                    Model.LoginPage.SelectLoginType(LoginType.WeGame);
+                    Model.LoginPage.Username = account.WeGameLoginAccount;
 
-                    Model.LoginPage.SelectLoginType(nextWeGameLoginType);
-                    Model.LoginPage.Username = nextWeGameLoginType == LoginType.WeGameManual
-                                                   ? account.SdoLoginAccount
-                                                   : account.UserName;
-
-                    if (nextWeGameLoginType == LoginType.WeGameManual)
+                    if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.WeGameQuickLoginSecret))
                     {
                         LoginPassword.Password   = MainWindowViewModel.PRESUDO_PASSWORD;
                         Model.LoginPage.Password = MainWindowViewModel.PRESUDO_PASSWORD;
                     }
-                    else Model.LoginPage.IsReadWegameInfo = false;
+                    else
+                        Model.LoginPage.IsReadWegameInfo = false;
 
                     break;
             }

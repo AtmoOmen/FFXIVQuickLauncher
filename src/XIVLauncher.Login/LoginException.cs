@@ -76,10 +76,10 @@ public class LoginException
 (
     int    errorCode,
     string message,
-    bool   removeAutoLoginSessionKey = false
+    bool   removeQuickLoginSecret = false
 ) : Exception(message)
 {
     public int ErrorCode = errorCode;
 
-    public bool RemoveAutoLoginSessionKey = removeAutoLoginSessionKey;
+    public bool RemoveQuickLoginSecret = removeQuickLoginSecret;
 }

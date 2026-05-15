@@ -6,7 +6,7 @@ public sealed class LoginRequest
 {
     public string                                 Account                      { get; init; } = string.Empty;
     public string                                 Secret                       { get; init; } = string.Empty;
-    public bool                                   AutoLogin                    { get; init; }
+    public bool                                   QuickLoginEnabled            { get; init; }
     public DeviceProfileSnapshot                  DeviceProfile                { get; init; } = FakeMachineInfo.CreateSnapshot();
     public CancellationTokenSource?               LoginCancellationTokenSource { get; init; }
     public Action<byte[]>?                        ShowQRCode                   { get; init; }
@@ -20,7 +20,7 @@ public sealed class LoginRequest
     (
         string                                 account,
         string                                 secret,
-        bool                                   autoLogin,
+        bool                                   quickLoginEnabled,
         DeviceProfileSnapshot                  deviceProfile,
         ILoginSessionRefreshSink?              loginSessionRefreshSink,
         CancellationTokenSource?               loginCancellationTokenSource,
@@ -35,7 +35,7 @@ public sealed class LoginRequest
         {
             Account                      = account,
             Secret                       = secret,
-            AutoLogin                    = autoLogin,
+            QuickLoginEnabled            = quickLoginEnabled,
             DeviceProfile                = deviceProfile,
             LoginSessionRefreshSink      = loginSessionRefreshSink,
             LoginCancellationTokenSource = loginCancellationTokenSource,

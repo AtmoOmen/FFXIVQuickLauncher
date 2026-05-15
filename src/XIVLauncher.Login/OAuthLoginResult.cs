@@ -6,7 +6,7 @@ public class OAuthLoginResult
     public string    InputUserID         { get; set; } = null!;
     public string    SndaID              { get; set; } = null!;
     public string    Password            { get; set; } = null!;
-    public string?   AutoLoginSessionKey { get; set; }
+    public string?   QuickLoginSecret    { get; set; }
     public int       Region              { get; set; }
     public bool      TermsAccepted       { get; set; }
     public bool      Playable            { get; set; }

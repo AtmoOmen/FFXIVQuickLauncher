@@ -11,8 +11,8 @@ internal sealed class NewAccountDeviceProfileCoordinator
     public DeviceProfilePreparation? Prepare(LoginWorkflowRequest request, ResolvedLoginState resolvedLoginState)
     {
         var requiresNewAccountDeviceProfileSetup   = request.RequireDeviceProfileSetupForNewLogin && resolvedLoginState.SavedAccount       == null;
-        var shouldRequestTemporaryAutoLoginSession = requiresNewAccountDeviceProfileSetup         && resolvedLoginState.RequestedLoginType == LoginType.QRCode;
-        var loginAutoLogin                         = resolvedLoginState.DoingAutoLogin || shouldRequestTemporaryAutoLoginSession;
+        var shouldRequestTemporaryQuickLoginSession = requiresNewAccountDeviceProfileSetup          && resolvedLoginState.RequestedLoginType == LoginType.QRCode;
+        var loginQuickLoginEnabled                 = resolvedLoginState.QuickLoginEnabled || shouldRequestTemporaryQuickLoginSession;
 
         if (!requiresNewAccountDeviceProfileSetup || resolvedLoginState.RequestedLoginType == LoginType.QRCode)
         {
@@ -22,7 +22,7 @@ internal sealed class NewAccountDeviceProfileCoordinator
                 resolvedDeviceProfile,
                 null,
                 requiresNewAccountDeviceProfileSetup,
-                loginAutoLogin
+                loginQuickLoginEnabled
             );
         }
 
@@ -42,7 +42,7 @@ internal sealed class NewAccountDeviceProfileCoordinator
                     accountManager.ResolveDeviceProfile(pendingNewAccount),
                     pendingNewAccount,
                     true,
-                    loginAutoLogin
+                    loginQuickLoginEnabled
                 );
 
             case NewAccountDeviceProfileChoice.ConfigurePerAccount:
@@ -60,7 +60,7 @@ internal sealed class NewAccountDeviceProfileCoordinator
                     accountManager.ResolveDeviceProfile(configuredNewAccount),
                     configuredNewAccount,
                     true,
-                    loginAutoLogin
+                    loginQuickLoginEnabled
                 );
             }
 
@@ -93,7 +93,7 @@ internal sealed class NewAccountDeviceProfileCoordinator
                     return null;
                 }
 
-                if (string.IsNullOrWhiteSpace(oAuthLogin.AutoLoginSessionKey))
+                if (string.IsNullOrWhiteSpace(oAuthLogin.QuickLoginSecret))
                 {
                     request.Interaction.ShowError("首次扫码登录未能获取可用于设备信息重登的会话密钥，本次无法继续启动游戏");
                     return null;
@@ -111,7 +111,7 @@ internal sealed class NewAccountDeviceProfileCoordinator
         new()
         {
             SdoLoginAccount             = loginAccount,
-            WeGameSndaID                = sndaId,
+            WeGameLoginAccount          = loginAccount,
             AccountType                 = accountType,
             AreaName                    = area.AreaName,
             DeviceProfilePresetId       = string.Empty,
@@ -124,7 +124,7 @@ internal sealed class NewAccountDeviceProfileCoordinator
         new()
         {
             SdoLoginAccount                    = account.SdoLoginAccount,
-            WeGameSndaID                       = account.WeGameSndaID,
+            WeGameLoginAccount                 = account.WeGameLoginAccount,
             AccountType                        = account.AccountType,
             AreaName                           = account.AreaName,
             UserDefinedName                    = account.UserDefinedName,
@@ -137,12 +137,10 @@ internal sealed class NewAccountDeviceProfileCoordinator
 
     private void SavePendingNewAccountWithoutSecrets(XIVAccount account)
     {
-        account.AutoLogin              = false;
-        account.SdoAutoLoginSessionKey = string.Empty;
-        account.WeGameTokenSecret      = null;
+        account.QuickLoginEnabled      = false;
+        account.SdoQuickLoginSecret    = string.Empty;
+        account.WeGameQuickLoginSecret = null;
         account.SdoPassword            = string.Empty;
-        account.WeGameSIDSecret        = null;
-        account.WeGameSessionID        = string.Empty;
         account.GenerateID();
         accountManager.AddAccount(account);
         accountManager.CurrentAccount = account;
@@ -155,7 +153,7 @@ internal sealed record DeviceProfilePreparation
     ResolvedDeviceProfile ResolvedDeviceProfile,
     XIVAccount?           PendingNewAccount,
     bool                  RequiresNewAccountDeviceProfileSetup,
-    bool                  LoginAutoLogin
+    bool                  LoginQuickLoginEnabled
 );
 
 internal sealed record PostQrDeviceProfileResult

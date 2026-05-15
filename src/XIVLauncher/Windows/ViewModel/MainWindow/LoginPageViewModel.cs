@@ -120,8 +120,6 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
             if (isApplyingLoginType)
                 return;
 
-            if (loginTypeOption.LoginType == LoginType.WeGameAuto)
-                ApplyWeGameSidMode();
             RefreshStartLoginState();
         }
     }
@@ -324,8 +322,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     private bool IsLoginInputComplete => loginTypeOption.LoginType switch
     {
         LoginType.QRCode     => true,
-        LoginType.WeGameAuto => IsReadWegameInfo || !string.IsNullOrWhiteSpace(Username),
-        LoginType.WeGameManual => !string.IsNullOrWhiteSpace(Username) || !string.IsNullOrWhiteSpace(Password) || IsReadWegameInfo || IsFastLogin,
+        LoginType.WeGame    => !string.IsNullOrWhiteSpace(Username) || !string.IsNullOrWhiteSpace(Password) || IsReadWegameInfo || IsFastLogin,
         _                    => !string.IsNullOrWhiteSpace(Username) && (!IsPasswordVisible || !string.IsNullOrWhiteSpace(Password))
     };
 
@@ -361,23 +358,16 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
                     FastLoginText     = "快速登录";
                     break;
 
-                case LoginType.WeGameManual:
+                case LoginType.WeGame:
                     IsPasswordVisible = true;
                     IsReadWegameInfoVisible = true;
-                    FastLoginText           = "保存密码";
+                    FastLoginText           = "快速登录";
                     ReadWeGameInfoText      = "强制重新抓包";
                     IsReadWegameInfo        = false;
-                    UsernameHint            = "账号 ID（可选）";
-                    UsernameToolTip         = "优先使用已保存账号或自动抓取得到的 WeGame 账号 ID";
+                    UsernameHint            = "WeGame 账号（可选）";
+                    UsernameToolTip         = "优先使用已保存账号或自动抓取得到的 WeGame 登录账号";
                     PasswordHint            = "登录令牌（可选）";
                     ReadWeGameInfoToolTip   = "勾选后跳过已保存令牌, 直接重新抓取";
-                    break;
-
-                case LoginType.WeGameAuto:
-                    IsFastLoginVisible      = false;
-                    IsReadWegameInfoVisible = true;
-                    IsReadWegameInfo        = string.IsNullOrWhiteSpace(Username);
-                    ApplyWeGameSidMode();
                     break;
             }
         }
@@ -393,23 +383,6 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(CanStartLogin));
         startLoginCommand.RaiseCanExecuteChanged();
-    }
-
-    private void ApplyWeGameSidMode()
-    {
-        IsUsernameEnabled = !IsReadWegameInfo;
-
-        if (IsReadWegameInfo)
-        {
-            UsernameHint          = "将从 WeGame 重新读取账号信息";
-            UsernameToolTip       = "将启动 WeGame 并读取当前启动账号信息";
-            ReadWeGameInfoToolTip = "取消勾选后, 按输入的 SndaID 查找本地已保存账号信息并尝试登录";
-            return;
-        }
-
-        UsernameHint          = "SndaID";
-        UsernameToolTip       = "输入 WeGame 账号对应的 SndaID";
-        ReadWeGameInfoToolTip = "勾选后将启动 WeGame 并读取当前启动账号信息";
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

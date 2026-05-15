@@ -20,10 +20,10 @@ public sealed class SlideLoginChannel
         var (pushMsgSerialNum, pushMsgSessionKey, expiration) = await context.SendPushMessageAsync(request.Account, SLIDE_EXPIRATION_TIME).ConfigureAwait(false);
         request.ShowVerificationCode?.Invoke(pushMsgSerialNum);
 
-        var (sndaId, tgt, autoLoginSessionKey) = await WaitForSlideAsync(pushMsgSessionKey, guid, expiration, request.LoginCancellationTokenSource, request.AutoLogin).ConfigureAwait(false);
+        var (sndaId, tgt, autoLoginSessionKey) = await WaitForSlideAsync(pushMsgSessionKey, guid, expiration, request.LoginCancellationTokenSource, request.QuickLoginEnabled).ConfigureAwait(false);
         context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt, guid);
         var sessionId = await context.GetSessionIdAsync(tgt, guid).ConfigureAwait(false);
-        return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, request.AutoLogin ? autoLoginSessionKey : null, LoginType.Slide);
+        return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, request.QuickLoginEnabled ? autoLoginSessionKey : null, LoginType.Slide);
     }
 
     private async Task<(string sndaId, string tgt, string autoLoginSessionKey)> WaitForSlideAsync
@@ -48,7 +48,7 @@ public sealed class SlideLoginChannel
             switch (result.ReturnCode)
             {
                 case 0:
-                    return (result.Data.SndaID, result.Data.Tgt, result.Data.AutoLoginSessionKey);
+                    return (result.Data.SndaID, result.Data.Tgt, result.Data.QuickLoginSecret);
 
                 case -10516808:
                     await Task.Delay(1000).ConfigureAwait(false);

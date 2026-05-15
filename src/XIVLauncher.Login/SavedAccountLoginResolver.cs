@@ -6,7 +6,6 @@ namespace XIVLauncher.Login;
 internal sealed class SavedAccountLoginResolver
 (
     AccountManager                 accountManager,
-    WeGameLoginDataReader          weGameLoginDataReader,
     IWeGameTokenCaptureCoordinator weGameTokenCaptureCoordinator
 )
 {
@@ -15,7 +14,7 @@ internal sealed class SavedAccountLoginResolver
         var username              = request.Username;
         var finalLoginType        = request.LoginType;
         var secret                = string.Empty;
-        var doingAutoLogin        = request.DoingAutoLogin;
+        var quickLoginEnabled     = request.QuickLoginEnabled;
         var selectedArea          = request.CurrentArea;
         var savedAccount          = FindSavedAccount(request.LoginType, username);
         var accountType           = ResolveAccountType(request.LoginType, savedAccount);
@@ -44,64 +43,15 @@ internal sealed class SavedAccountLoginResolver
 
                 break;
 
-            case LoginType.WeGameAuto:
-                doingAutoLogin = true;
-
-                if (request.ReadWeGameInfo)
-                {
-                    var loginData = await weGameLoginDataReader.ReadAsync(request.LoginCancellationTokenSource, request.Interaction);
-                    if (loginData == null)
-                        return null;
-
-                    if (string.IsNullOrWhiteSpace(loginData.SndaID) || string.IsNullOrWhiteSpace(loginData.SessionId))
-                        throw new Exception("获取 WeGame 登录信息失败");
-
-                    username = loginData.SndaID;
-                    secret   = loginData.SessionId;
-
-                    var areaId = loginData.Args
-                                          .FirstOrDefault(static argument => argument.Contains("AreaID=", StringComparison.Ordinal))
-                                          ?.Split('=')[1];
-                    if (!string.IsNullOrWhiteSpace(areaId))
-                        selectedArea = request.LoginAreas.FirstOrDefault(area => area.AreaID == areaId) ?? selectedArea;
-                }
-                else
-                {
-                    if (string.IsNullOrWhiteSpace(username))
-                    {
-                        request.Interaction.ShowError("错误: 已保存账号的 SndaID 不能为空");
-                        return null;
-                    }
-
-                    if (savedAccount == null)
-                    {
-                        request.Interaction.ShowError("未找到该 SndaID 对应的已保存账号, 请勾选 \"重新从 WeGame 读取 SID\" 后再试");
-                        return null;
-                    }
-
-                    if (hasUnavailableSecrets || string.IsNullOrWhiteSpace(savedAccount.WeGameSIDSecret))
-                    {
-                        request.Interaction.ShowError("该账号没有可用的已保存 SID, 请勾选 \"重新从 WeGame 读取 SID\" 后再试");
-                        return null;
-                    }
-
-                    secret = await accountManager.Decrypt(savedAccount.WeGameSIDSecret) ?? string.Empty;
-                }
-
-                savedAccount   = FindSavedAccount(LoginType.WeGameAuto, username);
-                accountType    = ResolveAccountType(LoginType.WeGameAuto, savedAccount);
-                finalLoginType = LoginType.WeGameAuto;
-                break;
-
-            case LoginType.WeGameManual:
+            case LoginType.WeGame:
                 if (!request.ForceWeGameTokenRecapture
                     && !hasUnavailableSecrets
                     && string.IsNullOrEmpty(request.Password)
-                    && savedAccount?.WeGameTokenSecret is { Length: > 0 } weGameTokenSecret)
+                    && savedAccount?.WeGameQuickLoginSecret is { Length: > 0 } weGameQuickLoginSecret)
                 {
-                    secret         = await accountManager.Decrypt(weGameTokenSecret) ?? string.Empty;
-                    username       = savedAccount?.SdoLoginAccount ?? username;
-                    finalLoginType = LoginType.WeGameManual;
+                    secret         = await accountManager.Decrypt(weGameQuickLoginSecret) ?? string.Empty;
+                    username       = savedAccount?.WeGameLoginAccount ?? username;
+                    finalLoginType = LoginType.WeGame;
                     usedSavedCredential = !string.IsNullOrWhiteSpace(secret);
                 }
 
@@ -110,7 +60,7 @@ internal sealed class SavedAccountLoginResolver
                     if (!string.IsNullOrWhiteSpace(request.Password))
                     {
                         secret         = request.Password;
-                        finalLoginType = LoginType.WeGameManual;
+                        finalLoginType = LoginType.WeGame;
                     }
                     else
                     {
@@ -120,7 +70,7 @@ internal sealed class SavedAccountLoginResolver
 
                         username       = captureResult.UserId;
                         secret         = captureResult.Token;
-                        finalLoginType = LoginType.WeGameManual;
+                        finalLoginType = LoginType.WeGame;
                     }
                 }
 
@@ -133,7 +83,7 @@ internal sealed class SavedAccountLoginResolver
                 savedAccount = accountManager.Accounts.FirstOrDefault
                 (
                     account => account.AccountType == XIVAccountType.WeGame
-                               && string.Equals(account.SdoLoginAccount, username, StringComparison.Ordinal)
+                               && string.Equals(account.WeGameLoginAccount, username, StringComparison.Ordinal)
                 ) ?? savedAccount;
 
                 accountType = XIVAccountType.WeGame;
@@ -141,10 +91,10 @@ internal sealed class SavedAccountLoginResolver
                 break;
 
             case LoginType.Slide:
-                if (!hasUnavailableSecrets && doingAutoLogin && savedAccount?.SdoAutoLoginSessionKey is { Length: > 0 } slideAutoLoginSessionKey)
+                if (!hasUnavailableSecrets && quickLoginEnabled && savedAccount?.SdoQuickLoginSecret is { Length: > 0 } slideQuickLoginSecret)
                 {
-                    secret         = await accountManager.Decrypt(slideAutoLoginSessionKey) ?? string.Empty;
-                    finalLoginType = LoginType.AutoLoginSession;
+                    secret         = await accountManager.Decrypt(slideQuickLoginSecret) ?? string.Empty;
+                    finalLoginType = LoginType.QuickLogin;
                 }
 
                 if (string.IsNullOrWhiteSpace(secret))
@@ -171,7 +121,7 @@ internal sealed class SavedAccountLoginResolver
             finalLoginType,
             username,
             secret,
-            doingAutoLogin,
+            quickLoginEnabled,
             selectedArea,
             savedAccount,
             accountType,
@@ -185,17 +135,26 @@ internal sealed class SavedAccountLoginResolver
         if (string.IsNullOrWhiteSpace(username))
             return null;
 
-        if (loginType == LoginType.AutoLoginSession)
+        if (loginType == LoginType.QuickLogin)
         {
             return accountManager.Accounts.FirstOrDefault(account => string.Equals(account.SdoLoginAccount, username, StringComparison.Ordinal))
                    ?? accountManager.Accounts.FirstOrDefault(account => string.Equals(account.UserName,     username, StringComparison.Ordinal));
+        }
+
+        if (loginType == LoginType.WeGame)
+        {
+            return accountManager.Accounts.FirstOrDefault
+            (
+                account => account.AccountType == XIVAccountType.WeGame
+                           && string.Equals(account.WeGameLoginAccount, username, StringComparison.Ordinal)
+            );
         }
 
         return accountManager.FindAccount(username, loginType.ToAccountType());
     }
 
     private static XIVAccountType ResolveAccountType(LoginType loginType, XIVAccount? savedAccount) =>
-        loginType == LoginType.AutoLoginSession
+        loginType == LoginType.QuickLogin
             ? savedAccount?.AccountType ?? XIVAccountType.Sdo
             : loginType.ToAccountType();
 }
@@ -206,7 +165,7 @@ internal sealed record ResolvedLoginState
     LoginType      FinalLoginType,
     string         Username,
     string         Secret,
-    bool           DoingAutoLogin,
+    bool           QuickLoginEnabled,
     LoginArea      Area,
     XIVAccount?    SavedAccount,
     XIVAccountType AccountType,

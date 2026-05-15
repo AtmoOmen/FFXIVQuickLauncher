@@ -8,7 +8,7 @@ public sealed class LoginWorkflowRequest
 
     public required string Password { get; init; }
 
-    public required bool DoingAutoLogin { get; init; }
+    public required bool QuickLoginEnabled { get; init; }
 
     public required bool ReadWeGameInfo { get; init; }
 

@@ -163,14 +163,14 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         LoginType        loginType,
         string           username,
         string           password,
-        bool             doingAutoLogin,
+        bool             quickLoginEnabled,
         bool             readWeGameInfo,
         LoginAfterAction action
     )
     {
         if (Window.Dispatcher != Dispatcher.CurrentDispatcher)
         {
-            Window.Dispatcher.Invoke(() => StartLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
+            Window.Dispatcher.Invoke(() => StartLogin(loginType, username, password, quickLoginEnabled, readWeGameInfo, action));
             return;
         }
 
@@ -197,7 +197,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             {
                 try
                 {
-                    await LoginAsync(loginType, username, password, doingAutoLogin, readWeGameInfo, action).ConfigureAwait(false);
+                    await LoginAsync(loginType, username, password, quickLoginEnabled, readWeGameInfo, action).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -254,7 +254,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         LoginType        loginType,
         string           username,
         string?          inputPassword,
-        bool             doingAutoLogin,
+        bool             quickLoginEnabled,
         bool             readWeGameInfo,
         LoginAfterAction action
     )
@@ -289,9 +289,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             LoginType                           = loginType,
             Username                            = username,
             Password                            = inputPassword,
-            DoingAutoLogin                      = doingAutoLogin,
+            QuickLoginEnabled                   = quickLoginEnabled,
             ReadWeGameInfo                      = readWeGameInfo,
-            ForceWeGameTokenRecapture           = loginType == LoginType.WeGameManual && readWeGameInfo,
+            ForceWeGameTokenRecapture           = loginType == LoginType.WeGame && readWeGameInfo,
             Action                              = action,
             CurrentArea                         = LoginPage.Area,
             LoginAreas                          = LoginPage.LoginAreas,
@@ -323,6 +323,16 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         if (workflowResult == null)
             return;
 
+        if (workflowResult.IsAccountPersisted)
+        {
+            Window.Dispatcher.Invoke
+            (() =>
+                {
+                    AccountSwitcher.RefreshEntries(AccountManager.CurrentAccountID, false);
+                }
+            );
+        }
+
         var gameLaunchContext = workflowResult.GameLaunchContext;
         var oAuthLogin        = gameLaunchContext.LoginResult.OAuthLogin;
 
@@ -333,8 +343,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             oAuthLogin?.Playable
         );
 
-        if (workflowResult.RefreshGameSessionIdByAutoLoginFunc != null)
-            DcTravelRuntimeService.ConfigureAutoLoginRefresh(workflowResult.RefreshGameSessionIdByAutoLoginFunc);
+        if (workflowResult.RefreshGameSessionIdByQuickLoginFunc != null)
+            DcTravelRuntimeService.ConfigureQuickLoginRefresh(workflowResult.RefreshGameSessionIdByQuickLoginFunc);
 
         gameLaunchContext.DcTravelPort = gameLaunchContext.LoginResult.State == LoginState.Ok
                                              ? await DcTravelRuntimeService.StartAsync(App.Settings.DalamudEnabled, resolvedLoginTypeShouldSkipDcTravel(loginType)).ConfigureAwait(false)
@@ -342,8 +352,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         if (await ProcessLoginResultAsync(gameLaunchContext, action).ConfigureAwait(false))
         {
-            if (workflowResult.ShouldShowAutoLoginDisclaimer)
-                DialogProvider.ShowAutoLoginDisclaimer();
+            if (workflowResult.ShouldShowQuickLoginDisclaimer)
+                DialogProvider.ShowQuickLoginDisclaimer();
 
             if (App.Settings.ExitLauncherWhenGameExit)
                 Environment.Exit(0);
@@ -353,7 +363,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     }
 
     private static bool resolvedLoginTypeShouldSkipDcTravel(LoginType loginType) =>
-        loginType == LoginType.WeGameAuto;
+        false;
 
     private async Task HandleLoginWorkflowExceptionAsync(Exception ex, LoginType loginType, string username, bool usedSavedWeGameToken)
     {
@@ -389,14 +399,14 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 return;
             }
 
-            if (sdoLoginEx.RemoveAutoLoginSessionKey)
+            if (sdoLoginEx.RemoveQuickLoginSecret)
             {
                 Log.Information("[MainWindow] 快速登录失败, 清除 SessionKey: {Username}", username);
                 var account = AccountManager.Accounts.FirstOrDefault(x => x.UserName == username);
 
                 if (account != null)
                 {
-                    account.SdoAutoLoginSessionKey = string.Empty;
+                    account.SdoQuickLoginSecret = string.Empty;
                     AccountManager.Save(account);
                 }
             }
@@ -492,19 +502,19 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         if (ex is not LoginException)
             return;
 
-        if (loginType != LoginType.WeGameManual || !usedSavedWeGameToken)
+        if (loginType != LoginType.WeGame || !usedSavedWeGameToken)
             return;
 
         var account = AccountManager.Accounts.FirstOrDefault
         (
             item => item.AccountType == XIVAccountType.WeGame
-                    && string.Equals(item.SdoLoginAccount, username, StringComparison.Ordinal)
+                    && string.Equals(item.WeGameLoginAccount, username, StringComparison.Ordinal)
         );
 
-        if (account?.WeGameTokenSecret == null)
+        if (account?.WeGameQuickLoginSecret == null)
             return;
 
-        account.WeGameTokenSecret = null;
+        account.WeGameQuickLoginSecret = null;
         AccountManager.Save(account);
     }
 
