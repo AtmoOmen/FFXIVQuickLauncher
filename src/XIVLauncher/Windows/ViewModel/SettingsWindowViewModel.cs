@@ -9,15 +9,12 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using Newtonsoft.Json.Linq;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
-using XIVLauncher.Common.Addon;
-using XIVLauncher.Common.Addon.Implementations;
+using XIVLauncher.Common.CompanionApp;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Dalamud;
-using XIVLauncher.Support;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Xaml;
 
@@ -25,13 +22,13 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 {
-    public ObservableCollection<AddonEntry> AddonEntries { get; } = [];
+    public ObservableCollection<CompanionAppEntry> CompanionAppEntries { get; } = [];
 
     public ObservableCollection<CredTypeOptionItem> CredTypeOptions { get; } = [];
     
-    public ICommand AddAddonCommand => addAddonCommand;
+    public ICommand AddCompanionAppCommand => addCompanionAppCommand;
 
-    public ICommand RemoveSelectedAddonCommand => removeSelectedAddonCommand;
+    public ICommand RemoveSelectedCompanionAppCommand => removeSelectedCompanionAppCommand;
 
     public ICommand OpenGitHubCommand => openGitHubCommand;
 
@@ -41,15 +38,15 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 
     public ICommand OpenAdvancedSettingsCommand => openAdvancedSettingsCommand;
 
-    private readonly SyncCommand  addAddonCommand;
-    private readonly SyncCommand  editSelectedAddonCommand;
-    private readonly SyncCommand  removeSelectedAddonCommand;
+    private readonly SyncCommand  addCompanionAppCommand;
+    private readonly SyncCommand  editSelectedCompanionAppCommand;
+    private readonly SyncCommand  removeSelectedCompanionAppCommand;
     private readonly SyncCommand  openGitHubCommand;
     private readonly SyncCommand  openBackupToolCommand;
     private readonly SyncCommand  openOriginalLauncherCommand;
     private readonly SyncCommand  openAdvancedSettingsCommand;
 
-    public bool CanEditSelectedAddon => SelectedAddonEntry?.Addon != null;
+    public bool CanEditSelectedCompanionApp => SelectedCompanionAppEntry?.CompanionApp != null;
 
     public Visibility GamePathWarningVisibility =>
         string.IsNullOrWhiteSpace(GamePathWarningMessage) ? Visibility.Collapsed : Visibility.Visible;
@@ -190,7 +187,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public AddonEntry? SelectedAddonEntry
+    public CompanionAppEntry? SelectedCompanionAppEntry
     {
         get;
         set
@@ -198,8 +195,8 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
             if (!SetProperty(ref field, value))
                 return;
 
-            editSelectedAddonCommand.RaiseCanExecuteChanged();
-            removeSelectedAddonCommand.RaiseCanExecuteChanged();
+            editSelectedCompanionAppCommand.RaiseCanExecuteChanged();
+            removeSelectedCompanionAppCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -237,9 +234,9 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         _dialogService         = dialogService         ?? new DialogService();
         _externalLaunchService = externalLaunchService ?? new ExternalLaunchService();
 
-        addAddonCommand             = new SyncCommand(_ => AddAddon());
-        editSelectedAddonCommand    = new SyncCommand(_ => EditSelectedAddon(),   () => CanEditSelectedAddon);
-        removeSelectedAddonCommand  = new SyncCommand(_ => RemoveSelectedAddon(), () => SelectedAddonEntry != null);
+        addCompanionAppCommand             = new SyncCommand(_ => AddCompanionApp());
+        editSelectedCompanionAppCommand    = new SyncCommand(_ => EditSelectedCompanionApp(),   () => CanEditSelectedCompanionApp);
+        removeSelectedCompanionAppCommand  = new SyncCommand(_ => RemoveSelectedCompanionApp(), () => SelectedCompanionAppEntry != null);
         openGitHubCommand           = new SyncCommand(_ => OpenGitHub());
         openBackupToolCommand       = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
         openOriginalLauncherCommand = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
@@ -262,7 +259,8 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewLogin;
         DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMS;
         ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
-        UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod != DalamudLoadMethod.DllInject;
+        UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod == DalamudLoadMethod.EntryPoint;
+        UseDllInjectLoadMethod                      = App.Settings.DalamudLoadMethod == DalamudLoadMethod.DllInject;
         EnableHooks                                 = App.Settings.DalamudEnabled;
         EnableDcTravel                              = true;
         LaunchArgs                                  = App.Settings.AdditionalLaunchArgs ?? string.Empty;
@@ -272,7 +270,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         SpeedLimitMb                                = (decimal)App.Settings.SpeedLimitBytes / BYTES_TO_MB;
         SelectedCredType                            = App.AccountManager.CurrentCredType;
 
-        ReplaceAddonEntries(App.Settings.AddonList ?? []);
+        ReplaceCompanionAppEntries(App.Settings.CompanionAppList ?? []);
         RefreshGamePathWarning();
         _ = RefreshCredTypeOptionsAsync();
     }
@@ -291,12 +289,12 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var gamePath          = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
-        var patchPath         = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
-        var addonEntries      = AddonEntries.ToList();
-        var dalamudLoadMethod = UseDllInjectLoadMethod ? DalamudLoadMethod.DllInject : DalamudLoadMethod.EntryPoint;
-        var dpiAwareness      = (DPIAwareness)DpiAwarenessIndex;
-        var speedLimitBytes   = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
+        var gamePath            = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
+        var patchPath           = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
+        var companionAppEntries = CompanionAppEntries.ToList();
+        var dalamudLoadMethod   = App.Settings.DalamudLoadMethod;
+        var dpiAwareness        = (DPIAwareness)DpiAwarenessIndex;
+        var speedLimitBytes     = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
 
         var requestedCredType   = SelectedCredType;
         var credTypeApplyResult = await App.AccountManager.ChangeCredTypeAsync(requestedCredType);
@@ -322,7 +320,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
             {
                 settings.GamePath                             = gamePath;
                 settings.PatchPath                            = patchPath;
-                settings.AddonList                            = addonEntries;
+                settings.CompanionAppList                     = companionAppEntries;
                 settings.AskBeforePatchInstall                = AskBeforePatching;
                 settings.ExitLauncherWhenGameExit             = ExitLauncherAfterGameExit;
                 settings.KeepPatches                          = KeepPatches;
@@ -344,47 +342,47 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         return true;
     }
     
-    public void AddAddon()
+    public void AddCompanionApp()
     {
-        var result = _dialogService.ShowGenericAddonSetup();
-        if (result == null || string.IsNullOrWhiteSpace(result.Path))
+        var result = _dialogService.ShowCompanionAppSetup();
+        if (result == null || string.IsNullOrWhiteSpace(result.FilePath))
             return;
 
-        AddonEntries.Add
+        CompanionAppEntries.Add
         (
-            new AddonEntry
+            new CompanionAppEntry
             {
                 IsEnabled = true,
-                Addon     = result
+                CompanionApp = result
             }
         );
     }
 
-    public void EditSelectedAddon()
+    public void EditSelectedCompanionApp()
     {
-        if (SelectedAddonEntry?.Addon is not GenericAddon genericAddon)
+        if (SelectedCompanionAppEntry?.CompanionApp is not CompanionAppConfiguration companionApp)
             return;
 
-        var index  = AddonEntries.IndexOf(SelectedAddonEntry);
-        var result = _dialogService.ShowGenericAddonSetup(genericAddon);
+        var index  = CompanionAppEntries.IndexOf(SelectedCompanionAppEntry);
+        var result = _dialogService.ShowCompanionAppSetup(companionApp);
         if (result == null || index < 0)
             return;
 
-        AddonEntries[index] = new AddonEntry
+        CompanionAppEntries[index] = new CompanionAppEntry
         {
-            IsEnabled = SelectedAddonEntry.IsEnabled,
-            Addon     = result
+            IsEnabled    = SelectedCompanionAppEntry.IsEnabled,
+            CompanionApp = result
         };
-        SelectedAddonEntry = AddonEntries[index];
+        SelectedCompanionAppEntry = CompanionAppEntries[index];
     }
 
-    public void RemoveSelectedAddon()
+    public void RemoveSelectedCompanionApp()
     {
-        if (SelectedAddonEntry == null)
+        if (SelectedCompanionAppEntry == null)
             return;
 
-        AddonEntries.Remove(SelectedAddonEntry);
-        SelectedAddonEntry = null;
+        CompanionAppEntries.Remove(SelectedCompanionAppEntry);
+        SelectedCompanionAppEntry = null;
     }
 
     public void OpenGitHub() =>
@@ -467,11 +465,11 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         new(CredType.WindowsHello, isWindowsHelloSupported ? "Windows Hello" : "Windows Hello（当前设备不可用）", isWindowsHelloSupported)
     ];
 
-    private void ReplaceAddonEntries(IEnumerable<AddonEntry> entries)
+    private void ReplaceCompanionAppEntries(IEnumerable<CompanionAppEntry> entries)
     {
-        AddonEntries.Clear();
+        CompanionAppEntries.Clear();
         foreach (var entry in entries)
-            AddonEntries.Add(entry);
+            CompanionAppEntries.Add(entry);
     }
 
     private void RefreshGamePathWarning()

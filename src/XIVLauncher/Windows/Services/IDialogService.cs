@@ -1,6 +1,6 @@
 using System.Windows;
 using XIVLauncher.Account;
-using XIVLauncher.Common.Addon.Implementations;
+using XIVLauncher.Common.CompanionApp;
 
 namespace XIVLauncher.Windows.Services;
 
@@ -27,7 +27,7 @@ internal interface IDialogService
 
     void ShowAdvancedSettings();
 
-    GenericAddon? ShowGenericAddonSetup(GenericAddon? addon = null);
+    CompanionAppConfiguration? ShowCompanionAppSetup(CompanionAppConfiguration? companionApp = null);
 
     bool ShowProfilePictureInput(XIVAccount account, out string? profileImagePath);
 

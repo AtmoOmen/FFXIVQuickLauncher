@@ -23,7 +23,7 @@ public partial class SettingsWindow
 
         InitializeComponent();
         DataContext                            = viewModel;
-        AddonListView.ContextMenu?.DataContext = viewModel;
+        CompanionAppListView.ContextMenu?.DataContext = viewModel;
 
         DiscordButton.Click += (_, _) => Process.Start(new ProcessStartInfo(Links.DISCORD_URL) { UseShellExecute = true });
     }
@@ -51,21 +51,21 @@ public partial class SettingsWindow
         }
     }
 
-    private void AddonListView_OnMouseUp(object sender, MouseButtonEventArgs e)
+    private void CompanionAppListView_OnMouseUp(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left)
             return;
 
-        ViewModel.EditSelectedAddon();
+        ViewModel.EditSelectedCompanionApp();
     }
 
-    private void AddonListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    private void CompanionAppListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not { } listViewItem)
             return;
 
-        AddonListView.SelectedItem = listViewItem.DataContext;
-        listViewItem.IsSelected    = true;
+        CompanionAppListView.SelectedItem = listViewItem.DataContext;
+        listViewItem.IsSelected           = true;
     }
 
     private void LicenseText_OnMouseUp(object sender, MouseButtonEventArgs e) =>

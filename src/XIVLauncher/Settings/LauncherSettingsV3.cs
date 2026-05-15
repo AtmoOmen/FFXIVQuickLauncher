@@ -8,7 +8,7 @@ using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
-using XIVLauncher.Common.Addon;
+using XIVLauncher.Common.CompanionApp;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Settings.Converters;
@@ -181,15 +181,27 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     /// <summary>
     ///     启动时附加的程序列表
     /// </summary>
-    public List<AddonEntry> AddonList
+    public List<CompanionAppEntry> CompanionAppList
     {
         get;
         set
         {
-            value = value.Where(x => !string.IsNullOrEmpty(x.Addon.Path)).ToList();
+            value = value.Where(x => !string.IsNullOrEmpty(x.CompanionApp.FilePath)).ToList();
             Set(ref field, value);
         }
     } = [];
+
+    public List<CompanionAppEntry>? AddonList
+    {
+        get => null;
+        set
+        {
+            if (value == null || value.Count == 0)
+                return;
+
+            CompanionAppList = value;
+        }
+    }
 
     /// <summary>
     ///     是否已提示过 GShade DXGI 问题

@@ -85,9 +85,9 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
                 App.Settings.Update
                 (settings =>
                     {
-                        settings.GamePath       = new DirectoryInfo(GamePath);
-                        settings.DalamudEnabled = EnableDalamud;
-                        settings.AddonList      = [];
+                        settings.GamePath         = new DirectoryInfo(GamePath);
+                        settings.DalamudEnabled   = EnableDalamud;
+                        settings.CompanionAppList = [];
                     }
                 );
 

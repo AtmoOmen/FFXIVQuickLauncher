@@ -1,6 +1,6 @@
 using System.Windows;
 using XIVLauncher.Account;
-using XIVLauncher.Common.Addon.Implementations;
+using XIVLauncher.Common.CompanionApp;
 
 namespace XIVLauncher.Windows.Services;
 
@@ -64,9 +64,9 @@ internal sealed class DialogService
         window.ShowDialog();
     }
 
-    public GenericAddon? ShowGenericAddonSetup(GenericAddon? addon = null)
+    public CompanionAppConfiguration? ShowCompanionAppSetup(CompanionAppConfiguration? companionApp = null)
     {
-        var window = new GenericAddonSetupWindow(addon);
+        var window = new CompanionAppSetupWindow(companionApp);
         PrepareOwner(window);
         window.ShowDialog();
         return window.Result;

@@ -1,4 +1,4 @@
-<Window x:Class="XIVLauncher.Windows.GenericAddonSetupWindow"
+<Window x:Class="XIVLauncher.Windows.CompanionAppSetupWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -7,13 +7,13 @@
         xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         mc:Ignorable="d"
-        Title="配置自动启动项" Width="550"
+        Title="配置伴随程序" Width="550"
         SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
         Icon="pack://application:,,,/Resources/dalamud_icon.ico" ResizeMode="NoResize"
         TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
         Background="{DynamicResource MaterialDesign.Brush.Background}"
-        d:DataContext="{d:DesignInstance viewModel:GenericAddonSetupWindowViewModel}">
+        d:DataContext="{d:DesignInstance viewModel:CompanionAppSetupWindowViewModel}">
 
     <Window.Resources>
         <ResourceDictionary>
@@ -63,7 +63,7 @@
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0"
-                       Text="应用程序"
+                       Text="伴随程序"
                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                        FontWeight="Medium"
                        Margin="0,0,0,24" />
@@ -71,15 +71,15 @@
             <StackPanel Grid.Row="1" Orientation="Vertical">
                 <components:FileEntry x:Name="PathEntry"
                                       Description="文件路径"
-                                      Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}"
+                                      Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}"
                                       Filters="EXE File, *.exe;Powershell Script, *.ps1;Shell Script, *.bat"
                                       Margin="0,0,0,16" />
 
-                <TextBox x:Name="CommandLineTextBox"
+                <TextBox x:Name="ArgumentsTextBox"
                          materialDesign:HintAssist.Hint="命令行参数"
                          materialDesign:HintAssist.IsFloating="True"
                          Style="{StaticResource MaterialDesignFloatingHintTextBox}"
-                         Text="{Binding CommandLine, UpdateSourceTrigger=PropertyChanged}"
+                         Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}"
                          Margin="0,0,0,24" />
 
                 <CheckBox x:Name="AdminCheckBox"
@@ -87,21 +87,28 @@
                           IsChecked="{Binding RunAsAdmin}"
                           Margin="0,0,0,12" />
 
-                <CheckBox x:Name="RunOnCloseCheckBox"
-                          Content="游戏结束时再运行"
-                          IsChecked="{Binding RunOnClose}"
-                          Margin="0,0,0,12" />
+                <RadioButton x:Name="LaunchOnStartRadioButton"
+                             Content="游戏启动时运行"
+                             GroupName="LaunchTrigger"
+                             IsChecked="{Binding LaunchOnGameStart}"
+                             Margin="0,0,0,12" />
 
-                <CheckBox x:Name="KillCheckBox"
+                <RadioButton x:Name="LaunchOnExitRadioButton"
+                             Content="游戏结束后运行"
+                             GroupName="LaunchTrigger"
+                             IsChecked="{Binding LaunchOnGameExit}"
+                             Margin="0,0,0,12" />
+
+                <CheckBox x:Name="StopCheckBox"
                           Content="游戏结束时停止运行"
-                          IsEnabled="{Binding CanKillAfterClose}"
-                          IsChecked="{Binding KillAfterClose}"
+                          IsEnabled="{Binding CanStopWhenGameExits}"
+                          IsChecked="{Binding StopWhenGameExits}"
                           Margin="0,0,0,32" />
             </StackPanel>
 
             <Grid Grid.Row="2">
                 <Button Content="确定"
-                        Click="NextButton_Click"
+                        Click="ConfirmButton_Click"
                         Width="100"
                         HorizontalAlignment="Right"
                         Style="{StaticResource AnimatedRaisedButton}"

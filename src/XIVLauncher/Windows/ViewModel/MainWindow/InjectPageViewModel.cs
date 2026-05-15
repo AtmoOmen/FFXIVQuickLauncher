@@ -219,10 +219,10 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
                         return;
                     }
 
-                    if (!gameLaunchService.InjectGameAndAddon(targetProcess.ProcessID))
+                    if (!gameLaunchService.InjectGameAndCompanionApp(targetProcess.ProcessID))
                         return;
 
-                    gameLaunchService.StartAddonsUntilGameExit(targetProcess.ProcessID);
+                    gameLaunchService.StartCompanionAppsUntilGameExit(targetProcess.ProcessID);
 
                     window.Dispatcher.Invoke(() => { targetProcess.HasInjected = true; });
 

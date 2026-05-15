@@ -2,7 +2,7 @@
     x:Class="XIVLauncher.Windows.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:addon="clr-namespace:XIVLauncher.Common.Addon;assembly=XIVLauncher.Common"
+    xmlns:companionApp="clr-namespace:XIVLauncher.Common.CompanionApp;assembly=XIVLauncher.Common"
     xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -379,20 +379,20 @@
                             </StackPanel>
                         </materialDesign:Card>
 
-                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="附加程序"
+                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Text="伴随程序"
                                    Style="{StaticResource MaterialDesignHeadline5TextBlock}" FontWeight="Medium"
                                    Margin="0,24,0,8" />
                         <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                   Text="添加在此处的程序会在游戏启动/结束时一并启动"
+                                   Text="添加在此处的程序会在游戏启动或结束时联动运行"
                                    Opacity="0.7" Margin="0,0,0,16" />
 
                         <materialDesign:Card Style="{StaticResource SettingCardStyle}">
                             <StackPanel>
-                                <ListView x:Name="AddonListView"
+                                <ListView x:Name="CompanionAppListView"
                                           ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                          ItemsSource="{Binding AddonEntries}" MouseUp="AddonListView_OnMouseUp"
-                                          PreviewMouseRightButtonDown="AddonListView_OnPreviewMouseRightButtonDown"
-                                          SelectedItem="{Binding SelectedAddonEntry}" Margin="0,0,0,16">
+                                          ItemsSource="{Binding CompanionAppEntries}" MouseUp="CompanionAppListView_OnMouseUp"
+                                          PreviewMouseRightButtonDown="CompanionAppListView_OnPreviewMouseRightButtonDown"
+                                          SelectedItem="{Binding SelectedCompanionAppEntry}" Margin="0,0,0,16">
                                     <ListView.ContextMenu>
                                         <ContextMenu StaysOpen="True"
                                                      Style="{StaticResource MaterialDesignContextMenu}">
@@ -402,27 +402,27 @@
                                                 <Style TargetType="{x:Type Separator}"
                                                        BasedOn="{StaticResource MaterialDesignSeparator}" />
                                             </ContextMenu.Resources>
-                                            <MenuItem Command="{Binding RemoveSelectedAddonCommand}"
+                                            <MenuItem Command="{Binding RemoveSelectedCompanionAppCommand}"
                                                       Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                       Header="移除" />
                                         </ContextMenu>
                                     </ListView.ContextMenu>
                                     <ListView.ItemTemplate>
-                                        <DataTemplate DataType="{x:Type addon:AddonEntry}">
+                                        <DataTemplate DataType="{x:Type companionApp:CompanionAppEntry}">
                                             <StackPanel Orientation="Horizontal" Margin="8">
                                                 <CheckBox
                                                     Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                     IsChecked="{Binding IsEnabled}" />
                                                 <TextBlock Margin="16,0,0,0"
                                                            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                           Text="{Binding Addon.Name}" VerticalAlignment="Center"
+                                                           Text="{Binding CompanionApp.Name}" VerticalAlignment="Center"
                                                            FontSize="14" />
                                             </StackPanel>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
                                 </ListView>
 
-                                <Button HorizontalAlignment="Right" Command="{Binding AddAddonCommand}"
+                                <Button HorizontalAlignment="Right" Command="{Binding AddCompanionAppCommand}"
                                         Content="新增程序"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" />
                             </StackPanel>

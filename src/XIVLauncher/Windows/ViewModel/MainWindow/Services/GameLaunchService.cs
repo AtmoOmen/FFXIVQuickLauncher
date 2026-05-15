@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Serilog;
 using XIVLauncher.Common;
-using XIVLauncher.Common.Addon;
+using XIVLauncher.Common.CompanionApp;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Support;
@@ -18,56 +18,55 @@ public sealed class GameLaunchService
     Window window
 )
 {
-    private readonly ConcurrentDictionary<int, AddonManager> addonManagers = [];
+    private readonly ConcurrentDictionary<int, CompanionAppManager> companionAppManagers = [];
 
-    public AddonManager? StartAddons(int gamePid)
+    public CompanionAppManager? StartCompanionApps(int gamePid)
     {
-        var addonManager = new AddonManager();
+        var companionAppManager = new CompanionAppManager();
 
-        if (!addonManagers.TryAdd(gamePid, addonManager))
+        if (!companionAppManagers.TryAdd(gamePid, companionAppManager))
         {
-            Log.Information("附加程序已随游戏进程启动: {GamePid}", gamePid);
+            Log.Information("伴随程序已随游戏进程启动: {GamePid}", gamePid);
             return null;
         }
 
         try
         {
-            App.Settings.AddonList ??= [];
+            App.Settings.CompanionAppList ??= [];
 
-            var addons = App.Settings.AddonList
-                            .Where(entry => entry.IsEnabled && entry.Addon != null)
-                            .Select(entry => entry.Addon)
-                            .Cast<IAddon>()
+            var companionApps = App.Settings.CompanionAppList
+                            .Where(entry => entry.IsEnabled && entry.CompanionApp != null)
+                            .Select(entry => entry.CompanionApp)
                             .ToList();
 
-            addonManager.RunAddons(gamePid, addons);
-            return addonManager;
+            companionAppManager.Start(companionApps);
+            return companionAppManager;
         }
         catch
         {
-            StopAddons(gamePid, addonManager);
+            StopCompanionApps(gamePid, companionAppManager);
             throw;
         }
     }
 
-    public void StopAddons(int gamePid, AddonManager? addonManager)
+    public void StopCompanionApps(int gamePid, CompanionAppManager? companionAppManager)
     {
-        if (addonManager == null)
+        if (companionAppManager == null)
             return;
 
-        if (!addonManagers.TryGetValue(gamePid, out var currentAddonManager) || !ReferenceEquals(currentAddonManager, addonManager))
+        if (!companionAppManagers.TryGetValue(gamePid, out var currentCompanionAppManager) || !ReferenceEquals(currentCompanionAppManager, companionAppManager))
             return;
 
-        if (!addonManagers.TryRemove(gamePid, out _))
+        if (!companionAppManagers.TryRemove(gamePid, out _))
             return;
 
-        addonManager.StopAddons();
+        companionAppManager.Stop();
     }
 
-    public void StartAddonsUntilGameExit(int gamePid)
+    public void StartCompanionAppsUntilGameExit(int gamePid)
     {
-        var addonManager = StartAddons(gamePid);
-        if (addonManager == null)
+        var companionAppManager = StartCompanionApps(gamePid);
+        if (companionAppManager == null)
             return;
 
         _ = Task.Run
@@ -90,13 +89,13 @@ public sealed class GameLaunchService
                 }
                 finally
                 {
-                    StopAddons(gamePid, addonManager);
+                    StopCompanionApps(gamePid, companionAppManager);
                 }
             }
         );
     }
 
-    public bool InjectGameAndAddon(int gamePid, bool noThird = false, bool noPlugins = false)
+    public bool InjectGameAndCompanionApp(int gamePid, bool noThird = false, bool noPlugins = false)
     {
         var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;
         var gameExeFolder = Path.GetDirectoryName(gameExePath);

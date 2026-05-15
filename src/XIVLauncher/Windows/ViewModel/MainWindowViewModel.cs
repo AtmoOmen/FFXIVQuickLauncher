@@ -18,7 +18,7 @@ using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.ArgReader;
 using XIVLauncher.Common;
-using XIVLauncher.Common.Addon;
+using XIVLauncher.Common.CompanionApp;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.DCTravel;
@@ -1039,7 +1039,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                     return false;
                 }
 
-                using var process = await StartGameAndAddon
+                using var process = await StartGameAndCompanionApp
                                     (
                                         loginResult,
                                         action == LoginAfterAction.StartWithoutDalamud,
@@ -1262,7 +1262,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     #region 启动游戏
 
-    public async Task<FFXIVProcess?> StartGameAndAddon(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
+    public async Task<FFXIVProcess?> StartGameAndCompanionApp(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
     {
         if (LoginPage.Area == null || LoginPage.Area.AreaID == "-1")
         {
@@ -1335,16 +1335,16 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             return null;
         }
 
-        AddonManager? addonMgr = null;
+        CompanionAppManager? companionAppManager = null;
 
         try
         {
-            addonMgr = GameLaunchService.StartAddons(launched.ProcessID);
+            companionAppManager = GameLaunchService.StartCompanionApps(launched.ProcessID);
         }
         catch (Exception ex)
         {
             CustomMessageBox.Builder
-                            .NewFrom(ex, "Addons")
+                            .NewFrom(ex, "CompanionApps")
                             .WithAppendText("\n\n")
                             .WithAppendText("这可能由杀毒软件引起, 请检查日志并添加必要的排除项")
                             .WithParentWindow(Window)
@@ -1352,7 +1352,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
             IsLoggingIn = false;
 
-            GameLaunchService.StopAddons(launched.ProcessID, addonMgr);
+            GameLaunchService.StopCompanionApps(launched.ProcessID, companionAppManager);
         }
 
         Log.Debug("等待游戏进程退出");
@@ -1366,7 +1366,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                               (
                                   launched,
                                   new RestartMonitor.RestartOptions(forceNoDalamud, noThird, noPlugins),
-                                  options => StartGameAndAddon(loginResult, options.ForceNoDalamud, options.NoThirdPlugins, options.NoPlugins),
+                                  options => StartGameAndCompanionApp(loginResult, options.ForceNoDalamud, options.NoThirdPlugins, options.NoPlugins),
                                   LoginCancelSource?.Token ?? CancellationToken.None
                               )
                               .ConfigureAwait(false);
@@ -1376,7 +1376,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
         finally
         {
-            GameLaunchService.StopAddons(launched.ProcessID, addonMgr);
+            GameLaunchService.StopCompanionApps(launched.ProcessID, companionAppManager);
         }
 
         Log.Verbose("游戏进程已退出");
@@ -1402,7 +1402,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
 
         Task.Run
-        (() => StartGameAndAddon
+        (() => StartGameAndCompanionApp
          (
              new LoginResult
              {
