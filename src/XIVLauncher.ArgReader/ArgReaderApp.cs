@@ -1,48 +1,26 @@
-﻿using System.Collections.Frozen;
 using System.Diagnostics;
-using System.Globalization;
 using Serilog;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Common.Patching.Rpc;
-using XIVLauncher.Common.Patching.Rpc.Implementations;
 
 namespace XIVLauncher.ArgReader;
 
 internal sealed class ArgReaderApp : IAsyncDisposable
 {
-    private readonly SharedMemoryRpc             rpc;
-    private          GameArgumentInterop.Reader? argReader;
-    private readonly TaskCompletionSource        exitSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-    private readonly FrozenDictionary<PatcherIpcOpCode, Action<PatcherIpcEnvelope>> handlers;
+    private readonly ArgReaderChannel channel;
+    private readonly TaskCompletionSource exitSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private int isStopping;
 
     public ArgReaderApp(string channelName)
     {
-        rpc                 =  new SharedMemoryRpc(channelName);
-        rpc.MessageReceived += OnMessageReceived;
-        handlers = new Dictionary<PatcherIpcOpCode, Action<PatcherIpcEnvelope>>
-        {
-            [PatcherIpcOpCode.Bye]         = HandleBye,
-            [PatcherIpcOpCode.OpenProcess] = HandleOpenProcess,
-            [PatcherIpcOpCode.ReadArgs]    = HandleReadArgs
-        }.ToFrozenDictionary();
-
+        channel                 =  new ArgReaderChannel(channelName);
+        channel.MessageReceived += OnMessageReceived;
         Log.Information("[ArgReader] 已连接 IPC");
     }
 
     public Task RunAsync()
     {
-        Send
-        (
-            new PatcherIpcEnvelope
-            {
-                OpCode = PatcherIpcOpCode.Hello,
-                Data   = DateTime.Now
-            }
-        );
-
+        Send(new HelloMessage());
         Log.Information("[ArgReader] 已发送 Hello");
         return exitSignal.Task;
     }
@@ -51,24 +29,31 @@ internal sealed class ArgReaderApp : IAsyncDisposable
     {
         if (Interlocked.Exchange(ref isStopping, 1) == 0)
         {
-            rpc.MessageReceived -= OnMessageReceived;
-            rpc.Dispose();
+            channel.MessageReceived -= OnMessageReceived;
+            channel.Dispose();
         }
 
         return ValueTask.CompletedTask;
     }
 
-    private void OnMessageReceived(PatcherIpcEnvelope envelope)
+    private void OnMessageReceived(ArgReaderMessage message)
     {
         try
         {
-            if (handlers.TryGetValue(envelope.OpCode, out var handler))
+            switch (message)
             {
-                handler(envelope);
-                return;
-            }
+                case ReadLoginDataRequest request:
+                    HandleReadLoginData(request);
+                    return;
 
-            Log.Warning("[ArgReader] 未处理的 OPCode: {OpCode}", envelope.OpCode);
+                case ShutdownRequest request:
+                    HandleShutdown(request);
+                    return;
+
+                default:
+                    Log.Warning("[ArgReader] 未处理消息: {MessageType}", message.GetType().Name);
+                    return;
+            }
         }
         catch (Exception ex)
         {
@@ -77,83 +62,53 @@ internal sealed class ArgReaderApp : IAsyncDisposable
         }
     }
 
-    private void HandleBye(PatcherIpcEnvelope envelope)
+    private void HandleReadLoginData(ReadLoginDataRequest request)
     {
-        if (envelope.Data is bool killTargetProcess && killTargetProcess)
+        Log.Information("[ArgReader] 读取进程参数: {ProcessId}", request.ProcessId);
+
+        using var process = Process.GetProcessById(request.ProcessId);
+        var reader = new GameArgumentInterop.Reader(process);
+        var data   = reader.ReadLoginData();
+
+        Send(new ReadLoginDataSucceeded(data));
+        Log.Information("[ArgReader] 已发送 ReadLoginDataSucceeded");
+    }
+
+    private void HandleShutdown(ShutdownRequest request)
+    {
+        if (request.KillTargetProcess)
         {
-            argReader?.KillProcess();
+            TryKillProcess(request.TargetProcessId);
             KillResidualProcesses();
         }
 
+        Send(new GoodbyeMessage());
         Log.Information("[ArgReader] 完成");
         SignalExit();
     }
 
-    private void HandleOpenProcess(PatcherIpcEnvelope envelope)
+    private void SendFailure(Exception ex) =>
+        Send(new CommandFailed(ex.Message, ex.ToString()));
+
+    private void Send(ArgReaderMessage message) =>
+        channel.Send(message);
+
+    private static void TryKillProcess(int? processId)
     {
-        Log.Information("[ArgReader] 打开进程: {ProcessId}", envelope.Data);
+        if (!processId.HasValue)
+            return;
 
-        var processID = ConvertToProcessID(envelope.Data);
-        var process   = Process.GetProcessById(processID);
-        argReader = new GameArgumentInterop.Reader(process);
-
-        Send
-        (
-            new PatcherIpcEnvelope
-            {
-                OpCode = PatcherIpcOpCode.ArgReadOk,
-                Data   = new GameArgumentInterop.LoginData()
-            }
-        );
-
-        Log.Information("[ArgReader] 已发送 ArgReadOk");
-    }
-
-    private void HandleReadArgs(PatcherIpcEnvelope _)
-    {
-        if (argReader is null)
-            throw new InvalidOperationException("[ArgReader] 未打开进程");
-
-        Log.Information("[ArgReader] 读取参数");
-
-        var data = argReader.ReadLoginData();
-        Send
-        (
-            new PatcherIpcEnvelope
-            {
-                OpCode = PatcherIpcOpCode.ArgReadOk,
-                Data   = data
-            }
-        );
-
-        Log.Information("[ArgReader] 已发送 ArgReadOk");
-    }
-
-    private static int ConvertToProcessID(object? processIdData)
-    {
-        return processIdData switch
+        try
         {
-            int processId        => processId,
-            long processId       => checked((int)processId),
-            string processIdText => int.Parse(processIdText, CultureInfo.InvariantCulture),
-            _                    => throw new InvalidCastException($"[ArgReader] 不支持的进程 ID 类型: {processIdData?.GetType().FullName ?? "<null>"}")
-        };
+            using var process = Process.GetProcessById(processId.Value);
+            if (!process.HasExited)
+                process.Kill();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[ArgReader] 关闭目标游戏进程失败: {ProcessId}", processId);
+        }
     }
-
-    private void SendFailure(Exception ex)
-    {
-        Send
-        (
-            new PatcherIpcEnvelope
-            {
-                OpCode = PatcherIpcOpCode.ArgReadFail,
-                Data   = ex.ToString()
-            }
-        );
-    }
-
-    private void Send(PatcherIpcEnvelope envelope) =>
-        rpc.SendMessage(envelope);
 
     private static void KillResidualProcesses()
     {

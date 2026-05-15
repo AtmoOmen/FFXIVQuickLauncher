@@ -48,7 +48,6 @@
         <PackageReference Include="Serilog.Sinks.Console"/>
         <PackageReference Include="Serilog.Sinks.Debug"/>
         <PackageReference Include="Serilog.Sinks.File"/>
-        <PackageReference Include="SharedMemory"/>
         <PackageReference Include="SharpCompress"/>
         <PackageReference Include="System.Management"/>
         <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers"/>

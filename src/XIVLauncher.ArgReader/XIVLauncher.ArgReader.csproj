@@ -11,13 +11,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Newtonsoft.Json"/>
         <PackageReference Include="Serilog"/>
         <PackageReference Include="Serilog.Sinks.Async"/>
         <PackageReference Include="Serilog.Sinks.Console"/>
         <PackageReference Include="Serilog.Sinks.File"/>
         <PackageReference Include="SharedMemory"/>
-        <PackageReference Include="System.CommandLine"/>
         <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
         <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers"/>
     </ItemGroup>
