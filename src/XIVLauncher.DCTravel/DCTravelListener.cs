@@ -9,7 +9,7 @@ using EmbedIO.WebApi;
 using Serilog;
 using XIVLauncher.Common.Http;
 
-namespace XIVLauncher.Common.Game.DCTravel;
+namespace XIVLauncher.DCTravel;
 
 public sealed class DCTravelListener : IDisposable, IAsyncDisposable
 {

@@ -1,6 +1,5 @@
 using System.Collections.Frozen;
 using Serilog;
-using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Login.Channels;
 
 namespace XIVLauncher.Common.Game.Login;
@@ -22,16 +21,16 @@ public sealed class LoginClient
     (
         string                account,
         string                autoLoginSessionKey,
-        DCTravelClient?       dcTravelClient,
+        ILoginSessionRefreshSink? loginSessionRefreshSink,
         DeviceProfileSnapshot deviceProfile
     )
     {
         var request = new LoginRequest
         {
-            Account        = account,
-            Secret         = autoLoginSessionKey,
-            DeviceProfile  = deviceProfile,
-            DCTravelClient = dcTravelClient
+            Account                 = account,
+            Secret                  = autoLoginSessionKey,
+            DeviceProfile           = deviceProfile,
+            LoginSessionRefreshSink = loginSessionRefreshSink
         };
         return await LoginAsync(LoginType.AutoLoginSession, request).ConfigureAwait(false);
     }

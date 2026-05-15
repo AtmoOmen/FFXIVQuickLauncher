@@ -35,7 +35,6 @@
     <ItemGroup>
         <PackageReference Include="CommandLineParser"/>
         <PackageReference Include="Downloader"/>
-        <PackageReference Include="EmbedIO"/>
         <PackageReference Include="Iced"/>
         <PackageReference Include="Newtonsoft.Json"/>
         <PackageReference Include="PInvoke.Kernel32"/>

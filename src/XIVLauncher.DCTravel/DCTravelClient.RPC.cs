@@ -5,18 +5,19 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Http;
 
-namespace XIVLauncher.Common.Game.DCTravel;
+namespace XIVLauncher.DCTravel;
 
 public partial class DCTravelClient
 {
     [HttpRpc]
     public async Task<string> RefreshGameSessionId()
     {
-        ArgumentNullException.ThrowIfNull(RefreshGameSessionByGuidFunc);
+        var refreshGameSessionByGuidFunc = LoginSessionRefreshContext?.RefreshGameSessionIdAsync;
+        ArgumentNullException.ThrowIfNull(refreshGameSessionByGuidFunc);
 
         try
         {
-            var newSid = await RefreshGameSessionByGuidFunc();
+            var newSid = await refreshGameSessionByGuidFunc();
             return newSid;
         }
         catch (LoginException ex)

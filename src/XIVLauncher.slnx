@@ -32,6 +32,11 @@
         <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
         <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
     </Project>
+    <Project Path="XIVLauncher.DCTravel/XIVLauncher.DCTravel.csproj">
+        <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
+        <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />
+        <BuildType Solution="ReleaseNoUpdate|x86" Project="Release" />
+    </Project>
     <Project Path="XIVLauncher.Dalamud/XIVLauncher.Dalamud.csproj">
         <BuildType Solution="ReleaseNoUpdate|Any CPU" Project="Debug" />
         <BuildType Solution="ReleaseNoUpdate|x64" Project="Release" />

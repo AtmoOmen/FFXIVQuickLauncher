@@ -38,7 +38,7 @@ public sealed class StaticLoginChannel
         var sndaId = result.Data.SndaID;
         var tgt    = result.Data.Tgt;
 
-        context.BindDCTravelSessionRefresh(request.DCTravelClient, tgt, guid);
+        context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt, guid);
         var sessionId = await context.GetSessionIdAsync(tgt, guid).ConfigureAwait(false);
         return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, null, LoginType.Static);
     }

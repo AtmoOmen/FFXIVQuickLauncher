@@ -14,7 +14,7 @@ public sealed class WeGameManualLoginChannel
         var guid = await context.GetGuidAsync().ConfigureAwait(false);
         var (sndaId, tgt, autoLoginSessionKey) = await context.ThirdPartyLoginAsync(request.Account, request.Secret, request.AutoLogin, AUTO_LOGIN_KEEP_DAYS).ConfigureAwait(false);
 
-        context.BindDCTravelSessionRefresh(request.DCTravelClient, tgt, guid);
+        context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt, guid);
         var sessionId = await context.GetSessionIdAsync(tgt, guid).ConfigureAwait(false);
         return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, request.AutoLogin ? autoLoginSessionKey : null, LoginType.WeGameManual);
     }

@@ -21,10 +21,10 @@ using XIVLauncher.Common;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Game.Login;
 using XIVLauncher.Common.Util;
+using XIVLauncher.DCTravel;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Game;
 using XIVLauncher.GamePatchV3;
@@ -36,7 +36,6 @@ using XIVLauncher.Windows.ViewModel.MainWindow;
 using XIVLauncher.Windows.ViewModel.MainWindow.Providers;
 using XIVLauncher.Windows.ViewModel.MainWindow.Services;
 using XIVLauncher.Xaml;
-using DCTravelClient = XIVLauncher.Common.Game.DCTravel.DCTravelClient;
 
 namespace XIVLauncher.Windows.ViewModel;
 
@@ -58,7 +57,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public Launcher          Launcher         { get; private set; }
     public AccountManager    AccountManager   { get; private set; } = App.AccountManager;
-    public DCTravelListener? DCTravelListener { get; private set; }
     public Window            Window           { get; private set; }
 
     public Action Activate        { get; set; } = null!;
@@ -68,6 +66,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     public bool IsLoggingIn { get; set; }
 
     private          MainWindowDialogProvider  DialogProvider            { get; }
+    private          DcTravelRuntimeService    DcTravelRuntimeService    { get; }
     private          GameLaunchService         GameLaunchService         { get; }
     private          GameClientFileTaskService GameClientFileTaskService { get; }
     private readonly SyncCommand                   refreshDalamudInfoCommand;
@@ -81,6 +80,14 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         Settings                  = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
         DialogProvider            = new MainWindowDialogProvider(window);
         Launcher                  = new();
+        DcTravelRuntimeService    = new DcTravelRuntimeService
+        (
+            name =>
+            {
+                App.AccountManager.CurrentAccount!.AreaName = name;
+                App.AccountManager.Save();
+            }
+        );
         GameLaunchService         = new GameLaunchService(window);
         GameClientFileTaskService = new GameClientFileTaskService(window);
         AccountSwitcher = new AccountSwitcherViewModel
@@ -444,15 +451,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         var deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
 
-        var dcTraveler = new DCTravelClient(string.Empty)
-        {
-            SetSdoAreaFunc = name =>
-            {
-                App.AccountManager.CurrentAccount!.AreaName = name;
-                App.AccountManager.Save();
-            }
-        };
-
         var loginResult = await LoginToGameAsync
                           (
                               finalLoginType,
@@ -460,14 +458,10 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                               username,
                               secret!,
                               loginAutoLogin,
-                              deviceProfileSnapshot,
-                              dcTraveler
+                              deviceProfileSnapshot
                           ).ConfigureAwait(false);
         if (loginResult == null)
             return;
-
-        loginResult.Area  = LoginPage.Area;
-        loginResult.Areas = LoginPage.LoginAreas;
 
         var oAuthLogin = loginResult.OAuthLogin;
 
@@ -516,16 +510,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                                             oAuthLogin.InputUserID,
                                             oAuthLogin.AutoLoginSessionKey,
                                             true,
-                                            deviceProfileSnapshot,
-                                            dcTraveler
+                                            deviceProfileSnapshot
                                         ).ConfigureAwait(false);
                     if (reloginResult == null)
                         return;
 
-                    loginResult       = reloginResult;
-                    loginResult.Area  = LoginPage.Area;
-                    loginResult.Areas = LoginPage.LoginAreas;
-                    oAuthLogin        = loginResult.OAuthLogin;
+                    loginResult = reloginResult;
+                    oAuthLogin  = loginResult.OAuthLogin;
                     break;
                 }
 
@@ -537,28 +528,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         if (loginResult.State == LoginState.Ok)
         {
             var deviceProfileAccount = pendingNewAccount ?? savedAccount;
-
-            if (App.Settings.DalamudEnabled && loginType != LoginType.WeGameAuto)
-            {
-                try
-                {
-                    DCTravelListener = null;
-                    Log.Information("[DCTravelListener] 正在开启监听用端口");
-                    await dcTraveler.GetValidCookie();
-                    _ = dcTraveler.KeepCookieAlive();
-
-                    loginResult.DCTravelPort = APIHelper.GetAvailablePort();
-                    DCTravelListener         = new(dcTraveler, loginResult.DCTravelPort, false);
-                    Log.Information("[DCTravelListener] 打开监听端口: {LoginResultDCTravelPort}", loginResult.DCTravelPort);
-                    _ = DCTravelListener.StartAsync();
-                }
-                catch (Exception ex)
-                {
-                    loginResult.DCTravelPort = 0;
-                    DCTravelListener         = null;
-                    Log.Warning(ex, "[DCTravelListener] 启动失败, 已跳过游戏内超域传送支持");
-                }
-            }
 
             var accountToSave = new XIVAccount
             {
@@ -582,21 +551,22 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 if (!string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
                     accountToSave.SdoAutoLoginSessionKey = await AccountManager.Encrypt(oAuthLogin.AutoLoginSessionKey);
 
-                var dcTravelListener = DCTravelListener;
-
-                if (dcTravelListener != null && !string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
+                if (!string.IsNullOrEmpty(oAuthLogin?.AutoLoginSessionKey))
                 {
-                    dcTravelListener.DCTravelClient.RefreshGameSessionIDByAutoLoginFunc = async () =>
-                    {
-                        var newLoginResult = await Launcher.LoginClient.LoginBySessionKey
-                                             (
-                                                 username,
-                                                 oAuthLogin.AutoLoginSessionKey,
-                                                 dcTravelListener.DCTravelClient,
-                                                 deviceProfileSnapshot
-                                             ).ConfigureAwait(false);
-                        return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
-                    };
+                    DcTravelRuntimeService.ConfigureAutoLoginRefresh
+                    (
+                        async () =>
+                        {
+                            var newLoginResult = await Launcher.LoginClient.LoginBySessionKey
+                                                 (
+                                                     username,
+                                                     oAuthLogin.AutoLoginSessionKey,
+                                                     DcTravelRuntimeService,
+                                                     deviceProfileSnapshot
+                                                 ).ConfigureAwait(false);
+                            return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
+                        }
+                    );
                 }
 
                 if (finalLoginType == LoginType.Static)
@@ -624,7 +594,14 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         await AccountManager.CredProvider.ClearCache();
         secret = string.Empty;
 
-        if (await ProcessLoginResultAsync(loginResult, action).ConfigureAwait(false))
+        var gameLaunchContext = new GameLaunchContext(loginResult, LoginPage.Area!, LoginPage.LoginAreas)
+        {
+            DcTravelPort = loginResult.State == LoginState.Ok
+                               ? await DcTravelRuntimeService.StartAsync(App.Settings.DalamudEnabled, loginType == LoginType.WeGameAuto).ConfigureAwait(false)
+                               : 0
+        };
+
+        if (await ProcessLoginResultAsync(gameLaunchContext, action).ConfigureAwait(false))
         {
             if (App.Settings.ExitLauncherWhenGameExit)
                 Environment.Exit(0);
@@ -696,8 +673,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         string                username,
         string                secret,
         bool                  autoLogin,
-        DeviceProfileSnapshot deviceProfile,
-        DCTravelClient        dcTravelClient
+        DeviceProfileSnapshot deviceProfile
     )
     {
         if (IsLoginCanceledByUser)
@@ -735,13 +711,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                        type,
                        fallbackLoginType,
                        requestLoginType => LoginRequest.Create
-                       (
-                           username,
-                           secret,
-                           autoLogin,
-                           deviceProfile,
-                           dcTravelClient,
-                           loginCts,
+                        (
+                            username,
+                            secret,
+                            autoLogin,
+                            deviceProfile,
+                            DcTravelRuntimeService,
+                            loginCts,
                            qrBytes =>
                            {
                                if (requestLoginType != LoginType.QRCode)
@@ -937,8 +913,10 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         return selfPatchAsk != MessageBoxResult.No;
     }
 
-    private async Task<bool> ProcessLoginResultAsync(LoginResult loginResult, LoginAfterAction action)
+    private async Task<bool> ProcessLoginResultAsync(GameLaunchContext gameLaunchContext, LoginAfterAction action)
     {
+        var loginResult = gameLaunchContext.LoginResult;
+
         switch (loginResult.State)
         {
             case LoginState.NoService:
@@ -1041,7 +1019,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
                 using var process = await StartGameAndCompanionApp
                                     (
-                                        loginResult,
+                                        gameLaunchContext,
                                         action == LoginAfterAction.StartWithoutDalamud,
                                         action == LoginAfterAction.StartWithoutThird,
                                         action == LoginAfterAction.StartWithoutPlugins
@@ -1262,21 +1240,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     #region 启动游戏
 
-    public async Task<FFXIVProcess?> StartGameAndCompanionApp(LoginResult loginResult, bool forceNoDalamud, bool noThird, bool noPlugins)
+    public async Task<FFXIVProcess?> StartGameAndCompanionApp(GameLaunchContext gameLaunchContext, bool forceNoDalamud, bool noThird, bool noPlugins)
     {
-        if (LoginPage.Area == null || LoginPage.Area.AreaID == "-1")
-        {
-            CustomMessageBox.Show
-            (
-                "获取服务器信息失败, 无法登录",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error,
-                parentWindow: Window
-            );
-
-            return null;
-        }
+        var loginResult = gameLaunchContext.LoginResult;
 
         var stopwatch = new Stopwatch();
         stopwatch.Start();
@@ -1314,12 +1280,12 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             gameRunner,
             loginResult.OAuthLogin!.SessionID,
             loginResult.OAuthLogin!.SndaID,
-            loginResult.DCTravelPort,
-            LoginPage.Area.AreaID,
-            LoginPage.Area.AreaLobby,
-            LoginPage.Area.AreaGM,
-            LoginPage.Area.AreaConfigUpload,
-            Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(loginResult.Areas))),
+            gameLaunchContext.DcTravelPort,
+            gameLaunchContext.Area.AreaID,
+            gameLaunchContext.Area.AreaLobby,
+            gameLaunchContext.Area.AreaGM,
+            gameLaunchContext.Area.AreaConfigUpload,
+            Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(gameLaunchContext.Areas))),
             App.Settings.AdditionalLaunchArgs,
             App.Settings.GamePath,
             App.Settings.EncryptArgumentsV2,
@@ -1366,7 +1332,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                               (
                                   launched,
                                   new RestartMonitor.RestartOptions(forceNoDalamud, noThird, noPlugins),
-                                  options => StartGameAndCompanionApp(loginResult, options.ForceNoDalamud, options.NoThirdPlugins, options.NoPlugins),
+                                  options => StartGameAndCompanionApp(gameLaunchContext, options.ForceNoDalamud, options.NoThirdPlugins, options.NoPlugins),
                                   LoginCancelSource?.Token ?? CancellationToken.None
                               )
                               .ConfigureAwait(false);
@@ -1381,14 +1347,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         Log.Verbose("游戏进程已退出");
 
-        try
-        {
-            DCTravelListener?.Stop();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "无法关闭 DCTravelListener");
-        }
+        DcTravelRuntimeService.Stop();
 
         return launched;
     }
@@ -1404,20 +1363,25 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         Task.Run
         (() => StartGameAndCompanionApp
          (
-             new LoginResult
-             {
-                 OAuthLogin = new OAuthLoginResult
+             new GameLaunchContext
+             (
+                 new LoginResult
                  {
-                     MaxExpansion  = 5,
-                     Playable      = true,
-                     Region        = 0,
-                     SessionID     = "0",
-                     TermsAccepted = true,
-                     SndaID        = "114514"
+                     OAuthLogin = new OAuthLoginResult
+                     {
+                         MaxExpansion  = 5,
+                         Playable      = true,
+                         Region        = 0,
+                         SessionID     = "0",
+                         TermsAccepted = true,
+                         SndaID        = "114514"
+                     },
+                     State    = LoginState.Ok,
+                     UniqueID = "0"
                  },
-                 State    = LoginState.Ok,
-                 UniqueID = "0"
-             },
+                 LoginPage.Area!,
+                 LoginPage.LoginAreas
+             ),
              false,
              false,
              false

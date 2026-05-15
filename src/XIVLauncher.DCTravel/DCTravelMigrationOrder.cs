@@ -1,6 +1,6 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
-namespace XIVLauncher.Common.Game.DCTravel;
+namespace XIVLauncher.DCTravel;
 
 public class DCTravelMigrationOrder
 {

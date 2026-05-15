@@ -93,6 +93,7 @@
         <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj"/>
         <ProjectReference Include="..\XIVLauncher.CompanionApp\XIVLauncher.CompanionApp.csproj"/>
         <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.DCTravel\XIVLauncher.DCTravel.csproj"/>
         <ProjectReference Include="..\XIVLauncher.Dalamud\XIVLauncher.Dalamud.csproj"/>
         <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj"/>
     </ItemGroup>

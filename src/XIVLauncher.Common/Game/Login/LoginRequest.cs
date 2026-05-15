@@ -1,5 +1,3 @@
-using XIVLauncher.Common.Game.DCTravel;
-
 namespace XIVLauncher.Common.Game.Login;
 
 public sealed class LoginRequest
@@ -14,7 +12,7 @@ public sealed class LoginRequest
     public Action<string>?                        ShowLoginMessage             { get; init; }
     public Func<string, string, string, string?>? PromptTextInput              { get; init; }
     public Func<LoginCaptchaChallenge, string?>?  PromptCaptchaInput           { get; init; }
-    public DCTravelClient?                        DCTravelClient               { get; init; }
+    public ILoginSessionRefreshSink?             LoginSessionRefreshSink       { get; init; }
 
     public static LoginRequest Create
     (
@@ -22,7 +20,7 @@ public sealed class LoginRequest
         string                                 secret,
         bool                                   autoLogin,
         DeviceProfileSnapshot                  deviceProfile,
-        DCTravelClient?                        dcTravelClient,
+        ILoginSessionRefreshSink?              loginSessionRefreshSink,
         CancellationTokenSource?               loginCancellationTokenSource,
         Action<byte[]>?                        showQrCode,
         Action<string>?                        showVerificationCode,
@@ -33,17 +31,17 @@ public sealed class LoginRequest
     {
         return new LoginRequest
         {
-            Account                      = account,
-            Secret                       = secret,
-            AutoLogin                    = autoLogin,
-            DeviceProfile                = deviceProfile,
-            DCTravelClient               = dcTravelClient,
+            Account                 = account,
+            Secret                  = secret,
+            AutoLogin               = autoLogin,
+            DeviceProfile           = deviceProfile,
+            LoginSessionRefreshSink = loginSessionRefreshSink,
             LoginCancellationTokenSource = loginCancellationTokenSource,
-            ShowQRCode                   = showQrCode,
-            ShowVerificationCode         = showVerificationCode,
-            ShowLoginMessage             = showLoginMessage,
-            PromptTextInput              = promptTextInput,
-            PromptCaptchaInput           = promptCaptchaInput
+            ShowQRCode              = showQrCode,
+            ShowVerificationCode    = showVerificationCode,
+            ShowLoginMessage        = showLoginMessage,
+            PromptTextInput         = promptTextInput,
+            PromptCaptchaInput      = promptCaptchaInput
         };
     }
 }

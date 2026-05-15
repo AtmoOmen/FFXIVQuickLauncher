@@ -1,4 +1,4 @@
-﻿namespace XIVLauncher.Common.Game.DCTravel;
+namespace XIVLauncher.DCTravel;
 
 public enum DCTravelStatusType
 {

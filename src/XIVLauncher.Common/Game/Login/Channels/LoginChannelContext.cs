@@ -2,7 +2,6 @@ using System.Net;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game.DCTravel;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Util;
 
@@ -264,13 +263,19 @@ public sealed class LoginChannelContext
         return await SsoLoginAsync(tgt, guid).ConfigureAwait(false);
     }
 
-    public void BindDCTravelSessionRefresh(DCTravelClient? dcTravelClient, string tgt, string guid)
+    public void BindLoginSessionRefresh(ILoginSessionRefreshSink? loginSessionRefreshSink, string tgt, string guid)
     {
-        if (dcTravelClient == null)
+        if (loginSessionRefreshSink == null)
             return;
 
-        dcTravelClient.RefreshDcTravelSessionIDFunc = () => GetDCTravelSessionIDAsync(tgt, guid);
-        dcTravelClient.RefreshGameSessionByGuidFunc = () => GetSessionIdAsync(tgt, guid);
+        loginSessionRefreshSink.Bind
+        (
+            new LoginSessionRefreshContext
+            {
+                RefreshDcTravelSessionIdAsync = () => GetDCTravelSessionIDAsync(tgt, guid),
+                RefreshGameSessionIdAsync     = () => GetSessionIdAsync(tgt, guid)
+            }
+        );
     }
 
     private static LoginResponse DeserializeLoginResponse(string endPoint, string reply)

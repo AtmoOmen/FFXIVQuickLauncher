@@ -23,7 +23,7 @@ public sealed class SlideLoginChannel
         request.ShowVerificationCode?.Invoke(pushMsgSerialNum);
 
         var (sndaId, tgt, autoLoginSessionKey) = await WaitForSlideAsync(pushMsgSessionKey, guid, expiration, request.LoginCancellationTokenSource, request.AutoLogin).ConfigureAwait(false);
-        context.BindDCTravelSessionRefresh(request.DCTravelClient, tgt, guid);
+        context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt, guid);
         var sessionId = await context.GetSessionIdAsync(tgt, guid).ConfigureAwait(false);
         return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, request.AutoLogin ? autoLoginSessionKey : null, LoginType.Slide);
     }

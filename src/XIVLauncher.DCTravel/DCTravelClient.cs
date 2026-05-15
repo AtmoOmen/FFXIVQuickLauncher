@@ -3,17 +3,16 @@ using System.Net;
 using System.Text.Json.Nodes;
 using Serilog;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Game.Exceptions;
+using XIVLauncher.Common.Game.Login;
 
-namespace XIVLauncher.Common.Game.DCTravel;
+namespace XIVLauncher.DCTravel;
 
 public partial class DCTravelClient
 {
-    public Func<Task<string>>?     RefreshGameSessionByGuidFunc        { get; set; }
-    public Func<Task<string>>?     RefreshDcTravelSessionIDFunc        { get; set; }
-    public Func<Task<string>>?     RefreshGameSessionIDByAutoLoginFunc { get; set; }
-    public Action<string>?         SetSdoAreaFunc                      { get; set; }
-    public CancellationTokenSource KeepAliveCancelSource               { get; private set; }
+    public Func<Task<string>>?         RefreshGameSessionIDByAutoLoginFunc { get; set; }
+    public Action<string>?             SetSdoAreaFunc                      { get; set; }
+    public CancellationTokenSource     KeepAliveCancelSource               { get; private set; }
+    public LoginSessionRefreshContext? LoginSessionRefreshContext          { get; private set; }
 
     private const string BASE_URL               = "ff14bjz.sdo.com";
     private const string DOMAIN                 = "sdo.com";
@@ -73,6 +72,12 @@ public partial class DCTravelClient
 
         foreach (var (key, value) in DefaultHeaders)
             httpClient.DefaultRequestHeaders.TryAddWithoutValidation(key, value);
+    }
+
+    public void BindLoginSessionRefresh(LoginSessionRefreshContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        LoginSessionRefreshContext = context;
     }
 
     #region 查询超域旅行页面
@@ -218,7 +223,7 @@ public partial class DCTravelClient
         }
 
         Log.Error("[DCTravelClient] 初始化超域旅行页面失败, 需要有效的 ticket");
-        var refreshDcTravelSessionIdFunc = RefreshDcTravelSessionIDFunc ?? throw new DCTravelAPIException("未配置 RefreshDcTravelSessionIdFunc");
+        var refreshDcTravelSessionIdFunc = LoginSessionRefreshContext?.RefreshDcTravelSessionIdAsync ?? throw new DCTravelAPIException("未配置 RefreshDcTravelSessionIdFunc");
         ticket = await refreshDcTravelSessionIdFunc().ConfigureAwait(false);
         await ValidateTicket().ConfigureAwait(false);
 
