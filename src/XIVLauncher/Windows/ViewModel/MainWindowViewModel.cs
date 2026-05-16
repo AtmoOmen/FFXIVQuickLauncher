@@ -471,6 +471,14 @@ namespace XIVLauncher.Windows.ViewModel
                         finalLoginType = LoginType.SdoStatic;
                         break;
                     case LoginType.WeGameSid:
+                        CustomMessageBox.Builder
+                                .NewFrom("WeGameSid功能即将移除，请选择WeGameToken登录。\n如果确实需要继续使用WeGameSid登录，请去QQ频道中反馈。")
+                                .WithImage(MessageBoxImage.Warning)
+                                .WithButtons(MessageBoxButton.OK)
+                                .WithYesButtonText("确认")
+                                .WithCaption("WeGame Token登录功能说明")
+                                .WithParentWindow(_window)
+                                .Show();
                         if (!App.Settings.HasAgreeWeGameUsage.GetValueOrDefault(false))
                         {
                             var readWeGameUsageAsk = CustomMessageBox.Builder
@@ -532,7 +540,7 @@ namespace XIVLauncher.Windows.ViewModel
                         break;
                     case LoginType.WeGameToken:
                     {
-                                                if (!App.Settings.HasAgreeWeGameUsage.GetValueOrDefault(false))
+                        if (!App.Settings.HasAgreeWeGameUsage.GetValueOrDefault(false))
                         {
                             var readWeGameUsageAsk = CustomMessageBox.Builder
                                 .NewFrom(
