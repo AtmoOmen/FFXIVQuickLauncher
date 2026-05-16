@@ -71,6 +71,12 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         set => SetProperty(ref field, value);
     } = string.Empty;
 
+    public string WeGameLauncherPath
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
+
     public bool AskBeforePatching
     {
         get;
@@ -252,6 +258,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 
         GamePath  = App.Settings.GamePath?.FullName ?? string.Empty;
         PatchPath = patchPath.FullName;
+        WeGameLauncherPath = App.Settings.WeGameLauncherPath ?? string.Empty;
 
         AskBeforePatching                           = App.Settings.AskBeforePatchInstall;
         ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherWhenGameExit;
@@ -332,6 +339,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
                 settings.AdditionalLaunchArgs                 = LaunchArgs;
                 settings.DPIAwareness                         = dpiAwareness;
                 settings.SpeedLimitBytes                      = speedLimitBytes;
+                settings.WeGameLauncherPath                   = WeGameLauncherPath;
                 settings.CredType                             = credTypeApplyResult.AppliedCredType;
             }
         );

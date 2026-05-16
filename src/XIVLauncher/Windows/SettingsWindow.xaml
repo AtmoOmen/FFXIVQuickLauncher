@@ -162,8 +162,10 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Text="游戏目录" FontWeight="Medium" FontSize="15"
+                                    <TextBlock Text="盛趣 / 官网" FontWeight="Medium" FontSize="15"
                                                Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
                                     <components:FolderEntry Grid.Row="1" Margin="0,8,0,0" Description="选择文件夹"
                                                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
@@ -171,6 +173,12 @@
                                     <TextBlock Grid.Row="2" Margin="0,8,0,0" Foreground="Red"
                                                Text="{Binding GamePathWarningMessage}"
                                                Visibility="{Binding GamePathWarningVisibility}" />
+                                    <TextBlock Grid.Row="3" Margin="0,16,0,0" Text="WeGame"
+                                               FontWeight="Medium" FontSize="15"
+                                               Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                    <components:FolderEntry Grid.Row="4" Margin="0,8,0,0" Description="选择文件夹"
+                                                            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                            Text="{Binding WeGameLauncherPath, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
 
                             </StackPanel>

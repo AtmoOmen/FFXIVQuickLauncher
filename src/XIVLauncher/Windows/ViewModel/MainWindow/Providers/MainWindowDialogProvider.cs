@@ -42,15 +42,13 @@ public sealed class MainWindowDialogProvider
         return dialog.ShowDialog() == true;
     }
 
-    public string? PromptWeGameInstallDirectory()
+    public static string? PromptWeGameInstallDirectory()
     {
-        using var dialog = new CommonOpenFileDialog
-        {
-            Multiselect      = false,
-            IsFolderPicker   = true,
-            EnsurePathExists = true,
-            Title            = "请选择 WeGame 版最终幻想 14 安装目录"
-        };
+        using var dialog = new CommonOpenFileDialog();
+        dialog.Multiselect      = false;
+        dialog.IsFolderPicker   = true;
+        dialog.EnsurePathExists = true;
+        dialog.Title            = "请选择 WeGame 版最终幻想 14 安装目录";
 
         return dialog.ShowDialog() == CommonFileDialogResult.Ok
                    ? dialog.FileName

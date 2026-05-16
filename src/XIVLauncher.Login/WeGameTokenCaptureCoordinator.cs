@@ -41,7 +41,7 @@ public sealed class WeGameTokenCaptureCoordinator : IWeGameTokenCaptureCoordinat
     {
         var currentPath = interaction.GetSavedWeGameLauncherPath();
         if (WeGamePathValidator.IsValidSdologinDir(currentPath))
-            return Task.FromResult<string?>(currentPath);
+            return Task.FromResult(currentPath);
 
         var selectedRoot = interaction.PromptWeGameInstallDirectory(currentPath);
         if (string.IsNullOrWhiteSpace(selectedRoot))

@@ -78,7 +78,7 @@ public sealed class MainWindowLoginInteraction
         App.Settings.WeGameLauncherPath = path;
 
     public string? PromptWeGameInstallDirectory(string? currentPath) =>
-        window.Dispatcher.Invoke(dialogProvider.PromptWeGameInstallDirectory);
+        window.Dispatcher.Invoke(MainWindowDialogProvider.PromptWeGameInstallDirectory);
 
     public async Task<bool> TryElevatedCopyVersionDllAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken)
     {
