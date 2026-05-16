@@ -304,6 +304,12 @@ namespace XIVLauncher
 
         private static string GetConfigPath(string prefix) => Path.Combine(Paths.RoamingPath, $"{prefix}ConfigV3.json");
 
+        public static void ResetConfig()
+        {
+            File.Delete(GetConfigPath("launcher"));
+            Log.Information("Config file deleted.");
+        }
+
         private void App_OnStartup(object sender, StartupEventArgs e)
         {
             // HW rendering commonly causes issues with material design, so we turn it off by default for now

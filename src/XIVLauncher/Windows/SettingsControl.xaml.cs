@@ -40,12 +40,24 @@ namespace XIVLauncher.Windows
         private MainWindowViewModel MainWindowViewModel;
         public SettingsControl()
         {
-            InitializeComponent();
-
-            QqButton.Click += SupportLinks.OpenQQChannel;
-            FaqButton.Click += SupportLinks.OpenFaq;
-            DataContext = new SettingsControlViewModel();
-            ReloadSettings();
+            try
+            {
+                InitializeComponent();
+                QqButton.Click += SupportLinks.OpenQQChannel;
+                FaqButton.Click += SupportLinks.OpenFaq;
+                DataContext = new SettingsControlViewModel();
+                ReloadSettings();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Could not initialize SettingsControl");
+                var result = CustomMessageBox.Show("初始化设置失败，是否初始化默认设置并重新启动FFXIVLauncher？", "XIVLauncherCN", MessageBoxButton.YesNo, MessageBoxImage.Error);
+                if (result == MessageBoxResult.Yes)
+                {
+                    App.ResetConfig();
+                    Environment.Exit(0);
+                }
+            }
         }
 
         public void ReloadSettings()
