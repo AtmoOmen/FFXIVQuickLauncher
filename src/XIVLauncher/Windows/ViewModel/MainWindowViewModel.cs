@@ -610,6 +610,11 @@ namespace XIVLauncher.Windows.ViewModel
                                     "WeGame 登录", MessageBoxButton.OK, MessageBoxImage.Warning);
                                 return;
                             }
+                            catch (Exception ex) when (loginCts.IsCancellationRequested)
+                            {
+                                Log.Information(ex, "手动取消 WeGame 登录抓取");
+                                return;
+                            }
                         }
                         break;
                     }

@@ -91,12 +91,12 @@ namespace XIVLauncher.Common.Game.WeGame
                     FileName = $"wegame://StartFor={FfxivWeGameGameId}",
                     UseShellExecute = true,
                 });
-                progress?.Report("已请求启动 WeGame, 请在 WeGame 中登录最终幻想 14...");
+                progress?.Report("已启动 WeGame,请登录游戏");
             }
             catch (Exception ex)
             {
                 Log.Warning(ex, "wegame:// 唤起失败");
-                progress?.Report("自动唤起 WeGame 失败, 请手动启动 WeGame 并登录最终幻想 14...");
+                progress?.Report("自动唤起 WeGame 失败,请手动启动");
             }
         }
 
