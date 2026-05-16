@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using System.Threading;
 using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
@@ -28,6 +29,8 @@ namespace XIVLauncher.Windows;
 /// </summary>
 public partial class MainWindow
 {
+    private static readonly TimeSpan HEADLINES_REFRESH_INTERVAL = TimeSpan.FromMinutes(10);
+
     internal MainWindowViewModel Model => (DataContext as MainWindowViewModel)!;
 
     private const int CURRENT_VERSION_LEVEL = 2;
@@ -36,12 +39,15 @@ public partial class MainWindow
     private readonly Launcher       launcher;
 
     private DispatcherTimer?                     bannerChangeTimer;
+    private DispatcherTimer?                     headlinesRefreshTimer;
     private ObservableCollection<BannerDotInfo>? bannerDotList;
     private Headlines?                           headlines;
     private Banner[]?                            banners;
     private BitmapImage[]?                       bannerBitmaps;
     private int                                  currentBannerIndex;
     private bool                                 isBannerRotationActive;
+    private int                                  isRefreshingHeadlines;
+    private int                                  pendingHeadlinesRefresh;
 
     private bool          everShown;
     private bool          suppressAccountSelectionTracking;
@@ -57,7 +63,7 @@ public partial class MainWindow
         accountManager                           =  Model.AccountManager;
         launcher                                 =  Model.Launcher;
         AccountListView.ContextMenu!.DataContext =  Model.AccountSwitcher;
-        Model.Settings.SettingsSaved             += (_, _) => _ = SetupHeadlines();
+        Model.Settings.SettingsSaved             += (_, _) => _ = RequestHeadlinesRefreshAsync();
 
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
@@ -73,7 +79,7 @@ public partial class MainWindow
 
         Model.Hide += () => Dispatcher.Invoke(HideMainWindow);
 
-        Model.ReloadHeadlines += () => _ = SetupHeadlines();
+        Model.ReloadHeadlines += () => _ = RequestHeadlinesRefreshAsync();
 
         NewsListView.ItemsSource = new List<News>
         {
@@ -90,6 +96,7 @@ public partial class MainWindow
     public void Initialize()
     {
         SetDefaults();
+        EnsureHeadlinesRefreshTimer();
 
         Model.LoginPage.IsFastLogin = App.Settings.FastLogin;
 
@@ -120,7 +127,7 @@ public partial class MainWindow
                     }
                 );
 
-                await SetupHeadlines();
+                await RequestHeadlinesRefreshAsync().ConfigureAwait(false);
                 Troubleshooting.LogTroubleshooting();
             }
         );
@@ -177,6 +184,44 @@ public partial class MainWindow
         );
     }
 
+    private void EnsureHeadlinesRefreshTimer()
+    {
+        if (headlinesRefreshTimer != null)
+            return;
+
+        headlinesRefreshTimer      =  new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = HEADLINES_REFRESH_INTERVAL };
+        headlinesRefreshTimer.Tick += HeadlinesRefreshTimer_OnTick;
+        headlinesRefreshTimer.Start();
+    }
+
+    private async void HeadlinesRefreshTimer_OnTick(object? sender, EventArgs e) =>
+        await RequestHeadlinesRefreshAsync().ConfigureAwait(false);
+
+    private async Task RequestHeadlinesRefreshAsync()
+    {
+        Volatile.Write(ref pendingHeadlinesRefresh, 1);
+
+        if (Interlocked.CompareExchange(ref isRefreshingHeadlines, 1, 0) != 0)
+            return;
+
+        try
+        {
+            do
+            {
+                Interlocked.Exchange(ref pendingHeadlinesRefresh, 0);
+                await SetupHeadlines().ConfigureAwait(false);
+            }
+            while (Volatile.Read(ref pendingHeadlinesRefresh) != 0);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref isRefreshingHeadlines, 0);
+
+            if (Volatile.Read(ref pendingHeadlinesRefresh) != 0)
+                await RequestHeadlinesRefreshAsync().ConfigureAwait(false);
+        }
+    }
+
     private async Task SetupHeadlines()
     {
         try
@@ -213,7 +258,7 @@ public partial class MainWindow
                 (() =>
                     {
                         currentBannerIndex    = 0;
-                        BannerImage.Source    = bannerBitmaps[currentBannerIndex];
+                        BannerImage.Source    = bannerBitmaps.Length > 0 ? bannerBitmaps[currentBannerIndex] : null;
                         BannerDot.ItemsSource = bannerDotList;
                         SetBannerDotActiveState(currentBannerIndex);
                         StartBannerRotation();
@@ -698,6 +743,13 @@ public partial class MainWindow
 
         try
         {
+            if (headlinesRefreshTimer != null)
+            {
+                headlinesRefreshTimer.Stop();
+                headlinesRefreshTimer.Tick -= HeadlinesRefreshTimer_OnTick;
+                headlinesRefreshTimer = null;
+            }
+
             StopBannerRotation();
             PreserveWindowPosition.SaveWindowPosition(this);
         }
