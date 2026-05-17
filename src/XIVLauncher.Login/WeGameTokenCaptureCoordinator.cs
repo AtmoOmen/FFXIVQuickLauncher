@@ -1,3 +1,4 @@
+using Serilog;
 using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.Login;
@@ -32,6 +33,11 @@ public sealed class WeGameTokenCaptureCoordinator : IWeGameTokenCaptureCoordinat
             catch (WeGameCapturePipeBusyException)
             {
                 interaction.ShowError("命名管道 ApkalluCaller 已被另一个进程占用, 请确认是否同时启动了多个 XIVLauncherCN 后重试");
+                return null;
+            }
+            catch (Exception ex) when (loginCancellationTokenSource.IsCancellationRequested)
+            {
+                Log.Information(ex, "手动取消了 WeGame 登录");
                 return null;
             }
         }
