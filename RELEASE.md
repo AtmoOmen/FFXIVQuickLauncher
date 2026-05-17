@@ -1,5 +1,6 @@
-* 尝试修复登录时出现HTTP 421 Misdirected Request
-* 通过Nuget源下载DotNet Runtime,减轻服务器负荷
+* 支持WeGame自动登录以及跨大区
+* 处理载入设置窗口的异常
+* 修复WeGame获取登录密钥在某些路径下偶发报错
 
 **:warning: 注意！**
 
