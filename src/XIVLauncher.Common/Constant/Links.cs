@@ -6,16 +6,15 @@ public static class Links
 
     public const string DISCORD_URL = "https://discord.gg/MDvv8Ejntw";
 
-    public const string GITHUB_API_RATE_LIMIT_URL = "https://api.github.com/rate_limit";
-
     public const string GITHUB_PROXY_BASE_URL = "https://gh.atmoomen.top/";
 
     public const string GITHUB_API_BASE_URL = "https://api.github.com/";
 
+    public const string DALAMUD_GITHUB_REPO = "Dalamud-DailyRoutines/Dalamud";
+
     public const string DALAMUD_RUNTIME_INFO_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
 
-    public const string DALAMUD_RELEASE_INFO_URL =
-        $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/ghapi-json-generator/output/v2/repos/Dalamud-DailyRoutines/Dalamud/releases/latest/data.json";
+    public const string DALAMUD_RELEASE_INFO_URL = $"{GITHUB_PROXY_BASE_URL}{GITHUB_API_BASE_URL}repos/{DALAMUD_GITHUB_REPO}/releases/latest";
 
     public const string DALAMUD_ASSET_STORE_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/DalamudAssets/master/assetCN.json";
 

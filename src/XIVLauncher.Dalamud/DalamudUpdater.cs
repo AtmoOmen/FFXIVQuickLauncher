@@ -463,7 +463,10 @@ public class DalamudUpdater
 
         Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
-        var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
+        using var request = new HttpRequestMessage(HttpMethod.Get, Links.DALAMUD_RELEASE_INFO_URL);
+        request.Headers.Accept.ParseAdd("application/vnd.github+json");
+
+        var response = await httpClient.SendAsync(request);
         await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
 
         var       json    = await response.Content.ReadAsStringAsync();
@@ -507,7 +510,10 @@ public class DalamudUpdater
     {
         try
         {
-            var response = await httpClient.GetAsync(Links.DALAMUD_RELEASE_INFO_URL);
+            using var request = new HttpRequestMessage(HttpMethod.Get, Links.DALAMUD_RELEASE_INFO_URL);
+            request.Headers.Accept.ParseAdd("application/vnd.github+json");
+
+            var response = await httpClient.SendAsync(request);
             await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
 
             var       json         = await response.Content.ReadAsStringAsync();
@@ -627,10 +633,19 @@ public class DalamudUpdater
             var url  = urlProperty.GetString();
 
             if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(url))
-                result[name] = url;
+            {
+                result[name] = ToProxyUrl(url);
+                Log.Verbose("[DalamudUpdater] 更新链接: {0}", result[name]);
+            }
         }
 
         return result;
+    }
+
+    private static string ToProxyUrl(string url)
+    {
+        var proxyBaseUrl = Links.GITHUB_PROXY_BASE_URL.TrimEnd('/');
+        return url.StartsWith($"{proxyBaseUrl}/", StringComparison.OrdinalIgnoreCase) ? url : $"{proxyBaseUrl}/{url}";
     }
 
     private static string GetReleaseFilePath(DirectoryInfo directory, string relativePath)
