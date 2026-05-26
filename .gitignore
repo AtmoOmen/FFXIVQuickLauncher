@@ -295,3 +295,4 @@ src/XIVLauncher/Resources/version.dll
 
 docs/
 .claude/
+.wrangler/
