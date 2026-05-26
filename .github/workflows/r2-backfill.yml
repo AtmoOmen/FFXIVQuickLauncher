@@ -1,0 +1,173 @@
+name: Backfill R2 from GitHub Releases
+on:
+  workflow_dispatch:
+
+jobs:
+  backfill:
+    name: Backfill last 10 releases to R2
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install wrangler
+        run: npm install -g wrangler
+
+      - name: Download releases and upload to R2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $workDir = New-Item -ItemType Directory -Path "backfill_work" -Force
+
+          # 拉取最近 10 个 release 标签
+          $releases = gh release list --repo $env:GITHUB_REPOSITORY --limit 10 --json tagName --jq '.[].tagName'
+          $releaseArray = @($releases)
+          Write-Host "找到 $($releaseArray.Count) 个 release"
+
+          if ($releaseArray.Count -eq 0) {
+            Write-Error "没有找到任何 release，退出。"
+            exit 1
+          }
+
+          $allAssets   = [System.Collections.Generic.List[object]]::new()
+          $releasesTxt = [System.Collections.Generic.List[string]]::new()
+
+          # 逐 release 拉取 nupkg
+          foreach ($tag in $releaseArray) {
+            Write-Host "--- 处理 $tag ---"
+
+            # 下载该 release 的所有 nupkg
+            gh release download $tag --repo $env:GITHUB_REPOSITORY --pattern '*.nupkg' --dir $workDir --clobber 2>&1 | Out-Null
+
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "  下载 $tag 失败 (exit=$LASTEXITCODE)，跳过"
+              continue
+            }
+
+            $nupkgFiles = Get-ChildItem -LiteralPath $workDir -Filter '*.nupkg' -File
+            if ($nupkgFiles.Count -eq 0) {
+              Write-Warning "  $tag 没有 nupkg 资产"
+              continue
+            }
+
+            foreach ($file in $nupkgFiles) {
+              $fileName = $file.Name
+              $fileSize = $file.Length
+              $sha1     = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA1).Hash.ToUpperInvariant()
+              $sha256   = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToUpperInvariant()
+
+              # 从文件名推断 release 版本：XIVLauncherCN-{version}-full.nupkg
+              $version = ''
+              if ($fileName -match '^XIVLauncherCN-(.+)-(full|delta)\.nupkg$') {
+                $version = $Matches[1]
+                $type    = if ($Matches[2] -eq 'full') { 'Full' } else { 'Delta' }
+              }
+              else {
+                Write-Warning "  无法从文件名推断版本: $fileName，跳过"
+                continue
+              }
+
+              Write-Host "  $fileName  v=$version  type=$type  sha1=$sha1  size=$fileSize"
+
+              $allAssets.Add([PSCustomObject]@{
+                PackageId = 'XIVLauncherCN'
+                Version   = $version
+                Type      = $type
+                FileName  = $fileName
+                SHA1      = $sha1
+                SHA256    = $sha256
+                Size      = $fileSize
+              })
+
+              $releasesTxt.Add("$sha1 $fileName $fileSize")
+
+              # 上传 nupkg 到 R2
+              Write-Host "  上传 $fileName 到 R2..."
+              npx wrangler r2 object put "xivlauncher-distribute/$fileName" `
+                --remote --file $file.FullName `
+                --cache-control "public, max-age=31536000, immutable" `
+                --content-type "application/octet-stream"
+
+              if ($LASTEXITCODE -ne 0) {
+                Write-Error "  上传 $fileName 失败"
+                exit 1
+              }
+            }
+
+            # 清理工作目录，为下一个 release 准备
+            Remove-Item "$workDir\*.nupkg" -Force
+          }
+
+          # 按版本排序：最新在前（去除可能的 'v' 前缀）
+          $sortedAssets = $allAssets | Sort-Object { [Version]($_.Version -replace '^v', '') } -Descending
+
+          # 构建 releases.win.json
+          $releaseJson = @{ Assets = @($sortedAssets) } | ConvertTo-Json -Depth 3
+          $releaseJsonPath = Join-Path $workDir 'releases.win.json'
+          $releaseJson | Set-Content -LiteralPath $releaseJsonPath -Encoding utf8NoBOM
+
+          Write-Host "`n=== releases.win.json ==="
+          Write-Host $releaseJson
+
+          # 构建 RELEASES（按上传顺序：与 releases.win.json 一致）
+          $releasesTxtSorted = @()
+          foreach ($asset in $sortedAssets) {
+            $releasesTxtSorted += "$($asset.SHA1) $($asset.FileName) $($asset.Size)"
+          }
+          $releasesContent = $releasesTxtSorted -join "`n"
+          $releasesPath = Join-Path $workDir 'RELEASES'
+          $releasesContent | Set-Content -LiteralPath $releasesPath -Encoding utf8NoBOM -NoNewline
+
+          Write-Host "`n=== RELEASES ==="
+          Write-Host $releasesContent
+
+          # 上传 release feed 到 R2
+          Write-Host "`n上传 releases.win.json..."
+          npx wrangler r2 object put xivlauncher-distribute/releases.win.json `
+            --remote --file $releaseJsonPath `
+            --cache-control "public, max-age=300" `
+            --content-type "application/json; charset=utf-8"
+
+          if ($LASTEXITCODE -ne 0) { Write-Error "上传 releases.win.json 失败"; exit 1 }
+
+          Write-Host "上传 RELEASES..."
+          npx wrangler r2 object put xivlauncher-distribute/RELEASES `
+            --remote --file $releasesPath `
+            --cache-control "public, max-age=300" `
+            --content-type "text/plain; charset=utf-8"
+
+          if ($LASTEXITCODE -ne 0) { Write-Error "上传 RELEASES 失败"; exit 1 }
+
+          Write-Host "`n✅ 上传完成！共处理 $($sortedAssets.Count) 个 nupkg，来自 $($releaseArray.Count) 个 release。"
+
+          # --- 清理 R2 中不在本次回填范围内的多余 nupkg ---
+          Write-Host "`n清理 R2 中多余的 nupkg..."
+          $keepFileNames = @{}
+          foreach ($a in $sortedAssets) { $keepFileNames[$a.FileName] = $true }
+
+          $allR2Keys = npx wrangler r2 object list xivlauncher-distribute --remote --no-color 2>&1 |
+            Where-Object { $_ -match '\.nupkg$' } |
+            ForEach-Object { ($_ -split '\s+')[-1] }
+
+          foreach ($key in $allR2Keys) {
+            if (-not $keepFileNames.ContainsKey($key)) {
+              Write-Host "  删除多余 nupkg: $key"
+              npx wrangler r2 object delete "xivlauncher-distribute/$key" --remote
+            }
+          }
+
+          Write-Host "`n✅ 回填及清理完成！"
+
+      - name: Cleanup workdir
+        if: always()
+        run: Remove-Item -Recurse -Force backfill_work -ErrorAction SilentlyContinue

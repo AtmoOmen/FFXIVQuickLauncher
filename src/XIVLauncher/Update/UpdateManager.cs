@@ -1,6 +1,7 @@
 using System.Windows;
 using Serilog;
 using Velopack;
+using Velopack.Sources;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Settings;
@@ -32,11 +33,9 @@ internal class UpdateManager
                 AllowVersionDowngrade = false
             };
 
-            var updateSource = new GitHubSource
+            var updateSource = new SimpleWebSource
             (
-                Links.REPO_URL,
-                true,
-                Links.GITHUB_PROXY_BASE_URL,
+                Links.LAUNCHER_DISTRIBUTE_BASE_URL,
                 new XLHttpClientFileDownloader()
             );
 

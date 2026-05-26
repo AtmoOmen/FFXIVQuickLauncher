@@ -12,6 +12,8 @@ public static class Links
 
     public const string DALAMUD_RUNTIME_INFO_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
 
+    public const string LAUNCHER_DISTRIBUTE_BASE_URL = "https://xl-dis.atmoomen.top";
+    
     public const string DALAMUD_DISTRIBUTE_BASE_URL = "https://dalamud-dis.atmoomen.top";
 
     public const string DALAMUD_ASSET_DISTRIBUTE_URL = $"{DALAMUD_DISTRIBUTE_BASE_URL}/assets";
