@@ -155,15 +155,24 @@ jobs:
           $keepFileNames = @{}
           foreach ($a in $sortedAssets) { $keepFileNames[$a.FileName] = $true }
 
-          $allR2Keys = npx wrangler r2 object list xivlauncher-distribute --remote --no-color 2>&1 |
-            Where-Object { $_ -match '\.nupkg$' } |
-            ForEach-Object { ($_ -split '\s+')[-1] }
+          # 通过 Cloudflare API 列出所有 R2 对象（避免 wrangler CLI 解析问题）
+          $apiUrl = "https://api.cloudflare.com/client/v4/accounts/$env:CLOUDFLARE_ACCOUNT_ID/r2/buckets/xivlauncher-distribute/objects?limit=1000"
+          try {
+            $response = Invoke-RestMethod -Uri $apiUrl -Headers @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN" } -ErrorAction Stop
+            $allKeys = @($response.result | Where-Object { $_.key -match '\.nupkg$' } | ForEach-Object { $_.key })
+            Write-Host "  R2 中现有 $($allKeys.Count) 个 nupkg"
 
-          foreach ($key in $allR2Keys) {
-            if (-not $keepFileNames.ContainsKey($key)) {
-              Write-Host "  删除多余 nupkg: $key"
-              npx wrangler r2 object delete "xivlauncher-distribute/$key" --remote
+            $deleted = 0
+            foreach ($key in $allKeys) {
+              if (-not $keepFileNames.ContainsKey($key)) {
+                Write-Host "  删除多余 nupkg: $key"
+                npx wrangler r2 object delete "xivlauncher-distribute/$key" --remote
+                if ($LASTEXITCODE -eq 0) { $deleted++ }
+              }
             }
+            Write-Host "  已删除 $deleted 个多余 nupkg"
+          } catch {
+            Write-Warning "  列出 R2 对象失败: $_ ，跳过清理步骤。"
           }
 
           Write-Host "`n✅ 回填及清理完成！"
