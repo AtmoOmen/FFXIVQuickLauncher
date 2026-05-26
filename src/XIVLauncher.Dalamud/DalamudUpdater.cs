@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Cryptography;
-using System.Text.Json;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
@@ -301,31 +300,20 @@ public class DalamudUpdater
 
         Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, Links.DALAMUD_RELEASE_INFO_URL);
-        request.Headers.Accept.ParseAdd("application/vnd.github+json");
+        var releaseText = await httpClient.GetStringAsync($"{Links.DALAMUD_DISTRIBUTE_BASE_URL}/RELEASE").ConfigureAwait(false);
+        var version     = releaseText.Trim();
 
-        var response = await httpClient.SendAsync(request);
-        await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
-
-        var       json    = await response.Content.ReadAsStringAsync();
-        using var jsonDoc = JsonDocument.Parse(json);
-
-        var version = jsonDoc.RootElement.GetProperty("tag_name").GetString();
         if (string.IsNullOrWhiteSpace(version))
-            throw new NullReferenceException("[DUPDATE] 未能找到对应的版本信息");
+            throw new NullReferenceException("[DUPDATE] 未能从 R2 获取版本信息");
         Version = version;
+        Log.Information("[DUPDATE] 获取到 R2 版本: {Version}", Version);
 
-        var assets    = jsonDoc.RootElement.GetProperty("assets");
-        var assetUrls = GetReleaseAssetUrls(assets);
-
-        if (!assetUrls.TryGetValue(RELEASE_HASHES_ASSET, out var downloadUrl))
-            throw new NullReferenceException("[DUPDATE] 未能找到对应的 hashes.json 文件");
-
+        var hashesUrl    = $"{Links.DALAMUD_DISTRIBUTE_BASE_URL}/{Version}/hashes.json";
         var downloadPath = PlatformHelpers.GetTempFileName();
 
         try
         {
-            using (var fileResponse = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
+            using (var fileResponse = await httpClient.GetAsync(hashesUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 await fileResponse.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
                 using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -348,22 +336,14 @@ public class DalamudUpdater
     {
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, Links.DALAMUD_RELEASE_INFO_URL);
-            request.Headers.Accept.ParseAdd("application/vnd.github+json");
-
-            var response = await httpClient.SendAsync(request);
-            await response.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
-
-            var       json         = await response.Content.ReadAsStringAsync();
-            using var jsonDoc      = JsonDocument.Parse(json);
-            var       assets       = GetReleaseAssetUrls(jsonDoc.RootElement.GetProperty("assets"));
-            var       devPath      = new DirectoryInfo(Path.Combine(addonPath.FullName, "..", "dev"));
+            var devPath = new DirectoryInfo(Path.Combine(addonPath.FullName, "..", "dev"));
 
             if (!addonPath.Exists)
                 addonPath.Create();
 
-            Log.Information("[DUPDATE] 下载完整包 latest.7z");
-            await DownloadDalamudPackage(addonPath, assets).ConfigureAwait(false);
+            var downloadUrl = $"{Links.DALAMUD_DISTRIBUTE_BASE_URL}/{Version}/latest.7z";
+            Log.Information("[DUPDATE] 从 R2 下载完整包: {Url}", downloadUrl);
+            await DownloadDalamudPackage(addonPath, downloadUrl).ConfigureAwait(false);
 
             CachedFileHashes.Clear();
             RefreshDalamudDevCache(addonPath, devPath);
@@ -379,11 +359,8 @@ public class DalamudUpdater
 
     #region Utility
 
-    private async Task DownloadDalamudPackage(DirectoryInfo addonPath, Dictionary<string, string> assets)
+    private async Task DownloadDalamudPackage(DirectoryInfo addonPath, string downloadUrl)
     {
-        if (!assets.TryGetValue(RELEASE_PACKAGE_ASSET, out var downloadUrl))
-            throw new InvalidDataException("[DUPDATE] 未找到 Dalamud 完整包");
-
         if (addonPath.Exists) addonPath.Delete(true);
         addonPath.Create();
 
@@ -399,34 +376,6 @@ public class DalamudUpdater
             if (File.Exists(downloadPath))
                 File.Delete(downloadPath);
         }
-    }
-
-    private static Dictionary<string, string> GetReleaseAssetUrls(JsonElement assets)
-    {
-        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var asset in assets.EnumerateArray())
-        {
-            if (!asset.TryGetProperty("name", out var nameProperty) || !asset.TryGetProperty("browser_download_url", out var urlProperty))
-                continue;
-
-            var name = nameProperty.GetString();
-            var url  = urlProperty.GetString();
-
-            if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(url))
-            {
-                result[name] = ToProxyUrl(url);
-                Log.Verbose("[DalamudUpdater] 更新链接: {0}", result[name]);
-            }
-        }
-
-        return result;
-    }
-
-    private static string ToProxyUrl(string url)
-    {
-        var proxyBaseUrl = Links.GITHUB_PROXY_BASE_URL.TrimEnd('/');
-        return url.StartsWith($"{proxyBaseUrl}/", StringComparison.OrdinalIgnoreCase) ? url : $"{proxyBaseUrl}/{url}";
     }
 
     private static bool CheckIntegrity(DirectoryInfo directory, string hashesJson)
@@ -580,10 +529,5 @@ public class DalamudUpdater
     }
 
     #region Constants
-
-    private const string RELEASE_PACKAGE_ASSET = "latest.7z";
-
-    private const string RELEASE_HASHES_ASSET = "hashes.json";
-
     #endregion
 }
