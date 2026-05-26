@@ -67,6 +67,8 @@ internal class DalamudAssetManager
         var manifestFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var needsRefresh      = false;
 
+        var downloadTasks = new List<Task>();
+
         foreach (var entry in manifest.Assets)
         {
             manifestFileNames.Add(entry.FileName);
@@ -110,20 +112,16 @@ internal class DalamudAssetManager
                 }
             }
 
-            // 从 R2 下载
+            // 入列并行下载
             var downloadUrl = $"{Links.DALAMUD_ASSET_DISTRIBUTE_URL}/{version}/files/{entry.FileName}";
-            Log.Information("[DASSET] 下载资源文件: {Url}", downloadUrl);
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+            downloadTasks.Add(DownloadAsset(updater, downloadUrl, filePath, entry.FileName));
+        }
 
-            try
-            {
-                await updater.DownloadFile(downloadUrl, filePath).ConfigureAwait(false);
-                needsRefresh = true;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[DASSET] 下载资源文件失败: {FileName}", entry.FileName);
-            }
+        if (downloadTasks.Count > 0)
+        {
+            await Task.WhenAll(downloadTasks).ConfigureAwait(false);
+            needsRefresh = true;
         }
 
         // 删除本地多余文件
@@ -166,6 +164,19 @@ internal class DalamudAssetManager
         CleanUpOld(baseDir, devDir, currentDir);
 
         return (currentDir, version);
+    }
+
+    private static async Task DownloadAsset(DalamudUpdater updater, string url, string path, string fileName)
+    {
+        try
+        {
+            Log.Information("[DASSET] 下载资源文件: {Url}", url);
+            await updater.DownloadFile(url, path).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[DASSET] 下载资源文件失败: {FileName}", fileName);
+        }
     }
 
     private static async Task FullRefresh(DalamudUpdater updater, DirectoryInfo currentDir, int version)
