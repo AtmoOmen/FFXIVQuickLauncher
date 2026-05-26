@@ -47,7 +47,7 @@ public class HttpClientDownloadWithProgress : IDisposable
 
         for (var i = 0; i < probes.Length; i++)
         {
-            if (probes[i].Size <= 0)
+            if (probes[i].Size is null or <= 0)
                 continue;
 
             totalSizes[i] =  probes[i].Size!.Value;
