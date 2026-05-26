@@ -24,40 +24,24 @@ internal class DalamudAssetManager
 
         Log.Information("[DASSET] 远端资源版本: {Version}", version);
 
-        // 2. 读取本地版本号
+        // 2. 读取本地版本号，一致则跳过
         var localVer = ReadLocalAssetVer(baseDir);
 
-        var currentDir = new DirectoryInfo(Path.Combine(baseDir.FullName, version.ToString()));
-        var devDir     = new DirectoryInfo(Path.Combine(baseDir.FullName, "dev"));
-
-        // 3. 版本不同 → 全量 latest.7z 覆盖
-        if (localVer != version)
+        if (localVer == version)
         {
-            Log.Information("[DASSET] 版本不一致 (本地:{LocalVer} 远端:{Version})，下载全量包", localVer, version);
-            await FullRefresh(updater, currentDir, version).ConfigureAwait(false);
-
-            try
-            {
-                PlatformHelpers.DeleteAndRecreateDirectory(devDir);
-                PlatformHelpers.CopyFilesRecursively(currentDir, devDir);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[DASSET] 无法将资源文件复制到 dev 文件夹中");
-            }
-
-            SetLocalAssetVer(baseDir, version);
-            CleanUpOld(baseDir, devDir, currentDir);
-
-            Log.Verbose("[DASSET] 全量更新完成: {Path}", currentDir.FullName);
-            return (currentDir, version);
+            var existingDir = new DirectoryInfo(Path.Combine(baseDir.FullName, version.ToString()));
+            Log.Information("[DASSET] 版本一致 ({Version})，跳过", version);
+            return (existingDir, version);
         }
 
-        // 4. 版本相同 → 逐文件对比
-        Log.Information("[DASSET] 版本一致 ({Version})，逐文件对比", version);
+        // 3. 版本不一致 → 逐文件按需更新
+        Log.Information("[DASSET] 版本不一致 (本地:{LocalVer} 远端:{Version})，开始更新", localVer, version);
 
         var manifestUrl = $"{Links.DALAMUD_ASSET_DISTRIBUTE_URL}/{version}/assetCN.json";
         var manifest    = JsonSerializer.Deserialize<AssetInfo>(await client.GetStringAsync(manifestUrl), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+        var currentDir = new DirectoryInfo(Path.Combine(baseDir.FullName, version.ToString()));
+        var devDir     = new DirectoryInfo(Path.Combine(baseDir.FullName, "dev"));
 
         if (!currentDir.Exists)
             currentDir.Create();
@@ -65,9 +49,7 @@ internal class DalamudAssetManager
         using var sha1 = SHA1.Create();
 
         var manifestFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var needsRefresh      = false;
-
-        var downloadTasks = new List<Task>();
+        var downloadTasks     = new List<Task>();
 
         foreach (var entry in manifest.Assets)
         {
@@ -78,8 +60,8 @@ internal class DalamudAssetManager
             {
                 try
                 {
-                    using var file       = File.OpenRead(filePath);
-                    var       fileHash   = Convert.ToHexString(sha1.ComputeHash(file));
+                    using var file     = File.OpenRead(filePath);
+                    var       fileHash = Convert.ToHexString(sha1.ComputeHash(file));
                     if (string.Equals(fileHash, entry.Hash, StringComparison.OrdinalIgnoreCase))
                         continue;
                 }
@@ -102,7 +84,6 @@ internal class DalamudAssetManager
                         Log.Verbose("[DASSET] 从 dev 缓存复用: {FileName}", entry.FileName);
                         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
                         File.Copy(devPath, filePath, true);
-                        needsRefresh = true;
                         continue;
                     }
                 }
@@ -119,10 +100,7 @@ internal class DalamudAssetManager
         }
 
         if (downloadTasks.Count > 0)
-        {
             await Task.WhenAll(downloadTasks).ConfigureAwait(false);
-            needsRefresh = true;
-        }
 
         // 删除本地多余文件
         if (currentDir.Exists)
@@ -144,25 +122,21 @@ internal class DalamudAssetManager
             }
         }
 
-        if (needsRefresh)
+        // 刷新 dev 缓存
+        try
         {
-            try
-            {
-                PlatformHelpers.DeleteAndRecreateDirectory(devDir);
-                PlatformHelpers.CopyFilesRecursively(currentDir, devDir);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[DASSET] 无法将资源文件复制到 dev 文件夹中");
-            }
-
-            SetLocalAssetVer(baseDir, version);
+            PlatformHelpers.DeleteAndRecreateDirectory(devDir);
+            PlatformHelpers.CopyFilesRecursively(currentDir, devDir);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[DASSET] 无法将资源文件复制到 dev 文件夹中");
         }
 
-        Log.Verbose("[DASSET] 逐文件对比完成: {Path}", currentDir.FullName);
-
+        SetLocalAssetVer(baseDir, version);
         CleanUpOld(baseDir, devDir, currentDir);
 
+        Log.Verbose("[DASSET] 资源更新完成: {Path}", currentDir.FullName);
         return (currentDir, version);
     }
 
@@ -176,30 +150,6 @@ internal class DalamudAssetManager
         catch (Exception ex)
         {
             Log.Error(ex, "[DASSET] 下载资源文件失败: {FileName}", fileName);
-        }
-    }
-
-    private static async Task FullRefresh(DalamudUpdater updater, DirectoryInfo currentDir, int version)
-    {
-        var downloadUrl = $"{Links.DALAMUD_ASSET_DISTRIBUTE_URL}/{version}/latest.7z";
-        var tempPath    = PlatformHelpers.GetTempFileName();
-
-        try
-        {
-            Log.Information("[DASSET] 下载全量包: {Url}", downloadUrl);
-            await updater.DownloadFile(downloadUrl, tempPath).ConfigureAwait(false);
-
-            if (currentDir.Exists)
-                currentDir.Delete(true);
-            currentDir.Create();
-
-            PlatformHelpers.Unzip7ZAsset(tempPath, currentDir.FullName);
-            Log.Information("[DASSET] 全量包解压完成");
-        }
-        finally
-        {
-            if (File.Exists(tempPath))
-                File.Delete(tempPath);
         }
     }
 
