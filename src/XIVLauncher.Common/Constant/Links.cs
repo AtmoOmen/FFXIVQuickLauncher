@@ -10,13 +10,11 @@ public static class Links
 
     public const string GITHUB_API_BASE_URL = "https://api.github.com/";
 
-    public const string DALAMUD_GITHUB_REPO = "Dalamud-DailyRoutines/Dalamud";
-
     public const string DALAMUD_RUNTIME_INFO_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
 
-    public const string DALAMUD_RELEASE_INFO_URL = $"{GITHUB_PROXY_BASE_URL}{GITHUB_API_BASE_URL}repos/{DALAMUD_GITHUB_REPO}/releases/latest";
+    public const string DALAMUD_DISTRIBUTE_BASE_URL = "https://dalamud-dis.atmoomen.top";
 
-    public const string DALAMUD_ASSET_STORE_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/DalamudAssets/master/assetCN.json";
+    public const string DALAMUD_ASSET_DISTRIBUTE_URL = $"{DALAMUD_DISTRIBUTE_BASE_URL}/assets";
 
     public const string NUGET_V3_FLAT_CONTAINER_URL = "https://api.nuget.org/v3-flatcontainer";
 

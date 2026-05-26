@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -14,111 +12,118 @@ internal class DalamudAssetManager
 {
     public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets(DalamudUpdater updater, DirectoryInfo baseDir)
     {
-        using var metaClient = XLHttpClientFactory.Create
-        (
-            TimeSpan.FromSeconds(10),
-            50,
-            // Don't Remove!!!
-            DecompressionMethods.GZip | DecompressionMethods.Deflate
-        );
-        metaClient.Timeout = TimeSpan.FromMinutes(4);
-
-        metaClient.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue
-        {
-            NoCache = true
-        };
-
-        metaClient.DefaultRequestHeaders.Add("User-Agent",      PlatformHelpers.GetVersion());
-        metaClient.DefaultRequestHeaders.Add("accept-encoding", "gzip, deflate");
+        using var client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(10), 50, System.Net.DecompressionMethods.None);
+        client.Timeout = TimeSpan.FromMinutes(4);
 
         using var sha1 = SHA1.Create();
 
         Log.Verbose("[DASSET] 开始检查 Dalamud 资源文件更新");
 
-        var (isRefreshNeeded, info) = await CheckAssetRefreshNeeded(metaClient, baseDir);
+        // 1. 从 R2 获取远端版本号
+        var releaseUrl  = $"{Links.DALAMUD_ASSET_DISTRIBUTE_URL}/RELEASE";
+        var versionText = await client.GetStringAsync(releaseUrl).ConfigureAwait(false);
+        var version     = int.Parse(versionText.Trim());
 
-        var currentDir = new DirectoryInfo(Path.Combine(baseDir.FullName, info.Version.ToString()));
+        Log.Information("[DASSET] 远端资源版本: {Version}", version);
+
+        // 2. 下载清单
+        var manifestUrl = $"{Links.DALAMUD_ASSET_DISTRIBUTE_URL}/{version}/assetCN.json";
+        var manifest    = JsonSerializer.Deserialize<AssetInfo>(await client.GetStringAsync(manifestUrl), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
+        // 3. 准备目录
+        var currentDir = new DirectoryInfo(Path.Combine(baseDir.FullName, version.ToString()));
         var devDir     = new DirectoryInfo(Path.Combine(baseDir.FullName, "dev"));
 
-        var assetFileDownloadList = new List<AssetInfo.Asset>();
+        if (!currentDir.Exists)
+            currentDir.Create();
 
-        foreach (var entry in info.Assets)
+        var manifestFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var needsRefresh      = false;
+
+        // 4. 逐文件对比，按需下载
+        foreach (var entry in manifest.Assets)
         {
+            manifestFileNames.Add(entry.FileName);
             var filePath = Path.Combine(currentDir.FullName, entry.FileName);
 
-            if (!File.Exists(filePath))
+            // 文件存在且哈希一致 → 跳过
+            if (File.Exists(filePath) && !string.IsNullOrEmpty(entry.Hash))
             {
-                Log.Error("[DASSET] 未在本地发现对应的资源文件: {0}", entry.FileName);
-                assetFileDownloadList.Add(entry);
-
-                continue;
-            }
-
-            if (string.IsNullOrEmpty(entry.Hash))
-                continue;
-
-            try
-            {
-                using var file       = File.OpenRead(filePath);
-                var       fileHash   = sha1.ComputeHash(file);
-                var       stringHash = Convert.ToHexString(fileHash);
-
-                if (stringHash != entry.Hash)
+                try
                 {
-                    Log.Error("[DASSET] 资源文件 {0} 不一致, 需要刷新\n本地: {1}, 远端: {2}", entry.FileName, stringHash, entry.Hash);
-                    assetFileDownloadList.Add(entry);
-                    // break;
+                    using var file       = File.OpenRead(filePath);
+                    var       fileHash   = Convert.ToHexString(sha1.ComputeHash(file));
+                    if (string.Equals(fileHash, entry.Hash, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[DASSET] 无法读取资源文件: {FileName}", entry.FileName);
                 }
             }
-            catch (Exception ex)
+
+            // 尝试从 dev 缓存复用
+            var devPath = Path.Combine(devDir.FullName, entry.FileName);
+            if (File.Exists(devPath) && !string.IsNullOrEmpty(entry.Hash))
             {
-                Log.Error(ex, "[DASSET] 无法读取资源文件信息");
-                assetFileDownloadList.Add(entry);
-            }
-        }
-
-        var tasks = new List<Task<bool>>();
-
-        foreach (var entry in assetFileDownloadList)
-        {
-            var oldFilePath = Path.Combine(devDir.FullName,     entry.FileName);
-            var newFilePath = Path.Combine(currentDir.FullName, entry.FileName);
-            Directory.CreateDirectory(Path.GetDirectoryName(newFilePath)!);
-
-            try
-            {
-                if (File.Exists(oldFilePath))
+                try
                 {
-                    using var file       = File.OpenRead(oldFilePath);
-                    var       fileHash   = sha1.ComputeHash(file);
-                    var       stringHash = Convert.ToHexString(fileHash);
-
-                    if (stringHash == entry.Hash)
+                    using var devFile  = File.OpenRead(devPath);
+                    var       devHash  = Convert.ToHexString(sha1.ComputeHash(devFile));
+                    if (string.Equals(devHash, entry.Hash, StringComparison.OrdinalIgnoreCase))
                     {
-                        Log.Verbose("[DASSET] 正在从原文件中获取资源: {0}", entry.FileName);
-                        File.Copy(oldFilePath, newFilePath, true);
-                        isRefreshNeeded = true;
+                        Log.Verbose("[DASSET] 从 dev 缓存复用: {FileName}", entry.FileName);
+                        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+                        File.Copy(devPath, filePath, true);
+                        needsRefresh = true;
                         continue;
                     }
                 }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "[DASSET] 无法从 dev 缓存复用: {FileName}", entry.FileName);
+                }
+            }
+
+            // 从 R2 下载
+            var downloadUrl = $"{Links.DALAMUD_ASSET_DISTRIBUTE_URL}/{version}/files/{entry.FileName}";
+            Log.Information("[DASSET] 下载资源文件: {Url}", downloadUrl);
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+
+            try
+            {
+                await updater.DownloadFile(downloadUrl, filePath).ConfigureAwait(false);
+                needsRefresh = true;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[DASSET] 无法从原资源文件中复制资源至新版本资源文件中: {0}", entry.FileName);
+                Log.Error(ex, "[DASSET] 下载资源文件失败: {FileName}", entry.FileName);
+            }
+        }
+
+        // 5. 删除本地多余文件（不在清单中）
+        if (currentDir.Exists)
+        {
+            foreach (var file in currentDir.GetFiles("*", SearchOption.AllDirectories))
+            {
+                var relativePath = Path.GetRelativePath(currentDir.FullName, file.FullName).Replace('\\', '/');
+                if (!manifestFileNames.Contains(relativePath))
+                {
+                    Log.Information("[DASSET] 删除多余文件: {Path}", relativePath);
+                    file.Delete();
+                }
             }
 
-            tasks.Add(Download(entry.Url, newFilePath));
+            // 清理空目录
+            foreach (var dir in currentDir.GetDirectories("*", SearchOption.AllDirectories).OrderByDescending(d => d.FullName.Length))
+            {
+                if (!dir.EnumerateFileSystemInfos().Any())
+                    dir.Delete();
+            }
         }
 
-        if (tasks.Count > 0)
-        {
-            var downloadResults = await Task.WhenAll(tasks).ConfigureAwait(false);
-
-            for (var i = 0; i < downloadResults.Length; i++)
-                isRefreshNeeded |= downloadResults[i];
-        }
-
-        if (isRefreshNeeded)
+        // 6. 刷新 dev 缓存
+        if (needsRefresh)
         {
             try
             {
@@ -130,10 +135,10 @@ internal class DalamudAssetManager
                 Log.Error(ex, "[DASSET] 无法将资源文件复制到 dev 文件夹中");
             }
 
-            SetLocalAssetVer(baseDir, info.Version);
+            SetLocalAssetVer(baseDir, version);
         }
 
-        Log.Verbose("[DASSET] 已完成 {0} 处的资源检查", currentDir.FullName);
+        Log.Verbose("[DASSET] 已完成 {Path} 处的资源检查", currentDir.FullName);
 
         try
         {
@@ -144,51 +149,11 @@ internal class DalamudAssetManager
             Log.Error(ex, "[DASSET] 无法清理原资源文件");
         }
 
-        return (currentDir, info.Version);
-
-        async Task<bool> Download(string url, string path)
-        {
-            try
-            {
-                Log.Information("[DASSET] 正在下载 {0} 至 {1}...", url, path);
-                await updater.DownloadFile(url, path).ConfigureAwait(false);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[DASSET] 无法下载资源文件: {0}", url);
-                return false;
-            }
-        }
+        return (currentDir, version);
     }
 
     private static string GetAssetVerPath(DirectoryInfo baseDir) =>
         Path.Combine(baseDir.FullName, "asset.ver");
-
-    private static async Task<(bool isRefreshNeeded, AssetInfo info)> CheckAssetRefreshNeeded(HttpClient client, DirectoryInfo baseDir)
-    {
-        var localVerFile = GetAssetVerPath(baseDir);
-        var localVer     = 0;
-
-        try
-        {
-            if (File.Exists(localVerFile))
-                localVer = int.Parse(File.ReadAllText(localVerFile));
-        }
-        catch (Exception ex)
-        {
-            // This means it'll stay on 0, which will redownload all assets - good by me
-            Log.Error(ex, "[DASSET] 无法读取 asset.ver");
-        }
-
-        var remoteVer = JsonSerializer.Deserialize<AssetInfo>(await client.GetStringAsync(Links.DALAMUD_ASSET_STORE_URL), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-        Log.Verbose("[DASSET] 版本检查 - 本地:{0} 远端:{1}", localVer, remoteVer!.Version);
-
-        var needsUpdate = remoteVer.Version > localVer;
-
-        return (needsUpdate, remoteVer);
-    }
 
     private static void SetLocalAssetVer(DirectoryInfo baseDir, int version)
     {
@@ -231,14 +196,8 @@ internal class DalamudAssetManager
         [JsonPropertyName("assets")]
         public IReadOnlyList<Asset> Assets { get; set; } = null!;
 
-        [JsonPropertyName("packageUrl")]
-        public string PackageUrl { get; set; } = null!;
-
         public class Asset
         {
-            [JsonPropertyName("url")]
-            public string Url { get; set; } = null!;
-
             [JsonPropertyName("fileName")]
             public string FileName { get; set; } = null!;
 
