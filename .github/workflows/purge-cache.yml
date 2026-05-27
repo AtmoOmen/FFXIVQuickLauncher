@@ -1,0 +1,45 @@
+name: Purge Cloudflare Cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      files:
+        description: 'Files to purge (JSON array, one per line)'
+        required: true
+        default: |
+          https://xl-dis.atmoomen.top/releases.win.json
+          https://xl-dis.atmoomen.top/RELEASES
+      host_url:
+        description: 'Base URL of files'
+        required: false
+        default: 'https://xl-dis.atmoomen.top'
+
+jobs:
+  purge:
+    name: Purge CF Cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purge cache via Cloudflare API
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        shell: bash
+        run: |
+          FILES=$(echo '${{ inputs.files }}' | sed '/^$/d' | sed 's/^[[:space:]]*//' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "Purging: $FILES"
+
+          BODY=$(jq -n --argjson files "$FILES" '{files: $files}')
+          echo "Body: $BODY"
+
+          RESP=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$BODY")
+
+          echo "Response: $RESP"
+          SUCCESS=$(echo "$RESP" | jq -r '.success')
+          if [ "$SUCCESS" != "true" ]; then
+            echo "::error::Purge failed: $(echo "$RESP" | jq -r '.errors[0].message')"
+            exit 1
+          fi
+          echo "Purge completed successfully"
