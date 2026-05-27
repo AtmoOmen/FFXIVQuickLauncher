@@ -29,7 +29,7 @@ param(
     [string]$IconPath         = '.\XIVLauncher\Resources\dalamud_icon.ico',
     [string]$SplashPath       = '.\XIVLauncher\Resources\logo.png',
     [string]$Framework        = 'net10.0-x64-desktop',
-    [int]$KeepVersions        = 10
+    [int]$MaxVersions         = 10
 )
 
 $ErrorActionPreference = 'Stop'
@@ -125,7 +125,7 @@ foreach ($a in $mergedList) {
     $versionMap[$v] += $a
 }
 $sortedVersions = $versionMap.Keys | Sort-Object { [Version]$_ } -Descending
-$keepVersions   = $sortedVersions | Select-Object -First $KeepVersions
+$keepVersions   = $sortedVersions | Select-Object -First $MaxVersions
 $keepSet        = @{}
 foreach ($v in $keepVersions) { $keepSet[$v] = $true }
 
