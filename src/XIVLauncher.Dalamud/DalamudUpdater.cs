@@ -14,12 +14,18 @@ public class DalamudUpdater
 {
     public DirectoryInfo Runtime { get; }
 
+    private DateTime? lastCompletionUtc;
+
     public DownloadState State
     {
         get;
         private set
         {
             field = value;
+
+            if (value == DownloadState.Done)
+                lastCompletionUtc = DateTime.UtcNow;
+
             NotifyStatusChanged();
         }
     } = DownloadState.Unknown;
@@ -71,6 +77,17 @@ public class DalamudUpdater
 
     public void Run(bool refreshVersionInfo)
     {
+        if (State == DownloadState.Done && !refreshVersionInfo)
+        {
+            if (lastCompletionUtc is { } lastCompletion && DateTime.UtcNow - lastCompletion < TimeSpan.FromHours(24))
+            {
+                Log.Information("[DUPDATE] Dalamud 更新已完成，跳过重复检查");
+                return;
+            }
+
+            Log.Information("[DUPDATE] Dalamud 上次更新已超过 24 小时，将重新检查");
+        }
+
         Log.Information("[DUPDATE] 启动 Dalamud 更新器中...");
         EnsurementException = null;
         LoadingDetail       = string.Empty;
@@ -527,7 +544,4 @@ public class DalamudUpdater
         Done,
         NoIntegrity // fail with error message
     }
-
-    #region Constants
-    #endregion
 }

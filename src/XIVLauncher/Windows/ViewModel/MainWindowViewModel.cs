@@ -1054,7 +1054,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     {
         try
         {
-            App.Dalamud.RunUpdater(true);
+            App.Dalamud.RunUpdater();
             var dalamudStatus = dalamudSession.EnsureReady(gamePath);
             return dalamudStatus == DalamudSession.DalamudInstallState.Ok;
         }
