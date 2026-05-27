@@ -39,7 +39,7 @@ internal class UpdateOrchestrator
                 new XLHttpClientFileDownloader()
             );
 
-            var updateManager = new Velopack.UpdateManager(updateSource, updateOptions);
+            var updateManager = new UpdateManager(updateSource, updateOptions);
             loadingDialog?.SetMessage("正在检查启动器更新...");
             var newRelease = await updateManager.CheckForUpdatesAsync();
 
