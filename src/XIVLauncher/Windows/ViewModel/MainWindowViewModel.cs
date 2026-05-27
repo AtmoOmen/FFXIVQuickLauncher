@@ -72,6 +72,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private          CancellationTokenSource?      LoginCancelSource        { get; set; }
     private          bool                          IsLoginCanceledByUser    { get; set; }
     private          LoginCardType?                LoginCardAfterCompletion { get; set; }
+    private          GameLaunchContext?             CurrentGameLaunchContext;
 
     public MainWindowViewModel(Window window)
     {
@@ -86,6 +87,30 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             {
                 App.AccountManager.CurrentAccount!.AreaName = name;
                 App.AccountManager.Save();
+
+                if (CurrentGameLaunchContext?.Areas is { } areas)
+                {
+                    var matched = areas.FirstOrDefault(a =>
+                        string.Equals(a.AreaName, name, StringComparison.Ordinal));
+
+                    if (matched != null)
+                    {
+                        CurrentGameLaunchContext.Area = matched;
+                        Log.Information("[DCTravel] 已同步启动上下文大区为 {AreaName} (ID={AreaID})", name, matched.AreaID);
+                    }
+                    else
+                    {
+                        Log.Warning("[DCTravel] 无法从大区列表中找到 \"{AreaName}\"，AreaID/Lobby 等参数未更新", name);
+                    }
+                }
+
+                Window.Dispatcher.Invoke(() =>
+                {
+                    var uiArea = LoginPage.LoginAreas.FirstOrDefault(a =>
+                        string.Equals(a.AreaName, name, StringComparison.Ordinal));
+                    if (uiArea != null)
+                        LoginPage.Area = uiArea;
+                });
             }
         );
         GameLaunchService         = new GameLaunchService(window);
@@ -334,6 +359,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
 
         var gameLaunchContext = workflowResult.GameLaunchContext;
+        CurrentGameLaunchContext = gameLaunchContext;
         var oAuthLogin        = gameLaunchContext.LoginResult.OAuthLogin;
 
         Log.Information
@@ -865,6 +891,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     {
         var loginResult = gameLaunchContext.LoginResult;
 
+        SyncGameLaunchContextAreaFromAccount(gameLaunchContext);
+
         var stopwatch = new Stopwatch();
         stopwatch.Start();
         var dalamudSession = App.Dalamud.CreateLauncher
@@ -971,6 +999,32 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         DcTravelRuntimeService.Stop();
 
         return launched;
+    }
+
+    private void SyncGameLaunchContextAreaFromAccount(GameLaunchContext gameLaunchContext)
+    {
+        var account = App.AccountManager.CurrentAccount;
+
+        if (account?.AreaName == null)
+            return;
+
+        if (string.Equals(account.AreaName, gameLaunchContext.Area.AreaName, StringComparison.Ordinal))
+            return;
+
+        var matched = gameLaunchContext.Areas.FirstOrDefault(a =>
+            string.Equals(a.AreaName, account.AreaName, StringComparison.Ordinal));
+
+        if (matched != null)
+        {
+            gameLaunchContext.Area = matched;
+            Log.Information("[DCTravel] 启动前检测到大区与账号不同步，已更新为 \"{AreaName}\" (ID={AreaID})",
+                account.AreaName, matched.AreaID);
+        }
+        else
+        {
+            Log.Warning("[DCTravel] 启动前检测到大区与账号不同步 (账号: \"{AccountArea}\", 上下文: \"{ContextArea}\")，但无法在大区列表中找到匹配项",
+                account.AreaName, gameLaunchContext.Area.AreaName);
+        }
     }
 
     private void FakeStartGame()

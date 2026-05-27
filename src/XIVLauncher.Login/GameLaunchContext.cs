@@ -8,7 +8,7 @@ public sealed class GameLaunchContext
 )
 {
     public LoginResult LoginResult  { get; set; } = loginResult;
-    public LoginArea   Area         { get; }      = area;
+    public LoginArea   Area         { get; set; } = area;
     public LoginArea[] Areas        { get; }      = areas;
     public int         DcTravelPort { get; set; }
 }
