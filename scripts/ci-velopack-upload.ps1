@@ -171,8 +171,8 @@ $ghArgs = @(
 if ($portableZip) {
     $ghArgs += $portableZip.FullName
 }
-# Also attach nupkg files
-Get-ChildItem "$OutputDir\*.nupkg" -File | ForEach-Object {
+# Attach nupkg files for this version only
+Get-ChildItem "$OutputDir\*$refver*.nupkg" -File | ForEach-Object {
     $ghArgs += $_.FullName
 }
 
