@@ -128,7 +128,6 @@ Get-ChildItem "$OutputDir\*.nupkg" -File | ForEach-Object {
     Write-Host "  Uploading nupkg: $($_.Name)"
     npx wrangler r2 object put "$BucketName/$($_.Name)" `
         --remote --file $_.FullName `
-        --cache-control 'public, max-age=31536000, immutable' `
         --content-type 'application/octet-stream'
     if ($LASTEXITCODE -ne 0) { throw "Upload failed: $($_.Name)" }
 }
@@ -141,7 +140,6 @@ $releaseJsonPath = "$OutputDir\releases.win.merged.json"
 $releaseJson | Set-Content -LiteralPath $releaseJsonPath -Encoding utf8NoBOM
 npx wrangler r2 object put "$BucketName/releases.win.json" `
     --remote --file $releaseJsonPath `
-    --cache-control 'public, max-age=300' `
     --content-type 'application/json; charset=utf-8'
 if ($LASTEXITCODE -ne 0) { throw 'Upload of releases.win.json failed' }
 
@@ -152,7 +150,6 @@ $releasesPath = "$OutputDir\RELEASES.merged"
 $releasesContent | Set-Content -LiteralPath $releasesPath -Encoding utf8NoBOM -NoNewline
 npx wrangler r2 object put "$BucketName/RELEASES" `
     --remote --file $releasesPath `
-    --cache-control 'public, max-age=300' `
     --content-type 'text/plain; charset=utf-8'
 if ($LASTEXITCODE -ne 0) { throw 'Upload of RELEASES failed' }
 

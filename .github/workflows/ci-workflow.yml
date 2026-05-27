@@ -68,6 +68,21 @@ jobs:
           cd src\
           .\..\scripts\ci-velopack-upload.ps1
 
+      - name: Purge CF cache after R2 upload
+        if: success()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        shell: pwsh
+        run: |
+          $body = '{"files":["https://xl-dis.atmoomen.top/releases.win.json","https://xl-dis.atmoomen.top/RELEASES"]}'
+          Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$env:CLOUDFLARE_ZONE_ID/purge_cache" `
+            -Method Post `
+            -Headers @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN" } `
+            -ContentType 'application/json' `
+            -Body $body
+          Write-Host "Purged: /releases.win.json, /RELEASES"
+
   build:
     name: Build on Windows
     runs-on: windows-latest

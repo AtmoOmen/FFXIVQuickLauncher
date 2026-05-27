@@ -94,7 +94,6 @@ foreach ($tag in $releaseArray) {
         Write-Host "    Uploading $fileName to R2..."
         npx wrangler r2 object put "$BucketName/$fileName" `
             --remote --file $file.FullName `
-            --cache-control 'public, max-age=31536000, immutable' `
             --content-type 'application/octet-stream'
 
         if ($LASTEXITCODE -ne 0) {
@@ -125,14 +124,12 @@ Write-Host $releasesContent
 Write-Step 'Uploading release feeds...'
 npx wrangler r2 object put "$BucketName/releases.win.json" `
     --remote --file $releaseJsonPath `
-    --cache-control 'public, max-age=300' `
     --content-type 'application/json; charset=utf-8'
 
 if ($LASTEXITCODE -ne 0) { throw 'Upload of releases.win.json failed' }
 
 npx wrangler r2 object put "$BucketName/RELEASES" `
     --remote --file $releasesPath `
-    --cache-control 'public, max-age=300' `
     --content-type 'text/plain; charset=utf-8'
 
 if ($LASTEXITCODE -ne 0) { throw 'Upload of RELEASES failed' }
