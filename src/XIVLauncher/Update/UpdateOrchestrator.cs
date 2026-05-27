@@ -10,7 +10,7 @@ using XIVLauncher.Windows;
 
 namespace XIVLauncher.Update;
 
-internal class UpdateManager
+internal class UpdateOrchestrator
 (
     LauncherSettingsV3 settings
 )
@@ -129,7 +129,7 @@ internal class UpdateManager
         }
     }
 
-    private static string GetUpdateFailureMessage(Exception exception) =>
+    internal static string GetUpdateFailureMessage(Exception exception) =>
         exception switch
         {
             TimeoutException timeoutException => timeoutException.Message,

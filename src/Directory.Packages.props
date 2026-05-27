@@ -37,5 +37,9 @@
     <PackageVersion Include="System.CommandLine" Version="2.0.8" />
     <PackageVersion Include="System.Management" Version="10.0.8" />
     <PackageVersion Include="Velopack" Version="0.0.1298" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
 </Project>

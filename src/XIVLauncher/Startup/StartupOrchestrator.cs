@@ -11,8 +11,8 @@ using XIVLauncher.Common.Http;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
+using XIVLauncher.Update;
 using XIVLauncher.Windows;
-using UpdateManager = XIVLauncher.Update.UpdateManager;
 using DateTimeOffset = System.DateTimeOffset;
 
 namespace XIVLauncher.Startup;
@@ -185,7 +185,7 @@ public class StartupOrchestrator
             updateWindow = new();
             updateWindow.Show();
 
-            var              updateMgr       = new UpdateManager(context.Settings);
+            var              updateMgr       = new UpdateOrchestrator(context.Settings);
             ChangelogWindow? changelogWindow = null;
 
             try
