@@ -38,25 +38,6 @@ function Write-Step([string]$Msg) {
     Write-Host ">>> $Msg"
 }
 
-function Invoke-WranglerPut([string]$ObjectKey, [string]$LocalPath, [string]$CacheControl, [string]$ContentType) {
-    $args = @(
-        'r2', 'object', 'put', $ObjectKey,
-        '--remote',
-        '--file', $LocalPath,
-        '--cache-control', $CacheControl,
-        '--content-type', $ContentType
-    )
-    $n = 0
-    while ($n -lt 3) {
-        $result = npx wrangler @args 2>&1
-        if ($LASTEXITCODE -eq 0) { return }
-        $n++
-        Write-Host "Retry $n/3..."
-        Start-Sleep 3
-    }
-    throw "wrangler put failed after 3 retries: $ObjectKey"
-}
-
 # ---- Extract version ----
 $refver = $env:GITHUB_REF -replace '.*/'
 Write-Step "Release version: $refver"
@@ -144,28 +125,61 @@ foreach ($a in $deleteAssets) {
 
 # ---- 8. Upload new nupkgs (1yr immutable) ----
 Get-ChildItem "$OutputDir\*.nupkg" -File | ForEach-Object {
-    $objectKey = "$BucketName/$($_.Name)"
     Write-Host "  Uploading nupkg: $($_.Name)"
-    Invoke-WranglerPut -ObjectKey $objectKey -LocalPath $_.FullName `
-        -CacheControl 'public, max-age=31536000, immutable' `
-        -ContentType 'application/octet-stream'
+    npx wrangler r2 object put "$BucketName/$($_.Name)" `
+        --remote --file $_.FullName `
+        --cache-control 'public, max-age=31536000, immutable' `
+        --content-type 'application/octet-stream'
+    if ($LASTEXITCODE -ne 0) { throw "Upload failed: $($_.Name)" }
 }
 
 # ---- 9. Build and upload releases.win.json (5min cache) ----
+Write-Step 'Uploading releases.win.json...'
 $sortedKeep = $keepAssets | Sort-Object { [Version]($_.Version -replace '^v', '') } -Descending
 $releaseJson = @{ Assets = @($sortedKeep) } | ConvertTo-Json -Depth 3
 $releaseJsonPath = "$OutputDir\releases.win.merged.json"
 $releaseJson | Set-Content -LiteralPath $releaseJsonPath -Encoding utf8NoBOM
-Invoke-WranglerPut -ObjectKey "$BucketName/releases.win.json" -LocalPath $releaseJsonPath `
-    -CacheControl 'public, max-age=300' `
-    -ContentType 'application/json; charset=utf-8'
+npx wrangler r2 object put "$BucketName/releases.win.json" `
+    --remote --file $releaseJsonPath `
+    --cache-control 'public, max-age=300' `
+    --content-type 'application/json; charset=utf-8'
+if ($LASTEXITCODE -ne 0) { throw 'Upload of releases.win.json failed' }
 
 # ---- 10. Build and upload RELEASES (5min cache) ----
+Write-Step 'Uploading RELEASES...'
 $releasesContent = ($sortedKeep | ForEach-Object { "$($_.SHA1) $($_.FileName) $($_.Size)" }) -join "`n"
 $releasesPath = "$OutputDir\RELEASES.merged"
 $releasesContent | Set-Content -LiteralPath $releasesPath -Encoding utf8NoBOM -NoNewline
-Invoke-WranglerPut -ObjectKey "$BucketName/RELEASES" -LocalPath $releasesPath `
-    -CacheControl 'public, max-age=300' `
-    -ContentType 'text/plain; charset=utf-8'
+npx wrangler r2 object put "$BucketName/RELEASES" `
+    --remote --file $releasesPath `
+    --cache-control 'public, max-age=300' `
+    --content-type 'text/plain; charset=utf-8'
+if ($LASTEXITCODE -ne 0) { throw 'Upload of RELEASES failed' }
 
 Write-Host "Done: $($keepAssets.Count) nupkgs, $($keepVersions.Count) versions."
+
+# ---- 11. Create GitHub Release (for changelog visibility and backfill source) ----
+Write-Step 'Creating GitHub Release...'
+$portableZip = Get-ChildItem "$OutputDir\*-Portable.zip" -File | Select-Object -First 1
+$releaseNotes = Get-Content -LiteralPath $ReleaseNotesPath -Encoding utf8 -Raw
+
+$ghArgs = @(
+    'release', 'create', $refver,
+    '--title', "Release $refver",
+    '--notes', $releaseNotes
+)
+if ($portableZip) {
+    $ghArgs += $portableZip.FullName
+}
+# Also attach nupkg files
+Get-ChildItem "$OutputDir\*.nupkg" -File | ForEach-Object {
+    $ghArgs += $_.FullName
+}
+
+gh @ghArgs --repo $env:GITHUB_REPOSITORY
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "GitHub Release creation failed (exit=$LASTEXITCODE), continuing."
+}
+else {
+    Write-Host "  GitHub Release created: $refver"
+}
