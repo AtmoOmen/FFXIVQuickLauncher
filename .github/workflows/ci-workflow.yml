@@ -61,95 +61,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          $ErrorActionPreference = 'Stop'
-          $channel = "win"
           $refver = $env:GITHUB_REF -replace '.*/'
-          $desc = $(git describe --tags) -replace '-(\d+)-.{9}$','.beta.$1'
           echo "::set-output name=version::$refver"
 
           cd src\
-          mkdir Releases
-          dotnet tool install -g vpk
-          npm install -g wrangler
-
-          function retry { param([string]$Cmd) $n=0; while ($n -lt 3) { if (Invoke-Expression $Cmd) { return }; $n++; Write-Host "Retry $n/3..."; Start-Sleep 3 }; throw "Command failed after 3 retries: $Cmd" }
-
-          # 从 R2 Worker 下载旧版本（用于 delta 生成）
-          vpk download http --url https://xl-dis.atmoomen.top --channel $channel --timeout 30
-
-          # 打包新版本
-          vpk pack -u XIVLauncherCN -v $refver -p .\bin\win-x64 -o .\Releases -e XIVLauncherCN.exe --channel $channel --packAuthors OmenCorp --releaseNotes .\XIVLauncher\Resources\CHANGELOG.txt --icon .\XIVLauncher\Resources\dalamud_icon.ico --splashImage .\XIVLauncher\Resources\logo.png --framework net10.0-x64-desktop --noInst
-
-          # --- 合并 release feed 并裁剪至最近 10 个版本 ---
-
-          # 1. 读取本地新生成的条目
-          $localJson = Get-Content -LiteralPath '.\Releases\releases.win.json' -Encoding utf8 | ConvertFrom-Json
-          $localAssets = @($localJson.Assets)
-          Write-Host "本地新生成 $($localAssets.Count) 条 release 条目"
-
-          # 2. 尝试下载远程 releases.win.json（可能不存在，首次发布）
-          $remoteAssets = @()
-          try {
-            $remoteJson = (npx wrangler r2 object get xivlauncher-distribute/releases.win.json --remote --no-color 2>&1) -join "`n"
-            # wrangler r2 object get 输出 stdout 包含文件内容
-            $remoteObj = $remoteJson | ConvertFrom-Json
-            $remoteAssets = @($remoteObj.Assets)
-            Write-Host "远程已有 $($remoteAssets.Count) 条 release 条目"
-          } catch {
-            Write-Host "远程尚无 releases.win.json，首次发布。"
-          }
-
-          # 3. 合并（以 FileName 去重，本地优先覆盖远程同文件条目）
-          $merged = @{}
-          foreach ($a in ($remoteAssets + $localAssets)) {
-            $merged[$a.FileName] = $a
-          }
-          $mergedList = @($merged.Values)
-
-          # 4. 提取唯一版本号，保留最近 10 个
-          $versionMap = @{}
-          foreach ($a in $mergedList) {
-            $v = $a.Version -replace '^v', ''
-            if (-not $versionMap.ContainsKey($v)) { $versionMap[$v] = @() }
-            $versionMap[$v] += $a
-          }
-          $sortedVersions = $versionMap.Keys | Sort-Object { [Version]$_ } -Descending
-          $keepVersions = $sortedVersions | Select-Object -First 10
-          $keepSet = @{}
-          foreach ($v in $keepVersions) { $keepSet[$v] = $true }
-
-          Write-Host "保留版本 ($($keepVersions.Count)): $($keepVersions -join ', ')"
-
-          $keepAssets = @($mergedList | Where-Object { $v = $_.Version -replace '^v', ''; $keepSet.ContainsKey($v) })
-          $keepSetFileNames = @{}
-          foreach ($a in $keepAssets) { $keepSetFileNames[$a.FileName] = $true }
-
-          # 5. 删除不再保留的 nupkg
-          $deleteAssets = @($mergedList | Where-Object { -not $keepSetFileNames.ContainsKey($_.FileName) })
-          foreach ($a in $deleteAssets) {
-            Write-Host "删除过期 nupkg: $($a.FileName)"
-            npx wrangler r2 object delete "xivlauncher-distribute/$($a.FileName)" --remote
-          }
-
-          # 6. 上传新生成的 nupkg（1 年 immutable）
-          Get-ChildItem '.\Releases\*.nupkg' -File | ForEach-Object {
-            Write-Host "上传 nupkg: $($_.Name)"
-            retry "npx wrangler r2 object put `"xivlauncher-distribute/$($_.Name)`" --remote --file `"$($_.FullName)`" --cache-control `"public, max-age=31536000, immutable`" --content-type `"application/octet-stream`""
-          }
-
-          # 7. 构建并上传 releases.win.json（5 分钟缓存）
-          $releaseJson = @{ Assets = @($keepAssets | Sort-Object { [Version]($_.Version -replace '^v', '') } -Descending) } | ConvertTo-Json -Depth 3
-          $releaseJsonPath = '.\Releases\releases.win.merged.json'
-          $releaseJson | Set-Content -LiteralPath $releaseJsonPath -Encoding utf8NoBOM
-          retry "npx wrangler r2 object put xivlauncher-distribute/releases.win.json --remote --file `"$releaseJsonPath`" --cache-control `"public, max-age=300`" --content-type `"application/json; charset=utf-8`""
-
-          # 8. 构建并上传 RELEASES（5 分钟缓存）
-          $releasesContent = ($keepAssets | Sort-Object { [Version]($_.Version -replace '^v', '') } -Descending | ForEach-Object { "$($_.SHA1) $($_.FileName) $($_.Size)" }) -join "`n"
-          $releasesPath = '.\Releases\RELEASES.merged'
-          $releasesContent | Set-Content -LiteralPath $releasesPath -Encoding utf8NoBOM -NoNewline
-          retry "npx wrangler r2 object put xivlauncher-distribute/RELEASES --remote --file `"$releasesPath`" --cache-control `"public, max-age=300`" --content-type `"text/plain; charset=utf-8`""
-
-          Write-Host "✅ 发布完成，已保留 $($keepAssets.Count) 个 nupkg，$($keepVersions.Count) 个版本。"
+          .\..\scripts\ci-velopack-upload.ps1
 
   build:
     name: Build on Windows
