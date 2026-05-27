@@ -182,4 +182,17 @@ if ($LASTEXITCODE -ne 0) {
 }
 else {
     Write-Host "  GitHub Release created: $refver"
+
+    # ---- 11a. Upload single-version releases.win.json ----
+    Write-Host "  Uploading releases.win.json..."
+    gh release upload $refver "$OutputDir\releases.win.json" --repo $env:GITHUB_REPOSITORY
+    if ($LASTEXITCODE -ne 0) { Write-Warning "Upload of releases.win.json to GitHub Release failed (exit=$LASTEXITCODE)" }
+
+    # ---- 11b. Build and upload single-version RELEASES ----
+    Write-Host "  Uploading RELEASES..."
+    $localReleasesContent = ($localAssets | ForEach-Object { "$($_.SHA1) $($_.FileName) $($_.Size)" }) -join "`n"
+    $localReleasesPath = "$OutputDir\RELEASES"
+    $localReleasesContent | Set-Content -LiteralPath $localReleasesPath -Encoding utf8NoBOM -NoNewline
+    gh release upload $refver $localReleasesPath --repo $env:GITHUB_REPOSITORY
+    if ($LASTEXITCODE -ne 0) { Write-Warning "Upload of RELEASES to GitHub Release failed (exit=$LASTEXITCODE)" }
 }
