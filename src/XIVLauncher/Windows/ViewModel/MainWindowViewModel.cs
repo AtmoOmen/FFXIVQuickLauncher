@@ -1,32 +1,24 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Common;
-using XIVLauncher.CompanionApp;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Exceptions;
-using XIVLauncher.Login;
-using XIVLauncher.Common.Util;
-using XIVLauncher.DCTravel;
+using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
-using XIVLauncher.GamePatchV3;
 using XIVLauncher.GamePatchV3.Update;
+using XIVLauncher.Login;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Windows.Services;
@@ -53,9 +45,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public AccountSwitcherViewModel AccountSwitcher { get; }
 
-    public Launcher          Launcher         { get; private set; }
-    public AccountManager    AccountManager   { get; private set; } = App.AccountManager;
-    public Window            Window           { get; private set; }
+    public Launcher       Launcher       { get; private set; }
+    public AccountManager AccountManager { get; private set; } = App.AccountManager;
+    public Window         Window         { get; private set; }
 
     public Action Activate        { get; set; } = null!;
     public Action Hide            { get; set; } = null!;
@@ -68,49 +60,53 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private          GameLaunchService         GameLaunchService         { get; }
     private          GameClientFileTaskService GameClientFileTaskService { get; }
     private readonly LoginWorkflowService      loginWorkflowService;
-    private readonly SyncCommand                   refreshDalamudInfoCommand;
-    private          CancellationTokenSource?      LoginCancelSource        { get; set; }
-    private          bool                          IsLoginCanceledByUser    { get; set; }
-    private          LoginCardType?                LoginCardAfterCompletion { get; set; }
-    private          GameLaunchContext?             CurrentGameLaunchContext;
+    private readonly SyncCommand               refreshDalamudInfoCommand;
+    private          CancellationTokenSource?  LoginCancelSource     { get; set; }
+    private          bool                      IsLoginCanceledByUser { get; set; }
+    private          LoginCardType?            LoginCardAfterCompletion { get; set; }
+    
+    private GameLaunchContext? currentGameLaunchContext;
+    private bool               isWeGameRetryingAfterThirdPartyFailure;
 
     public MainWindowViewModel(Window window)
     {
-        Window                    = window;
-        Settings                  = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
-        DialogProvider            = new MainWindowDialogProvider(window);
-        Launcher                  = new();
-        loginWorkflowService      = new LoginWorkflowService(App.AccountManager, new WeGameTokenCaptureCoordinator());
-        DcTravelRuntimeService    = new DcTravelRuntimeService
-        (
-            name =>
+        Window               = window;
+        Settings             = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
+        DialogProvider       = new MainWindowDialogProvider(window);
+        Launcher             = new();
+        loginWorkflowService = new LoginWorkflowService(App.AccountManager, new WeGameTokenCaptureCoordinator());
+        DcTravelRuntimeService = new DcTravelRuntimeService
+        (name =>
             {
                 App.AccountManager.CurrentAccount!.AreaName = name;
                 App.AccountManager.Save();
 
-                if (CurrentGameLaunchContext?.Areas is { } areas)
+                if (currentGameLaunchContext?.Areas is { } areas)
                 {
-                    var matched = areas.FirstOrDefault(a =>
-                        string.Equals(a.AreaName, name, StringComparison.Ordinal));
+                    var matched = areas.FirstOrDefault
+                    (a =>
+                         string.Equals(a.AreaName, name, StringComparison.Ordinal)
+                    );
 
                     if (matched != null)
                     {
-                        CurrentGameLaunchContext.Area = matched;
+                        currentGameLaunchContext.Area = matched;
                         Log.Information("[DCTravel] 已同步启动上下文大区为 {AreaName} (ID={AreaID})", name, matched.AreaID);
                     }
-                    else
-                    {
-                        Log.Warning("[DCTravel] 无法从大区列表中找到 \"{AreaName}\"，AreaID/Lobby 等参数未更新", name);
-                    }
+                    else Log.Warning("[DCTravel] 无法从大区列表中找到 \"{AreaName}\"，AreaID/Lobby 等参数未更新", name);
                 }
 
-                Window.Dispatcher.Invoke(() =>
-                {
-                    var uiArea = LoginPage.LoginAreas.FirstOrDefault(a =>
-                        string.Equals(a.AreaName, name, StringComparison.Ordinal));
-                    if (uiArea != null)
-                        LoginPage.Area = uiArea;
-                });
+                Window.Dispatcher.Invoke
+                (() =>
+                    {
+                        var uiArea = LoginPage?.LoginAreas.FirstOrDefault
+                        (a =>
+                             string.Equals(a.AreaName, name, StringComparison.Ordinal)
+                        );
+                        if (uiArea != null)
+                            LoginPage?.Area = uiArea;
+                    }
+                );
             }
         );
         GameLaunchService         = new GameLaunchService(window);
@@ -307,29 +303,29 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
 
         App.Settings.FastLogin = LoginPage.IsFastLogin;
-        inputPassword = inputPassword == PRESUDO_PASSWORD ? string.Empty : inputPassword?.Trim() ?? string.Empty;
+        inputPassword          = inputPassword == PRESUDO_PASSWORD ? string.Empty : inputPassword?.Trim() ?? string.Empty;
 
         var loginRequest = new LoginWorkflowRequest
         {
-            LoginType                           = loginType,
-            Username                            = username,
-            Password                            = inputPassword,
-            QuickLoginEnabled                   = quickLoginEnabled,
-            ReadWeGameInfo                      = readWeGameInfo,
-            ForceWeGameTokenRecapture           = loginType == LoginType.WeGame && readWeGameInfo,
-            Action                              = action,
-            CurrentArea                         = LoginPage.Area,
-            LoginAreas                          = LoginPage.LoginAreas,
-            LoginCancellationTokenSource        = LoginCancelSource ?? new CancellationTokenSource(),
-            LoginSessionRefreshSink             = DcTravelRuntimeService,
-            Interaction                         = new MainWindowLoginInteraction(Window, LoginPage, DialogProvider),
+            LoginType                            = loginType,
+            Username                             = username,
+            Password                             = inputPassword,
+            QuickLoginEnabled                    = quickLoginEnabled,
+            ReadWeGameInfo                       = readWeGameInfo,
+            ForceWeGameTokenRecapture            = loginType == LoginType.WeGame && readWeGameInfo,
+            Action                               = action,
+            CurrentArea                          = LoginPage.Area,
+            LoginAreas                           = LoginPage.LoginAreas,
+            LoginCancellationTokenSource         = LoginCancelSource ?? new CancellationTokenSource(),
+            LoginSessionRefreshSink              = DcTravelRuntimeService,
+            Interaction                          = new MainWindowLoginInteraction(Window, LoginPage, DialogProvider),
             RequireDeviceProfileSetupForNewLogin = App.Settings.RequireDeviceProfileSetupForNewLogin,
-            CheckGameUpdateAsync                = async ct =>
+            CheckGameUpdateAsync = async ct =>
             {
                 var checkResult = await GameUpdater.Check(App.Settings.GamePath, false, ct).ConfigureAwait(false);
                 return checkResult.NeedsUpdate
                            ? new LoginResult { State = LoginState.NeedsPatchGame, OAuthLogin = new() }
-                           : new LoginResult { State = LoginState.Ok, OAuthLogin = null };
+                           : new LoginResult { State = LoginState.Ok, OAuthLogin             = null };
             }
         };
 
@@ -341,7 +337,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            await HandleLoginWorkflowExceptionAsync(ex, loginType, username, workflowResult?.UsedSavedWeGameToken == true).ConfigureAwait(false);
+            await HandleLoginWorkflowExceptionAsync(ex, loginType, username, workflowResult?.UsedSavedWeGameToken == true, action).ConfigureAwait(false);
             return;
         }
 
@@ -351,16 +347,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         if (workflowResult.IsAccountPersisted)
         {
             Window.Dispatcher.Invoke
-            (() =>
-                {
-                    AccountSwitcher.RefreshEntries(AccountManager.CurrentAccountID, false);
-                }
+            (() => { AccountSwitcher.RefreshEntries(AccountManager.CurrentAccountID, false); }
             );
         }
 
         var gameLaunchContext = workflowResult.GameLaunchContext;
-        CurrentGameLaunchContext = gameLaunchContext;
-        var oAuthLogin        = gameLaunchContext.LoginResult.OAuthLogin;
+        currentGameLaunchContext = gameLaunchContext;
+        var oAuthLogin = gameLaunchContext.LoginResult.OAuthLogin;
 
         Log.Information
         (
@@ -391,7 +384,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private static bool resolvedLoginTypeShouldSkipDcTravel(LoginType loginType) =>
         false;
 
-    private async Task HandleLoginWorkflowExceptionAsync(Exception ex, LoginType loginType, string username, bool usedSavedWeGameToken)
+    private async Task HandleLoginWorkflowExceptionAsync(Exception ex, LoginType loginType, string username, bool usedSavedWeGameToken, LoginAfterAction action)
     {
         Log.Error(ex, "[MainWindow] 尝试登录至游戏失败");
         await ClearInvalidSavedWeGameTokenAsync(ex, loginType, username, usedSavedWeGameToken).ConfigureAwait(false);
@@ -409,6 +402,23 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             {
                 Log.Information("[MainWindow] 手动取消登录");
                 return;
+            }
+
+            if (loginType == LoginType.WeGame && sdoLoginEx.ErrorCode == (int)LoginExceptionCode.ThirdPartyVerificationFailed)
+            {
+                Log.Information("[MainWindow] WeGame 第三方验证失败, 清除 token 后重新抓包");
+
+                if (isWeGameRetryingAfterThirdPartyFailure)
+                {
+                    Log.Warning("[MainWindow] WeGame 重试抓包后仍验证失败, 不再继续重试");
+                    isWeGameRetryingAfterThirdPartyFailure = false;
+                }
+                else
+                {
+                    isWeGameRetryingAfterThirdPartyFailure = true;
+                    await LoginAsync(loginType, username, null, false, true, action).ConfigureAwait(false);
+                    return;
+                }
             }
 
             if (loginType == LoginType.QRCode && sdoLoginEx.Message == "二维码不存在或已过期，请重试")
@@ -492,12 +502,14 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 if (string.IsNullOrWhiteSpace(oauthLoginException.OAuthErrorMessage))
                     msgbox.WithText("登录账号失败, 请检查用户名和密码");
                 else
+                {
                     msgbox.WithText
                     (
                         oauthLoginException.OAuthErrorMessage
                                            .Replace("\\r\\n", "\n")
-                                           .Replace("\r\n", "\n")
+                                           .Replace("\r\n",   "\n")
                     );
+                }
 
                 break;
             }
@@ -532,9 +544,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             return;
 
         var account = AccountManager.Accounts.FirstOrDefault
-        (
-            item => item.AccountType == XIVAccountType.WeGame
-                    && string.Equals(item.WeGameLoginAccount, username, StringComparison.Ordinal)
+        (item => item.AccountType == XIVAccountType.WeGame
+                 && string.Equals(item.WeGameLoginAccount, username, StringComparison.Ordinal)
         );
 
         if (account?.WeGameQuickLoginSecret == null)
@@ -1011,19 +1022,29 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         if (string.Equals(account.AreaName, gameLaunchContext.Area.AreaName, StringComparison.Ordinal))
             return;
 
-        var matched = gameLaunchContext.Areas.FirstOrDefault(a =>
-            string.Equals(a.AreaName, account.AreaName, StringComparison.Ordinal));
+        var matched = gameLaunchContext.Areas.FirstOrDefault
+        (a =>
+             string.Equals(a.AreaName, account.AreaName, StringComparison.Ordinal)
+        );
 
         if (matched != null)
         {
             gameLaunchContext.Area = matched;
-            Log.Information("[DCTravel] 启动前检测到大区与账号不同步，已更新为 \"{AreaName}\" (ID={AreaID})",
-                account.AreaName, matched.AreaID);
+            Log.Information
+            (
+                "[DCTravel] 启动前检测到大区与账号不同步，已更新为 \"{AreaName}\" (ID={AreaID})",
+                account.AreaName,
+                matched.AreaID
+            );
         }
         else
         {
-            Log.Warning("[DCTravel] 启动前检测到大区与账号不同步 (账号: \"{AccountArea}\", 上下文: \"{ContextArea}\")，但无法在大区列表中找到匹配项",
-                account.AreaName, gameLaunchContext.Area.AreaName);
+            Log.Warning
+            (
+                "[DCTravel] 启动前检测到大区与账号不同步 (账号: \"{AccountArea}\", 上下文: \"{ContextArea}\")，但无法在大区列表中找到匹配项",
+                account.AreaName,
+                gameLaunchContext.Area.AreaName
+            );
         }
     }
 

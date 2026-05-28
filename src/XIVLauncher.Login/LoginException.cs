@@ -36,6 +36,11 @@ public enum LoginExceptionCode
     QrCodeVerifyFailed = -10515805,
 
     /// <summary>
+    ///     第三方验证失败（WeGame token 失效或无效）
+    /// </summary>
+    ThirdPartyVerificationFailed = -10742165,
+
+    /// <summary>
     ///     登录过期且未开启自动登录
     /// </summary>
     OutdatedLoginInfo = -10515004,
