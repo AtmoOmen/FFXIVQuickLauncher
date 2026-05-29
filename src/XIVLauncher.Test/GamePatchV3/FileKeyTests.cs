@@ -8,8 +8,8 @@ namespace XIVLauncher.Test.GamePatchV3;
 
 public sealed class FileKeyTests
 {
-    private const string AppId   = "100001900";
-    private const string Version = "0.0.0.20";
+    private const string GAME_ID = "100001900";
+    private const string VERSION = "0.0.0.20";
 
     private static string ExpectedKey(string appId, string version, string filePath) =>
         Convert.ToHexString(MD5.HashData(Encoding.Unicode.GetBytes($"{appId}_{version}_{filePath}")));
@@ -17,22 +17,22 @@ public sealed class FileKeyTests
     [Fact]
     public void GetFileKey_MatchesIndependentMd5()
     {
-        const string filePath = "game/sqpack/ex1/020101.win32.index";
+        const string FILE_PATH = "game/sqpack/ex1/020101.win32.index";
 
-        var key = GameFileDownloader.GetFileKey(AppId, Version, filePath);
+        var key = GameFileDownloader.GetFileKey(GAME_ID, VERSION, FILE_PATH);
 
-        Assert.Equal(ExpectedKey(AppId, Version, filePath), key);
+        Assert.Equal(ExpectedKey(GAME_ID, VERSION, FILE_PATH), key);
     }
 
     [Fact]
     public void GetFileKey_IsDeterministic()
     {
-        const string filePath = "game/ffxivgame.ver";
+        const string FILE_PATH = "game/ffxivgame.ver";
 
         Assert.Equal
         (
-            GameFileDownloader.GetFileKey(AppId, Version, filePath),
-            GameFileDownloader.GetFileKey(AppId, Version, filePath)
+            GameFileDownloader.GetFileKey(GAME_ID, VERSION, FILE_PATH),
+            GameFileDownloader.GetFileKey(GAME_ID, VERSION, FILE_PATH)
         );
     }
 
@@ -41,25 +41,25 @@ public sealed class FileKeyTests
     {
         // 记录这次 404 根因: 带前导反斜杠的路径与不带的会算出不同 key
         // 真实 CDN 期望无前导反斜杠, 修复路径用的正是无前导形式
-        const string withoutBackslash = "game/sqpack/file.dat";
-        const string withBackslash    = "\\game\\sqpack\\file.dat";
+        const string WITHOUT_BACKSLASH = "game/sqpack/file.dat";
+        const string WITH_BACKSLASH    = "\\game\\sqpack\\file.dat";
 
         Assert.NotEqual
         (
-            GameFileDownloader.GetFileKey(AppId, Version, withoutBackslash),
-            GameFileDownloader.GetFileKey(AppId, Version, withBackslash)
+            GameFileDownloader.GetFileKey(GAME_ID, VERSION, WITHOUT_BACKSLASH),
+            GameFileDownloader.GetFileKey(GAME_ID, VERSION, WITH_BACKSLASH)
         );
     }
 
     [Fact]
     public void GetFileKey_DifferentVersionChangesKey()
     {
-        const string filePath = "game/sqpack/file.dat";
+        const string FILE_PATH = "game/sqpack/file.dat";
 
         Assert.NotEqual
         (
-            GameFileDownloader.GetFileKey(AppId, "0.0.0.19", filePath),
-            GameFileDownloader.GetFileKey(AppId, "0.0.0.20", filePath)
+            GameFileDownloader.GetFileKey(GAME_ID, "0.0.0.19", FILE_PATH),
+            GameFileDownloader.GetFileKey(GAME_ID, "0.0.0.20", FILE_PATH)
         );
     }
 
