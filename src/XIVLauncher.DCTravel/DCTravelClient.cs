@@ -222,7 +222,7 @@ public partial class DCTravelClient
             return;
         }
 
-        Log.Error("[DCTravelClient] 初始化超域旅行页面失败, 需要有效的 ticket");
+        Log.Information("[DCTravelClient] 首次初始化超域旅行页面未通过, 刷新 ticket 后重试");
         var refreshDcTravelSessionIdFunc = LoginSessionRefreshContext?.RefreshDcTravelSessionIdAsync ?? throw new DCTravelAPIException("未配置 RefreshDcTravelSessionIdFunc");
         ticket = await refreshDcTravelSessionIdFunc().ConfigureAwait(false);
         await ValidateTicket().ConfigureAwait(false);
@@ -298,7 +298,7 @@ public partial class DCTravelClient
         }
         catch (DCTravelAPIException ex)
         {
-            Log.Error(ex, "初始化超域旅行页面失败");
+            Log.Debug(ex, "初始化超域旅行页面未通过");
             return false;
         }
     }
