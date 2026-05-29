@@ -22,9 +22,15 @@ public sealed class GamePatchMetadataClient : IDisposable
 
     public async Task<GameUpdatePlan?> BuildUpdatePlan(string currentGameVersion, bool forceUpdate, CancellationToken cancellationToken = default)
     {
+        var remoteVersion = await DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
+        return BuildPlanFromRemoteVersion(remoteVersion, currentGameVersion, forceUpdate);
+    }
+
+    // 纯计算: 据远端版本信息与当前游戏版本推导更新计划, 不涉及任何 IO, 便于测试多跳链/环路/边界
+    internal static GameUpdatePlan? BuildPlanFromRemoteVersion(RemoteVersion remoteVersion, string currentGameVersion, bool forceUpdate)
+    {
         var normalizedGameVersion = NormalizeGameVersion(currentGameVersion);
         Log.Information("[V3Patch] 正在构建更新计划, 当前游戏版本 {CurrentGameVersion}, 强制更新 {ForceUpdate}", normalizedGameVersion, forceUpdate);
-        var remoteVersion               = await DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
         var targetArea                  = GetTargetArea(remoteVersion);
         var minimumSupportedDataVersion = ResolveMinimumSupportedDataVersion(targetArea);
         var resolved                    = ResolveLocalVersion(normalizedGameVersion, remoteVersion);

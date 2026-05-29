@@ -62,7 +62,13 @@ public static class GameIntegrityChecker
             return new IntegrityCheckCompareOutcome { CompareResult = IntegrityCheckCompareResult.ReferenceFetchFailure };
         }
 
-        var localIntegrity         = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex, cancellationToken).ConfigureAwait(false);
+        var localIntegrity = await RunIntegrityCheckAsync(gamePath, progress, onlyIndex, cancellationToken).ConfigureAwait(false);
+        return CompareIntegrity(remoteIntegrity, localIntegrity, onlyIndex);
+    }
+
+    // 纯比对: 据远端与本地完整性结果产出比对结论与报告, 不涉及网络/扫描, 便于测试 Valid/Mismatch/Missing/Size 四类
+    internal static IntegrityCheckCompareOutcome CompareIntegrity(IntegrityCheckResult remoteIntegrity, IntegrityCheckResult localIntegrity, bool onlyIndex = false)
+    {
         var remoteIntegrityEntries = IntegrityPathEntry.BuildEntries(remoteIntegrity);
         var report                 = string.Empty;
         var failed                 = false;

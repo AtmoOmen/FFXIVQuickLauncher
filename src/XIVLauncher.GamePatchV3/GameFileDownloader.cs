@@ -259,9 +259,13 @@ public class GameFileDownloader : IDisposable
             throw new InvalidOperationException("Installer is not initialized.");
     }
 
-    private string GetFileKey(string filePath)
+    private string GetFileKey(string filePath) =>
+        GetFileKey(SdoInfos.APP_ID, dataVersion, filePath);
+
+    // CDN 文件 key: MD5(Unicode("{appId}_{version}_{filePath}")), filePath 不含前导反斜杠
+    internal static string GetFileKey(string appId, string version, string filePath)
     {
-        var inputBytes = Encoding.Unicode.GetBytes($"{SdoInfos.APP_ID}_{dataVersion}_{filePath}");
+        var inputBytes = Encoding.Unicode.GetBytes($"{appId}_{version}_{filePath}");
         var hashBytes  = MD5.HashData(inputBytes);
         return Convert.ToHexString(hashBytes);
     }

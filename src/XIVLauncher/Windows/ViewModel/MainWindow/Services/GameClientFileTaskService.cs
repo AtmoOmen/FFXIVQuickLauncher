@@ -195,7 +195,14 @@ public sealed class GameClientFileTaskService
         catch (Exception ex)
         {
             Log.Error(ex, "[GameClientFileTask] 游戏更新失败");
-            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "游戏更新失败", ex.Message), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+            var action = await WaitForChoiceAsync
+                         (
+                             viewModel,
+                             CreateChoiceSnapshot(TITLE, "游戏更新失败", $"{ex.Message}\n可尝试修复游戏文件以恢复", "开始修复", "关闭")
+                         ).ConfigureAwait(false);
+            return action == GameClientFileTaskWindowAction.Primary
+                       ? await RunRepairAsync(viewModel).ConfigureAwait(false)
+                       : new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
         }
     }
 
