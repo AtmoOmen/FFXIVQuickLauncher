@@ -22,12 +22,12 @@ public class GameFileDownloader : IDisposable
 
     private          long   lastProgressTimestamp;
     private          string downloadBaseUrl = null!;
-    private readonly string dataVersion     = null!;
+    private          string dataVersion     = null!;
 
     public void Dispose() =>
         client.Dispose();
 
-    public void Construct(IEnumerable<IntegrityPathEntry> targets, string baseUrl, string dataVersion)
+    public void Construct(IEnumerable<IntegrityPathEntry> targets, string baseUrl, string version)
     {
         relativePaths.Clear();
         hashes.Clear();
@@ -35,8 +35,8 @@ public class GameFileDownloader : IDisposable
         brokenStates.Clear();
         queuedDownloads.Clear();
 
-        downloadBaseUrl = baseUrl     ?? throw new ArgumentNullException(nameof(baseUrl));
-        dataVersion     = dataVersion ?? throw new ArgumentNullException(nameof(dataVersion));
+        downloadBaseUrl = baseUrl ?? throw new ArgumentNullException(nameof(baseUrl));
+        dataVersion     = version ?? throw new ArgumentNullException(nameof(version));
 
         if (client.DefaultRequestHeaders.UserAgent.Count == 0)
             client.DefaultRequestHeaders.UserAgent.ParseAdd(USER_AGENT);
