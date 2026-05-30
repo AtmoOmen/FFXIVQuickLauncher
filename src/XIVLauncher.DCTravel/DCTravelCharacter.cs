@@ -13,6 +13,9 @@ public class DCTravelCharacter
     public int AreaID  { get; set; }
     public int GroupID { get; set; }
 
+    [JsonIgnore]
+    public string ServerName { get; set; } = string.Empty;
+
     public string ToQueryString() =>
         $$"""{"roleId":"{{ContentID}}","roleName":"{{Name}}","key":0}""";
 }

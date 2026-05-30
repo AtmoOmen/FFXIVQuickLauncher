@@ -228,17 +228,23 @@ public partial class DCTravelClient
             if (migrationType != 4 || migrationStatus != 5)
                 continue;
 
-            if (travelStatus is < 0 or > 1)
+            if (travelStatus != 1)
                 continue;
 
             if (!int.TryParse(orderObject["groupId"]?.ToString(), out var groupId))
                 continue;
 
-            var orderId    = orderObject["orderId"]?.GetValue<string>();
-            var groupCode  = orderObject["groupCode"]?.GetValue<string>();
-            var groupName  = orderObject["groupName"]?.GetValue<string>();
-            var roleId     = migrationDetail["roleId"]?.GetValue<string>();
-            var createTime = orderObject["createTime"]?.GetValue<string>();
+            var orderId    = orderObject["orderId"]?.ToString();
+            var groupCode  = orderObject["groupCode"]?.ToString();
+            var groupName  = orderObject["groupName"]?.ToString();
+            var roleId     = migrationDetail["roleId"]?.ToString();
+            var createTime = orderObject["createTime"]?.ToString();
+
+            var roleName        = migrationDetail["roleName"]?.ToString();
+            var sourceAreaName  = migrationDetail["areaName"]?.ToString() ?? orderObject["areaName"]?.ToString();
+            var sourceGroupName = migrationDetail["groupName"]?.ToString() ?? orderObject["groupName"]?.ToString();
+            var targetAreaName  = orderObject["targetAreaName"]?.ToString() ?? migrationDetail["targetAreaName"]?.ToString();
+            var targetGroupName = orderObject["targetGroupName"]?.ToString() ?? migrationDetail["targetGroupName"]?.ToString();
 
             if (string.IsNullOrWhiteSpace
                     (orderId)
@@ -252,13 +258,18 @@ public partial class DCTravelClient
             (
                 new DCTravelMigrationOrder
                 {
-                    OrderID      = orderId,
-                    ContentID    = roleId,
-                    GroupID      = groupId,
-                    GroupCode    = groupCode,
-                    GroupName    = groupName,
-                    CreateTime   = createTime,
-                    TravelStatus = travelStatus
+                    OrderID         = orderId,
+                    ContentID       = roleId,
+                    GroupID         = groupId,
+                    GroupCode       = groupCode,
+                    GroupName       = groupName,
+                    CreateTime      = createTime,
+                    TravelStatus    = travelStatus,
+                    RoleName        = roleName ?? string.Empty,
+                    SourceAreaName  = sourceAreaName ?? string.Empty,
+                    SourceGroupName = sourceGroupName ?? string.Empty,
+                    TargetAreaName  = targetAreaName ?? string.Empty,
+                    TargetGroupName = targetGroupName ?? string.Empty
                 }
             );
         }

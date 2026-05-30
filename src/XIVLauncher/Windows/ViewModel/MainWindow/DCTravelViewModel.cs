@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -65,6 +66,12 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         TargetGroups    = [];
         Characters      = [];
         MigrationOrders = [];
+
+        MigrationOrders.CollectionChanged += (s, e) =>
+        {
+            OnPropertyChanged(nameof(HasMigrationOrders));
+            OnPropertyChanged(nameof(HasNoMigrationOrders));
+        };
     }
 
     public ICommand TravelOrderCommand        => travelOrderCommand;
@@ -156,6 +163,9 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     public ObservableCollection<DCTravelMigrationOrder> MigrationOrders { get; }
 
+    public bool HasMigrationOrders   => MigrationOrders.Count > 0;
+    public bool HasNoMigrationOrders => MigrationOrders.Count == 0;
+
     public DCTravelMigrationOrder? SelectedOrder
     {
         get;
@@ -182,6 +192,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CanTravelOrder));
             travelOrderCommand.RaiseCanExecuteChanged();
             travelBackCommand.RaiseCanExecuteChanged();
+            confirmTravelBackCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -235,6 +246,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     } = string.Empty;
 
     private DCTravelMigrationOrder? pendingReturnOrder;
+    private string? pendingTargetGroupName;
 
     // 进度页属性
     public string TravelProgressText
@@ -405,7 +417,11 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
                 try
                 {
                     var chars = await client.QueryRoleList(SelectedSourceArea.AreaID, g.GroupID);
-                    foreach (var c in chars) Characters.Add(c);
+                    foreach (var c in chars)
+                    {
+                        c.ServerName = g.GroupName;
+                        Characters.Add(c);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -492,14 +508,16 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         await Task.Delay(1);
 
         pendingReturnOrder = SelectedOrder;
+        pendingTargetGroupName = pendingReturnOrder.TargetGroupName;
 
         ReturnOrderInfo          = $"{pendingReturnOrder.GroupName}  |  {pendingReturnOrder.CreateTime}";
-        ReturnSelectedSourceArea = null;
-        ReturnCurrentGroups.Clear();
 
         ReturnSourceAreas.Clear();
         foreach (var a in SourceAreas)
             ReturnSourceAreas.Add(a);
+
+        var targetArea = ReturnSourceAreas.FirstOrDefault(a => a.AreaName == pendingReturnOrder.TargetAreaName);
+        ReturnSelectedSourceArea = targetArea;
 
         requestOpenReturnAction();
     }
@@ -525,6 +543,11 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             await PollOrderStatusAsync(orderId, pollCts.Token);
 
             await RefreshOrdersAsync();
+
+            if (pendingReturnOrder != null && !string.IsNullOrWhiteSpace(pendingReturnOrder.SourceAreaName))
+            {
+                UpdateCurrentArea(pendingReturnOrder.SourceAreaName);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -547,6 +570,21 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
             foreach (var g in ReturnSelectedSourceArea.GroupList)
                 ReturnCurrentGroups.Add(g);
+
+            if (!string.IsNullOrEmpty(pendingTargetGroupName))
+            {
+                var targetGroupName = pendingTargetGroupName;
+                pendingTargetGroupName = null;
+
+                // 延迟 50ms 释放 UI 线程，以确保 ComboBox 已经在 UI 上认领并刷新了 ItemsSource 数据源，避免选中项被强行重设为 null
+                await Task.Delay(50);
+
+                var targetGroup = ReturnCurrentGroups.FirstOrDefault(g => g.GroupName == targetGroupName);
+                if (targetGroup != null)
+                {
+                    ReturnSelectedCurrentGroup = targetGroup;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -555,6 +593,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         finally
         {
             IsLoading = false;
+            confirmTravelBackCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -566,8 +605,36 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             var result = await client.QueryMigrationOrders();
 
             MigrationOrders.Clear();
+            var addedRoles = new HashSet<string>();
             foreach (var o in result.Orders)
-                MigrationOrders.Add(o);
+            {
+                if (!string.IsNullOrEmpty(o.ContentID) && addedRoles.Add(o.ContentID))
+                {
+                    // 使用已加载的 SourceAreas 本地反查源大区与服务器名字，提供最稳固的展现保障
+                    var found = false;
+                    foreach (var area in SourceAreas)
+                    {
+                        var group = area.GroupList.FirstOrDefault(g => g.GroupID == o.GroupID);
+                        if (group != null)
+                        {
+                            o.SourceAreaName = area.AreaName;
+                            o.SourceGroupName = group.GroupName;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        if (string.IsNullOrWhiteSpace(o.SourceGroupName))
+                            o.SourceGroupName = o.GroupName;
+                        if (string.IsNullOrWhiteSpace(o.SourceAreaName))
+                            o.SourceAreaName = "源大区";
+                    }
+
+                    MigrationOrders.Add(o);
+                }
+            }
         }
         catch (Exception ex)
         {

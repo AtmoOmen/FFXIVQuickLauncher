@@ -75,6 +75,18 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
         </Style>
+        <Style x:Key="PrimaryQuickLinkButtonStyle"
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource MaterialDesignRaisedButton}">
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="8" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
+            <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+        </Style>
         <Style x:Key="DalamudStatusButtonStyle"
                TargetType="{x:Type Button}"
                BasedOn="{StaticResource MaterialDesignFlatButton}">
@@ -89,7 +101,9 @@
         <Style x:Key="DashboardInfoCardStyle"
                TargetType="{x:Type Border}">
             <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.BackgroundDark}" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
             <Setter Property="Padding" Value="0" />
         </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -715,11 +729,6 @@
 
                                         <!--  Actions  -->
                                         <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="Auto" />
-                                                <RowDefinition Height="Auto" />
-                                            </Grid.RowDefinitions>
-
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="8" />
@@ -760,7 +769,7 @@
                                             </Button>
 
                                             <Button x:Name="AccountSwitcherButton"
-                                                    Grid.Row="0" Grid.Column="2"
+                                                    Grid.Column="2"
                                                     Style="{StaticResource MaterialDesignOutlinedButton}"
                                                     materialDesign:ButtonAssist.CornerRadius="18"
                                                     Width="32" Height="32" Padding="0"
@@ -771,19 +780,8 @@
                                                                          Height="18" />
                                             </Button>
 
-                                            <Button Grid.Row="1"
-                                                    Grid.Column="0"
-                                                    Grid.ColumnSpan="3"
-                                                    Content="{Binding DalamudStatusText}"
-                                                    HorizontalAlignment="Stretch"
-                                                    HorizontalContentAlignment="Center"
-                                                    Margin="0,8,0,0"
-                                                    Style="{StaticResource DalamudStatusButtonStyle}"
-                                                    Command="{Binding RefreshDalamudInfoCommand}"
-                                                    Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BoolToVis}}" />
-
                                             <Popup x:Name="AccountSwitcherPopup"
-                                                   Grid.Row="0" Grid.Column="2"
+                                                   Grid.Column="2"
                                                    AllowsTransparency="True"
                                                    DataContext="{Binding AccountSwitcher}"
                                                    HorizontalOffset="-15"
@@ -1412,7 +1410,7 @@
                                                                                     <DoubleAnimation
                                                                                         Storyboard.TargetName="ActiveBg"
                                                                                         Storyboard.TargetProperty="Opacity"
-                                                                                        To="0.15" Duration="0:0:0.2">
+                                                                                        To="0.26" Duration="0:0:0.2">
                                                                                         <DoubleAnimation.EasingFunction>
                                                                                             <CubicEase EasingMode="EaseOut" />
                                                                                         </DoubleAnimation.EasingFunction>
@@ -1445,34 +1443,9 @@
                                                                             <Condition Property="IsMouseOver" Value="True" />
                                                                             <Condition Property="IsSelected" Value="False" />
                                                                         </MultiTrigger.Conditions>
-                                                                        <MultiTrigger.EnterActions>
-                                                                            <BeginStoryboard>
-                                                                                <Storyboard>
-                                                                                    <DoubleAnimation
-                                                                                        Storyboard.TargetName="Bg"
-                                                                                        Storyboard.TargetProperty="Opacity"
-                                                                                        To="0.5" Duration="0:0:0.2">
-                                                                                        <DoubleAnimation.EasingFunction>
-                                                                                            <CubicEase EasingMode="EaseOut" />
-                                                                                        </DoubleAnimation.EasingFunction>
-                                                                                    </DoubleAnimation>
-                                                                                </Storyboard>
-                                                                            </BeginStoryboard>
-                                                                        </MultiTrigger.EnterActions>
-                                                                        <MultiTrigger.ExitActions>
-                                                                            <BeginStoryboard>
-                                                                                <Storyboard>
-                                                                                    <DoubleAnimation
-                                                                                        Storyboard.TargetName="Bg"
-                                                                                        Storyboard.TargetProperty="Opacity"
-                                                                                        To="1" Duration="0:0:0.2">
-                                                                                        <DoubleAnimation.EasingFunction>
-                                                                                            <CubicEase EasingMode="EaseOut" />
-                                                                                        </DoubleAnimation.EasingFunction>
-                                                                                    </DoubleAnimation>
-                                                                                </Storyboard>
-                                                                            </BeginStoryboard>
-                                                                        </MultiTrigger.ExitActions>
+                                                                        <Setter TargetName="Bg" Property="BorderBrush"
+                                                                                Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                                        <Setter TargetName="Bg" Property="Opacity" Value="0.6" />
                                                                     </MultiTrigger>
                                                                 </ControlTemplate.Triggers>
                                                             </ControlTemplate>
@@ -1492,14 +1465,18 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <materialDesign:PackIcon Kind="Play" Width="20" Height="20" Margin="0,0,8,0" VerticalAlignment="Center" />
                                                 <TextBlock Text="启动游戏" VerticalAlignment="Center" />
+                                                <materialDesign:PackIcon Kind="MenuDown" Width="18" Height="18" Margin="4,0,0,0" VerticalAlignment="Center" Opacity="0.8" />
                                             </StackPanel>
                                             <Button.ContextMenu>
-                                                <ContextMenu>
+                                                <ContextMenu Style="{StaticResource LoginActionContextMenuStyle}">
                                                     <MenuItem Header="无 Dalamud 启动"
+                                                              Style="{StaticResource LoginActionMenuItemStyle}"
                                                               Command="{Binding DashboardPage.StartGameNoDalamudCommand}" />
                                                     <MenuItem Header="禁用插件启动"
+                                                              Style="{StaticResource LoginActionMenuItemStyle}"
                                                               Command="{Binding DashboardPage.StartGameNoPluginsCommand}" />
                                                     <MenuItem Header="禁用第三方插件启动"
+                                                              Style="{StaticResource LoginActionMenuItemStyle}"
                                                               Command="{Binding DashboardPage.StartGameNoThirdCommand}" />
                                                 </ContextMenu>
                                             </Button.ContextMenu>
@@ -1513,6 +1490,18 @@
                                             <StackPanel Orientation="Horizontal">
                                                 <materialDesign:PackIcon Kind="AccountSwitch" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
                                                 <TextBlock Text="切换账号" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <Button HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Margin="0,8,0,0"
+                                                Style="{StaticResource DalamudStatusButtonStyle}"
+                                                Command="{Binding RefreshDalamudInfoCommand}"
+                                                Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BoolToVis}}">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <materialDesign:PackIcon Kind="Refresh" Width="12" Height="12" Margin="0,0,4,0" VerticalAlignment="Center" Opacity="0.7" />
+                                                <TextBlock Text="{Binding DalamudStatusText}" VerticalAlignment="Center" />
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -1531,125 +1520,204 @@
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <Grid Margin="16,0,16,0" VerticalAlignment="Center">
                                         <StackPanel>
-                                            <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                                      materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
-                                                      materialDesign:HintAssist.Hint="源大区"
-                                                      ItemsSource="{Binding DCTravelPage.SourceAreas}"
-                                                      SelectedItem="{Binding DCTravelPage.SelectedSourceArea}"
-                                                      DisplayMemberPath="AreaName"
-                                                      Margin="0,0,0,8" />
+                                            <!-- 步骤一：出发角色 -->
+                                            <Border BorderThickness="1" 
+                                                    BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}"
+                                                    Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
+                                                    CornerRadius="12"
+                                                    Padding="10,8,10,8"
+                                                    Margin="0,0,0,8">
+                                                <StackPanel>
+                                                    <Grid Margin="0,0,0,10">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <materialDesign:PackIcon Kind="AccountBox" Width="14" Height="14" 
+                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" 
+                                                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                        <TextBlock Grid.Column="1" Text="出发角色" FontSize="11" FontWeight="SemiBold" 
+                                                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" VerticalAlignment="Center" />
+                                                    </Grid>
 
-                                            <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                                      materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
-                                                      materialDesign:HintAssist.Hint="{Binding DCTravelPage.CharacterHint}"
-                                                      ItemsSource="{Binding DCTravelPage.Characters}"
-                                                      SelectedItem="{Binding DCTravelPage.SelectedCharacter}"
-                                                      DisplayMemberPath="Name"
-                                                      IsEnabled="{Binding DCTravelPage.IsCharacterEnabled}"
-                                                      Visibility="{Binding DCTravelPage.IsCharacterVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                      Margin="0,0,0,16" />
+                                                    <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                              materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                              materialDesign:HintAssist.Hint="原始大区"
+                                                              ItemsSource="{Binding DCTravelPage.SourceAreas}"
+                                                              SelectedItem="{Binding DCTravelPage.SelectedSourceArea}"
+                                                              DisplayMemberPath="AreaName"
+                                                              Margin="0,0,0,8" />
 
-                                            <Border Height="1" Background="{DynamicResource MaterialDesign.Brush.ForegroundLight}" Opacity="0.15"
-                                                    Visibility="{Binding DCTravelPage.IsCharacterVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                    Margin="0,0,0,16" />
+                                                    <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                              materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                              materialDesign:HintAssist.Hint="{Binding DCTravelPage.CharacterHint}"
+                                                              SelectedItem="{Binding DCTravelPage.SelectedCharacter}"
+                                                              IsEnabled="{Binding DCTravelPage.IsCharacterEnabled}"
+                                                              Visibility="{Binding DCTravelPage.IsCharacterVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                              Margin="0,0,0,4">
+                                                        <ComboBox.Resources>
+                                                            <CollectionViewSource x:Key="CharactersView"
+                                                                                  Source="{Binding DCTravelPage.Characters}">
+                                                                <CollectionViewSource.GroupDescriptions>
+                                                                    <PropertyGroupDescription PropertyName="ServerName" />
+                                                                </CollectionViewSource.GroupDescriptions>
+                                                            </CollectionViewSource>
+                                                        </ComboBox.Resources>
+                                                        <ComboBox.ItemsSource>
+                                                            <Binding Source="{StaticResource CharactersView}" />
+                                                        </ComboBox.ItemsSource>
+                                                        <ComboBox.GroupStyle>
+                                                            <GroupStyle>
+                                                                <GroupStyle.HeaderTemplate>
+                                                                    <DataTemplate DataType="{x:Type data:CollectionViewGroup}">
+                                                                        <Grid Margin="0,6,0,2">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Text="{Binding Name}"
+                                                                                       FontSize="11"
+                                                                                       Opacity="0.5"
+                                                                                       Margin="8,0,8,0"
+                                                                                       VerticalAlignment="Center" />
+                                                                            <Separator Grid.Column="1"
+                                                                                       Margin="0,0,8,0"
+                                                                                       Background="{DynamicResource MaterialDesign.Brush.Card.Border}"
+                                                                                       VerticalAlignment="Center" />
+                                                                        </Grid>
+                                                                    </DataTemplate>
+                                                                </GroupStyle.HeaderTemplate>
+                                                            </GroupStyle>
+                                                        </ComboBox.GroupStyle>
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                </StackPanel>
+                                            </Border>
 
-                                            <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                                      materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
-                                                      materialDesign:HintAssist.Hint="目标大区"
-                                                      ItemsSource="{Binding DCTravelPage.TargetAreas}"
-                                                      SelectedItem="{Binding DCTravelPage.SelectedTargetArea}"
-                                                      Visibility="{Binding DCTravelPage.IsTargetAreaVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                      Margin="0,0,0,8">
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
-                                                                <Ellipse.Style>
-                                                                    <Style TargetType="Ellipse">
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding State}" Value="0">
-                                                                                <Setter Property="Fill" Value="MediumSeaGreen" />
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding State}" Value="1">
-                                                                                <Setter Property="Fill" Value="DarkOrange" />
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding State}" Value="2">
+                                            <!-- 步骤二：旅行目的地 (仅当选择原始角色大区后可见) -->
+                                            <Border BorderThickness="1" 
+                                                    BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}"
+                                                    Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
+                                                    CornerRadius="12"
+                                                    Padding="10,8,10,8"
+                                                    Margin="0,0,0,8"
+                                                    Visibility="{Binding DCTravelPage.IsTargetAreaVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <StackPanel>
+                                                    <Grid Margin="0,0,0,10">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <materialDesign:PackIcon Kind="Compass" Width="14" Height="14" 
+                                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" 
+                                                                                 VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                        <TextBlock Grid.Column="1" Text="旅行目的地" FontSize="11" FontWeight="SemiBold" 
+                                                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" VerticalAlignment="Center" />
+                                                    </Grid>
+
+                                                    <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                              materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                              materialDesign:HintAssist.Hint="目标大区"
+                                                              ItemsSource="{Binding DCTravelPage.TargetAreas}"
+                                                              SelectedItem="{Binding DCTravelPage.SelectedTargetArea}"
+                                                              Visibility="{Binding DCTravelPage.IsTargetAreaVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                              Margin="0,0,0,8">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                                        <Ellipse.Style>
+                                                                            <Style TargetType="Ellipse">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding State}" Value="0">
+                                                                                        <Setter Property="Fill" Value="MediumSeaGreen" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding State}" Value="1">
+                                                                                        <Setter Property="Fill" Value="DarkOrange" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding State}" Value="2">
+                                                                                        <Setter Property="Fill" Value="IndianRed" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
                                                                                 <Setter Property="Fill" Value="IndianRed" />
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                        <Setter Property="Fill" Value="IndianRed" />
-                                                                    </Style>
-                                                                </Ellipse.Style>
-                                                            </Ellipse>
-                                                            <TextBlock Text="{Binding AreaName}" VerticalAlignment="Center" />
-                                                            <TextBlock Margin="6,0,0,0" FontSize="11" Opacity="0.7" VerticalAlignment="Center">
-                                                                <TextBlock.Style>
-                                                                    <Style TargetType="TextBlock">
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding State}" Value="0">
-                                                                                <Setter Property="Text" Value="通畅" />
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding State}" Value="1">
-                                                                                <Setter Property="Text" Value="热门" />
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding State}" Value="2">
-                                                                                <Setter Property="Text" Value="火爆" />
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                        <Setter Property="Text" Value="繁忙" />
-                                                                    </Style>
-                                                                </TextBlock.Style>
-                                                            </TextBlock>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
+                                                                            </Style>
+                                                                        </Ellipse.Style>
+                                                                    </Ellipse>
+                                                                    <TextBlock Text="{Binding AreaName}" VerticalAlignment="Center" />
+                                                                    <TextBlock Margin="6,0,0,0" FontSize="11" Opacity="0.7" VerticalAlignment="Center">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding State}" Value="0">
+                                                                                        <Setter Property="Text" Value="通畅" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding State}" Value="1">
+                                                                                        <Setter Property="Text" Value="热门" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding State}" Value="2">
+                                                                                        <Setter Property="Text" Value="火爆" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                                <Setter Property="Text" Value="繁忙" />
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
 
-                                            <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                                      materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
-                                                      materialDesign:HintAssist.Hint="目标服务器"
-                                                      ItemsSource="{Binding DCTravelPage.TargetGroups}"
-                                                      SelectedItem="{Binding DCTravelPage.SelectedTargetGroup}"
-                                                      Visibility="{Binding DCTravelPage.IsTargetGroupVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                                      Margin="0,0,0,12">
-                                                <ComboBox.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
-                                                                <Ellipse.Style>
-                                                                    <Style TargetType="Ellipse">
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding QueueTime}" Value="{x:Null}">
-                                                                                <Setter Property="Fill" Value="LightSlateGray" />
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding QueueTime}" Value="0">
-                                                                                <Setter Property="Fill" Value="MediumSeaGreen" />
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                        <Setter Property="Fill" Value="IndianRed" />
-                                                                    </Style>
-                                                                </Ellipse.Style>
-                                                            </Ellipse>
-                                                            <TextBlock Text="{Binding GroupName}" VerticalAlignment="Center" />
-                                                            <TextBlock Margin="6,0,0,0" FontSize="11" Opacity="0.7" VerticalAlignment="Center">
-                                                                <TextBlock.Style>
-                                                                    <Style TargetType="TextBlock">
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding QueueTime}" Value="{x:Null}">
-                                                                                <Setter Property="Text" Value="读取中" />
-                                                                            </DataTrigger>
-                                                                            <DataTrigger Binding="{Binding QueueTime}" Value="0">
-                                                                                <Setter Property="Text" Value="通畅" />
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                        <Setter Property="Text" Value="繁忙" />
-                                                                    </Style>
-                                                                </TextBlock.Style>
-                                                            </TextBlock>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ComboBox.ItemTemplate>
-                                            </ComboBox>
+                                                    <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                              materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                              materialDesign:HintAssist.Hint="目标服务器"
+                                                              ItemsSource="{Binding DCTravelPage.TargetGroups}"
+                                                              SelectedItem="{Binding DCTravelPage.SelectedTargetGroup}"
+                                                              Visibility="{Binding DCTravelPage.IsTargetGroupVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                              Margin="0,0,0,4">
+                                                        <ComboBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                                        <Ellipse.Style>
+                                                                            <Style TargetType="Ellipse">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding QueueTime}" Value="{x:Null}">
+                                                                                        <Setter Property="Fill" Value="LightSlateGray" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding QueueTime}" Value="0">
+                                                                                        <Setter Property="Fill" Value="MediumSeaGreen" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                                <Setter Property="Fill" Value="IndianRed" />
+                                                                            </Style>
+                                                                        </Ellipse.Style>
+                                                                    </Ellipse>
+                                                                    <TextBlock Text="{Binding GroupName}" VerticalAlignment="Center" />
+                                                                    <TextBlock Margin="6,0,0,0" FontSize="11" Opacity="0.7" VerticalAlignment="Center">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding QueueTime}" Value="{x:Null}">
+                                                                                        <Setter Property="Text" Value="读取中" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding QueueTime}" Value="0">
+                                                                                        <Setter Property="Text" Value="通畅" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                                <Setter Property="Text" Value="繁忙" />
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                </StackPanel>
+                                            </Border>
 
                                             <Grid Margin="0,0,0,12">
                                                 <Grid.ColumnDefinitions>
@@ -1706,25 +1774,170 @@
 
                                 <Grid Margin="20,0,20,0" VerticalAlignment="Center">
                                     <StackPanel>
-                                        <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                                  materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
-                                                  materialDesign:HintAssist.Hint="选择订单"
-                                                  ItemsSource="{Binding DCTravelPage.MigrationOrders}"
+                                        <!-- 无订单时的 Empty State -->
+                                         <StackPanel Visibility="{Binding DCTravelPage.HasNoMigrationOrders, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                     Margin="0,20,0,24" HorizontalAlignment="Center">
+                                             <materialDesign:PackIcon Kind="History" Width="48" Height="48"
+                                                                      Opacity="0.25" HorizontalAlignment="Center" 
+                                                                      Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"/>
+                                             <TextBlock Text="暂无超域旅行历史记录" FontSize="12" FontWeight="SemiBold"
+                                                        Opacity="0.4" Margin="0,12,0,0" HorizontalAlignment="Center" />
+                                             <TextBlock Text="可在上一步选择角色进行超域传送" FontSize="10"
+                                                        Opacity="0.3" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                                         </StackPanel>
+
+                                         <!-- 订单轨迹卡片列表 -->
+                                         <ListBox ItemsSource="{Binding DCTravelPage.MigrationOrders}"
                                                   SelectedItem="{Binding DCTravelPage.SelectedOrder}"
-                                                  Margin="0,0,0,12">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock>
-                                                        <TextBlock.Text>
-                                                            <MultiBinding StringFormat="{}{0}  |  {1}">
-                                                                <Binding Path="GroupName" />
-                                                                <Binding Path="CreateTime" />
-                                                            </MultiBinding>
-                                                        </TextBlock.Text>
-                                                    </TextBlock>
-                                                </DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
+                                                  Visibility="{Binding DCTravelPage.HasMigrationOrders, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                  MaxHeight="260"
+                                                  Margin="0,0,0,12"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  HorizontalContentAlignment="Stretch">
+                                             <ListBox.ItemContainerStyle>
+                                                 <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                                     <Setter Property="Padding" Value="0" />
+                                                     <Setter Property="Margin" Value="0,0,0,8" />
+                                                     <Setter Property="Background" Value="Transparent" />
+                                                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                     <Setter Property="Template">
+                                                         <Setter.Value>
+                                                             <ControlTemplate TargetType="ListBoxItem">
+                                                                 <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                                   VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                                   SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                                             </ControlTemplate>
+                                                         </Setter.Value>
+                                                     </Setter>
+                                                 </Style>
+                                             </ListBox.ItemContainerStyle>
+                                             <ListBox.ItemTemplate>
+                                                 <DataTemplate>
+                                                     <Border CornerRadius="8">
+                                                         <Border.Style>
+                                                             <Style TargetType="Border">
+                                                                 <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Card.Background}" />
+                                                                 <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                                                                 <Setter Property="BorderThickness" Value="1" />
+                                                                 <Setter Property="Padding" Value="10,8" />
+                                                                 <Style.Triggers>
+                                                                     <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsMouseOver}" Value="True">
+                                                                         <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                                     </DataTrigger>
+                                                                     <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
+                                                                         <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                                         <Setter Property="BorderThickness" Value="2" />
+                                                                         <Setter Property="Padding" Value="9,7" />
+                                                                     </DataTrigger>
+                                                                 </Style.Triggers>
+                                                             </Style>
+                                                         </Border.Style>
+                                                         <Grid>
+                                                             <Grid.RowDefinitions>
+                                                                 <RowDefinition Height="Auto" />
+                                                                 <RowDefinition Height="Auto" />
+                                                                 <RowDefinition Height="Auto" />
+                                                             </Grid.RowDefinitions>
+
+                                                             <!-- 第一行：角色信息与时间 -->
+                                                             <Grid Grid.Row="0">
+                                                                 <Grid.ColumnDefinitions>
+                                                                     <ColumnDefinition Width="*" />
+                                                                     <ColumnDefinition Width="Auto" />
+                                                                 </Grid.ColumnDefinitions>
+                                                                 
+                                                                 <StackPanel Orientation="Horizontal" Grid.Column="0">
+                                                                     <materialDesign:PackIcon Kind="Account" Width="12" Height="12" 
+                                                                                              Foreground="{DynamicResource MaterialDesign.Brush.Primary}" 
+                                                                                              VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                                     <TextBlock Text="{Binding RoleName}" 
+                                                                                FontSize="11" 
+                                                                                FontWeight="SemiBold" 
+                                                                                Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                                                VerticalAlignment="Center"/>
+                                                                 </StackPanel>
+
+                                                                 <TextBlock Grid.Column="1" 
+                                                                            Text="{Binding CreateTime}" 
+                                                                            FontSize="9" 
+                                                                            Opacity="0.5" 
+                                                                            VerticalAlignment="Center"/>
+                                                             </Grid>
+
+                                                             <!-- 第二行：超域轨迹 (源服务器 -> 目标服务器) -->
+                                                             <Border Grid.Row="1" 
+                                                                     Background="#08FFFFFF" 
+                                                                     CornerRadius="4" 
+                                                                     Margin="0,6,0,6" 
+                                                                     Padding="6,4">
+                                                                 <Grid>
+                                                                     <Grid.ColumnDefinitions>
+                                                                         <ColumnDefinition Width="*" />
+                                                                         <ColumnDefinition Width="Auto" />
+                                                                         <ColumnDefinition Width="*" />
+                                                                     </Grid.ColumnDefinitions>
+
+                                                                     <StackPanel Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                                         <TextBlock Text="{Binding SourceAreaName}" FontSize="8" Opacity="0.5" HorizontalAlignment="Left"/>
+                                                                         <TextBlock Text="{Binding SourceGroupName}" FontSize="10" FontWeight="Medium" Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Margin="0,1,0,0" HorizontalAlignment="Left"/>
+                                                                     </StackPanel>
+
+                                                                     <materialDesign:PackIcon Grid.Column="1" 
+                                                                                              Kind="ChevronDoubleRight" 
+                                                                                              Width="12" Height="12" 
+                                                                                              Foreground="{DynamicResource MaterialDesign.Brush.Primary}" 
+                                                                                              VerticalAlignment="Center" 
+                                                                                              HorizontalAlignment="Center" 
+                                                                                              Margin="4,0,4,0"/>
+
+                                                                     <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                                         <TextBlock Text="{Binding TargetAreaName}" FontSize="8" Opacity="0.5" HorizontalAlignment="Right"/>
+                                                                         <TextBlock Text="{Binding TargetGroupName}" FontSize="10" FontWeight="Medium" Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" Margin="0,1,0,0" HorizontalAlignment="Right"/>
+                                                                     </StackPanel>
+                                                                 </Grid>
+                                                             </Border>
+
+                                                             <!-- 第三行：状态 -->
+                                                             <Grid Grid.Row="2">
+                                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                     <Ellipse Width="6" Height="6" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                                         <Ellipse.Style>
+                                                                             <Style TargetType="Ellipse">
+                                                                                 <Setter Property="Fill" Value="LightSlateGray" />
+                                                                                 <Style.Triggers>
+                                                                                     <DataTrigger Binding="{Binding TravelStatus}" Value="1">
+                                                                                         <Setter Property="Fill" Value="MediumSeaGreen" />
+                                                                                     </DataTrigger>
+                                                                                 </Style.Triggers>
+                                                                             </Style>
+                                                                         </Ellipse.Style>
+                                                                     </Ellipse>
+                                                                     <TextBlock FontSize="10" VerticalAlignment="Center">
+                                                                         <TextBlock.Style>
+                                                                             <Style TargetType="TextBlock">
+                                                                                 <Setter Property="Text" Value="已返回" />
+                                                                                 <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                                                                                 <Setter Property="Opacity" Value="0.6" />
+                                                                                 <Style.Triggers>
+                                                                                     <DataTrigger Binding="{Binding TravelStatus}" Value="1">
+                                                                                         <Setter Property="Text" Value="已抵达" />
+                                                                                         <Setter Property="Foreground" Value="MediumSeaGreen" />
+                                                                                         <Setter Property="Opacity" Value="1.0" />
+                                                                                     </DataTrigger>
+                                                                                 </Style.Triggers>
+                                                                             </Style>
+                                                                         </TextBlock.Style>
+                                                                     </TextBlock>
+                                                                 </StackPanel>
+                                                             </Grid>
+                                                         </Grid>
+                                                     </Border>
+                                                 </DataTemplate>
+                                             </ListBox.ItemTemplate>
+                                         </ListBox>
+
 
                                         <Grid Margin="0,0,0,12">
                                             <Grid.ColumnDefinitions>
@@ -1855,9 +2068,7 @@
                                                 <TextBlock Text="{Binding DCTravelPage.ReturnOrderInfo}" FontSize="13" Margin="0,2,0,0" />
                                             </StackPanel>
                                         </Border>
-
-                                        <TextBlock Text="选择当前所在大区与服务器" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
-
+                                        
                                         <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                                   materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
                                                   materialDesign:HintAssist.Hint="当前大区"
@@ -1944,12 +2155,11 @@
 
                                 <!-- 超域传送（Dashboard 内跳转到 DC Travel 页面） -->
                                 <Button Grid.Row="0" Grid.Column="0"
-                                        Style="{StaticResource QuickLinkButtonStyle}"
+                                        Style="{StaticResource PrimaryQuickLinkButtonStyle}"
                                         Command="{Binding DashboardPage.OpenDCTravelCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="Rocket" Width="14" Height="14"
-                                                                 Margin="0,0,4,0" VerticalAlignment="Center"
-                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                                 Margin="0,0,4,0" VerticalAlignment="Center" />
                                         <TextBlock Text="超域传送" VerticalAlignment="Center" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Button>

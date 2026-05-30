@@ -24,4 +24,19 @@ public class DCTravelMigrationOrder
 
     [JsonPropertyName("travelStatus")]
     public int TravelStatus { get; set; }
+
+    [JsonPropertyName("roleName")]
+    public string RoleName { get; set; } = string.Empty;
+
+    [JsonPropertyName("sourceAreaName")]
+    public string SourceAreaName { get; set; } = string.Empty;
+
+    [JsonPropertyName("sourceGroupName")]
+    public string SourceGroupName { get; set; } = string.Empty;
+
+    [JsonPropertyName("targetAreaName")]
+    public string TargetAreaName { get; set; } = string.Empty;
+
+    [JsonPropertyName("targetGroupName")]
+    public string TargetGroupName { get; set; } = string.Empty;
 }
