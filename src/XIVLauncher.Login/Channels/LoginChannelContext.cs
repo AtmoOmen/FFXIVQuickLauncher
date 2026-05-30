@@ -378,7 +378,7 @@ public sealed class LoginChannelContext
                 "extendInfo=",
                 "sdoVersion=",
                 "runTimeId=",
-                "productVersion=1.9.7.10",
+                "productVersion=",
                 "tag=0"
             ]
         );
