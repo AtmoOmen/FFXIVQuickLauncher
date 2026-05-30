@@ -53,7 +53,6 @@ public partial class MainWindow
     private bool          suppressAccountSelectionTracking;
     private Point         accountSwitcherDragStartPoint;
     private ListViewItem? draggedAccountSwitcherItem;
-    private bool          isAccountSwitcherHiding;
 
     public MainWindow()
     {
@@ -356,39 +355,10 @@ public partial class MainWindow
         Model.LoginPage.StartLoginCommand.Execute(null);
     }
 
-    protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
-    {
-        base.OnPreviewMouseDown(e);
 
-        if (!Model.IsAccountSwitcherVisible)
-            return;
-
-        if (IsAccountSwitcherContextMenuOpen())
-            return;
-
-        if (e.OriginalSource is DependencyObject depObj && !AccountSwitcherButton.IsAncestorOf(depObj) && !AccountSwitcherAnimationLayer.IsAncestorOf(depObj))
-            HideAccountSwitcherPopup();
-    }
-
-    protected override void OnLocationChanged(EventArgs e)
-    {
-        base.OnLocationChanged(e);
-
-        if (Model.IsAccountSwitcherVisible)
-            HideAccountSwitcherPopup(false);
-    }
-
-    protected override void OnStateChanged(EventArgs e)
-    {
-        if (WindowState == WindowState.Minimized)
-            HideAccountSwitcherPopup(false);
-
-        base.OnStateChanged(e);
-    }
 
     private void HideMainWindow()
     {
-        HideAccountSwitcherPopup(false);
         Hide();
     }
 
@@ -406,9 +376,6 @@ public partial class MainWindow
         return null;
     }
 
-    private bool IsAccountSwitcherContextMenuOpen() =>
-        AccountListView.ContextMenu?.IsOpen == true;
-
     private void AccountListView_OnMouseUp(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left)
@@ -420,7 +387,7 @@ public partial class MainWindow
             return;
 
         SwitchAccount(selectedAccount, true);
-        HideAccountSwitcherPopup();
+        Model.SwitchCard(MainWindowViewModel.LoginCardType.MainPage, false);
     }
 
     private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -482,77 +449,6 @@ public partial class MainWindow
 
     private void AccountListViewContextMenu_OnClosed(object sender, RoutedEventArgs e) =>
         Model.AccountSwitcher.ContextEntry = null;
-
-    private void AccountSwitcherPopup_OnOpened(object sender, EventArgs e)
-    {
-        isAccountSwitcherHiding = false;
-
-        AccountSwitcherAnimationLayer.BeginAnimation(OpacityProperty, null);
-        AccountSwitcherAnimationLayerTransform.BeginAnimation(TranslateTransform.YProperty, null);
-        AccountSwitcherAnimationLayer.Opacity    = 0;
-        AccountSwitcherAnimationLayerTransform.Y = 20;
-
-        var showStoryboard = new Storyboard();
-        var opacityAnim = new DoubleAnimation(0, 1, TimeSpan.FromSeconds(0.35))
-        {
-            EasingFunction = new CircleEase { EasingMode = EasingMode.EaseOut }
-        };
-        Storyboard.SetTarget(opacityAnim, AccountSwitcherAnimationLayer);
-        Storyboard.SetTargetProperty(opacityAnim, new PropertyPath(OpacityProperty));
-
-        var yAnim = new DoubleAnimation(20, 0, TimeSpan.FromSeconds(0.45))
-        {
-            EasingFunction = new CircleEase { EasingMode = EasingMode.EaseOut }
-        };
-        Storyboard.SetTarget(yAnim, AccountSwitcherAnimationLayerTransform);
-        Storyboard.SetTargetProperty(yAnim, new PropertyPath(TranslateTransform.YProperty));
-
-        showStoryboard.Children.Add(opacityAnim);
-        showStoryboard.Children.Add(yAnim);
-        showStoryboard.Begin();
-    }
-
-    private void HideAccountSwitcherPopup(bool animate = true)
-    {
-        if (!animate)
-        {
-            isAccountSwitcherHiding = false;
-            Model.CloseAccountSwitcher(false);
-            return;
-        }
-
-        if (isAccountSwitcherHiding)
-            return;
-
-        isAccountSwitcherHiding = true;
-
-        var closeStoryboard = new Storyboard();
-        var opacityAnim = new DoubleAnimation(1, 0, TimeSpan.FromSeconds(0.25))
-        {
-            EasingFunction = new CircleEase { EasingMode = EasingMode.EaseIn }
-        };
-        Storyboard.SetTarget(opacityAnim, AccountSwitcherAnimationLayer);
-        Storyboard.SetTargetProperty(opacityAnim, new PropertyPath(OpacityProperty));
-
-        var yAnim = new DoubleAnimation(0, 12, TimeSpan.FromSeconds(0.25))
-        {
-            EasingFunction = new CircleEase { EasingMode = EasingMode.EaseIn }
-        };
-        Storyboard.SetTarget(yAnim, AccountSwitcherAnimationLayerTransform);
-        Storyboard.SetTargetProperty(yAnim, new PropertyPath(TranslateTransform.YProperty));
-
-        closeStoryboard.Children.Add(opacityAnim);
-        closeStoryboard.Children.Add(yAnim);
-        closeStoryboard.Completed += (_, _) =>
-        {
-            AccountSwitcherAnimationLayer.BeginAnimation(OpacityProperty, null);
-            AccountSwitcherAnimationLayerTransform.BeginAnimation(TranslateTransform.YProperty, null);
-            AccountSwitcherAnimationLayer.Opacity    = 0;
-            AccountSwitcherAnimationLayerTransform.Y = 20;
-            Model.CloseAccountSwitcher(false);
-        };
-        closeStoryboard.Begin();
-    }
 
     private void SwitchAccount(XIVAccount account, bool saveAsCurrent)
     {
@@ -618,6 +514,12 @@ public partial class MainWindow
     {
         if (suppressAccountSelectionTracking)
             return;
+
+        if (string.IsNullOrWhiteSpace(LoginUsername.Text))
+        {
+            LoginPassword.Password = string.Empty;
+            Model.LoginPage.Password = string.Empty;
+        }
 
         accountManager.ClearCurrentAccount();
         Model.AccountSwitcher.RefreshEntries(null, false);

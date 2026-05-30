@@ -212,7 +212,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         );
 
     private void ExecuteAccountSwitcherButton(object parameter) =>
-        IsAccountSwitcherOpen ^= true;
+        SwitchCard(LoginCardType.AccountSwitcher);
 
     #endregion
 
@@ -1647,7 +1647,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         DCTravel         = 5,
         DCTravelHistory  = 6,
         DCTravelProgress = 7,
-        DCTravelReturn   = 8
+        DCTravelReturn   = 8,
+        AccountSwitcher  = 9
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
