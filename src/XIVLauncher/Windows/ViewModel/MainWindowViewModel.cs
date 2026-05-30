@@ -409,12 +409,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                                              : 0;
 
         if (await ProcessLoginResultAsync(gameLaunchContext, action).ConfigureAwait(false))
-        {
-            if (App.Settings.ExitLauncherWhenGameExit)
-                Environment.Exit(0);
-
             Activate();
-        }
     }
 
     private async Task HandleLoginWorkflowExceptionAsync(Exception ex, LoginType loginType, string username, bool usedSavedWeGameToken, LoginAfterAction action)
@@ -1432,7 +1427,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             {
                 try
                 {
-                    await ProcessLoginResultAsync(currentGameLaunchContext, action).ConfigureAwait(false);
+                    if (await ProcessLoginResultAsync(currentGameLaunchContext, action).ConfigureAwait(false)
+                        && App.Settings.ExitLauncherWhenGameExit)
+                        Environment.Exit(0);
                 }
                 catch (Exception ex)
                 {
