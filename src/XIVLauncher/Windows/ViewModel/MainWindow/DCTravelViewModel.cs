@@ -261,9 +261,14 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         set => SetProperty(ref field, value);
     } = true;
 
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(string? currentAreaName = null)
     {
         await RefreshTravelDataAsync();
+
+        // 首次打开时预填充当前账号所在大区，触发后续角色与目标列表加载
+        if (SelectedSourceArea == null && !string.IsNullOrWhiteSpace(currentAreaName))
+            SelectedSourceArea = SourceAreas.FirstOrDefault(a => string.Equals(a.AreaName, currentAreaName, StringComparison.Ordinal));
+
         await RefreshOrdersAsync();
     }
 
@@ -608,32 +613,9 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             var addedRoles = new HashSet<string>();
             foreach (var o in result.Orders)
             {
+                // 源大区与服务器直接采用订单响应自带字段，与目标侧保持一致，避免按 groupId 反查命中错误服务器
                 if (!string.IsNullOrEmpty(o.ContentID) && addedRoles.Add(o.ContentID))
-                {
-                    // 使用已加载的 SourceAreas 本地反查源大区与服务器名字，提供最稳固的展现保障
-                    var found = false;
-                    foreach (var area in SourceAreas)
-                    {
-                        var group = area.GroupList.FirstOrDefault(g => g.GroupID == o.GroupID);
-                        if (group != null)
-                        {
-                            o.SourceAreaName = area.AreaName;
-                            o.SourceGroupName = group.GroupName;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (!found)
-                    {
-                        if (string.IsNullOrWhiteSpace(o.SourceGroupName))
-                            o.SourceGroupName = o.GroupName;
-                        if (string.IsNullOrWhiteSpace(o.SourceAreaName))
-                            o.SourceAreaName = "源大区";
-                    }
-
                     MigrationOrders.Add(o);
-                }
             }
         }
         catch (Exception ex)

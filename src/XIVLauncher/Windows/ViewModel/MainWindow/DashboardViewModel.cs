@@ -86,6 +86,12 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         set => SetProperty(ref field, value);
     } = string.Empty;
 
+    public string GameVersion
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
+
     public string AreaName
     {
         get;

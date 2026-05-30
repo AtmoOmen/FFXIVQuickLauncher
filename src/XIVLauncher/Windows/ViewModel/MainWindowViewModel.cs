@@ -1384,6 +1384,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                     IsEnabled   = true;
                     LoginPage.RefreshCommandStates();
                     InjectPage.RefreshCommandStates();
+                    RefreshGameVersion();
                     Activate();
                 }
             );
@@ -1475,7 +1476,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             return;
 
         SwitchCard(LoginCardType.DCTravel);
-        _ = DCTravelPage.InitializeAsync();
+        _ = DCTravelPage.InitializeAsync(currentGameLaunchContext.Area.AreaName);
     }
 
     private void HandleSetCurrentAreaFromDCTravel(string areaName)
@@ -1543,6 +1544,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         DashboardPage.AccountName = oauth.InputUserID;
 
+        RefreshGameVersion();
+
         if (currentGameLaunchContext != null)
         {
             var areas = currentGameLaunchContext.Areas;
@@ -1555,6 +1558,11 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             DashboardPage.AreaStatus   = currentGameLaunchContext.Area.AreaStatus;
         }
     }
+
+    private void RefreshGameVersion() =>
+        DashboardPage.GameVersion = App.Settings.GamePath != null
+                                        ? Repository.Ffxiv.GetVer(App.Settings.GamePath)
+                                        : string.Empty;
 
     #endregion
 

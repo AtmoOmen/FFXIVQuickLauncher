@@ -1141,15 +1141,22 @@
 
                                         <Button Style="{StaticResource MaterialDesignRaisedButton}"
                                                 materialDesign:ButtonAssist.CornerRadius="16"
-                                                Height="48"
+                                                Height="52"
                                                 FontSize="16"
                                                 FontWeight="SemiBold"
                                                 Command="{Binding DashboardPage.StartGameCommand}"
                                                 Margin="0,0,0,8">
-                                            <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="Play" Width="20" Height="20" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                                <TextBlock Text="启动游戏" VerticalAlignment="Center" />
-                                                <materialDesign:PackIcon Kind="MenuDown" Width="18" Height="18" Margin="4,0,0,0" VerticalAlignment="Center" Opacity="0.8" />
+                                            <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <materialDesign:PackIcon Kind="Play" Width="20" Height="20" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="启动游戏" VerticalAlignment="Center" />
+                                                    <materialDesign:PackIcon Kind="MenuDown" Width="18" Height="18" Margin="4,0,0,0" VerticalAlignment="Center" Opacity="0.8" />
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding DashboardPage.GameVersion}"
+                                                           FontSize="10"
+                                                           FontWeight="Normal"
+                                                           Opacity="0.6"
+                                                           HorizontalAlignment="Center" />
                                             </StackPanel>
                                             <Button.ContextMenu>
                                                 <ContextMenu Style="{StaticResource LoginActionContextMenuStyle}">
