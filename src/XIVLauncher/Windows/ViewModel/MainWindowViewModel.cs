@@ -735,47 +735,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                     return false;
                 }
 
-                // 对齐官方 V3 启动器：如果 SessionID 为空但 TGT 存在，
-                // 在启动游戏前实时换取 session ticket，消除 10 分钟过期问题。
-                if (string.IsNullOrEmpty(oauthLogin.SessionID) && !string.IsNullOrEmpty(oauthLogin.TGT) && !string.IsNullOrEmpty(oauthLogin.Guid))
-                {
-                    try
-                    {
-                        var deviceProfile = oauthLogin.DeviceProfile ?? FakeMachineInfo.CreateSnapshot();
-                        var loginCtx      = new LoginChannelContext(deviceProfile);
-                        oauthLogin.SessionID = await loginCtx.GetSessionIdFromTgtAsync(oauthLogin.TGT, oauthLogin.Guid).ConfigureAwait(false);
-                        Log.Information("[MainWindow] 已通过 TGT 实时获取 session ticket: {SessionID}", oauthLogin.SessionID[..Math.Min(8, oauthLogin.SessionID.Length)]);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "[MainWindow] 通过 TGT 获取 session ticket 失败，登录可能已过期");
-                        CustomMessageBox.Show
-                        (
-                            "登录会话已过期，请重新登录",
-                            "XIVLauncherCN (Soil)",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Error,
-                            parentWindow: Window
-                        );
-                        return false;
-                    }
-                }
-
-                if (string.IsNullOrEmpty(oauthLogin.SessionID))
-                {
-                    Log.Error("[MainWindow] SessionID 为空且无法通过 TGT 获取，取消登录");
-                    CustomMessageBox.Show
-                    (
-                        "登录异常: SessionID 为空",
-                        "XIVLauncherCN (Soil)",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error,
-                        showOfficialLauncher: true,
-                        parentWindow: Window
-                    );
-                    return false;
-                }
-
                 using var process = await StartGameAndCompanionApp
                                     (
                                         gameLaunchContext,
@@ -1005,6 +964,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         SyncGameLaunchContextAreaFromAccount(gameLaunchContext);
 
+        if (!await EnsureFreshSessionIdAsync(gameLaunchContext).ConfigureAwait(false))
+            return null;
+
         var stopwatch = new Stopwatch();
         stopwatch.Start();
         var dalamudSession = App.Dalamud.CreateLauncher
@@ -1112,6 +1074,59 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         // 仅在切换账号或关闭启动器时才停止。
 
         return launched;
+    }
+
+    /// <summary>
+    ///     启动游戏前实时换取一张全新的 session ticket。
+    ///     ticket 单次有效且与登录时所连大区绑定，游戏外跨大区或进程重启后旧 ticket 会失效，
+    ///     因此每次启动都必须用持久 TGT 现取，而非复用上次启动缓存的值。
+    /// </summary>
+    private async Task<bool> EnsureFreshSessionIdAsync(GameLaunchContext gameLaunchContext)
+    {
+        var oauthLogin = gameLaunchContext.LoginResult.OAuthLogin;
+        if (oauthLogin == null)
+            return true;
+
+        if (!string.IsNullOrEmpty(oauthLogin.TGT) && !string.IsNullOrEmpty(oauthLogin.Guid))
+        {
+            try
+            {
+                var deviceProfile = oauthLogin.DeviceProfile ?? FakeMachineInfo.CreateSnapshot();
+                var loginCtx      = new LoginChannelContext(deviceProfile);
+                oauthLogin.SessionID = await loginCtx.GetSessionIdAsync(oauthLogin.TGT, oauthLogin.Guid).ConfigureAwait(false);
+                Log.Information("[MainWindow] 已通过 TGT 实时获取 session ticket: {SessionID}", oauthLogin.SessionID[..Math.Min(8, oauthLogin.SessionID.Length)]);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[MainWindow] 通过 TGT 获取 session ticket 失败，登录可能已过期");
+                CustomMessageBox.Show
+                (
+                    "登录会话已过期，请重新登录",
+                    "XIVLauncherCN (Soil)",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error,
+                    parentWindow: Window
+                );
+                return false;
+            }
+        }
+
+        if (string.IsNullOrEmpty(oauthLogin.SessionID))
+        {
+            Log.Error("[MainWindow] SessionID 为空且无法通过 TGT 获取，取消登录");
+            CustomMessageBox.Show
+            (
+                "登录异常: SessionID 为空",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error,
+                showOfficialLauncher: true,
+                parentWindow: Window
+            );
+            return false;
+        }
+
+        return true;
     }
 
     private void SyncGameLaunchContextAreaFromAccount(GameLaunchContext gameLaunchContext)

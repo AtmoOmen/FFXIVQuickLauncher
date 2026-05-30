@@ -259,6 +259,9 @@ public sealed class LoginChannelContext
         return (codeKey, bytes, qrCodeExpiration);
     }
 
+    /// <summary>
+    ///     使用 GAME_APP_ID 从已有 TGT 实时换取 session ticket
+    /// </summary>
     public async Task<string> GetSessionIdAsync(string tgt, string guid)
     {
         _ = await GetPromotionInfoAsync(tgt, appId: SdoInfos.APP_ID).ConfigureAwait(false);
@@ -268,15 +271,6 @@ public sealed class LoginChannelContext
     public async Task<string> GetDCTravelSessionIDAsync(string tgt, string guid)
     {
         _ = await GetPromotionInfoAsync(tgt, Links.DC_TRAVEL_PAGE_URL).ConfigureAwait(false);
-        return await SsoLoginAsync(tgt, guid).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    ///     使用 GAME_APP_ID 从已有 TGT 实时换取 session ticket
-    /// </summary>
-    public async Task<string> GetSessionIdFromTgtAsync(string tgt, string guid)
-    {
-        _ = await GetPromotionInfoAsync(tgt, appId: SdoInfos.APP_ID).ConfigureAwait(false);
         return await SsoLoginAsync(tgt, guid).ConfigureAwait(false);
     }
 

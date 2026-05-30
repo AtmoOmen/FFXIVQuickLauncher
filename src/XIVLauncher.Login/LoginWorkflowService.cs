@@ -246,7 +246,7 @@ public sealed class LoginWorkflowService
         if (!string.IsNullOrEmpty(oauth.TGT) && !string.IsNullOrEmpty(oauth.Guid))
         {
             var loginCtx = new LoginChannelContext(deviceProfile);
-            return await loginCtx.GetSessionIdFromTgtAsync(oauth.TGT, oauth.Guid).ConfigureAwait(false);
+            return await loginCtx.GetSessionIdAsync(oauth.TGT, oauth.Guid).ConfigureAwait(false);
         }
 
         return string.Empty;
