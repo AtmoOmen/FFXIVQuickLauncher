@@ -1,9 +1,6 @@
 using System.IO;
-using System.Linq;
-using NuGet.Versioning;
 using Velopack;
 using Velopack.Locators;
-using Velopack.Logging;
 using Velopack.Sources;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Support;
@@ -18,9 +15,33 @@ public sealed class UpdateOrchestratorTests
 )
 {
     [Fact]
-    public async Task CheckForUpdates_WithRealUrl_ReturnsUpdateInfoOrNull()
+    public async Task CheckForUpdates_WithRealUrl_DetectsDeltaUpdate()
     {
-        var locator = new TestVelopackLocator();
+        const string appId       = "XIVLauncherCN";
+        const string baseVersion = "2.1.9";
+
+        var packagesDir = Path.Combine(Path.GetTempPath(), "packages");
+
+        // 注入本地基准 full 包, 否则 Velopack 1.0 因找不到 delta 起点而禁用增量更新
+        var localPackage = new VelopackAsset
+        {
+            PackageId = appId,
+            Version   = SemanticVersion.Parse(baseVersion),
+            Type      = VelopackAssetType.Full,
+            FileName  = $"{appId}-{baseVersion}-full.nupkg"
+        };
+
+        var locator = new TestVelopackLocator
+        (
+            appId,
+            baseVersion,
+            packagesDir,
+            Path.GetTempPath(),
+            Path.GetTempPath(),
+            Path.Combine(Path.GetTempPath(), "Update.exe"),
+            "win",
+            localPackage: localPackage
+        );
         var options = new UpdateOptions
         {
             ExplicitChannel       = "win",
@@ -32,7 +53,7 @@ public sealed class UpdateOrchestratorTests
         var manager      = new UpdateManager(updateSource, options, locator);
 
         output.WriteLine($"Checking for updates from: {Links.LAUNCHER_DISTRIBUTE_BASE_URL}");
-        output.WriteLine($"Current version: {locator.CurrentVersion}");
+        output.WriteLine($"Current version: {locator.CurrentlyInstalledVersion}");
         output.WriteLine($"Channel: {options.ExplicitChannel}");
 
         var updateInfo = await manager.CheckForUpdatesAsync();
@@ -48,87 +69,43 @@ public sealed class UpdateOrchestratorTests
             output.WriteLine($"  Type: {updateInfo.TargetFullRelease.Type}");
             output.WriteLine($"  Size: {updateInfo.TargetFullRelease.Size:N0} bytes");
 
-            if (updateInfo.DeltasToTarget.Any())
+            if (updateInfo.DeltasToTarget.Length != 0)
             {
-                output.WriteLine($"  Delta packages available: {updateInfo.DeltasToTarget.Count()}");
-                foreach (var delta in updateInfo.DeltasToTarget)
-                {
-                    output.WriteLine($"    - {delta.FileName} ({delta.Size:N0} bytes)");
-                }
+                output.WriteLine($"  Delta packages available: {updateInfo.DeltasToTarget.Length}");
+                foreach (var delta in updateInfo.DeltasToTarget) output.WriteLine($"    - {delta.FileName} ({delta.Size:N0} bytes)");
             }
             else
-            {
                 output.WriteLine("  No delta packages available - will use full package");
-            }
         }
 
-        Assert.True(updateInfo == null || updateInfo.TargetFullRelease != null);
+        // feed 中存在比本地更新的版本, 应检测到更新且优先走增量包
+        Assert.NotNull(updateInfo);
+        Assert.NotNull(updateInfo.TargetFullRelease);
+        Assert.NotEmpty(updateInfo.DeltasToTarget);
+        Assert.All(updateInfo.DeltasToTarget, delta => Assert.Equal(VelopackAssetType.Delta, delta.Type));
     }
 
     [Fact]
     public async Task CheckForUpdates_WithInvalidUrl_ThrowsException()
     {
-        var locator = new TestVelopackLocator();
+        var locator = new TestVelopackLocator("XIVLauncherCN", "2.1.4", Path.Combine(Path.GetTempPath(), "packages"));
         var options = new UpdateOptions
         {
             ExplicitChannel       = "win",
             AllowVersionDowngrade = false
         };
 
-        var downloader   = new XLHttpClientFileDownloader();
-        var invalidUrl   = "https://invalid-url-that-does-not-exist.example.com";
-        var updateSource = new SimpleWebSource(invalidUrl, downloader);
-        var manager      = new UpdateManager(updateSource, options, locator);
+        var          downloader   = new XLHttpClientFileDownloader();
+        const string INVALID_URL  = "https://invalid-url-that-does-not-exist.example.com";
+        var          updateSource = new SimpleWebSource(INVALID_URL, downloader);
+        var          manager      = new UpdateManager(updateSource, options, locator);
 
-        output.WriteLine($"Attempting to check updates from invalid URL: {invalidUrl}");
+        output.WriteLine($"Attempting to check updates from invalid URL: {INVALID_URL}");
 
         var exception = await Assert.ThrowsAnyAsync<Exception>(async () => await manager.CheckForUpdatesAsync());
 
         output.WriteLine("Expected exception caught:");
         output.WriteLine($"  Type: {exception.GetType().Name}");
         output.WriteLine($"  Message: {exception.Message}");
-    }
-
-    private sealed class TestVelopackLocator : IVelopackLocator
-    {
-        public string          AppId                     => "XIVLauncherCN";
-        public string          RootAppDir                => Path.GetTempPath();
-        public string          UpdateExePath             => Path.Combine(Path.GetTempPath(), "Update.exe");
-        public string          CurrentBinaryDir          => Path.GetTempPath();
-        public string          PackagesDir               => Path.Combine(Path.GetTempPath(), "packages");
-        public string          AppContentDir             => Path.GetTempPath();
-        public string          AppTempDir                => Path.GetTempPath();
-        public string          ProcessExePath            => Environment.ProcessPath ?? string.Empty;
-        public string          ThisExeRelativePath       => "XIVLauncherCN.exe";
-        public uint            ProcessId                 => (uint)Environment.ProcessId;
-        public bool            IsPortable                => false;
-        public SemanticVersion CurrentVersion            => SemanticVersion.Parse("2.1.4");
-        public SemanticVersion CurrentlyInstalledVersion => SemanticVersion.Parse("2.1.4");
-        public string?         Channel                   => "win";
-        public VelopackAsset?  CurrentAsset              => null;
-        public IVelopackLogger Log                       => new NullLogger();
-
-        public VelopackAsset GetLatestLocalFullPackage()
-        {
-            return new VelopackAsset
-            {
-                PackageId = AppId,
-                Version   = CurrentVersion,
-                Type      = VelopackAssetType.Full,
-                FileName  = $"{AppId}-{CurrentVersion}-full.nupkg"
-            };
-        }
-
-        public string GetManifestPath(VelopackAsset asset) =>
-            Path.Combine(PackagesDir, $"{asset.FileName}.manifest");
-
-        public List<VelopackAsset> GetLocalPackages() => [];
-
-        public Guid? GetOrCreateStagedUserId() => Guid.NewGuid();
-
-        private sealed class NullLogger : IVelopackLogger
-        {
-            public void Log(VelopackLogLevel level, string? message, Exception? exception = null) { }
-        }
     }
 }

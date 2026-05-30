@@ -2,7 +2,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using NuGet.Versioning;
 using Velopack;
 using Velopack.Logging;
 using Velopack.Sources;
