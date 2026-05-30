@@ -21,4 +21,7 @@ public class DCTravelMigrationOrder
 
     [JsonPropertyName("createTime")]
     public string CreateTime { get; set; } = null!;
+
+    [JsonPropertyName("travelStatus")]
+    public int TravelStatus { get; set; }
 }

@@ -1,22 +1,19 @@
 using XIVLauncher.Account;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Login.Channels;
 
 namespace XIVLauncher.Login;
 
 public sealed class LoginWorkflowService
+(
+    AccountManager                 accountManager,
+    IWeGameTokenCaptureCoordinator weGameTokenCaptureCoordinator
+)
 {
-    private readonly AccountManager                     accountManager;
-    private readonly LoginClient                        loginClient = new();
-    private readonly SavedAccountLoginResolver          savedAccountLoginResolver;
-    private readonly NewAccountDeviceProfileCoordinator newAccountDeviceProfileCoordinator;
-
-    public LoginWorkflowService(AccountManager accountManager, IWeGameTokenCaptureCoordinator weGameTokenCaptureCoordinator)
-    {
-        this.accountManager                = accountManager;
-        savedAccountLoginResolver          = new(accountManager, weGameTokenCaptureCoordinator);
-        newAccountDeviceProfileCoordinator = new(accountManager);
-    }
+    private readonly LoginClient                        loginClient                        = new();
+    private readonly SavedAccountLoginResolver          savedAccountLoginResolver          = new(accountManager, weGameTokenCaptureCoordinator);
+    private readonly NewAccountDeviceProfileCoordinator newAccountDeviceProfileCoordinator = new(accountManager);
 
     public async Task<LoginWorkflowResult?> ExecuteAsync(LoginWorkflowRequest request)
     {
@@ -70,7 +67,7 @@ public sealed class LoginWorkflowService
 
         Func<Task<string>>? refreshGameSessionIdByQuickLoginFunc = null;
         var                 shouldShowQuickLoginDisclaimer       = false;
-        var                 isAccountPersisted                  = false;
+        var                 isAccountPersisted                   = false;
 
         if (loginResult.State == LoginState.Ok)
         {
@@ -78,14 +75,15 @@ public sealed class LoginWorkflowService
 
             if (accountToSave != null)
             {
-                isAccountPersisted            = true;
+                isAccountPersisted             = true;
                 shouldShowQuickLoginDisclaimer = accountToSave.QuickLoginEnabled && resolvedLoginState.SavedAccount?.QuickLoginEnabled != true;
 
                 if (accountToSave.AccountType == XIVAccountType.Sdo
                     && accountToSave.QuickLoginEnabled
                     && loginResult.OAuthLogin?.QuickLoginSecret is { Length: > 0 } autoLoginSessionKey)
                 {
-                    var refreshUsername = resolvedLoginState.Username;
+                    var refreshUsername     = resolvedLoginState.Username;
+                    var cachedDeviceProfile = deviceProfileSnapshot;
                     refreshGameSessionIdByQuickLoginFunc = async () =>
                     {
                         var newLoginResult = await loginClient.LoginBySessionKey
@@ -93,9 +91,9 @@ public sealed class LoginWorkflowService
                                                  refreshUsername,
                                                  autoLoginSessionKey,
                                                  request.LoginSessionRefreshSink,
-                                                 deviceProfileSnapshot
+                                                 cachedDeviceProfile
                                              ).ConfigureAwait(false);
-                        return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
+                        return await ResolveSessionIdFromResultAsync(newLoginResult, cachedDeviceProfile).ConfigureAwait(false);
                     };
                 }
                 else if (accountToSave.AccountType == XIVAccountType.WeGame
@@ -104,6 +102,7 @@ public sealed class LoginWorkflowService
                          && loginResult.OAuthLogin?.InputUserID is { Length: > 0 } inputUserId
                          && resolvedLoginState.Secret is { Length: > 0 } weGameToken)
                 {
+                    var cachedDeviceProfile = deviceProfileSnapshot;
                     refreshGameSessionIdByQuickLoginFunc = async () =>
                     {
                         var newLoginResult = await loginClient.LoginAsync
@@ -114,11 +113,11 @@ public sealed class LoginWorkflowService
                                                      Account                 = inputUserId,
                                                      Secret                  = weGameToken,
                                                      QuickLoginEnabled       = false,
-                                                     DeviceProfile           = deviceProfileSnapshot,
+                                                     DeviceProfile           = cachedDeviceProfile,
                                                      LoginSessionRefreshSink = request.LoginSessionRefreshSink
                                                  }
                                              ).ConfigureAwait(false);
-                        return newLoginResult.OAuthLogin?.SessionID ?? string.Empty;
+                        return await ResolveSessionIdFromResultAsync(newLoginResult, cachedDeviceProfile).ConfigureAwait(false);
                     };
                 }
 
@@ -127,10 +126,10 @@ public sealed class LoginWorkflowService
 
         return new LoginWorkflowResult
         {
-            GameLaunchContext                   = new GameLaunchContext(loginResult, resolvedLoginState.Area, request.LoginAreas),
-            IsAccountPersisted                  = isAccountPersisted,
-            ShouldShowQuickLoginDisclaimer      = shouldShowQuickLoginDisclaimer,
-            UsedSavedWeGameToken                = resolvedLoginState.RequestedLoginType == LoginType.WeGame && resolvedLoginState.UsedSavedCredential,
+            GameLaunchContext                    = new GameLaunchContext(loginResult, resolvedLoginState.Area, request.LoginAreas),
+            IsAccountPersisted                   = isAccountPersisted,
+            ShouldShowQuickLoginDisclaimer       = shouldShowQuickLoginDisclaimer,
+            UsedSavedWeGameToken                 = resolvedLoginState.RequestedLoginType == LoginType.WeGame && resolvedLoginState.UsedSavedCredential,
             RefreshGameSessionIdByQuickLoginFunc = refreshGameSessionIdByQuickLoginFunc
         };
     }
@@ -227,4 +226,26 @@ public sealed class LoginWorkflowService
         return accountToSave;
     }
 
+    /// <summary>
+    ///     从登录结果中解析 session ticket。
+    ///     如果 SessionID 为空但 TGT 存在（延迟模式），则通过 TGT 实时获取。
+    ///     用于 DC Travel 的 session 刷新回调。
+    /// </summary>
+    private static async Task<string> ResolveSessionIdFromResultAsync(LoginResult loginResult, DeviceProfileSnapshot deviceProfile)
+    {
+        var oauth = loginResult.OAuthLogin;
+        if (oauth == null)
+            return string.Empty;
+
+        if (!string.IsNullOrEmpty(oauth.SessionID))
+            return oauth.SessionID;
+
+        if (!string.IsNullOrEmpty(oauth.TGT) && !string.IsNullOrEmpty(oauth.Guid))
+        {
+            var loginCtx = new LoginChannelContext(deviceProfile);
+            return await loginCtx.GetSessionIdFromTgtAsync(oauth.TGT, oauth.Guid).ConfigureAwait(false);
+        }
+
+        return string.Empty;
+    }
 }

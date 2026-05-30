@@ -22,8 +22,7 @@ public sealed class SessionKeyLoginChannel
         try
         {
             context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt, guid);
-            var sessionId = await context.GetSessionIdAsync(tgt, guid).ConfigureAwait(false);
-            return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, newAutoLoginSessionKey, LoginType.QuickLogin);
+            return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, null, newAutoLoginSessionKey, LoginType.QuickLogin, tgt, guid, request.DeviceProfile);
         }
         catch (Exception ex)
         {

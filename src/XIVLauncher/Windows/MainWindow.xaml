@@ -86,6 +86,12 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
         </Style>
+        <Style x:Key="DashboardInfoCardStyle"
+               TargetType="{x:Type Border}">
+            <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.BackgroundDark}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </Window.Resources>
 
@@ -329,6 +335,31 @@
                                         <DataTrigger
                                             Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
                                             Value="1">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger
+                                            Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                            Value="4">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger
+                                            Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                            Value="5">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger
+                                            Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                            Value="6">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger
+                                            Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                            Value="7">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger
+                                            Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                            Value="8">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -641,137 +672,6 @@
                                                 </DataTemplate>
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
-
-                                        <ListBox x:Name="ServerSelection"
-                                                 ItemsSource="{Binding LoginPage.LoginAreas}"
-                                                 SelectedIndex="{Binding LoginPage.AreaIndex, Mode=OneWayToSource}"
-                                                 SelectedItem="{Binding LoginPage.Area}"
-                                                 SelectedValuePath="AreaID"
-                                                 Margin="0,0,0,10">
-                                            <ListBox.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <UniformGrid Rows="1" />
-                                                </ItemsPanelTemplate>
-                                            </ListBox.ItemsPanel>
-                                            <ListBox.ItemContainerStyle>
-                                                <Style TargetType="ListBoxItem">
-                                                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                                                    <Setter Property="Cursor" Value="Hand" />
-                                                    <Setter Property="Padding" Value="0" />
-                                                    <Setter Property="Margin" Value="2,0" />
-                                                    <Setter Property="Template">
-                                                        <Setter.Value>
-                                                            <ControlTemplate TargetType="ListBoxItem">
-                                                                <Grid>
-                                                                    <Border x:Name="Bg"
-                                                                            Background="Transparent"
-                                                                            CornerRadius="8"
-                                                                            BorderThickness="1"
-                                                                            BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" />
-                                                                    <Border x:Name="ActiveBg"
-                                                                            Background="{DynamicResource MaterialDesign.Brush.Primary}"
-                                                                            CornerRadius="8" Opacity="0" />
-                                                                    <TextBlock x:Name="Txt"
-                                                                               Text="{Binding AreaName}"
-                                                                               HorizontalAlignment="Center"
-                                                                               VerticalAlignment="Center"
-                                                                               FontSize="12" Padding="0,6"
-                                                                               Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
-                                                                </Grid>
-                                                                <ControlTemplate.Triggers>
-                                                                    <Trigger Property="IsSelected"
-                                                                             Value="True">
-                                                                        <Trigger.EnterActions>
-                                                                            <BeginStoryboard>
-                                                                                <Storyboard>
-                                                                                    <DoubleAnimation
-                                                                                        Storyboard.TargetName="ActiveBg"
-                                                                                        Storyboard.TargetProperty="Opacity"
-                                                                                        To="0.15"
-                                                                                        Duration="0:0:0.2">
-                                                                                        <DoubleAnimation.EasingFunction>
-                                                                                            <CubicEase
-                                                                                                EasingMode="EaseOut" />
-                                                                                        </DoubleAnimation.EasingFunction>
-                                                                                    </DoubleAnimation>
-                                                                                </Storyboard>
-                                                                            </BeginStoryboard>
-                                                                        </Trigger.EnterActions>
-                                                                        <Trigger.ExitActions>
-                                                                            <BeginStoryboard>
-                                                                                <Storyboard>
-                                                                                    <DoubleAnimation
-                                                                                        Storyboard.TargetName="ActiveBg"
-                                                                                        Storyboard.TargetProperty="Opacity"
-                                                                                        To="0"
-                                                                                        Duration="0:0:0.2">
-                                                                                        <DoubleAnimation.EasingFunction>
-                                                                                            <CubicEase
-                                                                                                EasingMode="EaseOut" />
-                                                                                        </DoubleAnimation.EasingFunction>
-                                                                                    </DoubleAnimation>
-                                                                                </Storyboard>
-                                                                            </BeginStoryboard>
-                                                                        </Trigger.ExitActions>
-                                                                        <Setter TargetName="Bg"
-                                                                                Property="BorderBrush"
-                                                                                Value="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                                                        <Setter TargetName="Txt"
-                                                                                Property="Foreground"
-                                                                                Value="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                                                        <Setter TargetName="Txt"
-                                                                                Property="FontWeight"
-                                                                                Value="SemiBold" />
-                                                                    </Trigger>
-                                                                    <MultiTrigger>
-                                                                        <MultiTrigger.Conditions>
-                                                                            <Condition
-                                                                                Property="IsMouseOver"
-                                                                                Value="True" />
-                                                                            <Condition
-                                                                                Property="IsSelected"
-                                                                                Value="False" />
-                                                                        </MultiTrigger.Conditions>
-                                                                        <MultiTrigger.EnterActions>
-                                                                            <BeginStoryboard>
-                                                                                <Storyboard>
-                                                                                    <DoubleAnimation
-                                                                                        Storyboard.TargetName="Bg"
-                                                                                        Storyboard.TargetProperty="Opacity"
-                                                                                        To="0.5"
-                                                                                        Duration="0:0:0.2">
-                                                                                        <DoubleAnimation.EasingFunction>
-                                                                                            <CubicEase
-                                                                                                EasingMode="EaseOut" />
-                                                                                        </DoubleAnimation.EasingFunction>
-                                                                                    </DoubleAnimation>
-                                                                                </Storyboard>
-                                                                            </BeginStoryboard>
-                                                                        </MultiTrigger.EnterActions>
-                                                                        <MultiTrigger.ExitActions>
-                                                                            <BeginStoryboard>
-                                                                                <Storyboard>
-                                                                                    <DoubleAnimation
-                                                                                        Storyboard.TargetName="Bg"
-                                                                                        Storyboard.TargetProperty="Opacity"
-                                                                                        To="1"
-                                                                                        Duration="0:0:0.2">
-                                                                                        <DoubleAnimation.EasingFunction>
-                                                                                            <CubicEase
-                                                                                                EasingMode="EaseOut" />
-                                                                                        </DoubleAnimation.EasingFunction>
-                                                                                    </DoubleAnimation>
-                                                                                </Storyboard>
-                                                                            </BeginStoryboard>
-                                                                        </MultiTrigger.ExitActions>
-                                                                    </MultiTrigger>
-                                                                </ControlTemplate.Triggers>
-                                                            </ControlTemplate>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </Style>
-                                            </ListBox.ItemContainerStyle>
-                                        </ListBox>
 
                                         <!--  Credentials  -->
                                         <TextBox x:Name="LoginUsername"
@@ -1450,9 +1350,572 @@
                                     </StackPanel>
                                 </Grid>
                             </materialDesign:TransitionerSlide>
+
+                            <!-- Dashboard：登录后主页面 -->
+                            <materialDesign:TransitionerSlide>
+                                <materialDesign:TransitionerSlide.ForwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.ForwardWipe>
+                                <materialDesign:TransitionerSlide.BackwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.BackwardWipe>
+
+                                <Grid Margin="24,0,24,0" VerticalAlignment="Center">
+                                    <StackPanel>
+                                        <Border Style="{StaticResource DashboardInfoCardStyle}" Margin="0,0,0,12">
+                                            <StackPanel Margin="12">
+                                                <TextBlock Text="当前账号" FontSize="11" Opacity="0.6" />
+                                                <TextBlock Text="{Binding DashboardPage.AccountName}" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <TextBlock Text="选择大区" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
+
+                                        <ListBox ItemsSource="{Binding DashboardPage.Areas}"
+                                                 SelectedItem="{Binding DashboardPage.SelectedArea}"
+                                                 Margin="0,0,0,14">
+                                            <ListBox.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Rows="1" />
+                                                </ItemsPanelTemplate>
+                                            </ListBox.ItemsPanel>
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                                    <Setter Property="Cursor" Value="Hand" />
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="Margin" Value="2,0" />
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <Grid>
+                                                                    <Border x:Name="Bg"
+                                                                            Background="Transparent"
+                                                                            CornerRadius="8"
+                                                                            BorderThickness="1"
+                                                                            BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                                                                    <Border x:Name="ActiveBg"
+                                                                            Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                                            CornerRadius="8" Opacity="0" />
+                                                                    <TextBlock x:Name="Txt"
+                                                                               Text="{Binding AreaName}"
+                                                                               HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center"
+                                                                               FontSize="12" Padding="0,6"
+                                                                               Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                                                </Grid>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Trigger.EnterActions>
+                                                                            <BeginStoryboard>
+                                                                                <Storyboard>
+                                                                                    <DoubleAnimation
+                                                                                        Storyboard.TargetName="ActiveBg"
+                                                                                        Storyboard.TargetProperty="Opacity"
+                                                                                        To="0.15" Duration="0:0:0.2">
+                                                                                        <DoubleAnimation.EasingFunction>
+                                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                                        </DoubleAnimation.EasingFunction>
+                                                                                    </DoubleAnimation>
+                                                                                </Storyboard>
+                                                                            </BeginStoryboard>
+                                                                        </Trigger.EnterActions>
+                                                                        <Trigger.ExitActions>
+                                                                            <BeginStoryboard>
+                                                                                <Storyboard>
+                                                                                    <DoubleAnimation
+                                                                                        Storyboard.TargetName="ActiveBg"
+                                                                                        Storyboard.TargetProperty="Opacity"
+                                                                                        To="0" Duration="0:0:0.2">
+                                                                                        <DoubleAnimation.EasingFunction>
+                                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                                        </DoubleAnimation.EasingFunction>
+                                                                                    </DoubleAnimation>
+                                                                                </Storyboard>
+                                                                            </BeginStoryboard>
+                                                                        </Trigger.ExitActions>
+                                                                        <Setter TargetName="Bg" Property="BorderBrush"
+                                                                                Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                                        <Setter TargetName="Txt" Property="Foreground"
+                                                                                Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                                        <Setter TargetName="Txt" Property="FontWeight" Value="SemiBold" />
+                                                                    </Trigger>
+                                                                    <MultiTrigger>
+                                                                        <MultiTrigger.Conditions>
+                                                                            <Condition Property="IsMouseOver" Value="True" />
+                                                                            <Condition Property="IsSelected" Value="False" />
+                                                                        </MultiTrigger.Conditions>
+                                                                        <MultiTrigger.EnterActions>
+                                                                            <BeginStoryboard>
+                                                                                <Storyboard>
+                                                                                    <DoubleAnimation
+                                                                                        Storyboard.TargetName="Bg"
+                                                                                        Storyboard.TargetProperty="Opacity"
+                                                                                        To="0.5" Duration="0:0:0.2">
+                                                                                        <DoubleAnimation.EasingFunction>
+                                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                                        </DoubleAnimation.EasingFunction>
+                                                                                    </DoubleAnimation>
+                                                                                </Storyboard>
+                                                                            </BeginStoryboard>
+                                                                        </MultiTrigger.EnterActions>
+                                                                        <MultiTrigger.ExitActions>
+                                                                            <BeginStoryboard>
+                                                                                <Storyboard>
+                                                                                    <DoubleAnimation
+                                                                                        Storyboard.TargetName="Bg"
+                                                                                        Storyboard.TargetProperty="Opacity"
+                                                                                        To="1" Duration="0:0:0.2">
+                                                                                        <DoubleAnimation.EasingFunction>
+                                                                                            <CubicEase EasingMode="EaseOut" />
+                                                                                        </DoubleAnimation.EasingFunction>
+                                                                                    </DoubleAnimation>
+                                                                                </Storyboard>
+                                                                            </BeginStoryboard>
+                                                                        </MultiTrigger.ExitActions>
+                                                                    </MultiTrigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                        </ListBox>
+
+                                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                                materialDesign:ButtonAssist.CornerRadius="16"
+                                                Height="48"
+                                                FontSize="16"
+                                                FontWeight="SemiBold"
+                                                Command="{Binding DashboardPage.StartGameCommand}"
+                                                Margin="0,0,0,8">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Play" Width="20" Height="20" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="启动游戏" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="无 Dalamud 启动"
+                                                              Command="{Binding DashboardPage.StartGameNoDalamudCommand}" />
+                                                    <MenuItem Header="禁用插件启动"
+                                                              Command="{Binding DashboardPage.StartGameNoPluginsCommand}" />
+                                                    <MenuItem Header="禁用第三方插件启动"
+                                                              Command="{Binding DashboardPage.StartGameNoThirdCommand}" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                        </Button>
+
+                                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                materialDesign:ButtonAssist.CornerRadius="16"
+                                                Height="36"
+                                                FontSize="12"
+                                                Command="{Binding DashboardPage.SwitchAccountCommand}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="AccountSwitch" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="切换账号" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </materialDesign:TransitionerSlide>
+
+                            <!-- DC Travel：超域传送页面 -->
+                            <materialDesign:TransitionerSlide>
+                                <materialDesign:TransitionerSlide.ForwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.ForwardWipe>
+                                <materialDesign:TransitionerSlide.BackwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.BackwardWipe>
+
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <Grid Margin="16,0,16,0" VerticalAlignment="Center">
+                                        <StackPanel>
+                                            <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                      materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                      materialDesign:HintAssist.Hint="源大区"
+                                                      ItemsSource="{Binding DCTravelPage.SourceAreas}"
+                                                      SelectedItem="{Binding DCTravelPage.SelectedSourceArea}"
+                                                      DisplayMemberPath="AreaName"
+                                                      Margin="0,0,0,8" />
+
+                                            <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                      materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                      materialDesign:HintAssist.Hint="{Binding DCTravelPage.CharacterHint}"
+                                                      ItemsSource="{Binding DCTravelPage.Characters}"
+                                                      SelectedItem="{Binding DCTravelPage.SelectedCharacter}"
+                                                      DisplayMemberPath="Name"
+                                                      IsEnabled="{Binding DCTravelPage.IsCharacterEnabled}"
+                                                      Visibility="{Binding DCTravelPage.IsCharacterVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                      Margin="0,0,0,16" />
+
+                                            <Border Height="1" Background="{DynamicResource MaterialDesign.Brush.ForegroundLight}" Opacity="0.15"
+                                                    Visibility="{Binding DCTravelPage.IsCharacterVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                    Margin="0,0,0,16" />
+
+                                            <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                      materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                      materialDesign:HintAssist.Hint="目标大区"
+                                                      ItemsSource="{Binding DCTravelPage.TargetAreas}"
+                                                      SelectedItem="{Binding DCTravelPage.SelectedTargetArea}"
+                                                      Visibility="{Binding DCTravelPage.IsTargetAreaVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                      Margin="0,0,0,8">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                                <Ellipse.Style>
+                                                                    <Style TargetType="Ellipse">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding State}" Value="0">
+                                                                                <Setter Property="Fill" Value="MediumSeaGreen" />
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding State}" Value="1">
+                                                                                <Setter Property="Fill" Value="DarkOrange" />
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding State}" Value="2">
+                                                                                <Setter Property="Fill" Value="IndianRed" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                        <Setter Property="Fill" Value="IndianRed" />
+                                                                    </Style>
+                                                                </Ellipse.Style>
+                                                            </Ellipse>
+                                                            <TextBlock Text="{Binding AreaName}" VerticalAlignment="Center" />
+                                                            <TextBlock Margin="6,0,0,0" FontSize="11" Opacity="0.7" VerticalAlignment="Center">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding State}" Value="0">
+                                                                                <Setter Property="Text" Value="通畅" />
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding State}" Value="1">
+                                                                                <Setter Property="Text" Value="热门" />
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding State}" Value="2">
+                                                                                <Setter Property="Text" Value="火爆" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                        <Setter Property="Text" Value="繁忙" />
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+
+                                            <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                      materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                      materialDesign:HintAssist.Hint="目标服务器"
+                                                      ItemsSource="{Binding DCTravelPage.TargetGroups}"
+                                                      SelectedItem="{Binding DCTravelPage.SelectedTargetGroup}"
+                                                      Visibility="{Binding DCTravelPage.IsTargetGroupVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                      Margin="0,0,0,12">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Ellipse Width="8" Height="8" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                                <Ellipse.Style>
+                                                                    <Style TargetType="Ellipse">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding QueueTime}" Value="{x:Null}">
+                                                                                <Setter Property="Fill" Value="LightSlateGray" />
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding QueueTime}" Value="0">
+                                                                                <Setter Property="Fill" Value="MediumSeaGreen" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                        <Setter Property="Fill" Value="IndianRed" />
+                                                                    </Style>
+                                                                </Ellipse.Style>
+                                                            </Ellipse>
+                                                            <TextBlock Text="{Binding GroupName}" VerticalAlignment="Center" />
+                                                            <TextBlock Margin="6,0,0,0" FontSize="11" Opacity="0.7" VerticalAlignment="Center">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding QueueTime}" Value="{x:Null}">
+                                                                                <Setter Property="Text" Value="读取中" />
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding QueueTime}" Value="0">
+                                                                                <Setter Property="Text" Value="通畅" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                        <Setter Property="Text" Value="繁忙" />
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+
+                                            <Grid Margin="0,0,0,12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="8" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Button Grid.Column="0"
+                                                        Style="{StaticResource MaterialDesignRaisedButton}"
+                                                        materialDesign:ButtonAssist.CornerRadius="16"
+                                                        Height="36" FontSize="12"
+                                                        Command="{Binding DCTravelPage.TravelOrderCommand}"
+                                                        IsEnabled="{Binding DCTravelPage.CanTravelOrder}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="Rocket" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                        <TextBlock Text="超域旅行" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Grid.Column="2"
+                                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                        materialDesign:ButtonAssist.CornerRadius="16"
+                                                        Height="36" FontSize="12"
+                                                        Command="{Binding DCTravelPage.OpenHistoryCommand}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="History" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                        <TextBlock Text="历史" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </Grid>
+
+                                            <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                                    Command="{Binding DCTravelPage.BackToDashboardCommand}"
+                                                    Margin="0,0,0,4" Height="24" Padding="8,0"
+                                                    HorizontalAlignment="Center"
+                                                    Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="ArrowLeft" Width="12" Height="12" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="返回" FontSize="11" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </ScrollViewer>
+                            </materialDesign:TransitionerSlide>
+
+                            <!-- DC Travel 历史记录 -->
+                            <materialDesign:TransitionerSlide>
+                                <materialDesign:TransitionerSlide.ForwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.ForwardWipe>
+                                <materialDesign:TransitionerSlide.BackwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.BackwardWipe>
+
+                                <Grid Margin="20,0,20,0" VerticalAlignment="Center">
+                                    <StackPanel>
+                                        <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                  materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                  materialDesign:HintAssist.Hint="选择订单"
+                                                  ItemsSource="{Binding DCTravelPage.MigrationOrders}"
+                                                  SelectedItem="{Binding DCTravelPage.SelectedOrder}"
+                                                  Margin="0,0,0,12">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock>
+                                                        <TextBlock.Text>
+                                                            <MultiBinding StringFormat="{}{0}  |  {1}">
+                                                                <Binding Path="GroupName" />
+                                                                <Binding Path="CreateTime" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="8" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                                    materialDesign:ButtonAssist.CornerRadius="16"
+                                                    Height="36" FontSize="12"
+                                                    Command="{Binding DCTravelPage.TravelBackCommand}"
+                                                    IsEnabled="{Binding DCTravelPage.IsNotLoading}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="ArrowLeftBold" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="超域返回" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Grid.Column="2"
+                                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                    materialDesign:ButtonAssist.CornerRadius="16"
+                                                    Height="36" FontSize="12"
+                                                    Command="{Binding DCTravelPage.RefreshOrdersCommand}"
+                                                    IsEnabled="{Binding DCTravelPage.IsNotLoading}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="刷新" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+
+                                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                                Command="{Binding DCTravelPage.BackToTravelCommand}"
+                                                Margin="0,0,0,4" Height="24" Padding="8,0"
+                                                HorizontalAlignment="Center"
+                                                Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="ArrowLeft" Width="12" Height="12" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="返回" FontSize="11" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </materialDesign:TransitionerSlide>
+
+                            <!-- DC Travel 传送进度 -->
+                            <materialDesign:TransitionerSlide>
+                                <materialDesign:TransitionerSlide.ForwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.ForwardWipe>
+                                <materialDesign:TransitionerSlide.BackwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.BackwardWipe>
+
+                                <Grid Margin="24,0,24,0" VerticalAlignment="Center">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,20" Width="80" Height="80" HorizontalAlignment="Center">
+                                            <Ellipse Fill="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" Width="48" Height="48">
+                                                <Ellipse.Triggers>
+                                                    <EventTrigger RoutedEvent="Loaded">
+                                                        <BeginStoryboard>
+                                                            <Storyboard RepeatBehavior="Forever">
+                                                                <DoubleAnimation Storyboard.TargetProperty="Width"
+                                                                                 From="48" To="80" Duration="0:0:1.5"
+                                                                                 AutoReverse="True" />
+                                                                <DoubleAnimation Storyboard.TargetProperty="Height"
+                                                                                 From="48" To="80" Duration="0:0:1.5"
+                                                                                 AutoReverse="True" />
+                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                 From="1" To="0.35" Duration="0:0:1.5"
+                                                                                 AutoReverse="True" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </EventTrigger>
+                                                </Ellipse.Triggers>
+                                            </Ellipse>
+                                            <materialDesign:PackIcon Kind="Rocket" Width="24" Height="24"
+                                                                     HorizontalAlignment="Center"
+                                                                     VerticalAlignment="Center"
+                                                                     Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                                        </Grid>
+
+                                        <TextBlock Text="{Binding DCTravelPage.TravelProgressText}"
+                                                   FontSize="14"
+                                                   HorizontalAlignment="Center"
+                                                   TextAlignment="Center"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,20" />
+
+                                        <Button Content="返回"
+                                                Command="{Binding DCTravelPage.ReturnFromProgressCommand}"
+                                                materialDesign:ButtonAssist.CornerRadius="16"
+                                                HorizontalAlignment="Center"
+                                                Width="120">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DCTravelPage.IsTravelInProgress}" Value="False">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </materialDesign:TransitionerSlide>
+
+                            <!-- DC Travel 超域返回 -->
+                            <materialDesign:TransitionerSlide>
+                                <materialDesign:TransitionerSlide.ForwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.ForwardWipe>
+                                <materialDesign:TransitionerSlide.BackwardWipe>
+                                    <transitions:StableFadeWipe />
+                                </materialDesign:TransitionerSlide.BackwardWipe>
+
+                                <Grid Margin="20,0,20,0" VerticalAlignment="Center">
+                                    <StackPanel>
+                                        <TextBlock Text="超域返回" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+                                        <Border Style="{StaticResource DashboardInfoCardStyle}" Padding="10" Margin="0,0,0,12">
+                                            <StackPanel>
+                                                <TextBlock Text="返回订单" FontSize="11" Opacity="0.6" />
+                                                <TextBlock Text="{Binding DCTravelPage.ReturnOrderInfo}" FontSize="13" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <TextBlock Text="选择当前所在大区与服务器" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
+
+                                        <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                  materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                  materialDesign:HintAssist.Hint="当前大区"
+                                                  ItemsSource="{Binding DCTravelPage.ReturnSourceAreas}"
+                                                  SelectedItem="{Binding DCTravelPage.ReturnSelectedSourceArea}"
+                                                  DisplayMemberPath="AreaName"
+                                                  Margin="0,0,0,8" />
+
+                                        <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                  materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                                                  materialDesign:HintAssist.Hint="当前服务器"
+                                                  ItemsSource="{Binding DCTravelPage.ReturnCurrentGroups}"
+                                                  SelectedItem="{Binding DCTravelPage.ReturnSelectedCurrentGroup}"
+                                                  DisplayMemberPath="GroupName"
+                                                  Margin="0,0,0,16" />
+
+                                        <Grid Margin="0,0,0,12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="8" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                                    materialDesign:ButtonAssist.CornerRadius="16"
+                                                    Height="36" FontSize="12"
+                                                    Command="{Binding DCTravelPage.ConfirmTravelBackCommand}"
+                                                    IsEnabled="{Binding DCTravelPage.IsNotLoading}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="ArrowLeftBold" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="确认" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Grid.Column="2"
+                                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                                    materialDesign:ButtonAssist.CornerRadius="16"
+                                                    Height="36" FontSize="12"
+                                                    Command="{Binding DCTravelPage.CancelReturnCommand}">
+                                                <TextBlock Text="取消" VerticalAlignment="Center" />
+                                            </Button>
+                                        </Grid>
+
+                                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                                Command="{Binding DCTravelPage.CancelReturnCommand}"
+                                                Margin="0,0,0,4" Height="24" Padding="8,0"
+                                                HorizontalAlignment="Center"
+                                                Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="ArrowLeft" Width="12" Height="12" Margin="0,0,4,0" VerticalAlignment="Center" />
+                                                <TextBlock Text="返回" FontSize="11" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </materialDesign:TransitionerSlide>
                         </materialDesign:Transitioner>
 
-                        <!-- 快捷入口 -->
+                        <!-- 快捷入口（仅 Dashboard 显示） -->
                         <StackPanel Grid.Row="2" Margin="16,0,16,12">
                             <StackPanel.Style>
                                 <Style TargetType="StackPanel">
@@ -1460,7 +1923,7 @@
                                     <Style.Triggers>
                                         <DataTrigger
                                             Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
-                                            Value="1">
+                                            Value="4">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -1479,10 +1942,10 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
-                                <!-- 超域传送 -->
+                                <!-- 超域传送（Dashboard 内跳转到 DC Travel 页面） -->
                                 <Button Grid.Row="0" Grid.Column="0"
                                         Style="{StaticResource QuickLinkButtonStyle}"
-                                        Click="DCTravelPageButton_OnClick">
+                                        Command="{Binding DashboardPage.OpenDCTravelCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="Rocket" Width="14" Height="14"
                                                                  Margin="0,0,4,0" VerticalAlignment="Center"

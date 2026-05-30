@@ -225,7 +225,10 @@ public partial class DCTravelClient
             if (!int.TryParse(orderObject["travelStatus"]?.ToString(), out var travelStatus))
                 continue;
 
-            if (migrationType != 4 || travelStatus != 1 || migrationStatus != 5)
+            if (migrationType != 4 || migrationStatus != 5)
+                continue;
+
+            if (travelStatus is < 0 or > 1)
                 continue;
 
             if (!int.TryParse(orderObject["groupId"]?.ToString(), out var groupId))
@@ -249,12 +252,13 @@ public partial class DCTravelClient
             (
                 new DCTravelMigrationOrder
                 {
-                    OrderID    = orderId,
-                    ContentID  = roleId,
-                    GroupID    = groupId,
-                    GroupCode  = groupCode,
-                    GroupName  = groupName,
-                    CreateTime = createTime
+                    OrderID      = orderId,
+                    ContentID    = roleId,
+                    GroupID      = groupId,
+                    GroupCode    = groupCode,
+                    GroupName    = groupName,
+                    CreateTime   = createTime,
+                    TravelStatus = travelStatus
                 }
             );
         }

@@ -35,21 +35,27 @@ public sealed class LoginChannelContext
 
     public static LoginResult BuildOkLoginResult
     (
-        string    account,
-        string    sid,
-        string    sessionID,
-        string?   autoLoginSessionKey,
-        LoginType loginType
+        string                 account,
+        string                 sid,
+        string?                sessionID,
+        string?                autoLoginSessionKey,
+        LoginType              loginType,
+        string?                tgt           = null,
+        string?                guid          = null,
+        DeviceProfileSnapshot? deviceProfile = null
     )
     {
         var oath = new OAuthLoginResult
         {
-            SessionID           = sessionID,
-            InputUserID         = account,
-            SndaID              = sid,
-            QuickLoginSecret    = autoLoginSessionKey,
-            MaxExpansion        = FFXIV.MAX_EXPANSION,
-            LoginType           = loginType
+            SessionID        = sessionID ?? string.Empty,
+            InputUserID      = account,
+            SndaID           = sid,
+            QuickLoginSecret = autoLoginSessionKey,
+            MaxExpansion     = FFXIV.MAX_EXPANSION,
+            LoginType        = loginType,
+            TGT              = tgt,
+            Guid             = guid,
+            DeviceProfile    = deviceProfile
         };
 
         return new LoginResult
@@ -64,7 +70,7 @@ public sealed class LoginChannelContext
         string       endPoint,
         List<string> paras,
         string?      tgt   = null,
-        string       appId = SdoInfos.APP_ID
+        string       appId = SdoInfos.LAUNCHER_APP_ID
     ) =>
         GetJsonAsSdoClient(endPoint, paras, tgt, appId);
 
@@ -253,7 +259,7 @@ public sealed class LoginChannelContext
 
     public async Task<string> GetSessionIdAsync(string tgt, string guid)
     {
-        _ = await GetPromotionInfoAsync(tgt).ConfigureAwait(false);
+        _ = await GetPromotionInfoAsync(tgt, appId: SdoInfos.APP_ID).ConfigureAwait(false);
         return await SsoLoginAsync(tgt, guid).ConfigureAwait(false);
     }
 
@@ -263,12 +269,18 @@ public sealed class LoginChannelContext
         return await SsoLoginAsync(tgt, guid).ConfigureAwait(false);
     }
 
+    /// <summary>
+    ///     使用 GAME_APP_ID 从已有 TGT 实时换取 session ticket
+    /// </summary>
+    public async Task<string> GetSessionIdFromTgtAsync(string tgt, string guid)
+    {
+        _ = await GetPromotionInfoAsync(tgt, appId: SdoInfos.APP_ID).ConfigureAwait(false);
+        return await SsoLoginAsync(tgt, guid).ConfigureAwait(false);
+    }
+
     public void BindLoginSessionRefresh(ILoginSessionRefreshSink? loginSessionRefreshSink, string tgt, string guid)
     {
-        if (loginSessionRefreshSink == null)
-            return;
-
-        loginSessionRefreshSink.Bind
+        loginSessionRefreshSink?.Bind
         (
             new LoginSessionRefreshContext
             {
@@ -306,7 +318,7 @@ public sealed class LoginChannelContext
         string                endPoint,
         IReadOnlyList<string> paras,
         string?               tgt   = null,
-        string                appId = SdoInfos.APP_ID
+        string                appId = SdoInfos.LAUNCHER_APP_ID
     )
     {
         using var request = GetSdoHttpRequestMessage(method, endPoint, paras, tgt, appId);
@@ -319,7 +331,7 @@ public sealed class LoginChannelContext
         string                endPoint,
         IReadOnlyList<string> paras,
         string?               tgt   = null,
-        string                appId = SdoInfos.APP_ID
+        string                appId = SdoInfos.LAUNCHER_APP_ID
     )
     {
         var request = new HttpRequestMessage(method, BuildSdoRequestUri(endPoint, paras, appId));
@@ -372,7 +384,7 @@ public sealed class LoginChannelContext
         );
 
         var casDomain   = Volatile.Read(ref casDomainMode) == 0 ? SdoInfos.GLOBAL_CAS_DOMAIN : SdoInfos.FALLBACK_CAS_DOMAIN;
-        var requestPath = endPoint.StartsWith("/", StringComparison.Ordinal) ? endPoint : $"/authen/{endPoint}";
+        var requestPath = endPoint.StartsWith('/') ? endPoint : $"/authen/{endPoint}";
         var queryString = string.Join("&", allParas);
 
         return new UriBuilder(Uri.UriSchemeHttps, casDomain)
@@ -405,7 +417,7 @@ public sealed class LoginChannelContext
         string                endPoint,
         IReadOnlyList<string> paras,
         string?               tgt   = null,
-        string                appId = SdoInfos.APP_ID
+        string                appId = SdoInfos.LAUNCHER_APP_ID
     )
     {
         Exception? lastException = null;
@@ -440,22 +452,22 @@ public sealed class LoginChannelContext
         return true;
     }
 
-    private async Task<string> SsoLoginAsync(string tgt, string guid)
+    private async Task<string> SsoLoginAsync(string tgt, string guid, string appId = SdoInfos.APP_ID)
     {
-        var result = await GetJsonAsSdoClient("ssoLogin.json", [$"tgt={tgt}", $"guid={guid}"], tgt).ConfigureAwait(false);
+        var result = await GetJsonAsSdoClient("ssoLogin.json", [$"tgt={tgt}", $"guid={guid}"], tgt, appId).ConfigureAwait(false);
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
         return result.Data.Ticket;
     }
 
-    private async Task<LoginResponse> GetPromotionInfoAsync(string tgt, string? serviceUrl = null)
+    private async Task<LoginResponse> GetPromotionInfoAsync(string tgt, string? serviceUrl = null, string appId = SdoInfos.APP_ID)
     {
         var paras = new List<string> { $"tgt={tgt}" };
         if (serviceUrl != null)
             paras.Add($"serviceUrl={serviceUrl}");
 
-        var result = await GetJsonAsSdoClient("getPromotionInfo.json", paras, tgt).ConfigureAwait(false);
+        var result = await GetJsonAsSdoClient("getPromotionInfo.json", paras, tgt, appId).ConfigureAwait(false);
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
 

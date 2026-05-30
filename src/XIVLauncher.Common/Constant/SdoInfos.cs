@@ -2,6 +2,10 @@
 
 public static class SdoInfos
 {
+    // 启动器用
+    public const string LAUNCHER_APP_ID = "791000814";
+    
+    // 原来的老启动器, 现在用做游戏登录等各种操作鉴权
     public const string APP_ID = "100001900";
 
     public const string CDN_KEY = "EKUWRI5KXXAIDlQ0mBNLa7XkjU1JNFuL";
@@ -11,9 +15,7 @@ public static class SdoInfos
     public const string FALLBACK_CAS_DOMAIN = "n1.cas.sdo.com";
 
     public const string BRANCH_ID = "8847";
-
-    public const string DOWNLOAD_CONFIG_BASE_URL = "https://ff.autopatch.sdo.com/v3launcher";
-
+    
     public const string CONTENT_CONFIG_BASE_URL = "https://v3launcher.jijiagames.com/v3launcher";
     
     public const string REMOTE_VERSION_URL = $"{CONTENT_CONFIG_BASE_URL}/build/ver2data/{APP_ID}/{BRANCH_ID}/-1/ver2.dat";

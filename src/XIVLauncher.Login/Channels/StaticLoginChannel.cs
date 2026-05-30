@@ -38,8 +38,7 @@ public sealed class StaticLoginChannel
         var tgt    = result.Data.Tgt;
 
         context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt, guid);
-        var sessionId = await context.GetSessionIdAsync(tgt, guid).ConfigureAwait(false);
-        return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, sessionId, null, LoginType.Static);
+        return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, null, null, LoginType.Static, tgt, guid, request.DeviceProfile);
     }
 
     private async Task<LoginResponse> LoginByStaticCaptchaAsync(LoginRequest request, string guid, LoginResponse result)
@@ -158,10 +157,7 @@ public sealed class StaticLoginChannel
     {
         var builder = new StringBuilder();
 
-        if (!string.IsNullOrWhiteSpace(result.Data.SafePhoneTip))
-            builder.AppendLine(result.Data.SafePhoneTip);
-        else
-            builder.AppendLine("当前登录需要通过安全手机短信完成验证。");
+        builder.AppendLine(!string.IsNullOrWhiteSpace(result.Data.SafePhoneTip) ? result.Data.SafePhoneTip : "当前登录需要通过安全手机短信完成验证。");
 
         if (!string.IsNullOrWhiteSpace(result.Data.MobileMask))
             builder.AppendLine($"验证码将发送至 {result.Data.MobileMask}。");

@@ -11,6 +11,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Serilog;
 using XIVLauncher.Account;
+using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
@@ -19,6 +20,7 @@ using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.GamePatchV3.Update;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Channels;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Windows.Services;
@@ -38,6 +40,10 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     public LoginPageViewModel LoginPage { get; }
 
     public InjectPageViewModel InjectPage { get; }
+
+    public DashboardViewModel DashboardPage { get; }
+
+    public DCTravelViewModel DCTravelPage { get; }
 
     public ICommand AccountSwitcherButtonCommand { get; }
 
@@ -61,11 +67,12 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private          GameClientFileTaskService GameClientFileTaskService { get; }
     private readonly LoginWorkflowService      loginWorkflowService;
     private readonly SyncCommand               refreshDalamudInfoCommand;
-    private          CancellationTokenSource?  LoginCancelSource     { get; set; }
-    private          bool                      IsLoginCanceledByUser { get; set; }
+    private          CancellationTokenSource?  LoginCancelSource        { get; set; }
+    private          bool                      IsLoginCanceledByUser    { get; set; }
     private          LoginCardType?            LoginCardAfterCompletion { get; set; }
-    
+
     private GameLaunchContext? currentGameLaunchContext;
+    private bool               isStartingGameFromDashboard;
     private bool               isWeGameRetryingAfterThirdPartyFailure;
 
     public MainWindowViewModel(Window window)
@@ -144,6 +151,25 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         );
         LoginPage.RefreshCommandStates();
         InjectPage.RefreshCommandStates();
+
+        DashboardPage = new DashboardViewModel
+        (
+            HandleStartGameFromDashboard,
+            HandleSwitchAccount,
+            HandleOpenDCTravel,
+            HandleSetAreaFromDashboard
+        );
+        DCTravelPage = new DCTravelViewModel
+        (
+            () => SwitchCard(LoginCardType.Dashboard),
+            () => SwitchCard(LoginCardType.DCTravelHistory),
+            () => SwitchCard(LoginCardType.DCTravel),
+            () => SwitchCard(LoginCardType.DCTravelProgress),
+            () => SwitchCard(LoginCardType.DCTravelReturn),
+            HandleSetCurrentAreaFromDCTravel,
+            () => DcTravelRuntimeService.Client
+        );
+
         UpdateDalamudStatusText();
         App.Dalamud.StatusChanged += DalamudUpdaterStatusChanged;
         Settings.SettingsSaved += (_, _) =>
@@ -366,7 +392,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             DcTravelRuntimeService.ConfigureQuickLoginRefresh(workflowResult.RefreshGameSessionIdByQuickLoginFunc);
 
         gameLaunchContext.DcTravelPort = gameLaunchContext.LoginResult.State == LoginState.Ok
-                                             ? await DcTravelRuntimeService.StartAsync(App.Settings.DalamudEnabled, resolvedLoginTypeShouldSkipDcTravel(loginType)).ConfigureAwait(false)
+                                             ? await DcTravelRuntimeService.StartAsync(true, false).ConfigureAwait(false)
                                              : 0;
 
         if (await ProcessLoginResultAsync(gameLaunchContext, action).ConfigureAwait(false))
@@ -535,7 +561,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         msgbox.Show();
     }
 
-    private async Task ClearInvalidSavedWeGameTokenAsync(Exception ex, LoginType loginType, string username, bool usedSavedWeGameToken)
+    private async Task ClearInvalidSavedWeGameTokenAsync
+    (
+        Exception ex,
+        LoginType loginType,
+        string    username,
+        bool      usedSavedWeGameToken
+    )
     {
         if (ex is not LoginException)
             return;
@@ -550,6 +582,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         if (account?.WeGameQuickLoginSecret == null)
             return;
+
+        await Task.Delay(1);
 
         account.WeGameQuickLoginSecret = null;
         AccountManager.Save(account);
@@ -650,6 +684,25 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         if (CustomMessageBox.AssertOrShowError(loginResult.State == LoginState.Ok, "ProcessLoginResultAsync: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: Window))
             return false;
 
+        // 对齐官方 V3 启动器：首次登录成功后进入 Dashboard，不立即启动游戏。
+        // 从 Dashboard 点击「启动游戏」时 isStartingGameFromDashboard 为 true，直接走下面的启动流程。
+        if (!isStartingGameFromDashboard)
+        {
+            // 首次登录成功，进入 Dashboard。
+            // 设置 LoginCardAfterCompletion 防止 StartLogin 的 finally 块切回 MainPage。
+            LoginCardAfterCompletion = LoginCardType.Dashboard;
+            Window.Dispatcher.Invoke
+            (() =>
+                {
+                    UpdateDashboardInfo(loginResult);
+                    SwitchCard(LoginCardType.Dashboard, false);
+                }
+            );
+            return true;
+        }
+
+        isStartingGameFromDashboard = false;
+
         Hide();
 
         while (true)
@@ -660,12 +713,53 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             {
                 var oauthLogin = loginResult.OAuthLogin;
 
-                if (oauthLogin == null || string.IsNullOrEmpty(oauthLogin.SessionID) || string.IsNullOrEmpty(oauthLogin.SndaID))
+                if (oauthLogin == null || string.IsNullOrEmpty(oauthLogin.SndaID))
                 {
-                    Log.Error("[MainWindow] SID 或 SNDAID 为空，取消登录");
+                    Log.Error("[MainWindow] SNDAID 为空，取消登录");
                     CustomMessageBox.Show
                     (
-                        "登录异常: SID 或 SNDAID 为空",
+                        "登录异常: SNDAID 为空",
+                        "XIVLauncherCN (Soil)",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error,
+                        showOfficialLauncher: true,
+                        parentWindow: Window
+                    );
+                    return false;
+                }
+
+                // 对齐官方 V3 启动器：如果 SessionID 为空但 TGT 存在，
+                // 在启动游戏前实时换取 session ticket，消除 10 分钟过期问题。
+                if (string.IsNullOrEmpty(oauthLogin.SessionID) && !string.IsNullOrEmpty(oauthLogin.TGT) && !string.IsNullOrEmpty(oauthLogin.Guid))
+                {
+                    try
+                    {
+                        var deviceProfile = oauthLogin.DeviceProfile ?? FakeMachineInfo.CreateSnapshot();
+                        var loginCtx      = new LoginChannelContext(deviceProfile);
+                        oauthLogin.SessionID = await loginCtx.GetSessionIdFromTgtAsync(oauthLogin.TGT, oauthLogin.Guid).ConfigureAwait(false);
+                        Log.Information("[MainWindow] 已通过 TGT 实时获取 session ticket: {SessionID}", oauthLogin.SessionID[..Math.Min(8, oauthLogin.SessionID.Length)]);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "[MainWindow] 通过 TGT 获取 session ticket 失败，登录可能已过期");
+                        CustomMessageBox.Show
+                        (
+                            "登录会话已过期，请重新登录",
+                            "XIVLauncherCN (Soil)",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error,
+                            parentWindow: Window
+                        );
+                        return false;
+                    }
+                }
+
+                if (string.IsNullOrEmpty(oauthLogin.SessionID))
+                {
+                    Log.Error("[MainWindow] SessionID 为空且无法通过 TGT 获取，取消登录");
+                    CustomMessageBox.Show
+                    (
+                        "登录异常: SessionID 为空",
                         "XIVLauncherCN (Soil)",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
@@ -1007,7 +1101,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         Log.Verbose("游戏进程已退出");
 
-        DcTravelRuntimeService.Stop();
+        // 不在此处停止 DC Travel 服务——Dashboard 可能仍需使用。
+        // 仅在切换账号或关闭启动器时才停止。
 
         return launched;
     }
@@ -1301,6 +1396,144 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private void HideLoadingDialog() =>
         IsLoadingDialogOpen = false;
 
+    private void HandleStartGameFromDashboard(LoginAfterAction action)
+    {
+        if (currentGameLaunchContext == null)
+            return;
+
+        isStartingGameFromDashboard = true;
+        IsEnabled                   = false;
+
+        _ = Task.Run
+        (async () =>
+            {
+                try
+                {
+                    await ProcessLoginResultAsync(currentGameLaunchContext, action).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Window.Dispatcher.Invoke
+                    (() =>
+                        {
+                            CustomMessageBox.Builder
+                                            .NewFromUnexpectedException(ex, "Dashboard/StartGame")
+                                            .WithParentWindow(Window)
+                                            .Show();
+                        }
+                    );
+                }
+                finally
+                {
+                    Window.Dispatcher.Invoke
+                    (() =>
+                        {
+                            IsEnabled = true;
+                            Activate();
+                            SwitchCard(LoginCardType.Dashboard, false);
+                        }
+                    );
+                }
+            }
+        );
+    }
+
+    private void HandleSwitchAccount()
+    {
+        CancelLogin();
+        currentGameLaunchContext = null;
+        SwitchCard(LoginCardType.MainPage);
+
+        Task.Run(() => { DcTravelRuntimeService.Stop(); });
+    }
+
+    private void HandleOpenDCTravel()
+    {
+        if (currentGameLaunchContext == null)
+            return;
+
+        SwitchCard(LoginCardType.DCTravel);
+        _ = DCTravelPage.InitializeAsync();
+    }
+
+    private void HandleSetCurrentAreaFromDCTravel(string areaName)
+    {
+        if (currentGameLaunchContext == null)
+        {
+            Log.Error("[MainWindow] currentGameLaunchContext 为空, 无法切换大区");
+            return;
+        }
+
+        var matched = currentGameLaunchContext.Areas.FirstOrDefault
+            (a => string.Equals(a.AreaName, areaName, StringComparison.Ordinal));
+
+        if (matched != null)
+        {
+            Log.Information
+            (
+                "[MainWindow] DC Travel 完成，切换大区: {Old} → {New}",
+                currentGameLaunchContext.Area.AreaName,
+                areaName
+            );
+
+            currentGameLaunchContext.Area = matched;
+            DashboardPage.AreaName        = matched.AreaName;
+            DashboardPage.AreaStatus      = matched.AreaStatus;
+            DashboardPage.SelectedArea    = matched;
+
+            if (App.AccountManager.CurrentAccount != null)
+            {
+                App.AccountManager.CurrentAccount.AreaName = matched.AreaName;
+                App.AccountManager.Save();
+            }
+        }
+    }
+
+    private void HandleSetAreaFromDashboard(LoginArea area)
+    {
+        if (currentGameLaunchContext == null)
+            return;
+
+        Log.Information
+        (
+            "[MainWindow] Dashboard 切换大区: {Old} → {New} (Lobby={Lobby})",
+            currentGameLaunchContext.Area.AreaName,
+            area.AreaName,
+            area.AreaLobby
+        );
+
+        currentGameLaunchContext.Area = area;
+        DashboardPage.AreaName        = area.AreaName;
+        DashboardPage.AreaStatus      = area.AreaStatus;
+
+        if (App.AccountManager.CurrentAccount != null)
+        {
+            App.AccountManager.CurrentAccount.AreaName = area.AreaName;
+            App.AccountManager.Save();
+        }
+    }
+
+    private void UpdateDashboardInfo(LoginResult loginResult)
+    {
+        var oauth = loginResult.OAuthLogin;
+        if (oauth == null)
+            return;
+
+        DashboardPage.AccountName = oauth.InputUserID;
+
+        if (currentGameLaunchContext != null)
+        {
+            var areas = currentGameLaunchContext.Areas;
+            DashboardPage.Areas.Clear();
+            foreach (var a in areas)
+                DashboardPage.Areas.Add(a);
+
+            DashboardPage.SelectedArea = currentGameLaunchContext.Area;
+            DashboardPage.AreaName     = currentGameLaunchContext.Area.AreaName;
+            DashboardPage.AreaStatus   = currentGameLaunchContext.Area.AreaStatus;
+        }
+    }
+
     #endregion
 
     #region 事件
@@ -1393,10 +1626,15 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public enum LoginCardType
     {
-        Logining   = 0,
-        MainPage   = 1,
-        ScanQRCode = 2,
-        InjectMode = 3
+        Logining         = 0,
+        MainPage         = 1,
+        ScanQRCode       = 2,
+        InjectMode       = 3,
+        Dashboard        = 4,
+        DCTravel         = 5,
+        DCTravelHistory  = 6,
+        DCTravelProgress = 7,
+        DCTravelReturn   = 8
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
