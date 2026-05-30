@@ -74,6 +74,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private GameLaunchContext? currentGameLaunchContext;
     private bool               isStartingGameFromDashboard;
     private bool               isWeGameRetryingAfterThirdPartyFailure;
+    private LoginCardType      injectModeSourceCard = LoginCardType.MainPage;
 
     public MainWindowViewModel(Window window)
     {
@@ -147,7 +148,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             ShowLoadingDialog,
             HideLoadingDialog,
             () => Activate(),
-            () => SwitchCard(LoginCardType.MainPage)
+            () => SwitchCard(injectModeSourceCard)
         );
         LoginPage.RefreshCommandStates();
         InjectPage.RefreshCommandStates();
@@ -192,6 +193,18 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             {
                 if (shouldCancelLogin)
                     CancelLogin();
+
+                if (i == LoginCardType.InjectMode)
+                {
+                    var currentCard = (LoginCardType)LoginCardTransitionerIndex;
+                    if (currentCard != LoginCardType.InjectMode && currentCard != LoginCardType.Logining)
+                    {
+                        injectModeSourceCard = currentCard;
+                    }
+
+                    InjectPage.ReturnButtonText = injectModeSourceCard == LoginCardType.Dashboard ? "返回主页面" : "返回账号登录";
+                }
+
                 LoginCardTransitionerIndex = (int)i;
 
                 InjectPage.SetActive(LoginCardTransitionerIndex == (int)LoginCardType.InjectMode);

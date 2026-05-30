@@ -79,6 +79,12 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
 
     public ICommand ReturnToLoginPageCommand => returnToLoginPageCommand;
 
+    public string ReturnButtonText
+    {
+        get => returnButtonText;
+        set => SetProperty(ref returnButtonText, value);
+    }
+
     public ObservableCollection<FFXIVProcess> FFXIVProcesses { get; } = [];
 
     public bool AutoInjectEnabled
@@ -455,4 +461,5 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
     private decimal?      manualInjectDelayMs;
     private FFXIVProcess? selectedProcess;
     private bool          isInjecting;
+    private string        returnButtonText = "返回账号登录";
 }

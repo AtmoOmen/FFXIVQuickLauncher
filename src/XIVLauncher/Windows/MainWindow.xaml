@@ -356,26 +356,6 @@
                                             Value="4">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
-                                        <DataTrigger
-                                            Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
-                                            Value="5">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger
-                                            Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
-                                            Value="6">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger
-                                            Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
-                                            Value="7">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                        <DataTrigger
-                                            Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
-                                            Value="8">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Grid.Style>
@@ -1341,7 +1321,7 @@
                                                 <materialDesign:PackIcon Kind="ArrowLeft" Width="12"
                                                                          Height="12" Margin="0,0,4,0"
                                                                          VerticalAlignment="Center" />
-                                                <TextBlock Text="返回账号登录" FontSize="11"
+                                                <TextBlock Text="{Binding InjectPage.ReturnButtonText}" FontSize="11"
                                                            VerticalAlignment="Center" />
                                             </StackPanel>
                                         </Button>
