@@ -178,13 +178,15 @@ public sealed class LoginChannelContext
         int    autoLoginKeepDays
     )
     {
+        // WeGame 渠道的 token 来自 sdologin.exe, 绑定的是游戏 appId, thirdPartyLogin 必须用 APP_ID 才能通过校验
         var result = await GetJsonAsSdoClient
                      (
                          "thirdPartyLogin",
                          [
                              "companyid=310", "islimited=0", $"thridUserId={thirdUserID}", $"token={token}",
                              autoLogin ? $"autoLoginFlag=1&autoLoginKeepTime={autoLoginKeepDays}" : "autoLoginFlag=0&autoLoginKeepTime=0"
-                         ]
+                         ],
+                         appId: SdoInfos.APP_ID
                      ).ConfigureAwait(false);
 
         if (result.ReturnCode != 0)

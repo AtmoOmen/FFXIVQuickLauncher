@@ -1,3 +1,4 @@
+using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Game;
 
@@ -53,6 +54,12 @@ internal sealed class SavedAccountLoginResolver
                     username       = savedAccount?.WeGameLoginAccount ?? username;
                     finalLoginType = LoginType.WeGame;
                     usedSavedCredential = !string.IsNullOrWhiteSpace(secret);
+                    Log.Information
+                    (
+                        "[LoginResolver] WeGame 令牌 {Status}, 账号={Account}",
+                        usedSavedCredential ? "解密成功" : "解密失败返回空",
+                        username
+                    );
                 }
 
                 if (string.IsNullOrWhiteSpace(secret))
@@ -61,9 +68,11 @@ internal sealed class SavedAccountLoginResolver
                     {
                         secret         = request.Password;
                         finalLoginType = LoginType.WeGame;
+                        Log.Information("[LoginResolver] 使用用户手动输入的 WeGame 令牌");
                     }
                     else
                     {
+                        Log.Information("[LoginResolver] 未找到可用令牌, 启动 WeGame 抓取流程");
                         var captureResult = await weGameTokenCaptureCoordinator.CaptureAsync(request.Interaction, request.LoginCancellationTokenSource);
                         if (captureResult == null)
                             return null;
@@ -71,6 +80,7 @@ internal sealed class SavedAccountLoginResolver
                         username       = captureResult.UserId;
                         secret         = captureResult.Token;
                         finalLoginType = LoginType.WeGame;
+                        Log.Information("[LoginResolver] WeGame 抓取成功, 账号={UserId}", username);
                     }
                 }
 

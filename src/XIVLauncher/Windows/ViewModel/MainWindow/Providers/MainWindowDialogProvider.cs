@@ -9,14 +9,6 @@ public sealed class MainWindowDialogProvider
     Window window
 )
 {
-    public void ShowQuickLoginDisclaimer()
-    {
-        CustomMessageBox.Builder
-                        .NewFrom("快速登录已启用, 后续将优先复用当前账号的快速登录凭据\n若需要修改设置, 请在登录时按住 SHIFT 键")
-                        .WithParentWindow(window)
-                        .Show();
-    }
-
     public MessageBoxResult PromptNewAccountDeviceProfileChoice() =>
         CustomMessageBox.Builder
                         .NewFrom("检测到新账号首次登录，需先确认本次使用的设备信息")

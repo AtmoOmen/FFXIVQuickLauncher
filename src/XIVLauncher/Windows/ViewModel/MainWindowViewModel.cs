@@ -410,18 +410,12 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         if (await ProcessLoginResultAsync(gameLaunchContext, action).ConfigureAwait(false))
         {
-            if (workflowResult.ShouldShowQuickLoginDisclaimer)
-                DialogProvider.ShowQuickLoginDisclaimer();
-
             if (App.Settings.ExitLauncherWhenGameExit)
                 Environment.Exit(0);
 
             Activate();
         }
     }
-
-    private static bool resolvedLoginTypeShouldSkipDcTravel(LoginType loginType) =>
-        false;
 
     private async Task HandleLoginWorkflowExceptionAsync(Exception ex, LoginType loginType, string username, bool usedSavedWeGameToken, LoginAfterAction action)
     {

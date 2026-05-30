@@ -109,6 +109,12 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
         set => SetProperty(ref field, value);
     }
 
+    public bool IsFastLoginEnabled
+    {
+        get;
+        private set => SetProperty(ref field, value);
+    } = true;
+
     public bool IsReadWegameInfo
     {
         get;
@@ -347,19 +353,24 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
             switch (loginType)
             {
                 case LoginType.Slide:
+                    IsFastLoginEnabled = true;
                     break;
 
                 case LoginType.QRCode:
-                    IsUsernameVisible = false;
+                    IsUsernameVisible  = false;
+                    IsFastLoginEnabled = true;
                     break;
 
                 case LoginType.Static:
-                    IsPasswordVisible = true;
-                    FastLoginText     = "快速登录";
+                    IsPasswordVisible  = true;
+                    IsFastLoginEnabled = true;
+                    FastLoginText      = "快速登录";
                     break;
 
                 case LoginType.WeGame:
-                    IsPasswordVisible = true;
+                    IsPasswordVisible       = true;
+                    IsFastLoginEnabled      = false;
+                    IsFastLogin             = true;
                     IsReadWegameInfoVisible = true;
                     FastLoginText           = "快速登录";
                     ReadWeGameInfoText      = "强制重新抓包";

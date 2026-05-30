@@ -1,3 +1,4 @@
+using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Game;
@@ -128,7 +129,6 @@ public sealed class LoginWorkflowService
         {
             GameLaunchContext                    = new GameLaunchContext(loginResult, resolvedLoginState.Area, request.LoginAreas),
             IsAccountPersisted                   = isAccountPersisted,
-            ShouldShowQuickLoginDisclaimer       = shouldShowQuickLoginDisclaimer,
             UsedSavedWeGameToken                 = resolvedLoginState.RequestedLoginType == LoginType.WeGame && resolvedLoginState.UsedSavedCredential,
             RefreshGameSessionIdByQuickLoginFunc = refreshGameSessionIdByQuickLoginFunc
         };
@@ -215,8 +215,11 @@ public sealed class LoginWorkflowService
                 accountToSave.SdoPassword = await accountManager.Encrypt(resolvedLoginState.Secret) ?? string.Empty;
         }
 
-        if (resolvedLoginState.FinalLoginType == LoginType.WeGame && resolvedLoginState.QuickLoginEnabled)
+        if (resolvedLoginState.FinalLoginType == LoginType.WeGame)
+        {
             accountToSave.WeGameQuickLoginSecret = await accountManager.Encrypt(resolvedLoginState.Secret);
+            Log.Information("[LoginWorkflow] WeGame 令牌已保存, 账号={Account}", accountToSave.WeGameLoginAccount);
+        }
 
         accountToSave.GenerateID();
         accountManager.AddAccount(accountToSave);

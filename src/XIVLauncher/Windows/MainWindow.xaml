@@ -697,6 +697,7 @@
                                             <CheckBox x:Name="FastLoginCheckBox"
                                                       Content="{Binding LoginPage.FastLoginText}"
                                                       IsChecked="{Binding LoginPage.IsFastLogin}"
+                                                      IsEnabled="{Binding LoginPage.IsFastLoginEnabled}"
                                                       Visibility="{Binding LoginPage.IsFastLoginVisible, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                       ToolTip="勾选后, 在登录时会自动保存账号信息, 以供下次快速登录"
                                                       Margin="0,0,16,0" />
