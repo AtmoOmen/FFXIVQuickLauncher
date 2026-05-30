@@ -40,6 +40,9 @@ public class DalamudInjector : IDalamudRunner
         if (safeMode) launchArguments.Add("--no-plugin");
         if (noThirdPlugins) launchArguments.Add(DalamudInjectorArgs.NO_THIRD_PARTY);
 
+        // 始终启用托管重启: DllInject 模式下崩溃处理器随此次注入启动, 须一并传入
+        launchArguments.Add(DalamudInjectorArgs.MANAGED_RESTART);
+
         var psi = new ProcessStartInfo(runner.FullName)
         {
             Arguments              = string.Join(" ", launchArguments),
@@ -127,6 +130,9 @@ public class DalamudInjector : IDalamudRunner
 
         if (noThirdPlugins)
             launchArguments.Add(DalamudInjectorArgs.NO_THIRD_PARTY);
+
+        // 始终启用托管重启: 崩溃处理器据此把重启决策编码进退出码, 由 RestartMonitor 接管
+        launchArguments.Add(DalamudInjectorArgs.MANAGED_RESTART);
 
         launchArguments.Add("--");
         launchArguments.Add(gameArgs);

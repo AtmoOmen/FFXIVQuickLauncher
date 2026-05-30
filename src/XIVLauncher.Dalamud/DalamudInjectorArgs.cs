@@ -7,6 +7,7 @@ public static class DalamudInjectorArgs
     public const string FAKE_ARGUMENTS  = "--fake-arguments";
     public const string NO_PLUGIN       = "--no-plugin";
     public const string NO_THIRD_PARTY  = "--no-3rd-plugin";
+    public const string MANAGED_RESTART = "--managed-restart";
 
     public static string Mode(string method) => $"--mode={method}";
 
