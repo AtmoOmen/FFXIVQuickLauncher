@@ -1,4 +1,3 @@
-* 大幅优化了 Dalamud 重启/关闭与 XIVLauncher 的流程衔接
-* 更新了依赖包
+* 自动注入延迟新增有效范围判定, 最多不能超过 10 秒
 
 > 当前分支仅支持 `Windows 11` 的 `x64` 环境，不提供 `Linux`、`macOS` 与 `SteamDeck` 等环境的相关支持

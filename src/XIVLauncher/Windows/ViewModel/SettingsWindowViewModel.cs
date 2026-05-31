@@ -104,7 +104,16 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     public decimal? DalamudInjectionDelayMs
     {
         get;
-        set => SetProperty(ref field, value);
+        set
+        {
+            var clamped = value.HasValue
+                              ? Math.Clamp(value.Value, 0, DalamudLaunchOptions.MAX_DELAY_INITIALIZE_MS)
+                              : value;
+
+            // 即便钳制后与当前值相同, 也要刷新 TextBox, 把超限的输入回退到上限
+            if (!SetProperty(ref field, clamped) && value != clamped)
+                OnPropertyChanged();
+        }
     }
 
     public decimal? ManualInjectDelayMs
