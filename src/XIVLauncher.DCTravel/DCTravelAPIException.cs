@@ -2,12 +2,16 @@ namespace XIVLauncher.DCTravel;
 
 public class DCTravelAPIException : Exception
 {
-    public bool IsNetworkTimeout { get; set; }
-    public bool RetryAfterOneMin { get; set; }
+    public bool IsNetworkTimeout   { get; set; }
+    public bool RetryAfterOneMin   { get; set; }
+    public bool IsEnvelopeRejected { get; set; }
+    public int  ErrorCode          { get; }
 
     public DCTravelAPIException(string message, int errorCode = 0)
         : base(message)
     {
+        ErrorCode = errorCode;
+
         switch (errorCode)
         {
             case -10339000:

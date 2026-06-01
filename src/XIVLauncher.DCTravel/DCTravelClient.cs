@@ -16,8 +16,8 @@ public partial class DCTravelClient
 
     private const string BASE_URL               = "ff14bjz.sdo.com";
     private const string DOMAIN                 = "sdo.com";
-    private const int    KEEP_ALIVE_MIN_MINUTES = 30;
-    private const int    KEEP_ALIVE_MAX_MINUTES = 91;
+    private const int    KEEP_ALIVE_MIN_MINUTES = 10;
+    private const int    KEEP_ALIVE_MAX_MINUTES = 20;
 
     private static readonly Uri BaseUri = new UriBuilder(Uri.UriSchemeHttps, BASE_URL).Uri;
 
@@ -46,6 +46,7 @@ public partial class DCTravelClient
 
     private string ticket = string.Empty;
     private int    initializedState;
+    private Task?  sessionRecoveryTask;
 
     public DCTravelClient(string nSessionID)
     {
@@ -106,7 +107,10 @@ public partial class DCTravelClient
         if (returnCode != 0)
         {
             var message = root["return_message"]?.GetValue<string>() ?? "unknown";
-            throw new DCTravelAPIException($"API 调用失败, 返回码: {returnCode}, 消息: {message}", returnCode);
+            throw new DCTravelAPIException($"API 调用失败, 返回码: {returnCode}, 消息: {message}", returnCode)
+            {
+                IsEnvelopeRejected = true
+            };
         }
 
         return root;
@@ -148,7 +152,8 @@ public partial class DCTravelClient
 
         const int MAX_ATTEMPTS = 3;
 
-        var requestUri = BuildRequestUri(api, parameters);
+        var requestUri       = BuildRequestUri(api, parameters);
+        var sessionRecovered = false;
 
         for (var attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)
         {
@@ -171,6 +176,16 @@ public partial class DCTravelClient
 
                 var root = EnsureReturnCode(JsonNode.Parse(content));
                 return root["data"] ?? throw new DCTravelAPIException("API 响应缺少 'data' 字段");
+            }
+            catch (DCTravelAPIException ex)
+                when (ex.IsEnvelopeRejected
+                      && !ignoreInitialized
+                      && !sessionRecovered
+                      && !KeepAliveCancelSource.Token.IsCancellationRequested)
+            {
+                sessionRecovered = true;
+                Log.Warning(ex, "[DCTravelClient] 会话被服务端拒绝, 尝试重建会话后重试");
+                await EnsureSessionRecovered().ConfigureAwait(false);
             }
             catch (DCTravelAPIException ex) when (ex.IsNetworkTimeout && attempt < MAX_ATTEMPTS)
             {
@@ -212,6 +227,40 @@ public partial class DCTravelClient
         };
 
     #region 初始化 认证
+
+    /// <summary>
+    ///     单飞地重建会话: 多个请求 (保活与插件 RPC) 同时遭遇会话失效时, 仅发起一次 <see cref="GetValidCookie"/>,
+    ///     其余调用复用同一 Task。SSO ticket 单次有效, 避免并发刷新相互覆盖。无锁实现。
+    /// </summary>
+    private Task EnsureSessionRecovered()
+    {
+        var existing = Volatile.Read(ref sessionRecoveryTask);
+        if (existing is { IsCompleted: false })
+            return existing;
+
+        var fresh    = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var observed = Interlocked.CompareExchange(ref sessionRecoveryTask, fresh.Task, existing);
+        if (!ReferenceEquals(observed, existing))
+            return observed ?? Task.CompletedTask;
+
+        _ = RunSessionRecoveryAsync(fresh);
+        return fresh.Task;
+    }
+
+    private async Task RunSessionRecoveryAsync(TaskCompletionSource completion)
+    {
+        try
+        {
+            await GetValidCookie().ConfigureAwait(false);
+            Log.Information("[DCTravelClient] 会话已重建");
+            completion.SetResult();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[DCTravelClient] 重建会话失败");
+            completion.SetException(ex);
+        }
+    }
 
     public async Task GetValidCookie()
     {
@@ -262,7 +311,7 @@ public partial class DCTravelClient
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "保活 Cookie 时出错");
+                    Log.Error(ex, "保活 Cookie 时出错, 重建会话亦未成功");
                 }
 
                 var randomDelay = TimeSpan.FromMinutes(Random.Shared.Next(KEEP_ALIVE_MIN_MINUTES, KEEP_ALIVE_MAX_MINUTES));
