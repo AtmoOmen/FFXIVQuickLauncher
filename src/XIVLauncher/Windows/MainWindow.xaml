@@ -98,6 +98,29 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
         </Style>
+        <Style x:Key="AccountFieldCopyButtonStyle"
+               TargetType="{x:Type Button}"
+               BasedOn="{StaticResource MaterialDesignIconForegroundButton}">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Opacity" Value="0.65" />
+            <Setter Property="Visibility" Value="Hidden" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsMouseOver}"
+                             Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="1" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="DashboardInfoCardStyle"
                TargetType="{x:Type Border}">
             <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.BackgroundDark}" />
@@ -1045,10 +1068,29 @@
                                 <Grid Margin="24,0,24,0" VerticalAlignment="Center">
                                     <StackPanel>
                                         <Border Style="{StaticResource DashboardInfoCardStyle}" Margin="0,0,0,12">
-                                            <StackPanel Margin="12">
-                                                <TextBlock Text="当前账号" FontSize="11" Opacity="0.6" />
-                                                <TextBlock Text="{Binding DashboardPage.AccountName}" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0" />
-                                            </StackPanel>
+                                            <Grid Margin="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="当前账号" FontSize="11" Opacity="0.6" />
+                                                    <TextBlock Text="{Binding DashboardPage.AccountName}"
+                                                               FontSize="14" FontWeight="SemiBold"
+                                                               TextWrapping="Wrap"
+                                                               Margin="0,2,0,0" />
+                                                </StackPanel>
+                                                <Button Grid.Column="1"
+                                                        Style="{StaticResource HeaderUtilityButtonStyle}"
+                                                        Width="28" Height="28"
+                                                        VerticalAlignment="Center"
+                                                        Tag="{Binding DashboardPage.AccountName}"
+                                                        Click="CopyAccountField_OnClick"
+                                                        ToolTip="复制账号">
+                                                    <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16"
+                                                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                </Button>
+                                            </Grid>
                                         </Border>
 
                                         <TextBlock Text="选择大区" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
@@ -1931,8 +1973,8 @@
                                         <Setter Property="Background" Value="Transparent" />
                                         <Setter Property="BorderBrush" Value="Transparent" />
                                         <Setter Property="BorderThickness" Value="0" />
-                                        <Setter Property="Margin" Value="8,10,8,4" />
-                                        <Setter Property="Padding" Value="12,10" />
+                                        <Setter Property="Margin" Value="6,8,6,4" />
+                                        <Setter Property="Padding" Value="10,8" />
                                         <Setter Property="ClipToBounds" Value="False" />
                                         <Setter Property="Template">
                                             <Setter.Value>
@@ -2040,39 +2082,80 @@
                                     <DataTemplate x:Name="AccountDataTemplate"
                                     DataType="mainWindow:AccountSwitcherEntry">
                                     <Grid>
+                                    <Grid.ToolTip>
+                                    <ToolTip Placement="Right">
+                                    <StackPanel>
+                                    <TextBlock Text="{Binding Account.DisplayName}"
+                                    FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Account.UserName}"
+                                    Opacity="0.7" Margin="0,2,0,0">
+                                    <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                    <DataTrigger
+                                    Binding="{Binding Account.UserDefinedName}"
+                                    Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger
+                                    Binding="{Binding Account.UserDefinedName}"
+                                    Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    </Style.Triggers>
+                                    </Style>
+                                    </TextBlock.Style>
+                                    </TextBlock>
+                                    </StackPanel>
+                                    </ToolTip>
+                                    </Grid.ToolTip>
                                     <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    
-                                    <Grid Grid.Column="0" Margin="4,0,0,0">
-                                    <Ellipse Width="42" Height="42">
+
+                                    <Grid Grid.Column="0" Margin="2,0,0,0">
+                                    <Ellipse Width="38" Height="38">
                                     <Ellipse.Fill>
                                     <ImageBrush
                                     ImageSource="{Binding ProfileImage}"
                                     Stretch="UniformToFill" />
                                     </Ellipse.Fill>
                                     </Ellipse>
-                                    <Ellipse Width="42" Height="42"
+                                    <Ellipse Width="38" Height="38"
                                     Stroke="{DynamicResource MaterialDesign.Brush.Card.Border}"
                                     StrokeThickness="1" Opacity="0.5" />
                                     </Grid>
-                                    
+
                                     <StackPanel Grid.Column="1"
-                                    Margin="14,0,10,0"
+                                    Margin="10,0,6,0"
                                     VerticalAlignment="Center">
-                                    <TextBlock
+                                    <Grid>
+                                    <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
                                     Text="{Binding Account.DisplayName}"
-                                    FontSize="15" FontWeight="SemiBold"
+                                    FontSize="14" FontWeight="SemiBold"
+                                    TextWrapping="Wrap"
+                                    LineHeight="17"
+                                    LineStackingStrategy="BlockLineHeight"
+                                    MaxHeight="34"
+                                    VerticalAlignment="Center"
                                     TextTrimming="CharacterEllipsis" />
-                                    <TextBlock
-                                    Text="{Binding Account.UserName}"
-                                    FontSize="12" Opacity="0.6"
-                                    TextTrimming="CharacterEllipsis"
-                                    Margin="0,2,0,0">
-                                    <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
+                                    <Button Grid.Column="1"
+                                    Style="{StaticResource AccountFieldCopyButtonStyle}"
+                                    Tag="{Binding Account.DisplayName}"
+                                    Click="CopyAccountField_OnClick"
+                                    ToolTip="复制">
+                                    <materialDesign:PackIcon Kind="ContentCopy" Width="13" Height="13" />
+                                    </Button>
+                                    </Grid>
+                                    <Grid Margin="0,2,0,0">
+                                    <Grid.Style>
+                                    <Style TargetType="Grid">
                                     <Style.Triggers>
                                     <DataTrigger
                                     Binding="{Binding Account.UserDefinedName}"
@@ -2090,16 +2173,36 @@
                                     </DataTrigger>
                                     </Style.Triggers>
                                     </Style>
-                                    </TextBlock.Style>
-                                    </TextBlock>
+                                    </Grid.Style>
+                                    <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                    Text="{Binding Account.UserName}"
+                                    FontSize="11" Opacity="0.6"
+                                    TextWrapping="Wrap"
+                                    LineHeight="14"
+                                    LineStackingStrategy="BlockLineHeight"
+                                    MaxHeight="28"
+                                    VerticalAlignment="Center"
+                                    TextTrimming="CharacterEllipsis" />
+                                    <Button Grid.Column="1"
+                                    Style="{StaticResource AccountFieldCopyButtonStyle}"
+                                    Tag="{Binding Account.UserName}"
+                                    Click="CopyAccountField_OnClick"
+                                    ToolTip="复制">
+                                    <materialDesign:PackIcon Kind="ContentCopy" Width="12" Height="12" />
+                                    </Button>
+                                    </Grid>
                                     </StackPanel>
                                     
                                     <StackPanel Grid.Column="2"
                                     Orientation="Horizontal"
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Center">
-                                    <materialDesign:PackIcon Height="18"
-                                    Width="18" Margin="4,0,0,0"
+                                    <materialDesign:PackIcon Height="16"
+                                    Width="16" Margin="3,0,0,0"
                                     Opacity="0.5">
                                     <materialDesign:PackIcon.Style>
                                     <Style
@@ -2124,8 +2227,8 @@
                                     </materialDesign:PackIcon.Style>
                                     </materialDesign:PackIcon>
                                     
-                                    <materialDesign:PackIcon Height="18"
-                                    Width="18" Margin="4,0,0,0"
+                                    <materialDesign:PackIcon Height="16"
+                                    Width="16" Margin="3,0,0,0"
                                     Opacity="0.5">
                                     <materialDesign:PackIcon.Style>
                                     <Style
@@ -2342,5 +2445,11 @@
                 </materialDesign:DialogHost.DialogContent>
             </materialDesign:DialogHost>
         </Grid>
+
+        <materialDesign:Snackbar x:Name="CopySnackbar"
+                                 MessageQueue="{materialDesign:MessageQueue}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Bottom"
+                                 Margin="0,0,0,16" />
     </Grid>
 </Window>

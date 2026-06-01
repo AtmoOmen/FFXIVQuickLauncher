@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -381,6 +382,10 @@ public partial class MainWindow
         if (e.ChangedButton != MouseButton.Left)
             return;
 
+        // 点击行内复制按钮时不触发账号切换
+        if (FindAncestor<Button>((DependencyObject)e.OriginalSource) != null)
+            return;
+
         Model.AccountSwitcher.ContextEntry = null;
         var selectedAccount = Model.AccountSwitcher.SelectCurrentAccount();
         if (selectedAccount == null)
@@ -388,6 +393,43 @@ public partial class MainWindow
 
         SwitchAccount(selectedAccount, true);
         Model.SwitchCard(MainWindowViewModel.LoginCardType.MainPage, false);
+    }
+
+    private void CopyAccountField_OnClick(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+
+        if (sender is not Button { Tag: string text } || string.IsNullOrEmpty(text))
+            return;
+
+        if (!TrySetClipboardText(text))
+            return;
+
+        CopySnackbar.MessageQueue?.Enqueue($"已复制: {text}");
+    }
+
+    // 剪贴板可能被其他进程(输入法、剪贴板工具等)短暂占用, 重试几次以规避 CLIPBRD_E_CANT_OPEN
+    private static bool TrySetClipboardText(string text)
+    {
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            try
+            {
+                Clipboard.SetText(text);
+                return true;
+            }
+            catch (COMException) when (attempt < 9)
+            {
+                Thread.Sleep(10);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "复制账号信息到剪贴板失败");
+                return false;
+            }
+        }
+
+        return false;
     }
 
     private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
