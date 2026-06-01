@@ -17,25 +17,12 @@ internal class DalamudAssetManager
 
         Log.Verbose("[DASSET] 开始检查 Dalamud 资源文件更新");
 
-        // 1. 从 R2 获取远端版本号
+        // 1. 从 R2 获取远端版本号与清单
         var releaseUrl  = $"{Links.DALAMUD_ASSET_DISTRIBUTE_URL}/RELEASE";
         var versionText = await client.GetStringAsync(releaseUrl).ConfigureAwait(false);
         var version     = int.Parse(versionText.Trim());
 
         Log.Information("[DASSET] 远端资源版本: {Version}", version);
-
-        // 2. 读取本地版本号，一致则跳过
-        var localVer = ReadLocalAssetVer(baseDir);
-
-        if (localVer == version)
-        {
-            var existingDir = new DirectoryInfo(Path.Combine(baseDir.FullName, version.ToString()));
-            Log.Information("[DASSET] 版本一致 ({Version})，跳过", version);
-            return (existingDir, version);
-        }
-
-        // 3. 版本不一致 → 逐文件按需更新
-        Log.Information("[DASSET] 版本不一致 (本地:{LocalVer} 远端:{Version})，开始更新", localVer, version);
 
         var manifestUrl = $"{Links.DALAMUD_ASSET_DISTRIBUTE_URL}/{version}/assetCN.json";
         var manifest    = JsonSerializer.Deserialize<AssetInfo>(await client.GetStringAsync(manifestUrl), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
@@ -43,13 +30,32 @@ internal class DalamudAssetManager
         var currentDir = new DirectoryInfo(Path.Combine(baseDir.FullName, version.ToString()));
         var devDir     = new DirectoryInfo(Path.Combine(baseDir.FullName, "dev"));
 
+        // 2. 仅当版本一致且本地文件齐全时才跳过，否则进入补全流程
+        var localVer = ReadLocalAssetVer(baseDir);
+
+        if (localVer == version)
+        {
+            if (AllAssetsPresent(currentDir, manifest, out var missingFile))
+            {
+                Log.Information("[DASSET] 版本一致且文件齐全 ({Version})，跳过", version);
+                return (currentDir, version);
+            }
+
+            Log.Warning("[DASSET] 版本一致 ({Version}) 但本地文件缺失 ({File})，重新补全", version, missingFile);
+        }
+        else
+        {
+            Log.Information("[DASSET] 版本不一致 (本地:{LocalVer} 远端:{Version})，开始更新", localVer, version);
+        }
+
+        // 3. 逐文件按需更新
         if (!currentDir.Exists)
             currentDir.Create();
 
         using var sha1 = SHA1.Create();
 
         var manifestFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var downloadTasks     = new List<Task>();
+        var downloadTasks     = new List<Task<bool>>();
 
         foreach (var entry in manifest.Assets)
         {
@@ -100,7 +106,11 @@ internal class DalamudAssetManager
         }
 
         if (downloadTasks.Count > 0)
-            await Task.WhenAll(downloadTasks).ConfigureAwait(false);
+        {
+            var failedCount = (await Task.WhenAll(downloadTasks).ConfigureAwait(false)).Count(failed => failed);
+            if (failedCount > 0)
+                throw new IOException($"{failedCount} 个 Dalamud 资源文件下载失败，未推进本地版本号，下次启动将重试");
+        }
 
         // 删除本地多余文件
         if (currentDir.Exists)
@@ -140,17 +150,34 @@ internal class DalamudAssetManager
         return (currentDir, version);
     }
 
-    private static async Task DownloadAsset(DalamudUpdater updater, string url, string path, string fileName)
+    private static async Task<bool> DownloadAsset(DalamudUpdater updater, string url, string path, string fileName)
     {
         try
         {
             Log.Information("[DASSET] 下载资源文件: {Url}", url);
             await updater.DownloadFile(url, path).ConfigureAwait(false);
+            return false;
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[DASSET] 下载资源文件失败: {FileName}", fileName);
+            return true;
         }
+    }
+
+    private static bool AllAssetsPresent(DirectoryInfo currentDir, AssetInfo manifest, out string missingFile)
+    {
+        foreach (var entry in manifest.Assets)
+        {
+            if (!File.Exists(Path.Combine(currentDir.FullName, entry.FileName)))
+            {
+                missingFile = entry.FileName;
+                return false;
+            }
+        }
+
+        missingFile = string.Empty;
+        return true;
     }
 
     private static int ReadLocalAssetVer(DirectoryInfo baseDir)
