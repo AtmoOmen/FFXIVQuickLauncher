@@ -10,13 +10,12 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using System.Threading;
 using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Login;
 using XIVLauncher.Common.Http.Site;
+using XIVLauncher.Login;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 using XIVLauncher.Windows.ViewModel.MainWindow;
@@ -356,12 +355,8 @@ public partial class MainWindow
         Model.LoginPage.StartLoginCommand.Execute(null);
     }
 
-
-
-    private void HideMainWindow()
-    {
+    private void HideMainWindow() =>
         Hide();
-    }
 
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
     {
@@ -402,35 +397,120 @@ public partial class MainWindow
         if (sender is not Button { Tag: string text } || string.IsNullOrEmpty(text))
             return;
 
-        if (!TrySetClipboardText(text))
-            return;
-
-        CopySnackbar.MessageQueue?.Enqueue($"已复制: {text}");
+        var copyThread = new Thread
+        (() =>
+            {
+                var copied = TrySetClipboardText(text);
+                Dispatcher.BeginInvoke
+                (() =>
+                     CopySnackbar.MessageQueue?.Enqueue(copied ? $"已复制: {text}" : "复制失败, 剪贴板被占用")
+                );
+            }
+        )
+        {
+            IsBackground = true,
+            Name         = "ClipboardCopy"
+        };
+        copyThread.Start();
     }
 
-    // 剪贴板可能被其他进程(输入法、剪贴板工具等)短暂占用, 重试几次以规避 CLIPBRD_E_CANT_OPEN
     private static bool TrySetClipboardText(string text)
     {
-        for (var attempt = 0; attempt < 10; attempt++)
+        const int MAX_ATTEMPTS   = 40;
+        const int RETRY_DELAY_MS = 50;
+
+        for (var attempt = 0; attempt < MAX_ATTEMPTS; attempt++)
         {
-            try
-            {
-                Clipboard.SetText(text);
+            if (TrySetClipboardTextOnce(text))
                 return true;
-            }
-            catch (COMException) when (attempt < 9)
-            {
-                Thread.Sleep(10);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "复制账号信息到剪贴板失败");
-                return false;
-            }
+
+            Thread.Sleep(RETRY_DELAY_MS);
         }
 
+        Log.Warning("复制账号信息到剪贴板失败: 剪贴板持续被占用");
         return false;
     }
+
+    private static bool TrySetClipboardTextOnce(string text)
+    {
+        if (!OpenClipboard(IntPtr.Zero))
+            return false;
+
+        try
+        {
+            if (!EmptyClipboard())
+                return false;
+
+            // CF_UNICODETEXT 要求 GMEM_MOVABLE 全局内存, 含结尾 null 字符
+            var byteCount = (text.Length + 1) * 2;
+            var hGlobal   = GlobalAlloc(GMEM_MOVABLE, (UIntPtr)byteCount);
+            if (hGlobal == IntPtr.Zero)
+                return false;
+
+            var target = GlobalLock(hGlobal);
+
+            if (target == IntPtr.Zero)
+            {
+                GlobalFree(hGlobal);
+                return false;
+            }
+
+            try
+            {
+                Marshal.Copy(text.ToCharArray(), 0, target, text.Length);
+                Marshal.WriteInt16(target, text.Length * 2, 0);
+            }
+            finally
+            {
+                GlobalUnlock(hGlobal);
+            }
+
+            if (SetClipboardData(CF_UNICODETEXT, hGlobal) == IntPtr.Zero)
+            {
+                // 设置失败时系统未接管内存, 需自行释放
+                GlobalFree(hGlobal);
+                return false;
+            }
+
+            // 设置成功后系统接管 hGlobal, 不可再释放
+            return true;
+        }
+        finally
+        {
+            CloseClipboard();
+        }
+    }
+
+    private const uint CF_UNICODETEXT = 13;
+    private const uint GMEM_MOVABLE   = 0x0002;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseClipboard();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EmptyClipboard();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr GlobalLock(IntPtr hMem);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GlobalUnlock(IntPtr hMem);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr GlobalFree(IntPtr hMem);
 
     private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -559,7 +639,7 @@ public partial class MainWindow
 
         if (string.IsNullOrWhiteSpace(LoginUsername.Text))
         {
-            LoginPassword.Password = string.Empty;
+            LoginPassword.Password   = string.Empty;
             Model.LoginPage.Password = string.Empty;
         }
 
@@ -691,7 +771,7 @@ public partial class MainWindow
             {
                 headlinesRefreshTimer.Stop();
                 headlinesRefreshTimer.Tick -= HeadlinesRefreshTimer_OnTick;
-                headlinesRefreshTimer = null;
+                headlinesRefreshTimer      =  null;
             }
 
             StopBannerRotation();
