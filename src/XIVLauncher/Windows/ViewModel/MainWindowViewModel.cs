@@ -125,7 +125,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             AccountManager,
             new DialogService(window),
             new ShortcutService(),
-            () => CloseAccountSwitcher(false)
+            CloseAccountSwitcher
         );
         AccountSwitcherButtonCommand = new SyncCommand(ExecuteAccountSwitcherButton);
         refreshDalamudInfoCommand    = new SyncCommand(_ => RefreshDalamudInfo(), () => Settings.EnableHooks && App.Dalamud.Updater.State != DalamudUpdater.DownloadState.Unknown);
@@ -176,13 +176,15 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         DcTravelRuntimeService.MaintenanceStateChanged += state =>
         {
-            Window.Dispatcher.Invoke(() =>
-            {
-                var isMaintenance = state == DCTravelMaintenanceState.UnderMaintenance;
-                DCTravelPage.IsUnderMaintenance  = isMaintenance;
-                DCTravelPage.MaintenanceMessage  = isMaintenance ? "超域旅行服务维护中, 请稍后再试" : string.Empty;
-                DashboardPage.IsDCTravelUnderMaintenance = isMaintenance;
-            });
+            Window.Dispatcher.Invoke
+            (() =>
+                {
+                    var isMaintenance = state == DCTravelMaintenanceState.UnderMaintenance;
+                    DCTravelPage.IsUnderMaintenance          = isMaintenance;
+                    DCTravelPage.MaintenanceMessage          = isMaintenance ? "超域旅行服务维护中, 请稍后再试" : string.Empty;
+                    DashboardPage.IsDCTravelUnderMaintenance = isMaintenance;
+                }
+            );
         };
 
         App.Dalamud.StatusChanged += DalamudUpdaterStatusChanged;
@@ -193,9 +195,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         };
     }
 
-    public bool IsAccountSwitcherVisible => IsAccountSwitcherOpen;
-
-    public void CloseAccountSwitcher(bool animate) =>
+    public void CloseAccountSwitcher() =>
         IsAccountSwitcherOpen = false;
 
     #region 界面控制
@@ -209,11 +209,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
                 if (i == LoginCardType.InjectMode)
                 {
-                    var currentCard = (LoginCardType)LoginCardTransitionerIndex;
-                    if (currentCard != LoginCardType.InjectMode && currentCard != LoginCardType.Logining)
-                    {
-                        injectModeSourceCard = currentCard;
-                    }
+                    var currentCard                                                                                            = (LoginCardType)LoginCardTransitionerIndex;
+                    if (currentCard != LoginCardType.InjectMode && currentCard != LoginCardType.Logining) injectModeSourceCard = currentCard;
 
                     InjectPage.ReturnButtonText = injectModeSourceCard == LoginCardType.Dashboard ? "返回主页面" : "返回账号登录";
                 }
@@ -511,16 +508,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             {
                 if (App.Settings.GamePath != null && Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
                 {
-                    if (CustomMessageBox.Show
-                        (
-                            "未检测到游戏安装, 是否立即下载安装完整游戏?",
-                            "XIVLauncherCN (Soil)",
-                            MessageBoxButton.YesNo,
-                            parentWindow: Window
-                        )
-                        == MessageBoxResult.Yes)
-                        _ = GameClientFileTaskService.RunAsync(GameClientFileTaskKind.FreshInstall);
-
+                    IsLoggingIn = false;
+                    _           = HandleGameClientFileTask(GameClientFileTaskKind.FreshInstall);
                     return;
                 }
 
@@ -602,6 +591,41 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         account.WeGameQuickLoginSecret = null;
         AccountManager.Save(account);
+    }
+
+    private bool ConfirmGameClientFileTask(GameClientFileTaskKind kind)
+    {
+        string message;
+        string title;
+
+        switch (kind)
+        {
+            case GameClientFileTaskKind.Update:
+                message = "即将检查游戏更新, 并下载安装可能存在的更新文件, 是否要开始?";
+                title   = "更新游戏文件";
+                break;
+
+            case GameClientFileTaskKind.Repair:
+                message = "即将扫描游戏文件完整性, 并下载安装存在异常的文件、归档多余的文件, 是否要开始?";
+                title   = "修复游戏文件";
+                break;
+
+            case GameClientFileTaskKind.IntegrityCheck:
+                message = "即将检查游戏文件完整性, 是否要开始?";
+                title   = "检查游戏完整性";
+                break;
+
+            case GameClientFileTaskKind.FreshInstall:
+                message = "未检测到游戏安装, 即将下载安装完整游戏, 是否要开始?";
+                title   = "安装游戏文件";
+                break;
+
+            default:
+                return true;
+        }
+
+        return CustomMessageBox.Show(message, title, MessageBoxButton.YesNo, parentWindow: Window)
+               != MessageBoxResult.No;
     }
 
     private bool ConfirmGamePatchInstall()
@@ -1370,6 +1394,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private async Task HandleGameClientFileTask(GameClientFileTaskKind kind)
     {
         if (IsLoggingIn)
+            return;
+
+        if (!ConfirmGameClientFileTask(kind))
             return;
 
         IsLoggingIn = true;

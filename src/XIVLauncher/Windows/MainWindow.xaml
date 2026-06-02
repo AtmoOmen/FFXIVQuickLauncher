@@ -784,7 +784,7 @@
                                                                          Height="18" />
                                             </Button>
 
-                                            <Border x:Name="AccountSwitcherPopupPlaceholder" Visibility="Collapsed" />
+                                            <Border Grid.Column="0" x:Name="AccountSwitcherPopupPlaceholder" Visibility="Collapsed" />
                                         </Grid>
 
                                     </StackPanel>
