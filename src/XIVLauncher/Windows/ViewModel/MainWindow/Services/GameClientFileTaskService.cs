@@ -61,6 +61,21 @@ public sealed class GameClientFileTaskService
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, gamePathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
         }
 
+        if (Repository.Ffxiv.IsBaseVer(gamePath))
+        {
+            Log.Warning("[GameClientFileTask] 当前游戏路径未检测到安装");
+            var action = await WaitForChoiceAsync
+                         (
+                             viewModel,
+                             CreateChoiceSnapshot(TITLE, "所选路径中没有检测到游戏安装", "是否尝试修复游戏文件?", "开始修复", "关闭")
+                         ).ConfigureAwait(false);
+
+            if (action == GameClientFileTaskWindowAction.Primary)
+                return await RunRepairAsync(viewModel).ConfigureAwait(false);
+
+            return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
+        }
+
         if (!TryResolvePatchPath(out var patchPathError))
         {
             Log.Warning("[GameClientFileTask] 更新文件路径无效: {Message}", patchPathError);
@@ -921,13 +936,6 @@ public sealed class GameClientFileTaskService
         {
             gamePath     = null!;
             errorMessage = "请先选择游戏目录";
-            return false;
-        }
-
-        if (Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
-        {
-            gamePath     = null!;
-            errorMessage = "所选路径中没有检测到游戏安装";
             return false;
         }
 

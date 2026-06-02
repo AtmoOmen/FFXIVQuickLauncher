@@ -19,6 +19,7 @@ using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.DCTravel;
+using XIVLauncher.GamePatchV3.Models;
 using XIVLauncher.GamePatchV3.Update;
 using XIVLauncher.Login;
 using XIVLauncher.Login.Channels;
@@ -503,6 +504,19 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             case InvalidVersionFilesException:
                 msgbox.WithText("从游戏文件中读取版本信息失败, 可能需要重新安装或修复游戏文件");
                 break;
+
+            case UnsupportedGameVersionException:
+            {
+                if (App.Settings.GamePath != null && Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
+                {
+                    IsLoggingIn = false;
+                    _           = HandleGameClientFileTask(GameClientFileTaskKind.Repair);
+                    return;
+                }
+
+                msgbox.WithText("无法确认当前游戏版本, 请先运行游戏文件修复后重试");
+                break;
+            }
 
             case InvalidDataException invalidDataException when invalidDataException.Message.Contains("当前游戏数据版本", StringComparison.Ordinal):
             {
