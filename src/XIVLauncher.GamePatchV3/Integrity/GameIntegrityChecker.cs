@@ -79,7 +79,8 @@ public static class GameIntegrityChecker
                                   (hashEntry => !onlyIndex
                                                 || hashEntry.CanonicalSdoPath.EndsWith(".index",  StringComparison.Ordinal)
                                                 || hashEntry.CanonicalSdoPath.EndsWith(".index2", StringComparison.Ordinal)
-                                  ))
+                                  )
+                                  .Where(hashEntry => !hashEntry.CanonicalSdoPath.Equals("\\game\\LocalVersion3.xml", StringComparison.OrdinalIgnoreCase)))
         {
             if (localIntegrity.Hashes.TryGetValue(hashEntry.CanonicalSdoPath, out var localHash))
             {
@@ -224,6 +225,9 @@ public static class GameIntegrityChecker
                 continue;
 
             if (normalizedGameRelativePath.StartsWith("game/My Games/", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (normalizedGameRelativePath.Equals("game/LocalVersion3.xml", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             if (onlyIndex && !relativePath.EndsWith(".index", StringComparison.Ordinal) && !relativePath.EndsWith(".index2", StringComparison.Ordinal))
