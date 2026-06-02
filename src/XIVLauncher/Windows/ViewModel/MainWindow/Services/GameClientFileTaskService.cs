@@ -251,7 +251,7 @@ public sealed class GameClientFileTaskService
         using var cancellationTokenSource = new CancellationTokenSource();
         var       ctsBox                  = new StrongBox<CancellationTokenSource?>(cancellationTokenSource);
         SetRunningHandler(viewModel, () => ctsBox.Value?.Cancel());
-        ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, "正在获取完整性参考数据"));
+        ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, "正在获取完整性参考数据", true));
 
         IntegrityCheckCompareOutcome outcome;
 
@@ -281,7 +281,7 @@ public sealed class GameClientFileTaskService
                                  (
                                      TITLE,
                                      "当前游戏版本无法直接检查完整性",
-                                     $"当前游戏数据版本过旧或无法识别\n请先使用“修复游戏文件”更新到最新版本, 或重新下载完整游戏",
+                                     "当前游戏数据版本过旧或无法识别\n请先使用“修复游戏文件”更新到最新版本, 或重新下载完整游戏",
                                      "开始修复",
                                      "关闭"
                                  )
@@ -368,7 +368,7 @@ public sealed class GameClientFileTaskService
             );
 
             var pollingTask = PollRepairerAsync(viewModel, repairer, pollCancellationTokenSource.Token);
-            var runTask     = repairer.RunAsync();
+            var runTask     = repairer.RunAsync(pollCancellationTokenSource.Token);
 
             try
             {
@@ -449,7 +449,7 @@ public sealed class GameClientFileTaskService
             );
 
             var pollingTask = PollInstallerAsync(viewModel, installer, pollCancellationTokenSource.Token);
-            var runTask     = installer.RunAsync();
+            var runTask     = installer.RunAsync(pollCancellationTokenSource.Token);
 
             try
             {
@@ -540,9 +540,9 @@ public sealed class GameClientFileTaskService
                 SpeedText = GetDownloaderSpeedText(repairer.CurrentMetaInstallState, repairer.Speed),
                 EtaText = GetDownloaderEtaText(repairer.CurrentMetaInstallState, repairer.Total - repairer.Progress, repairer.Speed),
                 Items = repairer.IsDownloading ? GetRepairerItems(repairer) : [],
-                PrimaryButtonText = "取消",
-                IsPrimaryButtonVisible = true,
-                IsPrimaryButtonEnabled = true,
+                PrimaryButtonText = repairer.CurrentMetaInstallState == GameFileDownloader.InstallTaskState.NotStarted ? string.Empty : "取消",
+                IsPrimaryButtonVisible = repairer.CurrentMetaInstallState != GameFileDownloader.InstallTaskState.NotStarted,
+                IsPrimaryButtonEnabled = repairer.CurrentMetaInstallState != GameFileDownloader.InstallTaskState.NotStarted,
                 IsRunning = true
             },
             _ => new GameClientFileTaskSnapshot
@@ -551,9 +551,6 @@ public sealed class GameClientFileTaskService
                 PhaseText               = "正在准备修复任务",
                 Progress                = repairer.State == GameRepairer.RepairState.Done ? 100 : 0,
                 IsProgressIndeterminate = repairer.State != GameRepairer.RepairState.Done,
-                PrimaryButtonText       = "取消",
-                IsPrimaryButtonVisible  = true,
-                IsPrimaryButtonEnabled  = true,
                 IsRunning               = true
             }
         };
@@ -589,9 +586,9 @@ public sealed class GameClientFileTaskService
                     $"{Math.Min(installer.TaskIndex + 1, installer.TaskCount)}/{installer.TaskCount} - {APIHelper.BytesToString(installer.Progress)}/{APIHelper.BytesToString(installer.Total)}",
                 SpeedText              = GetDownloaderSpeedText(installer.CurrentMetaInstallState, installer.Speed),
                 EtaText                = GetDownloaderEtaText(installer.CurrentMetaInstallState, installer.Total - installer.Progress, installer.Speed),
-                PrimaryButtonText      = "取消",
-                IsPrimaryButtonVisible = true,
-                IsPrimaryButtonEnabled = true,
+                PrimaryButtonText      = installer.CurrentMetaInstallState == GameFileDownloader.InstallTaskState.NotStarted ? string.Empty : "取消",
+                IsPrimaryButtonVisible = installer.CurrentMetaInstallState != GameFileDownloader.InstallTaskState.NotStarted,
+                IsPrimaryButtonEnabled = installer.CurrentMetaInstallState != GameFileDownloader.InstallTaskState.NotStarted,
                 IsRunning              = true
             },
             _ => new GameClientFileTaskSnapshot
@@ -600,9 +597,6 @@ public sealed class GameClientFileTaskService
                 PhaseText               = "正在准备安装任务",
                 Progress                = installer.State == GameInstaller.InstallState.Done ? 100 : 0,
                 IsProgressIndeterminate = installer.State != GameInstaller.InstallState.Done,
-                PrimaryButtonText       = "取消",
-                IsPrimaryButtonVisible  = true,
-                IsPrimaryButtonEnabled  = true,
                 IsRunning               = true
             }
         };
@@ -654,14 +648,14 @@ public sealed class GameClientFileTaskService
         state switch
         {
             GameFileDownloader.InstallTaskState.Connecting => "正在连接",
-            _                                             => $"{APIHelper.BytesToString(speed)}/s"
+            _                                              => $"{APIHelper.BytesToString(speed)}/s"
         };
 
     private static string GetDownloaderEtaText(GameFileDownloader.InstallTaskState state, long remaining, long speed) =>
         state switch
         {
             GameFileDownloader.InstallTaskState.Connecting => string.Empty,
-            _                                             => FormatEstimatedTime(remaining, speed)
+            _                                              => FormatEstimatedTime(remaining, speed)
         };
 
     private static GameClientFileTaskSnapshot CreateInstallCompletedSnapshot(GameInstaller installer) =>
@@ -775,15 +769,15 @@ public sealed class GameClientFileTaskService
             IsRunning                = snapshot.IsRunning
         };
 
-    private static GameClientFileTaskSnapshot CreateRunningSnapshot(string title, string phaseText) =>
+    private static GameClientFileTaskSnapshot CreateRunningSnapshot(string title, string phaseText, bool showPrimaryButton = false) =>
         new()
         {
             Title                   = title,
             PhaseText               = phaseText,
             IsProgressIndeterminate = true,
-            PrimaryButtonText       = "取消",
-            IsPrimaryButtonVisible  = true,
-            IsPrimaryButtonEnabled  = true,
+            PrimaryButtonText       = showPrimaryButton ? "取消" : string.Empty,
+            IsPrimaryButtonVisible  = showPrimaryButton,
+            IsPrimaryButtonEnabled  = showPrimaryButton,
             IsRunning               = true
         };
 
@@ -998,7 +992,7 @@ public sealed class GameClientFileTaskService
             return string.Empty;
 
         var remainingSeconds = (int)Math.Ceiling((double)remaining / speed);
-        remainingSeconds = Math.Clamp(remainingSeconds, 0, 60 * 60 * 100 - 1);
+        remainingSeconds = Math.Clamp(remainingSeconds, 0, (60 * 60 * 100) - 1);
         if (remainingSeconds < 60 * 60)
             return $"{remainingSeconds / 60:00}:{remainingSeconds % 60:00}";
 

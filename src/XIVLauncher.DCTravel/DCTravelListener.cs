@@ -275,6 +275,10 @@ public sealed class DCTravelListener : IDisposable, IAsyncDisposable
 
             try
             {
+                // 维护期间直接返回明确错误, 游戏内插件可据此展示维护提示
+                if (listener.DCTravelClient.MaintenanceState == DCTravelMaintenanceState.UnderMaintenance)
+                    throw new DCTravelAPIException("超域旅行服务维护中, 请稍后再试", -10339180);
+
                 var rpcRequest = await ReadRequestAsync().ConfigureAwait(false);
 
                 if (!listener.rpcMethodCache.TryGetValue(rpcRequest.Method, out var method))

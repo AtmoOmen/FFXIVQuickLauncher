@@ -30,6 +30,8 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     private readonly SyncCommand  cancelReturnCommand;
 
     private bool                     isLoading;
+    private bool                     isUnderMaintenance;
+    private string                   maintenanceMessage = string.Empty;
     private CancellationTokenSource? pollCts;
 
     public DCTravelViewModel
@@ -51,10 +53,10 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         this.setCurrentAreaAction         = setCurrentAreaAction;
         this.getDcTravelClientFunc        = getDcTravelClientFunc;
 
-        travelOrderCommand        = new AsyncCommand(async _ => await StartTravelAsync(),    () => SelectedTargetGroup != null && SelectedCharacter != null && !isLoading);
-        travelBackCommand         = new AsyncCommand(async _ => await OpenReturnPageAsync(), () => SelectedOrder       != null && !isLoading);
+        travelOrderCommand        = new AsyncCommand(async _ => await StartTravelAsync(),    () => SelectedTargetGroup != null && SelectedCharacter != null && !isLoading && !isUnderMaintenance);
+        travelBackCommand         = new AsyncCommand(async _ => await OpenReturnPageAsync(), () => SelectedOrder       != null && !isLoading && !isUnderMaintenance);
         refreshOrdersCommand      = new AsyncCommand(async _ => await RefreshOrdersAsync());
-        confirmTravelBackCommand  = new AsyncCommand(async _ => await ConfirmTravelBackAsync(), () => ReturnSelectedCurrentGroup != null && !isLoading);
+        confirmTravelBackCommand  = new AsyncCommand(async _ => await ConfirmTravelBackAsync(), () => ReturnSelectedCurrentGroup != null && !isLoading && !isUnderMaintenance);
         backToDashboardCommand    = new SyncCommand(_ => this.requestBackToDashboardAction());
         openHistoryCommand        = new SyncCommand(_ => this.requestOpenHistoryAction());
         backToTravelCommand       = new SyncCommand(_ => this.requestBackToTravelAction());
@@ -198,6 +200,30 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     public bool IsNotLoading => !isLoading;
 
+    public bool IsUnderMaintenance
+    {
+        get => isUnderMaintenance;
+        set
+        {
+            if (!SetProperty(ref isUnderMaintenance, value))
+                return;
+
+            OnPropertyChanged(nameof(IsNotUnderMaintenance));
+            OnPropertyChanged(nameof(CanTravelOrder));
+            travelOrderCommand.RaiseCanExecuteChanged();
+            travelBackCommand.RaiseCanExecuteChanged();
+            confirmTravelBackCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    public bool IsNotUnderMaintenance => !isUnderMaintenance;
+
+    public string MaintenanceMessage
+    {
+        get => maintenanceMessage;
+        set => SetProperty(ref maintenanceMessage, value);
+    }
+
     public bool IsCharacterVisible   => SelectedSourceArea != null;
     public bool IsCharacterEnabled   => SelectedSourceArea != null && !isLoading;
     public bool IsTargetAreaVisible  => SelectedCharacter  != null;
@@ -206,7 +232,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     public string CharacterHint => isLoading && SelectedSourceArea != null ? "(获取角色信息中)" : "选择角色";
 
     public bool CanTravelOrder =>
-        SelectedSourceArea != null && SelectedCharacter != null && SelectedTargetArea != null && SelectedTargetGroup != null && !isLoading;
+        SelectedSourceArea != null && SelectedCharacter != null && SelectedTargetArea != null && SelectedTargetGroup != null && !isLoading && !isUnderMaintenance;
 
     // 超域返回页属性
     public ObservableCollection<DCTravelArea> ReturnSourceAreas { get; } = [];

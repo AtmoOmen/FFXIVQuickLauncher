@@ -18,6 +18,7 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
+using XIVLauncher.DCTravel;
 using XIVLauncher.GamePatchV3.Update;
 using XIVLauncher.Login;
 using XIVLauncher.Login.Channels;
@@ -172,6 +173,18 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         );
 
         UpdateDalamudStatusText();
+
+        DcTravelRuntimeService.MaintenanceStateChanged += state =>
+        {
+            Window.Dispatcher.Invoke(() =>
+            {
+                var isMaintenance = state == DCTravelMaintenanceState.UnderMaintenance;
+                DCTravelPage.IsUnderMaintenance  = isMaintenance;
+                DCTravelPage.MaintenanceMessage  = isMaintenance ? "超域旅行服务维护中, 请稍后再试" : string.Empty;
+                DashboardPage.IsDCTravelUnderMaintenance = isMaintenance;
+            });
+        };
+
         App.Dalamud.StatusChanged += DalamudUpdaterStatusChanged;
         Settings.SettingsSaved += (_, _) =>
         {

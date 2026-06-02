@@ -114,6 +114,20 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     public bool IsAreaOnline      => AreaStatus != 4;
     public bool IsAreaMaintenance => AreaStatus == 4;
 
+    public bool IsDCTravelUnderMaintenance
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            OnPropertyChanged(nameof(IsDCTravelAvailable));
+        }
+    }
+
+    public bool IsDCTravelAvailable => !IsDCTravelUnderMaintenance;
+
     public bool IsSwitchingAccount
     {
         get => isSwitchingAccount;

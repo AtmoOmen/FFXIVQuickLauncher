@@ -1253,6 +1253,23 @@
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <Grid Margin="16,0,16,0" VerticalAlignment="Center">
                                         <StackPanel>
+                                            <!-- 维护提示横幅 -->
+                                            <Border CornerRadius="8"
+                                                    Padding="12,10,12,10"
+                                                    Margin="0,0,0,12"
+                                                    Background="#33FF9800"
+                                                    BorderBrush="#66FF9800"
+                                                    BorderThickness="1"
+                                                    Visibility="{Binding DCTravelPage.IsUnderMaintenance, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="AlertCircle" Width="16" Height="16"
+                                                                             Foreground="#FF9800" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                    <TextBlock Text="{Binding DCTravelPage.MaintenanceMessage}"
+                                                               FontSize="12" FontWeight="SemiBold"
+                                                               Foreground="#FF9800" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+
                                             <!-- 步骤一：出发角色 -->
                                             <Border BorderThickness="1" 
                                                     BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}"
@@ -2290,12 +2307,38 @@
 
                                 <!-- 超域传送（Dashboard 内跳转到 DC Travel 页面） -->
                                 <Button Grid.Row="0" Grid.Column="0"
-                                        Style="{StaticResource PrimaryQuickLinkButtonStyle}"
                                         Command="{Binding DashboardPage.OpenDCTravelCommand}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryQuickLinkButtonStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DashboardPage.IsDCTravelUnderMaintenance}" Value="True">
+                                                    <Setter Property="Opacity" Value="0.5" />
+                                                    <Setter Property="ToolTip">
+                                                        <Setter.Value>
+                                                            <ToolTip>
+                                                                <TextBlock Text="超域旅行服务维护中, 请稍后再试" FontSize="12" />
+                                                            </ToolTip>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="Rocket" Width="14" Height="14"
                                                                  Margin="0,0,4,0" VerticalAlignment="Center" />
-                                        <TextBlock Text="超域传送" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                        <TextBlock VerticalAlignment="Center" FontWeight="SemiBold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="超域传送" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DashboardPage.IsDCTravelUnderMaintenance}" Value="True">
+                                                            <Setter Property="Text" Value="超域传送 (维护中)" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </StackPanel>
                                 </Button>
 

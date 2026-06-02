@@ -14,6 +14,18 @@ public partial class DCTravelClient
     public CancellationTokenSource     KeepAliveCancelSource               { get; private set; }
     public LoginSessionRefreshContext? LoginSessionRefreshContext          { get; private set; }
 
+    /// <summary>
+    ///     运行时检测到维护 (非初始化阶段), 供外部服务层启动恢复。
+    ///     可能在任意线程触发, 订阅方需自行调度回 UI 线程。
+    /// </summary>
+    public event Action? MaintenanceDetected;
+
+    public DCTravelMaintenanceState MaintenanceState
+    {
+        get => (DCTravelMaintenanceState)Interlocked.CompareExchange(ref maintenanceState, 0, 0);
+        set => Interlocked.Exchange(ref maintenanceState, (int)value);
+    }
+
     private const string BASE_URL               = "ff14bjz.sdo.com";
     private const string DOMAIN                 = "sdo.com";
     private const int    KEEP_ALIVE_MIN_MINUTES = 10;
@@ -44,8 +56,10 @@ public partial class DCTravelClient
     private readonly HttpClient      httpClient;
     private readonly CookieContainer cookieContainer;
 
-    private string ticket = string.Empty;
+    private string ticket           = string.Empty;
     private int    initializedState;
+    private int    maintenanceState = (int)DCTravelMaintenanceState.Normal;
+    private int    keepAliveRunning;
     private Task?  sessionRecoveryTask;
 
     public DCTravelClient(string nSessionID)
@@ -107,7 +121,7 @@ public partial class DCTravelClient
         if (returnCode != 0)
         {
             var message = root["return_message"]?.GetValue<string>() ?? "unknown";
-            throw new DCTravelAPIException($"API 调用失败, 返回码: {returnCode}, 消息: {message}", returnCode)
+            throw new DCTravelAPIException($"API 调用失败, 返回码: {returnCode}, 消息: {message}", returnCode, message)
             {
                 IsEnvelopeRejected = true
             };
@@ -179,6 +193,7 @@ public partial class DCTravelClient
             }
             catch (DCTravelAPIException ex)
                 when (ex.IsEnvelopeRejected
+                      && !ex.IsServiceMaintenance
                       && !ignoreInitialized
                       && !sessionRecovered
                       && !KeepAliveCancelSource.Token.IsCancellationRequested)
@@ -186,6 +201,14 @@ public partial class DCTravelClient
                 sessionRecovered = true;
                 Log.Warning(ex, "[DCTravelClient] 会话被服务端拒绝, 尝试重建会话后重试");
                 await EnsureSessionRecovered().ConfigureAwait(false);
+            }
+            catch (DCTravelAPIException ex) when (ex.IsServiceMaintenance)
+            {
+                // 维护期间不重试, 直接抛出; 同时更新状态以便 UI 与 RPC 控制器感知
+                MaintenanceState = DCTravelMaintenanceState.UnderMaintenance;
+                SetInitialized(false);
+                MaintenanceDetected?.Invoke();
+                throw;
             }
             catch (DCTravelAPIException ex) when (ex.IsNetworkTimeout && attempt < MAX_ATTEMPTS)
             {
@@ -271,6 +294,10 @@ public partial class DCTravelClient
             return;
         }
 
+        // 维护期间不浪费 SSO ticket —— ticket 刷新也无法绕过维护
+        if (MaintenanceState == DCTravelMaintenanceState.UnderMaintenance)
+            throw new DCTravelAPIException("超域旅行服务维护中, 无法初始化", -10339180);
+
         Log.Information("[DCTravelClient] 首次初始化超域旅行页面未通过, 刷新 ticket 后重试");
         var refreshDcTravelSessionIdFunc = LoginSessionRefreshContext?.RefreshDcTravelSessionIdAsync ?? throw new DCTravelAPIException("未配置 RefreshDcTravelSessionIdFunc");
         ticket = await refreshDcTravelSessionIdFunc().ConfigureAwait(false);
@@ -286,8 +313,50 @@ public partial class DCTravelClient
         throw new DCTravelAPIException("验证 ticket 后初始化超域旅行页面失败");
     }
 
+    /// <summary>
+    ///     维护恢复: 先试轻量 <see cref="InitTravelPage"/> (不消耗 ticket)。
+    ///     若失败且不再是维护错误 (如 Cookie 过期), 则走完整 <see cref="GetValidCookie"/> 重建会话。
+    ///     成功后标记已初始化, 调用方负责重启监听器等后续流程。
+    /// </summary>
+    /// <returns>恢复后的维护状态 (<see cref="DCTravelMaintenanceState.Normal"/> 表示已恢复)。</returns>
+    public async Task<DCTravelMaintenanceState> TryRecoverFromMaintenanceAsync()
+    {
+        if (await InitTravelPage())
+        {
+            Log.Information("[DCTravelClient] 超域旅行服务已从维护中恢复");
+            SetInitialized(true);
+            return MaintenanceState;
+        }
+
+        // InitTravelPage 失败但 MaintenanceState 已被清除 → 维护已结束, 只是会话过期
+        if (MaintenanceState == DCTravelMaintenanceState.Normal)
+        {
+            Log.Information("[DCTravelClient] 维护已结束但会话失效, 尝试完整重建");
+            try
+            {
+                await GetValidCookie().ConfigureAwait(false);
+                Log.Information("[DCTravelClient] 会话重建成功, 超域旅行已恢复");
+                return MaintenanceState;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[DCTravelClient] 会话重建失败, 将在下次恢复周期重试");
+                return DCTravelMaintenanceState.UnderMaintenance;
+            }
+        }
+
+        Log.Debug("[DCTravelClient] 超域旅行服务仍在维护中");
+        return MaintenanceState;
+    }
+
     public async Task KeepCookieAlive()
     {
+        if (Interlocked.Exchange(ref keepAliveRunning, 1) == 1)
+        {
+            Log.Debug("[DCTravelClient] 保活循环已在运行, 跳过重复启动");
+            return;
+        }
+
         var cancellationToken = KeepAliveCancelSource.Token;
 
         try
@@ -323,6 +392,10 @@ public partial class DCTravelClient
         {
             // ignored
         }
+        finally
+        {
+            Interlocked.Exchange(ref keepAliveRunning, 0);
+        }
     }
 
     public string GetNSessionIdFromCookie()
@@ -343,11 +416,23 @@ public partial class DCTravelClient
         try
         {
             _ = await GetRequestData("api/orderserivce/pageInit", DCTravelAPIType.TravelWithTicket, new Dictionary<string, string> { { "migrationType", "4" } }, true);
+            MaintenanceState = DCTravelMaintenanceState.Normal;
             return true;
         }
         catch (DCTravelAPIException ex)
         {
-            Log.Debug(ex, "初始化超域旅行页面未通过");
+            if (ex.IsServiceMaintenance)
+            {
+                Log.Warning(ex, "[DCTravelClient] 超域旅行服务维护中: {Message}", ex.ReturnMessage);
+                MaintenanceState = DCTravelMaintenanceState.UnderMaintenance;
+            }
+            else
+            {
+                // 非维护错误 (如 Cookie 过期): 清除维护标记, 让上层区分"仍在维护"与"维护已结束但会话失效"
+                MaintenanceState = DCTravelMaintenanceState.Normal;
+                Log.Debug(ex, "初始化超域旅行页面未通过");
+            }
+
             return false;
         }
     }
