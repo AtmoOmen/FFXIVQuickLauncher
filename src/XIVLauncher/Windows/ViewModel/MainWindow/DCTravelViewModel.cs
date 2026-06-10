@@ -17,6 +17,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     private readonly Action               requestShowProgressAction;
     private readonly Action               requestOpenReturnAction;
     private readonly Action<string>       setCurrentAreaAction;
+    private readonly Action               activateAction;
     private readonly Func<DCTravelClient> getDcTravelClientFunc;
 
     private readonly AsyncCommand travelOrderCommand;
@@ -42,6 +43,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         Action               requestShowProgressAction,
         Action               requestOpenReturnAction,
         Action<string>       setCurrentAreaAction,
+        Action               activateAction,
         Func<DCTravelClient> getDcTravelClientFunc
     )
     {
@@ -51,6 +53,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         this.requestShowProgressAction    = requestShowProgressAction;
         this.requestOpenReturnAction      = requestOpenReturnAction;
         this.setCurrentAreaAction         = setCurrentAreaAction;
+        this.activateAction                = activateAction;
         this.getDcTravelClientFunc        = getDcTravelClientFunc;
 
         travelOrderCommand        = new AsyncCommand(async _ => await StartTravelAsync(),    () => SelectedTargetGroup != null && SelectedCharacter != null && !isLoading && !isUnderMaintenance);
@@ -340,6 +343,8 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
             if (SelectedTargetArea != null)
                 UpdateCurrentArea(SelectedTargetArea.AreaName);
+
+            activateAction();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -579,6 +584,8 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             {
                 UpdateCurrentArea(pendingReturnOrder.SourceAreaName);
             }
+
+            activateAction();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

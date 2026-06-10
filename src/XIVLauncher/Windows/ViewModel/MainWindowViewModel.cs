@@ -170,6 +170,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             () => SwitchCard(LoginCardType.DCTravelProgress),
             () => SwitchCard(LoginCardType.DCTravelReturn),
             HandleSetCurrentAreaFromDCTravel,
+            () => Activate(),
             () => DcTravelRuntimeService.Client
         );
 
