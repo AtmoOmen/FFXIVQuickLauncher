@@ -426,6 +426,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     private async Task HandleLoginWorkflowExceptionAsync(Exception ex, LoginType loginType, string username, bool usedSavedWeGameToken, LoginAfterAction action)
     {
         Log.Error(ex, "[MainWindow] 尝试登录至游戏失败");
+
+        if (ex is OperationCanceledException && (IsLoginCanceledByUser || LoginCancelSource?.IsCancellationRequested == true))
+        {
+            Log.Information("[MainWindow] 用户取消了登录操作, 正常返回");
+            return;
+        }
+
         await ClearInvalidSavedWeGameTokenAsync(ex, loginType, username, usedSavedWeGameToken).ConfigureAwait(false);
 
         var msgbox = new CustomMessageBox.Builder()
