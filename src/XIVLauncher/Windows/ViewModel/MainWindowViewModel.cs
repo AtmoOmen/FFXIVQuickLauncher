@@ -518,7 +518,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 if (App.Settings.GamePath != null && Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
                 {
                     IsLoggingIn = false;
-                    _           = HandleGameClientFileTask(GameClientFileTaskKind.Repair);
+                    _           = HandleGameClientFileTask(GameClientFileTaskKind.FreshInstall);
                     return;
                 }
 

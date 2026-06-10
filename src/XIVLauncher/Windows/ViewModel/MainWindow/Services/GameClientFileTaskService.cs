@@ -57,6 +57,19 @@ public sealed class GameClientFileTaskService
 
         if (!TryGetValidGamePath(out var gamePath, out var gamePathError))
         {
+            if (App.Settings.GamePath != null && !string.IsNullOrWhiteSpace(App.Settings.GamePath.FullName))
+            {
+                Log.Warning("[GameClientFileTask] 游戏路径不存在, 提示是否安装游戏: {GamePath}", App.Settings.GamePath.FullName);
+                var action = await WaitForChoiceAsync
+                             (
+                                 viewModel,
+                                 CreateChoiceSnapshot(TITLE, "所选游戏目录不存在或尚未安装游戏", "是否下载安装完整游戏?", "开始安装", "关闭")
+                             ).ConfigureAwait(false);
+
+                if (action == GameClientFileTaskWindowAction.Primary)
+                    return await RunFreshInstallAsync(viewModel).ConfigureAwait(false);
+            }
+
             Log.Warning("[GameClientFileTask] 游戏路径无效: {Message}", gamePathError);
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, gamePathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
         }
@@ -67,11 +80,11 @@ public sealed class GameClientFileTaskService
             var action = await WaitForChoiceAsync
                          (
                              viewModel,
-                             CreateChoiceSnapshot(TITLE, "所选路径中没有检测到游戏安装", "是否尝试修复游戏文件?", "开始修复", "关闭")
+                             CreateChoiceSnapshot(TITLE, "所选路径中没有检测到游戏安装", "是否下载安装完整游戏?", "开始安装", "关闭")
                          ).ConfigureAwait(false);
 
             if (action == GameClientFileTaskWindowAction.Primary)
-                return await RunRepairAsync(viewModel).ConfigureAwait(false);
+                return await RunFreshInstallAsync(viewModel).ConfigureAwait(false);
 
             return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
         }
@@ -225,8 +238,38 @@ public sealed class GameClientFileTaskService
     {
         const string TITLE = "修复游戏文件";
 
-        if (!TryGetValidGamePath(out _, out var gamePathError))
+        if (!TryGetValidGamePath(out var gamePath, out var gamePathError))
+        {
+            if (App.Settings.GamePath != null && !string.IsNullOrWhiteSpace(App.Settings.GamePath.FullName))
+            {
+                Log.Warning("[GameClientFileTask] 游戏路径不存在, 提示是否安装游戏: {GamePath}", App.Settings.GamePath.FullName);
+                var action = await WaitForChoiceAsync
+                             (
+                                 viewModel,
+                                 CreateChoiceSnapshot(TITLE, "所选游戏目录不存在或尚未安装游戏", "是否下载安装完整游戏?", "开始安装", "关闭")
+                             ).ConfigureAwait(false);
+
+                if (action == GameClientFileTaskWindowAction.Primary)
+                    return await RunFreshInstallAsync(viewModel).ConfigureAwait(false);
+            }
+
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, gamePathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+        }
+
+        if (Repository.Ffxiv.IsBaseVer(gamePath))
+        {
+            Log.Warning("[GameClientFileTask] 当前游戏路径未检测到安装, 提示是否安装游戏");
+            var action = await WaitForChoiceAsync
+                         (
+                             viewModel,
+                             CreateChoiceSnapshot(TITLE, "所选路径中没有检测到游戏安装", "是否下载安装完整游戏?", "开始安装", "关闭")
+                         ).ConfigureAwait(false);
+
+            if (action == GameClientFileTaskWindowAction.Primary)
+                return await RunFreshInstallAsync(viewModel).ConfigureAwait(false);
+
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "已取消"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+        }
 
         if (!TryResolvePatchPath(out var patchPathError))
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, patchPathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
