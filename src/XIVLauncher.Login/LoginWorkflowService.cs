@@ -144,9 +144,8 @@ public sealed class LoginWorkflowService
         bool                  quickLoginEnabled,
         DeviceProfileSnapshot deviceProfile
     ) =>
-        loginClient.LoginWithPatchCheck
+        loginClient.LoginWithFallback
         (
-            request.CheckGameUpdateAsync,
             type,
             fallbackLoginType,
             requestLoginType => LoginRequest.Create

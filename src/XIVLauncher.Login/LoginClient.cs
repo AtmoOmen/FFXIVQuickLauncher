@@ -36,20 +36,15 @@ public sealed class LoginClient
         return await LoginAsync(LoginType.QuickLogin, request).ConfigureAwait(false);
     }
 
-    public async Task<LoginResult> LoginWithPatchCheck
+    public async Task<LoginResult> LoginWithFallback
     (
-        Func<CancellationToken, Task<LoginResult>> checkGameUpdateAsync,
-        LoginType                                  loginType,
-        LoginType                                  fallbackLoginType,
-        Func<LoginType, LoginRequest>              requestFactory,
-        CancellationToken                          cancellationToken = default
+        LoginType                     loginType,
+        LoginType                     fallbackLoginType,
+        Func<LoginType, LoginRequest> requestFactory,
+        CancellationToken             cancellationToken = default
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
-
-        var checkResult = await checkGameUpdateAsync(cancellationToken).ConfigureAwait(false);
-        if (checkResult.State == LoginState.NeedsPatchGame)
-            return checkResult;
 
         if (loginType == LoginType.QuickLogin)
         {

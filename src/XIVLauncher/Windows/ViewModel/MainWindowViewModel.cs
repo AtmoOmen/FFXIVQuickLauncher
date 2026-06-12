@@ -370,14 +370,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             LoginCancellationTokenSource         = LoginCancelSource ?? new CancellationTokenSource(),
             LoginSessionRefreshSink              = DcTravelRuntimeService,
             Interaction                          = new MainWindowLoginInteraction(Window, LoginPage, DialogProvider),
-            RequireDeviceProfileSetupForNewLogin = App.Settings.RequireDeviceProfileSetupForNewLogin,
-            CheckGameUpdateAsync = async ct =>
-            {
-                var checkResult = await GameUpdater.Check(App.Settings.GamePath, false, ct).ConfigureAwait(false);
-                return checkResult.NeedsUpdate
-                           ? new LoginResult { State = LoginState.NeedsPatchGame, OAuthLogin = new() }
-                           : new LoginResult { State = LoginState.Ok, OAuthLogin             = null };
-            }
+            RequireDeviceProfileSetupForNewLogin = App.Settings.RequireDeviceProfileSetupForNewLogin
         };
 
         LoginWorkflowResult? workflowResult = null;
@@ -712,20 +705,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 return false;
         }
 
-        if (loginResult.State == LoginState.NeedsPatchGame)
-        {
-            if (!ConfirmGamePatchInstall())
-                return false;
-
-            if (!await InstallGamePatchAsync().ConfigureAwait(false))
-            {
-                Log.Error("patchSuccess != true");
-                return false;
-            }
-
-            loginResult.State = LoginState.Ok;
-        }
-
         if (loginResult.State == LoginState.NeedRetry)
         {
             Log.Error("loginResult.State == NeedRetry");
@@ -763,6 +742,33 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
 
         isStartingGameFromDashboard = false;
+
+        // 在启动游戏前检查是否有待安装的补丁
+        try
+        {
+            var checkResult = await GameUpdater.Check(App.Settings.GamePath, false, CancellationToken.None).ConfigureAwait(false);
+            if (checkResult.NeedsUpdate)
+            {
+                if (!ConfirmGamePatchInstall())
+                    return false;
+
+                if (!await InstallGamePatchAsync().ConfigureAwait(false))
+                {
+                    Log.Error("patchSuccess != true");
+                    return false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MainWindow] 启动前补丁检查失败");
+            CustomMessageBox.Builder
+                            .NewFrom(ex, "启动前补丁检查")
+                            .WithAppendText("\n\n检查游戏更新时发生错误，请稍后重试")
+                            .WithParentWindow(Window)
+                            .Show();
+            return false;
+        }
 
         Hide();
 

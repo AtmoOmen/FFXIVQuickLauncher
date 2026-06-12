@@ -27,6 +27,4 @@ public sealed class LoginWorkflowRequest
     public required ILoginWorkflowInteraction Interaction { get; init; }
 
     public required bool RequireDeviceProfileSetupForNewLogin { get; init; }
-
-    public required Func<CancellationToken, Task<LoginResult>> CheckGameUpdateAsync { get; init; }
 }
