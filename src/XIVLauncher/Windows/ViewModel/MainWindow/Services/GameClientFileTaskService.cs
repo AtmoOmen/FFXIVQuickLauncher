@@ -170,7 +170,7 @@ public sealed class GameClientFileTaskService
             var assemblyLocation    = AppContext.BaseDirectory;
             var shimExecutablePath  = Path.Combine(assemblyLocation, "VcdiffShim", "XIVLauncher.VcdiffShim.exe");
             var adminAccessRequired = GameRepairer.AdminAccessRequired(App.Settings.GamePath.FullName);
-            var shimRuntimePath     = DotNetRuntimeManager.GetRuntimeDirectory("win-x86");
+            var shimRuntimePath     = DotNetRuntimeManager.GetRuntimeDirectory("win-x64");
 
             ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, "正在准备运行时"));
             var runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(cancellationTokenSource.Token).ConfigureAwait(false);
@@ -178,7 +178,7 @@ public sealed class GameClientFileTaskService
                                       (
                                           shimRuntimePath,
                                           runtimeVersion,
-                                          "win-x86",
+                                          "win-x64",
                                           "补丁安装器 .NET 运行时",
                                           message => ApplySnapshot(viewModel,                CreateRunningSnapshot(TITLE, message)),
                                           (total, downloaded, _) => ApplySnapshot(viewModel, CreateRuntimeDownloadSnapshot(TITLE, total, downloaded)),

@@ -10,8 +10,8 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net10.0-windows</TargetFramework>
-        <RuntimeIdentifier>win-x86</RuntimeIdentifier>
-        <PlatformTarget>x86</PlatformTarget>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <PlatformTarget>x64</PlatformTarget>
         <LangVersion>latest</LangVersion>
         <Deterministic>true</Deterministic>
         <OutputPath>..\bin\VcdiffShim\</OutputPath>
@@ -19,12 +19,11 @@
         <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
         <SelfContained>false</SelfContained>
     </PropertyGroup>
-    <ItemGroup>
-        <Content Include="Launcher3Modules\*.dll">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-            <TargetPath>Launcher3Modules\%(Filename)%(Extension)</TargetPath>
-        </Content>
-    </ItemGroup>
+    <PropertyGroup>
+        <XdeltaShimDir>$(MSBuildProjectDirectory)\..\XIVLauncher.XdeltaShim</XdeltaShimDir>
+        <XdeltaShimDllOutput>$(XdeltaShimDir)\target\release\xivlauncher_xdelta_shim.dll</XdeltaShimDllOutput>
+        <SkipXdeltaShim Condition="'$(SkipXdeltaShim)' == ''">false</SkipXdeltaShim>
+    </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Serilog"/>
         <PackageReference Include="Serilog.Sinks.Async"/>
@@ -32,4 +31,27 @@
         <PackageReference Include="Serilog.Sinks.File"/>
         <PackageReference Include="SharedMemory"/>
     </ItemGroup>
+    <Target Name="BuildXdeltaShim"
+            BeforeTargets="BeforeBuild"
+            Condition="'$(SkipXdeltaShim)' != 'true'">
+        <Error Condition="!Exists('$(XdeltaShimDir)\Cargo.toml')"
+               Text="XIVLauncher.XdeltaShim sources are missing."/>
+
+        <Exec Command="cargo --version" ConsoleToMsBuild="true" IgnoreExitCode="true">
+            <Output TaskParameter="ExitCode" PropertyName="_CargoExitCode"/>
+        </Exec>
+        <Error Condition="'$(_CargoExitCode)' != '0'"
+               Text="'cargo' not found on PATH. Install the Rust toolchain from https://rustup.rs, or pass /p:SkipXdeltaShim=true."/>
+
+        <Exec Command="cargo build --release"
+              WorkingDirectory="$(XdeltaShimDir)"
+              ConsoleToMsBuild="true"/>
+
+        <Error Condition="!Exists('$(XdeltaShimDllOutput)')"
+               Text="XIVLauncher.XdeltaShim build succeeded but '$(XdeltaShimDllOutput)' is missing."/>
+
+        <Copy SourceFiles="$(XdeltaShimDllOutput)"
+              DestinationFiles="$(OutDir)xivlauncher_xdelta_shim.dll"
+              SkipUnchangedFiles="true"/>
+    </Target>
 </Project>

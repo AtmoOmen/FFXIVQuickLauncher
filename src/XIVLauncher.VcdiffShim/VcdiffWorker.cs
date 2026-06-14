@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -9,14 +8,37 @@ namespace XIVLauncher.VcdiffShim;
 
 public class VcdiffWorker : IDisposable
 {
-    private readonly Process   parentProcess;
-    private readonly RpcBuffer rpcBuffer;
-    private          bool      isDisposed;
+    private readonly Process                                     parentProcess;
+    private readonly RpcBuffer                                   rpcBuffer;
+    private readonly IntPtr                                      helperLibrary;
+    private readonly XdeltaDecodeFileWithDeltaMemoryUtf8Delegate decodeWithDeltaMemory;
+    private readonly XdeltaBridgeGetLastErrorUtf8Delegate        getLastError;
+    private          bool                                        isDisposed;
 
     public VcdiffWorker(int monitorProcessId, string channelName)
     {
         parentProcess = Process.GetProcessById(monitorProcessId);
         rpcBuffer     = new(channelName, HandleRequestAsync);
+
+        var helperPath = Path.Combine(AppContext.BaseDirectory, "xivlauncher_xdelta_shim.dll");
+        if (!File.Exists(helperPath))
+            throw new FileNotFoundException("缺少 V3 差分模块", helperPath);
+
+        try
+        {
+            helperLibrary = NativeLibrary.Load(helperPath);
+            var export = NativeLibrary.GetExport(helperLibrary, "xdelta_decode_file_with_delta_memory_utf8");
+            decodeWithDeltaMemory = Marshal.GetDelegateForFunctionPointer<XdeltaDecodeFileWithDeltaMemoryUtf8Delegate>(export);
+            var errorExport = NativeLibrary.GetExport(helperLibrary, "xdelta_bridge_get_last_error_utf8");
+            getLastError = Marshal.GetDelegateForFunctionPointer<XdeltaBridgeGetLastErrorUtf8Delegate>(errorExport);
+        }
+        catch
+        {
+            if (helperLibrary != IntPtr.Zero)
+                NativeLibrary.Free(helperLibrary);
+
+            throw;
+        }
     }
 
     public void Dispose()
@@ -25,6 +47,10 @@ public class VcdiffWorker : IDisposable
             return;
 
         rpcBuffer.Dispose();
+
+        if (helperLibrary != IntPtr.Zero)
+            NativeLibrary.Free(helperLibrary);
+
         isDisposed = true;
     }
 
@@ -55,16 +81,23 @@ public class VcdiffWorker : IDisposable
         }
 
         var sourceFile   = reader.ReadString();
-        var deltaFile    = reader.ReadString();
         var targetFile   = reader.ReadString();
         var expectedMd5  = reader.ReadString();
         var expectedSize = reader.ReadInt64();
+        var deltaSize    = reader.ReadInt32();
 
-        Log.Information("[VcdiffShim] 收到差分合并请求, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}", sourceFile, deltaFile, targetFile);
+        if (deltaSize < 0)
+            throw new InvalidDataException("V3 差分数据长度无效");
+
+        var deltaData = reader.ReadBytes(deltaSize);
+        if (deltaData.Length != deltaSize)
+            throw new InvalidDataException("V3 差分数据不完整");
+
+        Log.Information("[VcdiffShim] 收到差分合并请求, 源 {SourceFile}, 差分大小 {DeltaSize}, 目标 {TargetFile}", sourceFile, deltaData.Length, targetFile);
 
         try
         {
-            ApplyVcdiffInternal(sourceFile, deltaFile, targetFile, expectedMd5, expectedSize);
+            ApplyVcdiffInternal(sourceFile, deltaData, targetFile, expectedMd5, expectedSize);
             return BuildSuccessResponse();
         }
         catch (Exception ex)
@@ -74,26 +107,8 @@ public class VcdiffWorker : IDisposable
         }
     }
 
-    private void ApplyVcdiffInternal(string sourceFile, string deltaFile, string targetFile, string expectedMd5, long expectedSize)
+    private void ApplyVcdiffInternal(string sourceFile, byte[] deltaData, string targetFile, string expectedMd5, long expectedSize)
     {
-        if (Environment.Is64BitProcess)
-            throw new InvalidOperationException("V3 差分必须在 32 位进程中执行");
-
-        var moduleDirectory = Path.Combine(AppContext.BaseDirectory, "Launcher3Modules");
-        var modulePath      = Path.Combine(moduleDirectory,          "XDelta3WrapFactory.dll");
-
-        if (!File.Exists(modulePath))
-            throw new FileNotFoundException("缺少 V3 差分模块", modulePath);
-
-        Log.Information("[VcdiffShim] 使用 V3 差分模块目录 {ModuleDirectory}", moduleDirectory);
-
-        foreach (var moduleName in new[] { "GlobalSharedEnv.dll", "log4cplusU.dll", "minizip.dll", "XDelta3WrapFactory.dll", "ZlibWrap.dll", "zlib1.dll" })
-        {
-            var requiredModulePath = Path.Combine(moduleDirectory, moduleName);
-            if (!File.Exists(requiredModulePath))
-                throw new FileNotFoundException("缺少 V3 差分模块依赖", requiredModulePath);
-        }
-
         var targetParentDir = Path.GetDirectoryName(targetFile) ?? throw new InvalidOperationException();
         Directory.CreateDirectory(targetParentDir);
 
@@ -104,54 +119,18 @@ public class VcdiffWorker : IDisposable
         {
             Log.Information
             (
-                "[VcdiffShim] 差分合并开始, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}, 临时文件 {TempPath}, 期望大小 {ExpectedSize}",
+                "[VcdiffShim] 差分合并开始, 源 {SourceFile}, 差分大小 {DeltaSize}, 目标 {TargetFile}, 临时文件 {TempPath}, 期望大小 {ExpectedSize}",
                 sourceFile,
-                deltaFile,
+                deltaData.Length,
                 targetFile,
                 tempPath,
                 expectedSize
             );
 
-            var currentDirectory = Directory.GetCurrentDirectory();
-            Directory.SetCurrentDirectory(moduleDirectory);
-
-            var library = IntPtr.Zero;
-
-            try
-            {
-                if (!SetDllDirectory(moduleDirectory))
-                    throw new Win32Exception(Marshal.GetLastWin32Error());
-
-                var mergeTicks = Stopwatch.GetTimestamp();
-                Log.Information("[VcdiffShim] 正在合并差分 {DeltaPath}, 源 {SourcePath}, 临时目标 {TempPath}", deltaFile, sourceFile, tempPath);
-                library = NativeLibrary.Load(modulePath);
-                var mergeFile = Marshal.GetDelegateForFunctionPointer<MergeFileDelegate>(NativeLibrary.GetExport(library, "MergeFile"));
-
-                if (!mergeFile(sourceFile, deltaFile, tempPath))
-                {
-                    var sourceInfo = new FileInfo(sourceFile);
-                    Log.Error
-                    (
-                        "[VcdiffShim] 差分合并失败, 源 {SourcePath} (大小 {SourceSize}), 差分 {DeltaPath}, 临时目标 {TempPath}",
-                        sourceFile,
-                        sourceInfo.Length,
-                        deltaFile,
-                        tempPath
-                    );
-                    throw new InvalidDataException($"V3 差分合并失败: 源文件 {sourceInfo.Length} 字节, 差分 {new FileInfo(deltaFile).Length} 字节");
-                }
-
-                Log.Information("[VcdiffShim] 差分合并完成, 耗时 {ElapsedMs} ms", Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
-            }
-            finally
-            {
-                Directory.SetCurrentDirectory(currentDirectory);
-
-                if (library != IntPtr.Zero)
-                    NativeLibrary.Free(library);
-
-                SetDllDirectory(null);
-            }
+            var mergeTicks = Stopwatch.GetTimestamp();
+            Log.Information("[VcdiffShim] 正在合并差分, 源 {SourcePath}, 临时目标 {TempPath}", sourceFile, tempPath);
+            RunXdeltaHelper(sourceFile, deltaData, tempPath);
+            Log.Information("[VcdiffShim] 差分合并完成, 耗时 {ElapsedMs} ms", Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
 
             if (expectedSize >= 0 && new FileInfo(tempPath).Length != expectedSize)
                 throw new InvalidDataException("V3 差分产物大小不匹配");
@@ -187,6 +166,55 @@ public class VcdiffWorker : IDisposable
         }
     }
 
+    private void RunXdeltaHelper(string sourceFile, byte[] deltaData, string tempPath)
+    {
+        var handle = GCHandle.Alloc(deltaData, GCHandleType.Pinned);
+
+        try
+        {
+            var result = decodeWithDeltaMemory
+            (
+                sourceFile,
+                handle.AddrOfPinnedObject(),
+                (nuint)deltaData.Length,
+                tempPath
+            );
+
+            if (result == 0)
+                return;
+
+            var sourceInfo  = new FileInfo(sourceFile);
+            var nativeError = Marshal.PtrToStringUTF8(getLastError()) ?? string.Empty;
+            Log.Error
+            (
+                "[VcdiffShim] 差分合并失败, 返回码 {Result}, 原因 {NativeError}, 源 {SourcePath} (大小 {SourceSize}), 差分大小 {DeltaSize}, 临时目标 {TempPath}",
+                result,
+                nativeError,
+                sourceFile,
+                sourceInfo.Length,
+                deltaData.Length,
+                tempPath
+            );
+            throw new InvalidDataException($"V3 差分合并失败: 返回码 {result}, 原因 {nativeError}, 源文件 {sourceInfo.Length} 字节, 差分 {deltaData.Length} 字节");
+        }
+        finally
+        {
+            handle.Free();
+        }
+    }
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate int XdeltaDecodeFileWithDeltaMemoryUtf8Delegate
+    (
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string sourcePath,
+        IntPtr                                      deltaData,
+        nuint                                       deltaSize,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string targetPath
+    );
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate IntPtr XdeltaBridgeGetLastErrorUtf8Delegate();
+
     private static byte[] BuildSuccessResponse()
     {
         var ms     = new MemoryStream();
@@ -203,13 +231,6 @@ public class VcdiffWorker : IDisposable
         writer.Write(errorMessage);
         return ms.ToArray();
     }
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern bool SetDllDirectory(string? pathName);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
-    [return: MarshalAs(UnmanagedType.I1)]
-    private delegate bool MergeFileDelegate(string sourceFile, string deltaFile, string targetFile);
 
     #region Constants
 

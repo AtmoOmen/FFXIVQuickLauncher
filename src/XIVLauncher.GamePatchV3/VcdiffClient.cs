@@ -63,17 +63,36 @@ public sealed class VcdiffClient
         CancellationToken                       cancellationToken = default
     )
     {
-        Log.Information("[VcdiffClient] 请求 V3 差分合并, 源 {SourceFile}, 差分 {DeltaFile}, 目标 {TargetFile}, 期望大小 {ExpectedSize}", sourceFile, deltaFile, targetFile, expectedSize);
+        var deltaData = await File.ReadAllBytesAsync(deltaFile, cancellationToken).ConfigureAwait(false);
+        await ApplyVcdiff(sourceFile, deltaData, targetFile, expectedMd5, expectedSize, progress, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ApplyVcdiff
+    (
+        string                                  sourceFile,
+        ReadOnlyMemory<byte>                    deltaData,
+        string                                  targetFile,
+        string                                  expectedMd5,
+        long                                    expectedSize,
+        IProgress<(long Progress, long Total)>? progress          = null,
+        CancellationToken                       cancellationToken = default
+    )
+    {
+        if (deltaData.Length > int.MaxValue)
+            throw new InvalidDataException("V3 差分数据过大");
+
+        Log.Information("[VcdiffClient] 请求 V3 差分合并, 源 {SourceFile}, 差分大小 {DeltaSize}, 目标 {TargetFile}, 期望大小 {ExpectedSize}", sourceFile, deltaData.Length, targetFile, expectedSize);
 
         EnsureWorkerStarted();
 
         var writer = new BinaryWriter(new MemoryStream());
         writer.Write(VCDIFF_OPCODE);
         writer.Write(sourceFile);
-        writer.Write(deltaFile);
         writer.Write(targetFile);
         writer.Write(expectedMd5);
         writer.Write(expectedSize);
+        writer.Write(deltaData.Length);
+        writer.Write(deltaData.Span);
 
         var requestData = ((MemoryStream)writer.BaseStream).ToArray();
         var resultTask  = rpcBuffer!.RemoteRequestAsync(requestData, 864000000, cancellationToken);
@@ -185,8 +204,7 @@ public sealed class VcdiffClient
 
             if (!string.IsNullOrWhiteSpace(dotnetRootPath))
             {
-                Environment.SetEnvironmentVariable("DOTNET_ROOT_X86",  dotnetRootPath);
-                Environment.SetEnvironmentVariable("DOTNET_ROOT(x86)", dotnetRootPath);
+                Environment.SetEnvironmentVariable("DOTNET_ROOT", dotnetRootPath);
             }
 
             return startInfo;
@@ -194,8 +212,7 @@ public sealed class VcdiffClient
 
         if (!string.IsNullOrWhiteSpace(dotnetRootPath))
         {
-            startInfo.Environment["DOTNET_ROOT_X86"]          = dotnetRootPath;
-            startInfo.Environment["DOTNET_ROOT(x86)"]         = dotnetRootPath;
+            startInfo.Environment["DOTNET_ROOT"]              = dotnetRootPath;
             startInfo.Environment["DOTNET_MULTILEVEL_LOOKUP"] = "0";
         }
 

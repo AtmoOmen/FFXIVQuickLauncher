@@ -300,10 +300,6 @@ public sealed class GamePatchInstaller : IDisposable
                         }
                     }
 
-                    var deltaDirectory = Path.Combine(packageDirectory, "delta");
-                    Directory.CreateDirectory(deltaDirectory);
-
-                    var deltaFilePath = Path.Combine(deltaDirectory, $"{entryInfo.PackageFileIndex}_{deltaIndex}.delta");
                     progress?.Report
                     (
                         new()
@@ -317,27 +313,27 @@ public sealed class GamePatchInstaller : IDisposable
                         }
                     );
 
-                    var extractTicks     = Stopwatch.GetTimestamp();
-                    var extracted        = 0L;
-                    var lastExtracted    = 0L;
-                    var lastExtractTicks = Stopwatch.GetTimestamp();
-                    var minExtractTicks  = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
-                    var deltaEntryLength = deltaEntry.Length;
-                    var extractBuffer    = new byte[FILE_STREAM_BUFFER_SIZE];
+                    if (deltaEntry.Length > int.MaxValue)
+                        throw new InvalidDataException($"V3 差分文件过大: {deltaEntryPath}");
+
+                    var extractTicks        = Stopwatch.GetTimestamp();
+                    var extracted           = 0;
+                    var lastExtracted       = 0;
+                    var lastExtractTicks    = Stopwatch.GetTimestamp();
+                    var minExtractTicks     = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
+                    var deltaEntryLength    = (int)deltaEntry.Length;
+                    var deltaData           = new byte[deltaEntryLength];
 
                     Log.Information("[V3Patch] 正在解压差分 {Entry}, 目标 {Path}, 大小 {Size}", deltaEntryPath, targetRelativePath, deltaEntryLength);
 
                     await using (var deltaSource = await deltaEntry.OpenAsync(cancellationToken))
-                    await using (var deltaTarget = new FileStream
-                                     (deltaFilePath, FileMode.Create, FileAccess.Write, FileShare.None, FILE_STREAM_BUFFER_SIZE, FileOptions.Asynchronous | FileOptions.SequentialScan))
                     {
-                        while (true)
+                        while (extracted < deltaData.Length)
                         {
-                            var read = await deltaSource.ReadAsync(extractBuffer, cancellationToken).ConfigureAwait(false);
+                            var read = await deltaSource.ReadAsync(deltaData.AsMemory(extracted), cancellationToken).ConfigureAwait(false);
                             if (read == 0)
-                                break;
+                                throw new EndOfStreamException($"V3 差分文件提前结束: {deltaEntryPath}");
 
-                            await deltaTarget.WriteAsync(extractBuffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                             extracted += read;
 
                             var ticks = Stopwatch.GetTimestamp();
@@ -361,8 +357,6 @@ public sealed class GamePatchInstaller : IDisposable
                             lastExtracted    = extracted;
                             lastExtractTicks = ticks;
                         }
-
-                        await deltaTarget.FlushAsync(cancellationToken).ConfigureAwait(false);
                     }
 
                     Log.Information("[V3Patch] 差分解压完成 {Path}, 耗时 {ElapsedMs} ms", targetRelativePath, Stopwatch.GetElapsedTime(extractTicks).TotalMilliseconds);
@@ -400,7 +394,7 @@ public sealed class GamePatchInstaller : IDisposable
                         // 仅最终跳的产物等于目标版本, 中间跳不按目标 MD5/大小校验合并产物
                         var verifyMd5  = isFinalHop ? expectedTargetMd5 : string.Empty;
                         var verifySize = isFinalHop ? expectedTargetSize : -1L;
-                        await vcdiffClient.ApplyVcdiff(targetPath, deltaFilePath, targetPath, verifyMd5, verifySize, deltaProgress, cancellationToken).ConfigureAwait(false);
+                        await vcdiffClient.ApplyVcdiff(targetPath, deltaData, targetPath, verifyMd5, verifySize, deltaProgress, cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -461,9 +455,6 @@ public sealed class GamePatchInstaller : IDisposable
                         reachedTargetFiles.Add(gameRelativePath);
                         Log.Information("[V3Patch] 完整目标文件回退完成 {Path}", targetRelativePath);
                     }
-
-                    File.Delete(deltaFilePath);
-
                     applied++;
                     Log.Information("[V3Patch] 更新文件安装完成 {Path}, 进度 {Applied}/{Total}", targetRelativePath, applied, applyTotal);
                     progress?.Report
