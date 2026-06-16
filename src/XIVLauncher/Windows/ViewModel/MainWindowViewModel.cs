@@ -1046,7 +1046,12 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         EnsureDalamudCompatibility();
 
         if (App.Settings.DalamudEnabled && !forceNoDalamud)
-            dalamudOk = EnsureDalamudUpdate(dalamudSession, App.Settings.GamePath, false);
+        {
+            if (EnsureDalamudUpdate(dalamudSession, App.Settings.GamePath, false) is not { } dalamudUpdateResult)
+                return null;
+
+            dalamudOk = dalamudUpdateResult;
+        }
 
         var gameRunner = new GameRunner(dalamudSession, dalamudOk, App.Dalamud.Updater.Runtime);
         stopwatch.Stop();
@@ -1302,7 +1307,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    private bool EnsureDalamudUpdate(DalamudSession dalamudSession, DirectoryInfo gamePath, bool appendWafStatusCodeHint)
+    private bool? EnsureDalamudUpdate(DalamudSession dalamudSession, DirectoryInfo gamePath, bool appendWafStatusCodeHint)
     {
         try
         {
@@ -1314,7 +1319,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         {
             Log.Error(ex, "[MainWindow] 尝试更新 Dalamud 时发生错误");
 
-            var ensurementErrorMessage = "下载 Dalamud 相关文件异常\n请检查本地网络连接, 或关闭杀毒软件\n游戏将照常启动, 但无法使用 Dalamud";
+            var ensurementErrorMessage = "下载 Dalamud 相关文件异常\n请检查本地网络连接, 或关闭杀毒软件\n点击确定将继续以不启用 Dalamud 的方式启动游戏";
 
             if (appendWafStatusCodeHint
                 && ex is HttpRequestException httpRequestException
@@ -1324,14 +1329,14 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             else
                 ensurementErrorMessage = $"错误: {ex.Message}\n{ensurementErrorMessage}";
 
-            CustomMessageBox.Builder
-                            .NewFrom(ensurementErrorMessage)
-                            .WithImage(MessageBoxImage.Warning)
-                            .WithButtons(MessageBoxButton.OK)
-                            .WithShowHelpLinks()
-                            .WithParentWindow(Window)
-                            .Show();
-            return false;
+            var result = CustomMessageBox.Builder
+                                         .NewFrom(ensurementErrorMessage)
+                                         .WithImage(MessageBoxImage.Warning)
+                                         .WithButtons(MessageBoxButton.OKCancel)
+                                         .WithShowHelpLinks()
+                                         .WithParentWindow(Window)
+                                         .Show();
+            return result == MessageBoxResult.OK ? false : null;
         }
     }
 
