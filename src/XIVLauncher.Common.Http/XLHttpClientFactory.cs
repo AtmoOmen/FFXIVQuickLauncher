@@ -25,7 +25,6 @@ public static class XLHttpClientFactory
             Expect100ContinueTimeout       = TimeSpan.Zero,
             ResponseDrainTimeout           = TimeSpan.FromSeconds(2),
             AutomaticDecompression         = automaticDecompression,
-            ConnectCallback                = HappyEyeballsCallback.ConnectCallback
         };
 
         return new HttpClient(new Http11FallbackHandler(handler));
