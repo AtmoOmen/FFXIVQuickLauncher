@@ -13,6 +13,30 @@
 
 static char xdelta_bridge_last_error_buffer[256];
 
+typedef struct {
+    const uint8_t* data;
+    xoff_t size;
+} xdelta_bridge_source_context;
+
+static int xdelta_bridge_getblk(xd3_stream* stream, xd3_source* source, xoff_t blkno)
+{
+    xdelta_bridge_source_context* ctx = (xdelta_bridge_source_context*)stream->opaque;
+    xoff_t offset = blkno * (xoff_t)XDELTA_BRIDGE_SOURCE_BLOCK_SIZE;
+
+    if (offset >= ctx->size) {
+        source->onblk = 0;
+        source->curblkno = blkno;
+        return 0;
+    }
+
+    xoff_t remaining = ctx->size - offset;
+    source->onblk = (usize_t)(remaining > XDELTA_BRIDGE_SOURCE_BLOCK_SIZE ? XDELTA_BRIDGE_SOURCE_BLOCK_SIZE : remaining);
+    source->curblk = ctx->data + offset;
+    source->curblkno = blkno;
+
+    return 0;
+}
+
 static void set_last_error_message(const char* message)
 {
     if (message == NULL) {
@@ -89,6 +113,7 @@ static int decode_delta_memory_to_file(const uint8_t* source_data, xoff_t source
     xd3_stream stream;
     xd3_config config;
     xd3_source source;
+    xdelta_bridge_source_context source_ctx;
     usize_t input_position = 0;
     int ret;
 
@@ -100,17 +125,26 @@ static int decode_delta_memory_to_file(const uint8_t* source_data, xoff_t source
         return EINVAL;
     }
 
+    source_ctx.data = source_data;
+    source_ctx.size = source_size;
+
+    config.getblk = xdelta_bridge_getblk;
+    config.opaque = &source_ctx;
+
     ret = xd3_config_stream(&stream, &config);
     if (ret != 0) {
         set_last_error_message(stream.msg);
         return ret;
     }
 
-    source.blksize = (usize_t)source_size;
+    source.blksize = XDELTA_BRIDGE_SOURCE_BLOCK_SIZE;
     source.max_winsize = source_size;
-    source.curblk = source_data;
-    source.curblkno = 0;
-    source.onblk = (usize_t)source_size;
+
+    if (source_size > 0) {
+        source.curblk = source_data;
+        source.curblkno = 0;
+        source.onblk = (usize_t)(source_size > XDELTA_BRIDGE_SOURCE_BLOCK_SIZE ? XDELTA_BRIDGE_SOURCE_BLOCK_SIZE : source_size);
+    }
 
     ret = xd3_set_source_and_size(&stream, &source, source_size);
     if (ret != 0) {
@@ -228,12 +262,6 @@ int xdelta_decode_file_with_delta_memory(const char* source_path, const uint8_t*
 
         ret = get_file_size64(source_handle, &source_size);
         if (ret != 0) {
-            goto done;
-        }
-
-        if (source_size > UINT32_MAX) {
-            set_last_error_message("source file is too large for memory decode");
-            ret = EFBIG;
             goto done;
         }
 
