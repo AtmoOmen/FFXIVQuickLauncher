@@ -5,7 +5,7 @@ using XIVLauncher.DCTravel;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
 
-public sealed class DcTravelRuntimeService : ILoginSessionRefreshSink, IDisposable
+public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposable
 {
     private const int MAINTENANCE_RECOVERY_INTERVAL_MINUTES = 5;
 
@@ -27,7 +27,7 @@ public sealed class DcTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
     /// </summary>
     public int DcTravelPort { get; private set; }
 
-    public DcTravelRuntimeService(Action<string> setSdoAreaAction)
+    public DCTravelRuntimeService(Action<string> setSdoAreaAction)
     {
         ArgumentNullException.ThrowIfNull(setSdoAreaAction);
 
@@ -121,6 +121,9 @@ public sealed class DcTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
 
     private void StartMaintenanceRecovery()
     {
+        if (recoveryTask is { IsCompleted: false })
+            return;
+
         StopMaintenanceRecovery();
 
         recoveryCts = new CancellationTokenSource();

@@ -64,7 +64,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     public bool IsLoggingIn { get; set; }
 
     private          MainWindowDialogProvider  DialogProvider            { get; }
-    private          DcTravelRuntimeService    DcTravelRuntimeService    { get; }
+    private          DCTravelRuntimeService    DcTravelRuntimeService    { get; }
     private          GameLaunchService         GameLaunchService         { get; }
     private          GameClientFileTaskService GameClientFileTaskService { get; }
     private readonly LoginWorkflowService      loginWorkflowService;
@@ -85,7 +85,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         DialogProvider       = new MainWindowDialogProvider(window);
         Launcher             = new();
         loginWorkflowService = new LoginWorkflowService(App.AccountManager, new WeGameTokenCaptureCoordinator());
-        DcTravelRuntimeService = new DcTravelRuntimeService
+        DcTravelRuntimeService = new DCTravelRuntimeService
         (name =>
             {
                 App.AccountManager.CurrentAccount!.AreaName = name;
