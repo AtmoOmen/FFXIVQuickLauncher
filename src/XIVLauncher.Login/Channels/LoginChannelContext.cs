@@ -85,7 +85,7 @@ public sealed class LoginChannelContext
     }
 
     public Task<LoginResponse> GetSafePhoneSystemConfigAsync() =>
-        GetJsonAsSdoClient("/authen/v2/getSystemConfig?logintype=godown", []);
+        GetJsonAsSdoClient("/authen/v2/getSystemConfig", ["logintype=godown"]);
 
     public Task<LoginResponse> InitSafePhoneSmsLoginAsync(string account, string? flowId = null, bool isVoice = false)
     {
