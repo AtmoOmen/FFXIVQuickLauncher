@@ -129,11 +129,13 @@ public sealed class GameClientFileTaskService
         catch (Exception ex)
         {
             Log.Error(ex, "[GameClientFileTask] 更新检查失败");
-            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "检查游戏更新失败", ex.Message), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "检查游戏更新失败", ex.Message), GameClientFileTaskResultStatus.Failed).ConfigureAwait
+                       (false);
         }
 
         if (!checkResult.NeedsUpdate)
-            return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "更新检查已完成", "当前没有待安装的更新内容"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
+            return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "更新检查已完成", "当前没有待安装的更新内容"), GameClientFileTaskResultStatus.Success).ConfigureAwait
+                       (false);
 
         if (checkResult.UpdatePlan == null)
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "获取游戏更新计划失败"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
@@ -150,7 +152,9 @@ public sealed class GameClientFileTaskService
         if (!mutex.WaitOne(0, false))
         {
             Log.Warning("[GameClientFileTask] 更新互斥锁已被占用");
-            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+            return await WaitForCloseAsync
+                       (viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait
+                       (false);
         }
 
         if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以更新游戏"))
@@ -214,7 +218,8 @@ public sealed class GameClientFileTaskService
                                 .ConfigureAwait(false);
 
             Log.Information("[GameClientFileTask] 游戏更新安装完成");
-            return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "游戏更新已完成", "所有更新内容已安装完成"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
+            return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "游戏更新已完成", "所有更新内容已安装完成"), GameClientFileTaskResultStatus.Success).ConfigureAwait
+                       (false);
         }
         catch (OperationCanceledException)
         {
@@ -275,7 +280,8 @@ public sealed class GameClientFileTaskService
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, patchPathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
         if (GameHelpers.CheckIsGameOpen())
-            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "官方启动器或游戏正在运行", "请关闭相关进程后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+            return await WaitForCloseAsync
+                       (viewModel, CreateFailureSnapshot(TITLE, "官方启动器或游戏正在运行", "请关闭相关进程后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
         return await RunRepairerAsync(viewModel).ConfigureAwait(false);
     }
@@ -325,7 +331,8 @@ public sealed class GameClientFileTaskService
         catch (Exception ex)
         {
             Log.Error(ex, "[GameClientFileTask] 完整性检查失败");
-            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "检查游戏完整性失败", ex.Message), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "检查游戏完整性失败", ex.Message), GameClientFileTaskResultStatus.Failed).ConfigureAwait
+                       (false);
         }
 
         switch (outcome.CompareResult)
@@ -352,13 +359,16 @@ public sealed class GameClientFileTaskService
             }
 
             case IntegrityCheckCompareResult.ReferenceNotFound:
-                return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "当前游戏版本没有可用的完整性参考", "请先更新游戏后再重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+                return await WaitForCloseAsync
+                           (viewModel, CreateFailureSnapshot(TITLE, "当前游戏版本没有可用的完整性参考", "请先更新游戏后再重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
             case IntegrityCheckCompareResult.ReferenceFetchFailure:
-                return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "下载完整性检查参考文件失败", "请检查网络连接后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+                return await WaitForCloseAsync
+                           (viewModel, CreateFailureSnapshot(TITLE, "下载完整性检查参考文件失败", "请检查网络连接后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
             case IntegrityCheckCompareResult.Valid:
-                return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "完整性检查已完成", "游戏安装完整"), GameClientFileTaskResultStatus.Success).ConfigureAwait(false);
+                return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "完整性检查已完成", "游戏安装完整"), GameClientFileTaskResultStatus.Success).ConfigureAwait
+                           (false);
 
             case IntegrityCheckCompareResult.Invalid:
             {
@@ -395,7 +405,9 @@ public sealed class GameClientFileTaskService
         using var mutex = new Mutex(false, "XivLauncherIsPatching");
 
         if (!mutex.WaitOne(0, false))
-            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+            return await WaitForCloseAsync
+                       (viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait
+                       (false);
 
         if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以修复游戏"))
             return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消修复"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
@@ -461,10 +473,12 @@ public sealed class GameClientFileTaskService
                 }
 
                 case GameRepairer.RepairState.Cancelled:
-                    return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消修复"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+                    return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消修复"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait
+                               (false);
 
                 default:
-                    return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "修复失败", "任务未能正常完成"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+                    return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "修复失败", "任务未能正常完成"), GameClientFileTaskResultStatus.Failed).ConfigureAwait
+                               (false);
             }
         }
     }
@@ -476,7 +490,9 @@ public sealed class GameClientFileTaskService
         using var mutex = new Mutex(false, "XivLauncherIsPatching");
 
         if (!mutex.WaitOne(0, false))
-            return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+            return await WaitForCloseAsync
+                       (viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait
+                       (false);
 
         if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以安装游戏"))
             return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消安装"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
@@ -542,10 +558,12 @@ public sealed class GameClientFileTaskService
                 }
 
                 case GameInstaller.InstallState.Cancelled:
-                    return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消安装"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
+                    return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消安装"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait
+                               (false);
 
                 default:
-                    return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "安装失败", "任务未能正常完成"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+                    return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "安装失败", "任务未能正常完成"), GameClientFileTaskResultStatus.Failed).ConfigureAwait
+                               (false);
             }
         }
     }
@@ -588,19 +606,20 @@ public sealed class GameClientFileTaskService
             },
             GameRepairer.RepairState.Repairing => new GameClientFileTaskSnapshot
             {
-                Title = "修复游戏文件",
-                PhaseText = repairer.CurrentMetaInstallState == GameFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在修复游戏文件",
-                DetailText = repairer.CurrentFile,
-                Progress = repairer.Total == 0 ? 0 : 100.0 * repairer.Progress / repairer.Total,
+                Title                   = "修复游戏文件",
+                PhaseText               = repairer.CurrentMetaInstallState == GameFileDownloader.InstallTaskState.NotStarted ? "正在验证游戏文件" : "正在修复游戏文件",
+                DetailText              = repairer.CurrentFile,
+                Progress                = repairer.Total == 0 ? 0 : 100.0 * repairer.Progress / repairer.Total,
                 IsProgressIndeterminate = false,
-                StatusText = $"{Math.Min(repairer.TaskIndex + 1, repairer.TaskCount)}/{repairer.TaskCount} - {APIHelper.BytesToString(repairer.Progress)}/{APIHelper.BytesToString(repairer.Total)}",
-                SpeedText = GetDownloaderSpeedText(repairer.CurrentMetaInstallState, repairer.Speed),
-                EtaText = GetDownloaderEtaText(repairer.CurrentMetaInstallState, repairer.Total - repairer.Progress, repairer.Speed),
-                Items = repairer.IsDownloading ? GetRepairerItems(repairer) : [],
-                PrimaryButtonText = repairer.CurrentMetaInstallState == GameFileDownloader.InstallTaskState.NotStarted ? string.Empty : "取消",
+                StatusText =
+                    $"{Math.Min(repairer.TaskIndex + 1, repairer.TaskCount)}/{repairer.TaskCount} - {APIHelper.BytesToString(repairer.Progress)}/{APIHelper.BytesToString(repairer.Total)}",
+                SpeedText              = GetDownloaderSpeedText(repairer.CurrentMetaInstallState, repairer.Speed),
+                EtaText                = GetDownloaderEtaText(repairer.CurrentMetaInstallState, repairer.Total - repairer.Progress, repairer.Speed),
+                Items                  = repairer.IsDownloading ? GetRepairerItems(repairer) : [],
+                PrimaryButtonText      = repairer.CurrentMetaInstallState == GameFileDownloader.InstallTaskState.NotStarted ? string.Empty : "取消",
                 IsPrimaryButtonVisible = repairer.CurrentMetaInstallState != GameFileDownloader.InstallTaskState.NotStarted,
                 IsPrimaryButtonEnabled = repairer.CurrentMetaInstallState != GameFileDownloader.InstallTaskState.NotStarted,
-                IsRunning = true
+                IsRunning              = true
             },
             _ => new GameClientFileTaskSnapshot
             {
@@ -838,15 +857,15 @@ public sealed class GameClientFileTaskService
     private static GameClientFileTaskSnapshot CreateRuntimeDownloadSnapshot(string title, long? total, long downloaded) =>
         new()
         {
-            Title                   = title,
-            PhaseText               = "正在下载补丁安装器运行时",
-            Progress                = total > 0 ? 100.0 * downloaded / total.Value : 0,
+            Title = title,
+            PhaseText = "正在下载补丁安装器运行时",
+            Progress = total > 0 ? 100.0 * downloaded / total.Value : 0,
             IsProgressIndeterminate = total <= 0,
-            StatusText              = total > 0 ? $"{APIHelper.BytesToString(downloaded)}/{APIHelper.BytesToString(total.Value)}" : APIHelper.BytesToString(downloaded),
-            PrimaryButtonText       = "取消",
-            IsPrimaryButtonVisible  = true,
-            IsPrimaryButtonEnabled  = true,
-            IsRunning               = true
+            StatusText = total > 0 ? $"{APIHelper.BytesToString(downloaded)}/{APIHelper.BytesToString(total.Value)}" : APIHelper.BytesToString(downloaded),
+            PrimaryButtonText = "取消",
+            IsPrimaryButtonVisible = true,
+            IsPrimaryButtonEnabled = true,
+            IsRunning = true
         };
 
     private static GameClientFileTaskSnapshot CreateSuccessSnapshot(string title, string phaseText, string detailText) =>

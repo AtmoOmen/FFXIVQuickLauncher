@@ -683,7 +683,10 @@ public partial class CustomMessageBox
         {
             MessageBoxResult result;
 
-            if (ParentWindow != null) result = Dispatcher.CurrentDispatcher == ParentWindow.Dispatcher ? ShowAssumingDispatcherThread() : ParentWindow.Dispatcher.Invoke(ShowAssumingDispatcherThread);
+            if (ParentWindow != null)
+                result = Dispatcher.CurrentDispatcher == ParentWindow.Dispatcher
+                             ? ShowAssumingDispatcherThread()
+                             : ParentWindow.Dispatcher.Invoke(ShowAssumingDispatcherThread);
             else
             {
                 if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
@@ -696,7 +699,11 @@ public partial class CustomMessageBox
             {
                 Log.CloseAndFlush();
                 if (result == MessageBoxResult.Yes)
-                    Process.Start(Process.GetCurrentProcess().MainModule!.FileName, string.Join(" ", Environment.GetCommandLineArgs().Skip(1).Select(x => EncodeParameterArgument(x))));
+                    Process.Start
+                    (
+                        Process.GetCurrentProcess().MainModule!.FileName,
+                        string.Join(" ", Environment.GetCommandLineArgs().Skip(1).Select(x => EncodeParameterArgument(x)))
+                    );
                 Environment.Exit(-1);
             }
 

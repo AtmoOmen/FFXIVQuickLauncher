@@ -58,7 +58,9 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 
         LoginTypeOptions = [.. LoginTypeOption.Get()];
 
-        loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == App.Settings.SelectedLoginType) ?? LoginTypeOptions.First(x => x.LoginType == LoginType.Slide);
+        loginTypeOption = LoginTypeOptions.FirstOrDefault
+                              (x => x.LoginType == App.Settings.SelectedLoginType) ??
+                          LoginTypeOptions.First(x => x.LoginType == LoginType.Slide);
 
         startLoginCommand        = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start), () => CanStartLogin);
         loginNoStartCommand      = new AsyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Update), () => !this.isBusyFunc());

@@ -443,7 +443,8 @@ internal sealed class AccountDeviceProfileWindowViewModel
         var rawValue = input.Trim().Replace(":", "-", StringComparison.Ordinal);
         var segments = rawValue.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        if (segments.Length != 6 || segments.Any(segment => segment.Length != 2 || !byte.TryParse(segment, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _)))
+        if (segments.Length != 6 ||
+            segments.Any(segment => segment.Length != 2 || !byte.TryParse(segment, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _)))
         {
             normalizedValue = string.Empty;
             errorMessage    = "MAC 地址必须是 6 组十六进制字节，例如 “3C-52-82-1A-2B-3C”。";
@@ -651,7 +652,8 @@ internal sealed class AccountDeviceProfileWindowViewModel
         DeviceId = FakeMachineInfo.CreateDeviceId(normalizedMacAddress, normalizedHostName);
     }
 
-    private DeviceProfilePreset SaveAccountDeviceProfileSelection(XIVAccount targetAccount, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? presetRemark) =>
+    private DeviceProfilePreset SaveAccountDeviceProfileSelection
+        (XIVAccount targetAccount, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? presetRemark) =>
         persistChangesToAccountManager
             ? accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, generatedUtcTicks, presetRemark)
             : accountManager.ApplyDeviceProfileSelection(targetAccount, snapshot, generatedUtcTicks, presetRemark);

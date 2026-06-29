@@ -49,8 +49,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public ICommand AccountSwitcherButtonCommand { get; }
 
-    public ICommand RefreshDalamudInfoCommand => refreshDalamudInfoCommand;
-
     public AccountSwitcherViewModel AccountSwitcher { get; }
 
     public Launcher       Launcher       { get; private set; }
@@ -66,15 +64,16 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public bool IsLoggingIn { get; set; }
 
-    private          MainWindowDialogProvider  DialogProvider            { get; }
-    private          DCTravelRuntimeService    DcTravelRuntimeService    { get; }
-    private          GameLaunchService         GameLaunchService         { get; }
-    private          GameClientFileTaskService GameClientFileTaskService { get; }
-    private readonly LoginWorkflowService      loginWorkflowService;
-    private readonly SyncCommand               refreshDalamudInfoCommand;
-    private          CancellationTokenSource?  LoginCancelSource        { get; set; }
-    private          bool                      IsLoginCanceledByUser    { get; set; }
-    private          LoginCardType?            LoginCardAfterCompletion { get; set; }
+    private MainWindowDialogProvider  DialogProvider            { get; }
+    private DCTravelRuntimeService    DcTravelRuntimeService    { get; }
+    private GameLaunchService         GameLaunchService         { get; }
+    private GameClientFileTaskService GameClientFileTaskService { get; }
+    private CancellationTokenSource?  LoginCancelSource         { get; set; }
+    private bool                      IsLoginCanceledByUser     { get; set; }
+    private LoginCardType?            LoginCardAfterCompletion  { get; set; }
+
+    private readonly LoginWorkflowService loginWorkflowService;
+    private readonly SyncCommand          refreshDalamudInfoCommand;
 
     private GameLaunchContext? currentGameLaunchContext;
     private bool               isStartingGameFromDashboard;
@@ -84,11 +83,11 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     public MainWindowViewModel(Window window)
     {
         Window               = window;
-        Settings             = new SettingsWindowViewModel(new DialogService(window), new ExternalLaunchService());
-        DialogProvider       = new MainWindowDialogProvider(window);
+        Settings             = new(new DialogService(window), new ExternalLaunchService());
+        DialogProvider       = new(window);
         Launcher             = new();
-        loginWorkflowService = new LoginWorkflowService(App.AccountManager, new WeGameTokenCaptureCoordinator());
-        DcTravelRuntimeService = new DCTravelRuntimeService
+        loginWorkflowService = new(App.AccountManager, new WeGameTokenCaptureCoordinator());
+        DcTravelRuntimeService = new
         (name =>
             {
                 App.AccountManager.CurrentAccount!.AreaName = name;
@@ -133,7 +132,11 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         );
         AccountSwitcher.AccountRemoved += OnAccountRemoved;
         AccountSwitcherButtonCommand   =  new SyncCommand(ExecuteAccountSwitcherButton);
-        refreshDalamudInfoCommand      =  new SyncCommand(_ => RefreshDalamudInfo(), () => Settings.EnableHooks && App.Dalamud.Updater.State != DalamudUpdater.DownloadState.Unknown);
+        refreshDalamudInfoCommand = new
+        (
+            _ => RefreshDalamudInfo(),
+            () => Settings.EnableHooks && App.Dalamud.Updater.State != DalamudUpdater.DownloadState.Unknown
+        );
         LoginPage = new LoginPageViewModel
         (
             () => IsLoggingIn,
@@ -225,7 +228,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
                 if (i == LoginCardType.InjectMode)
                 {
-                    var currentCard                                                                                            = (LoginCardType)LoginCardTransitionerIndex;
+                    var currentCard = (LoginCardType)LoginCardTransitionerIndex;
                     if (currentCard != LoginCardType.InjectMode && currentCard != LoginCardType.Logining) injectModeSourceCard = currentCard;
 
                     InjectPage.ReturnButtonText = injectModeSourceCard == LoginCardType.Dashboard ? "返回主页面" : "返回账号登录";
@@ -739,7 +742,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             return false;
         }
 
-        if (CustomMessageBox.AssertOrShowError(loginResult.State == LoginState.Ok, "ProcessLoginResultAsync: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: Window))
+        if (CustomMessageBox.AssertOrShowError
+                (loginResult.State == LoginState.Ok, "ProcessLoginResultAsync: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: Window))
             return false;
 
         // 对齐官方 V3 启动器：首次登录成功后进入 Dashboard，不立即启动游戏。
@@ -1340,7 +1344,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
             var ensurementErrorMessage = "下载 Dalamud 相关文件异常\n请检查本地网络连接, 或关闭杀毒软件\n点击确定将继续以不启用 Dalamud 的方式启动游戏";
 
-            if (appendWafStatusCodeHint && ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+            if (appendWafStatusCodeHint                                                  &&
+                ex is HttpRequestException { StatusCode: not null } httpRequestException &&
+                (int)httpRequestException.StatusCode is 403 or 444 or 522)
                 ensurementErrorMessage = $"服务器错误: {httpRequestException.StatusCode}\n{ensurementErrorMessage}";
             else
                 ensurementErrorMessage = $"错误: {ex.Message}\n{ensurementErrorMessage}";

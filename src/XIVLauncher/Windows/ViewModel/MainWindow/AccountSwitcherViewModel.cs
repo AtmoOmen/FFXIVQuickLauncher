@@ -193,7 +193,8 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         var keyword = SearchText.Trim();
         view.Filter = obj =>
             obj is AccountSwitcherEntry entry &&
-            (entry.Account.UserName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true || entry.Account.UserDefinedName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true);
+            (entry.Account.UserName?.Contains(keyword, StringComparison.OrdinalIgnoreCase)        == true ||
+             entry.Account.UserDefinedName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true);
     }
 
     public XIVAccount? SelectCurrentAccount() =>

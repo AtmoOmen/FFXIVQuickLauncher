@@ -55,10 +55,12 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         this.activateAction               = activateAction;
         this.getDcTravelClientFunc        = getDcTravelClientFunc;
 
-        travelOrderCommand        = new AsyncCommand(async _ => await StartTravelAsync(),    () => SelectedTargetGroup != null && SelectedCharacter != null && !isLoading && !isUnderMaintenance);
-        travelBackCommand         = new AsyncCommand(async _ => await OpenReturnPageAsync(), () => SelectedOrder       != null && !isLoading                && !isUnderMaintenance);
-        refreshOrdersCommand      = new AsyncCommand(async _ => await RefreshOrdersAsync());
-        confirmTravelBackCommand  = new AsyncCommand(async _ => await ConfirmTravelBackAsync(), () => ReturnSelectedCurrentGroup != null && !isLoading && !isUnderMaintenance);
+        travelOrderCommand = new AsyncCommand
+            (async _ => await StartTravelAsync(), () => SelectedTargetGroup != null && SelectedCharacter != null && !isLoading && !isUnderMaintenance);
+        travelBackCommand    = new AsyncCommand(async _ => await OpenReturnPageAsync(), () => SelectedOrder != null && !isLoading && !isUnderMaintenance);
+        refreshOrdersCommand = new AsyncCommand(async _ => await RefreshOrdersAsync());
+        confirmTravelBackCommand = new AsyncCommand
+            (async _ => await ConfirmTravelBackAsync(), () => ReturnSelectedCurrentGroup != null && !isLoading && !isUnderMaintenance);
         backToDashboardCommand    = new SyncCommand(_ => this.requestBackToDashboardAction());
         openHistoryCommand        = new SyncCommand(_ => this.requestOpenHistoryAction());
         backToTravelCommand       = new SyncCommand(_ => this.requestBackToTravelAction());
