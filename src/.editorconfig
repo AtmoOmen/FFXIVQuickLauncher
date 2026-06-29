@@ -21,6 +21,7 @@ csharp_new_line_before_finally = true
 csharp_new_line_before_members_in_object_initializers = false
 csharp_new_line_before_open_brace = all
 csharp_preferred_modifier_order = private, public, protected, internal, new, abstract, virtual, sealed, override, static, readonly, extern, unsafe, volatile, async, file, required:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
 csharp_style_var_elsewhere = true:suggestion
 csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
@@ -73,15 +74,17 @@ resharper_csharp_remove_blank_lines_near_braces_in_code = false
 resharper_csharp_use_indent_from_vs = true
 resharper_csharp_wrap_after_declaration_lpar = true
 resharper_enforce_line_ending_style = true
-resharper_instance_members_qualify_declared_in =
+resharper_instance_members_qualify_declared_in = 
+resharper_local_function_body = expression_body
 resharper_member_can_be_private_global_highlighting = none
 resharper_member_can_be_private_local_highlighting = none
 resharper_new_line_before_finally = true
 resharper_place_accessorholder_attribute_on_same_line = false
 resharper_place_expr_method_on_single_line = false
 resharper_place_field_attribute_on_same_line = false
-resharper_place_simple_embedded_statement_on_same_line = true
+resharper_place_simple_embedded_statement_on_same_line = false
 resharper_show_autodetect_configure_formatting_tip = false
+resharper_use_heuristics_for_body_style = false
 resharper_use_indent_from_vs = false
 
 # ReSharper inspection severities
@@ -106,9 +109,9 @@ resharper_unused_auto_property_accessor_global_highlighting = none
 csharp_style_deconstructed_variable_declaration = true:silent
 
 # 表达式体
-csharp_style_expression_bodied_methods = when_on_single_line:suggestion
-csharp_style_expression_bodied_properties = when_on_single_line:suggestion
-csharp_style_expression_bodied_constructors = when_on_single_line:suggestion
+csharp_style_expression_bodied_methods = true:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_constructors = true:suggestion
 
 # 禁止将简单的 try 块放在一行
 csharp_preserve_static_keyword_spacing = true
