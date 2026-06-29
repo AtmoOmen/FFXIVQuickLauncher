@@ -6,6 +6,15 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
              d:DesignHeight="400" d:DesignWidth="240">
+    
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Windows/Main/LoginCardSlideResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
     <Grid Margin="24,0,24,0" VerticalAlignment="Center">
         <StackPanel>
             <Grid Margin="0,0,0,20" Width="80" Height="80"
