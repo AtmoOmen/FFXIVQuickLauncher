@@ -1,0 +1,102 @@
+<UserControl x:Class="XIVLauncher.Windows.Main.NewsCarouselControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:models="clr-namespace:XIVLauncher.Windows.ViewModel.MainWindow.Models"
+             mc:Ignorable="d"
+             d:DesignHeight="250" d:DesignWidth="450">
+    <Grid>
+        <materialDesign:Card
+            Margin="0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            UniformCornerRadius="12"
+            materialDesign:ElevationAssist.Elevation="Dp2"
+            Cursor="Hand"
+            MouseUp="BannerCard_MouseUp">
+            <Grid>
+                <Image x:Name="BannerImage"
+                       Stretch="Fill"
+                       Source="pack://application:,,,/Resources/placeholder-news.png" />
+            </Grid>
+        </materialDesign:Card>
+
+        <Border HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,4,4"
+                Background="Transparent">
+            <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type models:BannerDotInfo}">
+                        <RadioButton GroupName="banner"
+                                     IsChecked="{Binding Active, Mode=OneWay}"
+                                     Checked="BannerDot_OnChecked"
+                                     MouseEnter="RadioButton_MouseEnter"
+                                     MouseLeave="RadioButton_MouseLeave"
+                                     Margin="0"
+                                     Cursor="Hand"
+                                     Style="{StaticResource {x:Type ToggleButton}}">
+                            <RadioButton.Template>
+                                <ControlTemplate TargetType="RadioButton">
+                                    <Border x:Name="DotBorder"
+                                            Width="8" Height="8"
+                                            CornerRadius="4"
+                                            Background="#88FFFFFF" />
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="DotBorder" Property="Background"
+                                                    Value="#FFFFFFFF" />
+                                            <Trigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetName="DotBorder"
+                                                            Storyboard.TargetProperty="Width"
+                                                            To="24" Duration="0:0:0.3">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut" />
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.EnterActions>
+                                            <Trigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetName="DotBorder"
+                                                            Storyboard.TargetProperty="Width"
+                                                            To="8" Duration="0:0:0.3">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut" />
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.ExitActions>
+                                        </Trigger>
+                                        <MultiTrigger>
+                                            <MultiTrigger.Conditions>
+                                                <Condition Property="IsMouseOver" Value="True" />
+                                                <Condition Property="IsChecked" Value="False" />
+                                            </MultiTrigger.Conditions>
+                                            <Setter TargetName="DotBorder" Property="Background"
+                                                    Value="#CCFFFFFF" />
+                                        </MultiTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </RadioButton.Template>
+                        </RadioButton>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+    </Grid>
+</UserControl>

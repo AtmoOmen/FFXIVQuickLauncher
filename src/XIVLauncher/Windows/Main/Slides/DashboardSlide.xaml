@@ -1,0 +1,195 @@
+<UserControl x:Class="XIVLauncher.Windows.Main.Slides.DashboardSlide"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             mc:Ignorable="d"
+             d:DesignHeight="400" d:DesignWidth="240">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="LoginCardSlideResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="24,0,24,0" VerticalAlignment="Center">
+        <StackPanel>
+            <Border Style="{StaticResource DashboardInfoCardStyle}" Margin="0,0,0,12">
+                <Grid Margin="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="当前账号" FontSize="11" Opacity="0.6" />
+                        <TextBlock Text="{Binding DashboardPage.AccountName}"
+                                   FontSize="14" FontWeight="SemiBold"
+                                   TextWrapping="Wrap"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Style="{StaticResource HeaderUtilityButtonStyle}"
+                            Width="28" Height="28"
+                            VerticalAlignment="Center"
+                            Tag="{Binding DashboardPage.AccountName}"
+                            Click="CopyAccountField_OnClick"
+                            ToolTip="复制账号">
+                        <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="选择大区" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
+
+            <ListBox ItemsSource="{Binding DashboardPage.Areas}"
+                     SelectedItem="{Binding DashboardPage.SelectedArea}"
+                     Margin="0,0,0,14">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Rows="1" />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="2,0" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Grid>
+                                        <Border x:Name="Bg"
+                                                Background="Transparent"
+                                                CornerRadius="8"
+                                                BorderThickness="1"
+                                                BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                                        <Border x:Name="ActiveBg"
+                                                Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                CornerRadius="8" Opacity="0" />
+                                        <TextBlock x:Name="Txt"
+                                                   Text="{Binding AreaName}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12" Padding="0,6"
+                                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Trigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetName="ActiveBg"
+                                                            Storyboard.TargetProperty="Opacity"
+                                                            To="0.26" Duration="0:0:0.2">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut" />
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.EnterActions>
+                                            <Trigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation
+                                                            Storyboard.TargetName="ActiveBg"
+                                                            Storyboard.TargetProperty="Opacity"
+                                                            To="0" Duration="0:0:0.2">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut" />
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.ExitActions>
+                                            <Setter TargetName="Bg" Property="BorderBrush"
+                                                    Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                            <Setter TargetName="Txt" Property="Foreground"
+                                                    Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                            <Setter TargetName="Txt" Property="FontWeight" Value="SemiBold" />
+                                        </Trigger>
+                                        <MultiTrigger>
+                                            <MultiTrigger.Conditions>
+                                                <Condition Property="IsMouseOver" Value="True" />
+                                                <Condition Property="IsSelected" Value="False" />
+                                            </MultiTrigger.Conditions>
+                                            <Setter TargetName="Bg" Property="BorderBrush"
+                                                    Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                            <Setter TargetName="Bg" Property="Opacity" Value="0.6" />
+                                        </MultiTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+            </ListBox>
+
+            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="16"
+                    Height="52"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Command="{Binding DashboardPage.StartGameCommand}"
+                    Margin="0,0,0,8">
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="Play" Width="20" Height="20" Margin="0,0,8,0"
+                                                 VerticalAlignment="Center" />
+                        <TextBlock Text="启动游戏" VerticalAlignment="Center" />
+                        <materialDesign:PackIcon Kind="MenuDown" Width="18" Height="18" Margin="4,0,0,0"
+                                                 VerticalAlignment="Center" Opacity="0.8" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding DashboardPage.GameVersion}"
+                               FontSize="10"
+                               FontWeight="Normal"
+                               Opacity="0.6"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+                <Button.ContextMenu>
+                    <ContextMenu Style="{StaticResource LoginActionContextMenuStyle}">
+                        <MenuItem Header="无 Dalamud 启动"
+                                  Style="{StaticResource LoginActionMenuItemStyle}"
+                                  Command="{Binding DashboardPage.StartGameNoDalamudCommand}" />
+                        <MenuItem Header="禁用插件启动"
+                                  Style="{StaticResource LoginActionMenuItemStyle}"
+                                  Command="{Binding DashboardPage.StartGameNoPluginsCommand}" />
+                        <MenuItem Header="禁用第三方插件启动"
+                                  Style="{StaticResource LoginActionMenuItemStyle}"
+                                  Command="{Binding DashboardPage.StartGameNoThirdCommand}" />
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
+
+            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="16"
+                    Height="36"
+                    FontSize="12"
+                    Command="{Binding DashboardPage.SwitchAccountCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="AccountSwitch" Width="16" Height="16" Margin="0,0,6,0"
+                                             VerticalAlignment="Center" />
+                    <TextBlock Text="切换账号" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+            <Button HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Margin="0,8,0,0"
+                    Style="{StaticResource DalamudStatusButtonStyle}"
+                    Command="{Binding RefreshDalamudInfoCommand}"
+                    Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <materialDesign:PackIcon Kind="Refresh" Width="12" Height="12" Margin="0,0,4,0"
+                                             VerticalAlignment="Center" Opacity="0.7" />
+                    <TextBlock Text="{Binding DalamudStatusText}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

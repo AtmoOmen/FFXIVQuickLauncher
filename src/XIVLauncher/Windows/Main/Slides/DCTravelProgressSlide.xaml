@@ -1,0 +1,64 @@
+<UserControl x:Class="XIVLauncher.Windows.Main.Slides.DCTravelProgressSlide"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             mc:Ignorable="d"
+             d:DesignHeight="400" d:DesignWidth="240">
+    <Grid Margin="24,0,24,0" VerticalAlignment="Center">
+        <StackPanel>
+            <Grid Margin="0,0,0,20" Width="80" Height="80" HorizontalAlignment="Center">
+                <Ellipse Fill="{DynamicResource MaterialDesign.Brush.Primary}"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" Width="48" Height="48">
+                    <Ellipse.Triggers>
+                        <EventTrigger RoutedEvent="Loaded">
+                            <BeginStoryboard>
+                                <Storyboard RepeatBehavior="Forever">
+                                    <DoubleAnimation Storyboard.TargetProperty="Width"
+                                                     From="48" To="80" Duration="0:0:1.5"
+                                                     AutoReverse="True" />
+                                    <DoubleAnimation Storyboard.TargetProperty="Height"
+                                                     From="48" To="80" Duration="0:0:1.5"
+                                                     AutoReverse="True" />
+                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                     From="1" To="0.35" Duration="0:0:1.5"
+                                                     AutoReverse="True" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Ellipse.Triggers>
+                </Ellipse>
+                <materialDesign:PackIcon Kind="Rocket" Width="24" Height="24"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+            </Grid>
+
+            <TextBlock Text="{Binding DCTravelPage.TravelProgressText}"
+                       FontSize="14"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,20" />
+
+            <Button Content="返回"
+                    Command="{Binding DCTravelPage.ReturnFromProgressCommand}"
+                    materialDesign:ButtonAssist.CornerRadius="16"
+                    HorizontalAlignment="Center"
+                    Width="120">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DCTravelPage.IsTravelInProgress}" Value="False">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

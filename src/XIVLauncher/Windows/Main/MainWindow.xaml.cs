@@ -1,13 +1,8 @@
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Serilog;
@@ -18,11 +13,9 @@ using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Login;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
-using XIVLauncher.Windows.ViewModel.MainWindow;
-using XIVLauncher.Windows.ViewModel.MainWindow.Models;
 using XIVLauncher.Xaml;
 
-namespace XIVLauncher.Windows;
+namespace XIVLauncher.Windows.Main;
 
 /// <summary>
 ///     Interaction logic for MainWindow.xaml
@@ -38,31 +31,24 @@ public partial class MainWindow
     private readonly AccountManager accountManager;
     private readonly Launcher       launcher;
 
-    private DispatcherTimer?                     bannerChangeTimer;
-    private DispatcherTimer?                     headlinesRefreshTimer;
-    private ObservableCollection<BannerDotInfo>? bannerDotList;
-    private Headlines?                           headlines;
-    private Banner[]?                            banners;
-    private BitmapImage[]?                       bannerBitmaps;
-    private int                                  currentBannerIndex;
-    private bool                                 isBannerRotationActive;
-    private int                                  isRefreshingHeadlines;
-    private int                                  pendingHeadlinesRefresh;
+    private DispatcherTimer? headlinesRefreshTimer;
+    private Headlines?       headlines;
+    private Banner[]?        banners;
 
-    private bool          everShown;
-    private bool          suppressAccountSelectionTracking;
-    private Point         accountSwitcherDragStartPoint;
-    private ListViewItem? draggedAccountSwitcherItem;
+    private int isRefreshingHeadlines;
+    private int pendingHeadlinesRefresh;
+
+    private bool everShown;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        DataContext                              =  new MainWindowViewModel(this);
-        accountManager                           =  Model.AccountManager;
-        launcher                                 =  Model.Launcher;
-        AccountListView.ContextMenu!.DataContext =  Model.AccountSwitcher;
-        Model.Settings.SettingsSaved             += (_, _) => _ = RequestHeadlinesRefreshAsync();
+        DataContext                                        =  new MainWindowViewModel(this);
+        accountManager                                     =  Model.AccountManager;
+        launcher                                           =  Model.Launcher;
+        LoginCard.AccountListView.ContextMenu!.DataContext =  Model.AccountSwitcher;
+        Model.Settings.SettingsSaved                       += (_, _) => _ = RequestHeadlinesRefreshAsync();
 
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
@@ -80,14 +66,25 @@ public partial class MainWindow
 
         Model.ReloadHeadlines += () => _ = RequestHeadlinesRefreshAsync();
 
-        NewsListView.ItemsSource = new List<News>
-        {
-            new()
+        // 订阅控件事件
+        NewsCarousel.BannerClicked             += OnBannerClicked;
+        NewsList.NewsClicked                   += OnNewsClicked;
+        LoginCard.SettingsRequested            += OnSettingsRequested;
+        LoginCard.AccountSwitchRequested       += OnAccountSwitchRequested;
+        LoginCard.AccountFieldCopyRequested    += OnAccountFieldCopyRequested;
+        LoginCard.ClearCurrentAccountRequested += OnClearCurrentAccountRequested;
+
+        NewsList.SetNewsItems
+        (
+            new List<News>
             {
-                Title = "加载中…",
-                Tag   = "DlError"
+                new()
+                {
+                    Title = "加载中…",
+                    Tag   = "DlError"
+                }
             }
-        };
+        );
 
         Title += " v" + AppUtil.GetAssemblyVersion();
     }
@@ -141,7 +138,7 @@ public partial class MainWindow
         everShown = true;
     }
 
-    private void SettingsButton_OnClick(object sender, RoutedEventArgs e)
+    private void OnSettingsRequested(object? sender, EventArgs e)
     {
         var window = new SettingsWindow(Model.Settings)
         {
@@ -225,14 +222,13 @@ public partial class MainWindow
     {
         try
         {
-            StopBannerRotation();
+            NewsCarousel.StopRotation();
 
             headlines = await Headlines.GetHeadlinesAsync(launcher)
                                        .ConfigureAwait(false);
             banners = headlines.Banner;
 
-            bannerBitmaps = new BitmapImage[banners.Length];
-            bannerDotList = [];
+            var bannerBitmaps = new BitmapImage[banners.Length];
 
             for (var i = 0; i < banners.Length; i++)
             {
@@ -248,7 +244,6 @@ public partial class MainWindow
                 bitmapImage.Freeze();
 
                 bannerBitmaps[i] = bitmapImage;
-                bannerDotList.Add(new() { Index = i });
             }
 
             _ = Dispatcher.BeginInvoke
@@ -256,23 +251,20 @@ public partial class MainWindow
                 new Action
                 (() =>
                     {
-                        currentBannerIndex    = 0;
-                        BannerImage.Source    = bannerBitmaps.Length > 0 ? bannerBitmaps[currentBannerIndex] : null;
-                        BannerDot.ItemsSource = bannerDotList;
-                        SetBannerDotActiveState(currentBannerIndex);
-                        StartBannerRotation();
+                        NewsCarousel.UpdateBanners(bannerBitmaps);
+                        NewsCarousel.StartRotation();
                     }
                 )
             );
 
-            _ = Dispatcher.BeginInvoke(new Action(() => { NewsListView.ItemsSource = headlines.News?.OrderByDescending(n => n.Date).ToList(); }));
+            _ = Dispatcher.BeginInvoke(new Action(() => { NewsList.SetNewsItems(headlines.News?.OrderByDescending(n => n.Date).ToList() ?? new List<News>()); }));
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Could not get news");
-            StopBannerRotation();
+            NewsCarousel.StopRotation();
             _ = Dispatcher.BeginInvoke
-                (new Action(() => { NewsListView.ItemsSource = new List<News> { new() { Title = "无法获取公告信息", Tag = "DlError" } }; }));
+                (new Action(() => { NewsList.SetNewsItems(new List<News> { new() { Title = "无法获取公告信息", Tag = "DlError" } }); }));
         }
     }
 
@@ -321,67 +313,25 @@ public partial class MainWindow
         App.Settings.VersionUpgradeLevel = versionLevel;
     }
 
-    private void BannerCard_MouseUp(object sender, MouseButtonEventArgs e)
+    private void OnBannerClicked(int bannerIndex)
     {
-        if (e.ChangedButton != MouseButton.Left)
-            return;
-
-        if (headlines != null) Process.Start(new ProcessStartInfo(banners![currentBannerIndex].Link.ToString()) { UseShellExecute = true });
+        if (headlines != null)
+            Process.Start(new ProcessStartInfo(banners![bannerIndex].Link.ToString()) { UseShellExecute = true });
     }
 
-    private void NewsListView_OnMouseUp(object sender, MouseButtonEventArgs e)
+    private static void OnNewsClicked(News item)
     {
-        if (e.ChangedButton != MouseButton.Left)
-            return;
-
-        if (NewsListView.SelectedItem is not News item)
-            return;
-
         if (!string.IsNullOrEmpty(item.Url))
             Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
         else if (!string.IsNullOrEmpty(item.ID))
             Process.Start(new ProcessStartInfo(Links.SDO_NEWS_ARTICLE_BASE_URL + item.ID) { UseShellExecute = true });
-
-    }
-
-    private void Card_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter && e.Key != Key.Return)
-            return;
-
-        if (Model.IsLoggingIn)
-            return;
-
-        Model.LoginPage.StartLoginCommand.Execute(null);
     }
 
     private void HideMainWindow() =>
         Hide();
 
-    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
+    private void OnAccountSwitchRequested(object? sender, EventArgs e)
     {
-        do
-        {
-            if (current is T ancestor)
-                return ancestor;
-
-            current = VisualTreeHelper.GetParent(current!);
-        }
-        while (current != null);
-
-        return null;
-    }
-
-    private void AccountListView_OnMouseUp(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ChangedButton != MouseButton.Left)
-            return;
-
-        // 点击行内复制按钮时不触发账号切换
-        if (FindAncestor<Button>((DependencyObject)e.OriginalSource) != null)
-            return;
-
-        Model.AccountSwitcher.ContextEntry = null;
         var selectedAccount = Model.AccountSwitcher.SelectCurrentAccount();
         if (selectedAccount == null)
             return;
@@ -390,13 +340,8 @@ public partial class MainWindow
         Model.SwitchCard(MainWindowViewModel.LoginCardType.MainPage, false);
     }
 
-    private void CopyAccountField_OnClick(object sender, RoutedEventArgs e)
+    private void OnAccountFieldCopyRequested(object? sender, string text)
     {
-        e.Handled = true;
-
-        if (sender is not Button { Tag: string text } || string.IsNullOrEmpty(text))
-            return;
-
         var copyThread = new Thread
         (() =>
             {
@@ -412,6 +357,12 @@ public partial class MainWindow
             Name         = "ClipboardCopy"
         };
         copyThread.Start();
+    }
+
+    private void OnClearCurrentAccountRequested(object? sender, EventArgs e)
+    {
+        accountManager.ClearCurrentAccount();
+        Model.AccountSwitcher.RefreshEntries(null, false);
     }
 
     private static bool TrySetClipboardText(string text)
@@ -512,69 +463,9 @@ public partial class MainWindow
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr GlobalFree(IntPtr hMem);
 
-    private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        Model.AccountSwitcher.ContextEntry = null;
-        accountSwitcherDragStartPoint      = e.GetPosition(null);
-        draggedAccountSwitcherItem         = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
-
-        draggedAccountSwitcherItem?.IsSelected = true;
-    }
-
-    private void AccountListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not { } listViewItem)
-            return;
-
-        Model.AccountSwitcher.ContextEntry = listViewItem.DataContext as AccountSwitcherEntry;
-        e.Handled                          = true;
-
-        if (AccountListView.ContextMenu == null)
-            return;
-
-        AccountListView.ContextMenu.PlacementTarget = listViewItem;
-        AccountListView.ContextMenu.IsOpen          = true;
-    }
-
-    private void AccountListView_OnPreviewMouseMove(object sender, MouseEventArgs e)
-    {
-        var mousePosition = e.GetPosition(null);
-        var difference    = accountSwitcherDragStartPoint - mousePosition;
-
-        if (sender is not ListView listView
-            || FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not ListViewItem listViewItem
-            || listView.ItemContainerGenerator.ItemFromContainer(listViewItem) is not AccountSwitcherEntry accountEntry
-            || e.LeftButton               != MouseButtonState.Pressed
-            || draggedAccountSwitcherItem == null)
-            return;
-
-        if (Math.Abs(difference.X) <= SystemParameters.MinimumHorizontalDragDistance && Math.Abs(difference.Y) <= SystemParameters.MinimumVerticalDragDistance)
-            return;
-
-        var data = new DataObject("AccountSwitcherEntry", accountEntry);
-        DragDrop.DoDragDrop(listViewItem, data, DragDropEffects.Move);
-    }
-
-    private void AccountListView_OnDrop(object sender, DragEventArgs e)
-    {
-        if (draggedAccountSwitcherItem == null)
-            return;
-
-        var targetItem = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
-        if (targetItem == null)
-            return;
-
-        var targetIndex  = AccountListView.ItemContainerGenerator.IndexFromContainer(targetItem);
-        var draggedIndex = AccountListView.ItemContainerGenerator.IndexFromContainer(draggedAccountSwitcherItem);
-        Model.AccountSwitcher.MoveEntry(draggedIndex, targetIndex);
-    }
-
-    private void AccountListViewContextMenu_OnClosed(object sender, RoutedEventArgs e) =>
-        Model.AccountSwitcher.ContextEntry = null;
-
     private void SwitchAccount(XIVAccount account, bool saveAsCurrent)
     {
-        suppressAccountSelectionTracking = true;
+        LoginCard.SuppressAccountSelectionTracking = true;
 
         try
         {
@@ -584,10 +475,10 @@ public partial class MainWindow
             var hasUnavailableSecrets = accountManager.HasUnavailableSecrets(account);
             var selectedArea          = Model.LoginPage.LoginAreas.FirstOrDefault(x => x.AreaName == account.AreaName);
 
-            Model.LoginPage.IsFastLogin = account.QuickLoginEnabled;
-            Model.LoginPage.Area        = selectedArea ?? Model.LoginPage.Area;
-            LoginPassword.Password      = string.Empty;
-            Model.LoginPage.Password    = string.Empty;
+            Model.LoginPage.IsFastLogin      = account.QuickLoginEnabled;
+            Model.LoginPage.Area             = selectedArea ?? Model.LoginPage.Area;
+            LoginCard.LoginPassword.Password = string.Empty;
+            Model.LoginPage.Password         = string.Empty;
 
             switch (account.AccountType)
             {
@@ -602,8 +493,8 @@ public partial class MainWindow
                     if (nextLoginType == LoginType.Static)
                     {
                         // Make users happy by not showing their password
-                        LoginPassword.Password   = MainWindowViewModel.PRESUDO_PASSWORD;
-                        Model.LoginPage.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                        LoginCard.LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                        Model.LoginPage.Password         = MainWindowViewModel.PRESUDO_PASSWORD;
                     }
 
                     break;
@@ -614,8 +505,8 @@ public partial class MainWindow
 
                     if (!hasUnavailableSecrets && !string.IsNullOrWhiteSpace(account.WeGameQuickLoginSecret))
                     {
-                        LoginPassword.Password   = MainWindowViewModel.PRESUDO_PASSWORD;
-                        Model.LoginPage.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                        LoginCard.LoginPassword.Password = MainWindowViewModel.PRESUDO_PASSWORD;
+                        Model.LoginPage.Password         = MainWindowViewModel.PRESUDO_PASSWORD;
                     }
                     else
                         Model.LoginPage.IsReadWegameInfo = false;
@@ -625,35 +516,8 @@ public partial class MainWindow
         }
         finally
         {
-            suppressAccountSelectionTracking = false;
+            LoginCard.SuppressAccountSelectionTracking = false;
         }
-    }
-
-    private void LoginPassword_OnPasswordChanged(object sender, RoutedEventArgs e) =>
-        ((MainWindowViewModel)DataContext)?.LoginPage.Password = ((PasswordBox)sender).Password;
-
-    private void LoginUsername_OnTextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (suppressAccountSelectionTracking)
-            return;
-
-        if (string.IsNullOrWhiteSpace(LoginUsername.Text))
-        {
-            LoginPassword.Password   = string.Empty;
-            Model.LoginPage.Password = string.Empty;
-        }
-
-        accountManager.ClearCurrentAccount();
-        Model.AccountSwitcher.RefreshEntries(null, false);
-    }
-
-    private void LoginTypeSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (suppressAccountSelectionTracking || e.RemovedItems.Count == 0 || e.AddedItems.Count == 0)
-            return;
-
-        accountManager.ClearCurrentAccount();
-        Model.AccountSwitcher.RefreshEntries(null, false);
     }
 
     private void ShowCredTypeRecoveryMessage()
@@ -667,97 +531,6 @@ public partial class MainWindow
                         .WithCaption("自动登录加密方式已恢复")
                         .WithParentWindow(this)
                         .Show();
-    }
-
-    private void BannerDot_OnChecked(object sender, RoutedEventArgs e)
-    {
-        if (sender is not RadioButton { DataContext: BannerDotInfo bannerDotInfo })
-            return;
-
-        if (!isBannerRotationActive)
-            return;
-
-        SwitchBanner(bannerDotInfo.Index);
-    }
-
-    private void RadioButton_MouseEnter(object sender, MouseEventArgs e)
-    {
-        StopBannerRotation();
-
-        if (sender is RadioButton { DataContext: BannerDotInfo bannerDotInfo })
-            SwitchBanner(bannerDotInfo.Index);
-    }
-
-    private void RadioButton_MouseLeave(object sender, MouseEventArgs e) =>
-        StartBannerRotation();
-
-    private void ShowNextBanner()
-    {
-        if (banners is not { Length: > 0 })
-            return;
-
-        var nextBannerIndex = currentBannerIndex + 1 > banners.Length - 1
-                                  ? 0
-                                  : currentBannerIndex + 1;
-
-        SwitchBanner(nextBannerIndex);
-    }
-
-    private void SwitchBanner(int bannerIndex)
-    {
-        if (bannerBitmaps == null || bannerDotList == null)
-            return;
-
-        if (bannerIndex < 0 || bannerIndex >= bannerBitmaps.Length || bannerIndex >= bannerDotList.Count)
-            return;
-
-        if (currentBannerIndex == bannerIndex && BannerImage.Source == bannerBitmaps[bannerIndex])
-            return;
-
-        currentBannerIndex = bannerIndex;
-        SetBannerDotActiveState(bannerIndex);
-
-        var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
-        var fadeIn  = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200));
-
-        fadeOut.Completed += (s, e) =>
-        {
-            BannerImage.Source = bannerBitmaps[bannerIndex];
-            BannerImage.BeginAnimation(OpacityProperty, fadeIn);
-        };
-
-        BannerImage.BeginAnimation(OpacityProperty, fadeOut);
-    }
-
-    private void StartBannerRotation()
-    {
-        if (bannerChangeTimer != null || bannerBitmaps is not { Length: > 0 })
-            return;
-
-        bannerChangeTimer      =  new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromSeconds(5) };
-        bannerChangeTimer.Tick += (_, _) => ShowNextBanner();
-        bannerChangeTimer.Start();
-        isBannerRotationActive = true;
-    }
-
-    private void StopBannerRotation()
-    {
-        isBannerRotationActive = false;
-
-        if (bannerChangeTimer == null)
-            return;
-
-        bannerChangeTimer.Stop();
-        bannerChangeTimer = null;
-    }
-
-    private void SetBannerDotActiveState(int activeIndex)
-    {
-        if (bannerDotList == null)
-            return;
-
-        for (var i = 0; i < bannerDotList.Count; i++)
-            bannerDotList[i].Active = i == activeIndex;
     }
 
     private void MainWindow_OnClosing(object sender, CancelEventArgs e)
@@ -774,7 +547,7 @@ public partial class MainWindow
                 headlinesRefreshTimer      =  null;
             }
 
-            StopBannerRotation();
+            NewsCarousel.StopRotation();
             PreserveWindowPosition.SaveWindowPosition(this);
         }
         catch (Exception ex)
@@ -785,18 +558,6 @@ public partial class MainWindow
 
     private void DCTravelPageButton_OnClick(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo(Links.DC_TRAVEL_PAGE_URL) { UseShellExecute = true });
-
-    private void OpenExternalSiteButton_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button { Tag: string url })
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-    }
-
-    private void PayPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute = true });
-
-    private void ShoppingPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true });
 
     private void RisingStonePageButton_OnClick(object sender, RoutedEventArgs e) =>
         Process.Start(new ProcessStartInfo(Links.RISING_STONE_URL) { UseShellExecute = true });

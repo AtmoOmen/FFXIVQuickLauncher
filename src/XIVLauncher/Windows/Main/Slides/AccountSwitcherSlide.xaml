@@ -1,0 +1,363 @@
+<UserControl x:Class="XIVLauncher.Windows.Main.Slides.AccountSwitcherSlide"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:mainWindow="clr-namespace:XIVLauncher.Windows.ViewModel.MainWindow"
+             mc:Ignorable="d"
+             d:DesignHeight="400" d:DesignWidth="240">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="LoginCardSlideResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid Margin="16,12,16,12" VerticalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0"
+                    Style="{StaticResource MaterialDesignIconForegroundButton}"
+                    Width="30" Height="30" Padding="0"
+                    Command="{Binding LoginPage.BackToMainPageCommand}"
+                    ToolTip="返回登录界面">
+                <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20"
+                                         Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+            </Button>
+            <TextBlock Grid.Column="1"
+                       Text="账号"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Margin="10,0,0,0"
+                       VerticalAlignment="Center" />
+        </Grid>
+
+        <ListView Grid.Row="1" DataContext="{Binding AccountSwitcher}"
+                  x:Name="AccountListView"
+                  AllowDrop="True"
+                  BorderThickness="0"
+                  Drop="AccountListView_OnDrop"
+                  ItemsSource="{Binding Entries}"
+                  MouseUp="AccountListView_OnMouseUp"
+                  PreviewMouseLeftButtonDown="AccountListView_OnPreviewMouseLeftButtonDown"
+                  PreviewMouseRightButtonDown="AccountListView_OnPreviewMouseRightButtonDown"
+                  PreviewMouseMove="AccountListView_OnPreviewMouseMove"
+                  SelectionMode="Single"
+                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  SelectedItem="{Binding SelectedEntry}">
+            <ListView.ContextMenu>
+                <ContextMenu Language="zh-CN"
+                             Closed="AccountListViewContextMenu_OnClosed"
+                             Style="{StaticResource MaterialDesignContextMenu}">
+                    <ContextMenu.Resources>
+                        <Style TargetType="{x:Type MenuItem}"
+                               BasedOn="{StaticResource MaterialDesignMenuItem}">
+                            <Setter Property="Height" Value="36" />
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                        </Style>
+                        <Style TargetType="{x:Type Separator}"
+                               BasedOn="{StaticResource MaterialDesignSeparator}">
+                            <Setter Property="Margin" Value="0,4" />
+                        </Style>
+                    </ContextMenu.Resources>
+                    <MenuItem Command="{Binding SetProfilePictureCommand}" Header="设置账号信息">
+                        <MenuItem.Icon>
+                            <materialDesign:PackIcon Kind="AccountEditOutline" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Command="{Binding ConfigureDeviceProfileCommand}" Header="设置设备信息">
+                        <MenuItem.Icon>
+                            <materialDesign:PackIcon Kind="Devices" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator Margin="0 8" />
+                    <MenuItem Command="{Binding CreateDesktopShortcutCommand}" Header="创建桌面快捷方式">
+                        <MenuItem.Icon>
+                            <materialDesign:PackIcon Kind="LinkVariant" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <Separator Margin="0 8" />
+                    <MenuItem Header="不保存密码"
+                              IsCheckable="True"
+                              IsChecked="{Binding IsSelectedAccountPasswordNotSaved, Mode=TwoWay}" />
+                    <Separator Margin="0 8" />
+                    <MenuItem Command="{Binding RemoveAccountCommand}"
+                              Foreground="#E57373"
+                              Header="移除">
+                        <MenuItem.Icon>
+                            <materialDesign:PackIcon Kind="DeleteOutline" />
+                        </MenuItem.Icon>
+                    </MenuItem>
+                </ContextMenu>
+            </ListView.ContextMenu>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Margin" Value="6,8,6,4" />
+                    <Setter Property="Padding" Value="10,8" />
+                    <Setter Property="ClipToBounds" Value="False" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border x:Name="MainContainer"
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        BorderThickness="0"
+                                        RenderTransformOrigin="0.5,0.5"
+                                        Margin="0"
+                                        ClipToBounds="False">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform x:Name="CardScale" ScaleX="1" ScaleY="1" />
+                                    </Border.RenderTransform>
+                                    <Grid>
+                                        <Border x:Name="CardBorder"
+                                                Background="#08FFFFFF"
+                                                BorderBrush="#0FFFFFFF"
+                                                BorderThickness="1"
+                                                CornerRadius="8" />
+                                        <Border x:Name="HoverBorder"
+                                                Background="#12FFFFFF"
+                                                BorderBrush="#88FF8F00"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Opacity="0" />
+                                        <Border x:Name="SelectedBorder"
+                                                Background="#18FF8F00"
+                                                BorderBrush="#FF8F00"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Opacity="0" />
+                                        <Border x:Name="SelectedIndicator"
+                                                Width="3" Height="18"
+                                                Background="#FF8F00"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                CornerRadius="1.5"
+                                                Opacity="0"
+                                                Margin="5,0,0,0" />
+                                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                    </Grid>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Trigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="CardScale"
+                                                                     Storyboard.TargetProperty="ScaleX" To="1.02"
+                                                                     Duration="0:0:0.15" />
+                                                    <DoubleAnimation Storyboard.TargetName="CardScale"
+                                                                     Storyboard.TargetProperty="ScaleY" To="1.02"
+                                                                     Duration="0:0:0.15" />
+                                                    <DoubleAnimation Storyboard.TargetName="HoverBorder"
+                                                                     Storyboard.TargetProperty="Opacity" To="1"
+                                                                     Duration="0:0:0.15" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </Trigger.EnterActions>
+                                        <Trigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="CardScale"
+                                                                     Storyboard.TargetProperty="ScaleX" To="1"
+                                                                     Duration="0:0:0.12" />
+                                                    <DoubleAnimation Storyboard.TargetName="CardScale"
+                                                                     Storyboard.TargetProperty="ScaleY" To="1"
+                                                                     Duration="0:0:0.12" />
+                                                    <DoubleAnimation Storyboard.TargetName="HoverBorder"
+                                                                     Storyboard.TargetProperty="Opacity" To="0"
+                                                                     Duration="0:0:0.12" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </Trigger.ExitActions>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Trigger.EnterActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="SelectedBorder"
+                                                                     Storyboard.TargetProperty="Opacity" To="1"
+                                                                     Duration="0:0:0.15" />
+                                                    <DoubleAnimation Storyboard.TargetName="SelectedIndicator"
+                                                                     Storyboard.TargetProperty="Opacity" To="1"
+                                                                     Duration="0:0:0.15" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </Trigger.EnterActions>
+                                        <Trigger.ExitActions>
+                                            <BeginStoryboard>
+                                                <Storyboard>
+                                                    <DoubleAnimation Storyboard.TargetName="SelectedBorder"
+                                                                     Storyboard.TargetProperty="Opacity" To="0"
+                                                                     Duration="0:0:0.12" />
+                                                    <DoubleAnimation Storyboard.TargetName="SelectedIndicator"
+                                                                     Storyboard.TargetProperty="Opacity" To="0"
+                                                                     Duration="0:0:0.12" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </Trigger.ExitActions>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate DataType="mainWindow:AccountSwitcherEntry">
+                    <Grid>
+                        <Grid.ToolTip>
+                            <ToolTip Placement="Right">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Account.DisplayName}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Account.UserName}" Opacity="0.7" Margin="0,2,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Account.UserDefinedName}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Account.UserDefinedName}"
+                                                                 Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </ToolTip>
+                        </Grid.ToolTip>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Grid.Column="0" Margin="2,0,0,0">
+                            <Ellipse Width="38" Height="38">
+                                <Ellipse.Fill>
+                                    <ImageBrush ImageSource="{Binding ProfileImage}" Stretch="UniformToFill" />
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <Ellipse Width="38" Height="38"
+                                     Stroke="{DynamicResource MaterialDesign.Brush.Card.Border}"
+                                     StrokeThickness="1" Opacity="0.5" />
+                        </Grid>
+
+                        <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Account.DisplayName}"
+                                           FontSize="14" FontWeight="SemiBold"
+                                           TextWrapping="Wrap"
+                                           LineHeight="17"
+                                           LineStackingStrategy="BlockLineHeight"
+                                           MaxHeight="34"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" />
+                                <Button Grid.Column="1"
+                                        Style="{StaticResource AccountFieldCopyButtonStyle}"
+                                        Tag="{Binding Account.DisplayName}"
+                                        Click="CopyAccountField_OnClick"
+                                        ToolTip="复制">
+                                    <materialDesign:PackIcon Kind="ContentCopy" Width="13" Height="13" />
+                                </Button>
+                            </Grid>
+                            <Grid Margin="0,2,0,0">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Account.UserDefinedName}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Account.UserDefinedName}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Account.UserName}"
+                                           FontSize="11" Opacity="0.6"
+                                           TextWrapping="Wrap"
+                                           LineHeight="14"
+                                           LineStackingStrategy="BlockLineHeight"
+                                           MaxHeight="28"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" />
+                                <Button Grid.Column="1"
+                                        Style="{StaticResource AccountFieldCopyButtonStyle}"
+                                        Tag="{Binding Account.UserName}"
+                                        Click="CopyAccountField_OnClick"
+                                        ToolTip="复制">
+                                    <materialDesign:PackIcon Kind="ContentCopy" Width="12" Height="12" />
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                            <materialDesign:PackIcon Height="16" Width="16" Margin="3,0,0,0" Opacity="0.5">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Account.IsWeGame}" Value="true">
+                                                <Setter Property="Kind" Value="Qqchat" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Account.IsWeGame}" Value="false">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+                            <materialDesign:PackIcon Height="16" Width="16" Margin="3,0,0,0" Opacity="0.5">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Account.QuickLoginEnabled}" Value="True">
+                                                <Setter Property="Kind" Value="AccountKeyOutline" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Account.QuickLoginEnabled}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</UserControl>

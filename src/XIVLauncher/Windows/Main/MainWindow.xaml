@@ -1,0 +1,91 @@
+<Window
+    x:Class="XIVLauncher.Windows.Main.MainWindow"
+    x:Name="RootWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:system="clr-namespace:System;assembly=mscorlib"
+    xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
+    xmlns:main="clr-namespace:XIVLauncher.Windows.Main"
+    mc:Ignorable="d"
+    Title="XIVLauncherCN (Soil)"
+    Width="780"
+    Height="540"
+    ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
+    Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+    Background="{DynamicResource MaterialDesign.Brush.Background}"
+    Closing="MainWindow_OnClosing"
+    d:DataContext="{d:DesignInstance viewModel:MainWindowViewModel}">
+
+    <Window.Resources>
+        <system:Double x:Key="BannerCardWidth">450</system:Double>
+        <system:Double x:Key="BannerCardHeight">250</system:Double>
+    </Window.Resources>
+
+    <Grid>
+        <Grid Margin="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition />
+                </Grid.RowDefinitions>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+
+                <!-- 新闻轮播 -->
+                <main:NewsCarouselControl x:Name="NewsCarousel"
+                                          Grid.Row="0"
+                                          Grid.Column="0"
+                                          Width="{DynamicResource BannerCardWidth}"
+                                          Height="{DynamicResource BannerCardHeight}" />
+
+                <!-- 新闻列表 -->
+                <main:NewsListControl x:Name="NewsList"
+                                      Grid.Row="1"
+                                      Grid.Column="0"
+                                      Margin="0,12,0,4"
+                                      Width="{DynamicResource BannerCardWidth}" />
+
+                <!-- 登录卡片 -->
+                <main:LoginCardControl x:Name="LoginCard"
+                                       Grid.Row="0"
+                                       Grid.RowSpan="2"
+                                       Grid.Column="1"
+                                       Width="280"
+                                       Margin="8,0,0,4" />
+
+                <materialDesign:DialogHost
+                    Identifier="MaintenanceQueueDialogHost"
+                    x:Name="MaintenanceQueueDialogHost"
+                    IsOpen="{Binding IsLoadingDialogOpen}">
+                    <materialDesign:DialogHost.DialogContent>
+                        <StackPanel Margin="16">
+                            <StackPanel Orientation="Vertical"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock x:Name="LoadingMessageTextBlock"
+                                           Text="{Binding LoadingDialogMessage}" />
+                                <ProgressBar
+                                    Style="{StaticResource MaterialDesignCircularProgressBar}"
+                                    Value="0"
+                                    IsIndeterminate="{Binding IsLoadingDialogOpen}" Height="30" Width="30"
+                                    Margin="0 8 0 0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </materialDesign:DialogHost.DialogContent>
+                </materialDesign:DialogHost>
+            </Grid>
+        </Grid>
+
+        <materialDesign:Snackbar x:Name="CopySnackbar"
+                                 MessageQueue="{materialDesign:MessageQueue}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Bottom"
+                                 Margin="0,0,0,16" />
+    </Grid>
+</Window>

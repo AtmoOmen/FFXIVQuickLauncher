@@ -11,6 +11,7 @@ using XIVLauncher.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Startup;
 using XIVLauncher.Windows;
+using XIVLauncher.Windows.Main;
 
 namespace XIVLauncher;
 
