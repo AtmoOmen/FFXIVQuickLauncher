@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using XIVLauncher.Account;
@@ -19,6 +20,33 @@ namespace XIVLauncher.Windows.ViewModel.MainWindow;
 internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 {
     public ObservableCollection<AccountSwitcherEntry> Entries { get; } = [];
+
+    /// <summary>是否处于搜索模式</summary>
+    public bool IsSearchMode
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            if (!value)
+                SearchText = string.Empty;
+        }
+    }
+
+    /// <summary>搜索关键词, 为空时不过滤</summary>
+    public string SearchText
+    {
+        get;
+        set
+        {
+            if (!SetProperty(ref field, value))
+                return;
+
+            ApplySearchFilter();
+        }
+    }
 
     private readonly SyncCommand createDesktopShortcutCommand;
     private readonly SyncCommand removeAccountCommand;
@@ -145,6 +173,24 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         SelectedEntry = string.IsNullOrWhiteSpace(selectedAccountId)
                             ? null
                             : Entries.FirstOrDefault(entry => entry.Account.ID == selectedAccountId);
+
+        ApplySearchFilter();
+    }
+
+    /// <summary>根据 SearchText 过滤 Entries 的默认视图</summary>
+    private void ApplySearchFilter()
+    {
+        var view = CollectionViewSource.GetDefaultView(Entries);
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            view.Filter = null;
+            return;
+        }
+
+        var keyword = SearchText.Trim();
+        view.Filter = obj => obj is AccountSwitcherEntry entry
+                             && (entry.Account.UserName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true
+                                 || entry.Account.UserDefinedName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true);
     }
 
     public XIVAccount? SelectCurrentAccount() =>

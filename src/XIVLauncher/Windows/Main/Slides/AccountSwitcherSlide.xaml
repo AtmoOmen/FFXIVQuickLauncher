@@ -22,24 +22,131 @@
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="0,0,0,12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Button Grid.Column="0"
-                    Style="{StaticResource MaterialDesignIconForegroundButton}"
-                    Width="30" Height="30" Padding="0"
-                    Command="{Binding LoginPage.BackToMainPageCommand}"
-                    ToolTip="返回登录界面">
-                <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20"
-                                         Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-            </Button>
-            <TextBlock Grid.Column="1"
-                       Text="账号"
-                       FontSize="16"
-                       FontWeight="Bold"
-                       Margin="10,0,0,0"
-                       VerticalAlignment="Center" />
+            <!-- 常规模式: 返回按钮 + 标题 + 搜索图标 -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Opacity" Value="1" />
+                        <Setter Property="IsHitTestVisible" Value="True" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding AccountSwitcher.IsSearchMode}" Value="True">
+                                <Setter Property="IsHitTestVisible" Value="False" />
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.15" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="0:0:0.2" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0"
+                        Style="{StaticResource MaterialDesignIconForegroundButton}"
+                        Width="30" Height="30" Padding="0"
+                        Command="{Binding LoginPage.BackToMainPageCommand}"
+                        ToolTip="返回登录界面">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+                <TextBlock Grid.Column="1"
+                           Text="账号"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Margin="10,0,0,0"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="2"
+                        Style="{StaticResource MaterialDesignIconForegroundButton}"
+                        Width="30" Height="30" Padding="0"
+                        Click="SearchButton_OnClick"
+                        ToolTip="搜索账号">
+                    <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+            </Grid>
+
+            <!-- 搜索模式: 搜索框 + 关闭按钮 -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Opacity" Value="0" />
+                        <Setter Property="IsHitTestVisible" Value="False" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding AccountSwitcher.IsSearchMode}" Value="True">
+                                <Setter Property="IsHitTestVisible" Value="True" />
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="0:0:0.2" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.15" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         x:Name="SearchTextBox"
+                         Text="{Binding AccountSwitcher.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         materialDesign:HintAssist.Hint="搜索账号或备注"
+                         KeyDown="SearchTextBox_OnKeyDown">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                            <Setter Property="materialDesign:TextFieldAssist.DecorationVisibility" Value="Collapsed" />
+                            <Setter Property="BorderThickness" Value="0,0,0,1" />
+                            <Setter Property="BorderBrush" Value="#30FFFFFF" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                            <Setter Property="CaretBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                            <Setter Property="VerticalContentAlignment" Value="Center" />
+                            <Setter Property="Padding" Value="8,4" />
+                            <Style.Triggers>
+                                <Trigger Property="IsFocused" Value="True">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
+                <Button Grid.Column="1"
+                        Style="{StaticResource MaterialDesignIconForegroundButton}"
+                        Width="30" Height="30" Padding="0"
+                        Margin="4,0,0,0"
+                        Click="CloseSearchButton_OnClick"
+                        ToolTip="关闭搜索">
+                    <materialDesign:PackIcon Kind="Close" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+            </Grid>
         </Grid>
 
         <ListView Grid.Row="1" DataContext="{Binding AccountSwitcher}"

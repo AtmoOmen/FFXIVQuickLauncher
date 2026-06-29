@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using XIVLauncher.Windows.ViewModel;
 using XIVLauncher.Windows.ViewModel.MainWindow;
 
@@ -35,6 +36,39 @@ public partial class AccountSwitcherSlide
 
     public AccountSwitcherSlide() =>
         InitializeComponent();
+
+    private void SearchButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel == null)
+            return;
+
+        ViewModel.AccountSwitcher.IsSearchMode = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            SearchTextBox.Focus();
+            SearchTextBox.CaretIndex = SearchTextBox.Text.Length;
+        });
+    }
+
+    private void CloseSearchButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel == null)
+            return;
+
+        Keyboard.ClearFocus();
+        ViewModel.AccountSwitcher.IsSearchMode = false;
+    }
+
+    private void SearchTextBox_OnKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape)
+            return;
+
+        Keyboard.ClearFocus();
+        if (ViewModel != null)
+            ViewModel.AccountSwitcher.IsSearchMode = false;
+        e.Handled = true;
+    }
 
     private void CopyAccountField_OnClick(object sender, RoutedEventArgs e)
     {
