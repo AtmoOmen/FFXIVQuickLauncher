@@ -214,20 +214,18 @@ public partial class CustomMessageBox
         bool             showReportLinks      = false,
         bool             showOfficialLauncher = false,
         Window           parentWindow         = null!
-    )
-    {
-        return new Builder()
-               .WithCaption(caption)
-               .WithText(text)
-               .WithButtons(buttons)
-               .WithImage(image)
-               .WithShowHelpLinks(showHelpLinks)
-               .WithShowDiscordLink(showDiscordLink)
-               .WithShowIntegrityReportLink(showReportLinks)
-               .WithShowOfficialLauncher(showOfficialLauncher)
-               .WithParentWindow(parentWindow)
-               .Show();
-    }
+    ) =>
+        new Builder()
+            .WithCaption(caption)
+            .WithText(text)
+            .WithButtons(buttons)
+            .WithImage(image)
+            .WithShowHelpLinks(showHelpLinks)
+            .WithShowDiscordLink(showDiscordLink)
+            .WithShowIntegrityReportLink(showReportLinks)
+            .WithShowOfficialLauncher(showOfficialLauncher)
+            .WithParentWindow(parentWindow)
+            .Show();
 
     public static bool AssertOrShowError(bool condition, string context, bool fatal = false, Window parentWindow = null!)
     {
@@ -447,13 +445,11 @@ public partial class CustomMessageBox
             return builder;
         }
 
-        public static Builder NewFromUnexpectedException(Exception exc, string context, ExitOnCloseModes exitOnCloseMode = ExitOnCloseModes.DontExitOnClose)
-        {
-            return NewFrom(exc, context, exitOnCloseMode)
-                   .WithAppendTextFormatted($"发生未知错误 ({exc.Message})")
-                   .WithAppendText("\n")
-                   .WithAppendText("请反馈此错误");
-        }
+        public static Builder NewFromUnexpectedException(Exception exc, string context, ExitOnCloseModes exitOnCloseMode = ExitOnCloseModes.DontExitOnClose) =>
+            NewFrom(exc, context, exitOnCloseMode)
+                .WithAppendTextFormatted($"发生未知错误 ({exc.Message})")
+                .WithAppendText("\n")
+                .WithAppendText("请反馈此错误");
 
         public Builder WithText(string text)
         {

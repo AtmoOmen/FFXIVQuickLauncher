@@ -568,9 +568,8 @@ public sealed class GameClientFileTaskService
         }
     }
 
-    private static GameClientFileTaskSnapshot CreateRepairerSnapshot(GameRepairer repairer)
-    {
-        return repairer.State switch
+    private static GameClientFileTaskSnapshot CreateRepairerSnapshot(GameRepairer repairer) =>
+        repairer.State switch
         {
             GameRepairer.RepairState.DownloadMeta => new GameClientFileTaskSnapshot
             {
@@ -612,11 +611,9 @@ public sealed class GameClientFileTaskService
                 IsRunning               = true
             }
         };
-    }
 
-    private static GameClientFileTaskSnapshot CreateInstallerSnapshot(GameInstaller installer)
-    {
-        return installer.State switch
+    private static GameClientFileTaskSnapshot CreateInstallerSnapshot(GameInstaller installer) =>
+        installer.State switch
         {
             GameInstaller.InstallState.DownloadMeta => new GameClientFileTaskSnapshot
             {
@@ -658,7 +655,6 @@ public sealed class GameClientFileTaskService
                 IsRunning               = true
             }
         };
-    }
 
     private static GameClientFileTaskSnapshot CreateGamePatchSnapshot(GamePatchProgress progress)
     {
@@ -1043,7 +1039,7 @@ public sealed class GameClientFileTaskService
             return string.Empty;
 
         var remainingSeconds = (int)Math.Ceiling((double)remaining / speed);
-        remainingSeconds = Math.Clamp(remainingSeconds, 0, (60 * 60 * 100) - 1);
+        remainingSeconds = Math.Clamp(remainingSeconds, 0, 60 * 60 * 100 - 1);
         if (remainingSeconds < 60 * 60)
             return $"{remainingSeconds / 60:00}:{remainingSeconds % 60:00}";
 

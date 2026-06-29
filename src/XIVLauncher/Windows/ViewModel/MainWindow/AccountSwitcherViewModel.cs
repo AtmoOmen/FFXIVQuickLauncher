@@ -21,6 +21,8 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 {
     public ObservableCollection<AccountSwitcherEntry> Entries { get; } = [];
 
+    public event Action<string>? AccountRemoved;
+
     /// <summary>是否处于搜索模式</summary>
     public bool IsSearchMode
     {
@@ -46,7 +48,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 
             ApplySearchFilter();
         }
-    }
+    } = string.Empty;
 
     private readonly SyncCommand createDesktopShortcutCommand;
     private readonly SyncCommand removeAccountCommand;
@@ -108,7 +110,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 
             if (value)
             {
-                account.SdoPassword       = string.Empty;
+                account.SdoPassword            = string.Empty;
                 account.WeGameQuickLoginSecret = null;
             }
 
@@ -181,6 +183,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
     private void ApplySearchFilter()
     {
         var view = CollectionViewSource.GetDefaultView(Entries);
+
         if (string.IsNullOrWhiteSpace(SearchText))
         {
             view.Filter = null;
@@ -188,9 +191,9 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         }
 
         var keyword = SearchText.Trim();
-        view.Filter = obj => obj is AccountSwitcherEntry entry
-                             && (entry.Account.UserName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true
-                                 || entry.Account.UserDefinedName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true);
+        view.Filter = obj =>
+            obj is AccountSwitcherEntry entry &&
+            (entry.Account.UserName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true || entry.Account.UserDefinedName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true);
     }
 
     public XIVAccount? SelectCurrentAccount() =>
@@ -246,10 +249,12 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         if (activeEntry == null)
             return;
 
+        var removedUserName   = activeEntry.Account.UserName;
         var selectedAccountId = SelectedEntry?.Account.ID;
         AccountSwitcherEntry.RemoveCustomProfileImage(activeEntry.Account);
         accountManager.RemoveAccount(activeEntry.Account);
         RefreshEntries(selectedAccountId == activeEntry.Account.ID ? null : selectedAccountId);
+        AccountRemoved?.Invoke(removedUserName);
     }
 
     public void SetSelectedProfilePicture()
@@ -276,10 +281,10 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
     }
 
     private static bool HasSavedSecret(XIVAccount account) =>
-        account.QuickLoginEnabled
-        || !string.IsNullOrWhiteSpace(account.SdoPassword)
-        || !string.IsNullOrWhiteSpace(account.WeGameQuickLoginSecret)
-        || !string.IsNullOrWhiteSpace(account.SdoQuickLoginSecret);
+        account.QuickLoginEnabled                                  ||
+        !string.IsNullOrWhiteSpace(account.SdoPassword)            ||
+        !string.IsNullOrWhiteSpace(account.WeGameQuickLoginSecret) ||
+        !string.IsNullOrWhiteSpace(account.SdoQuickLoginSecret);
 
     public void ConfigureSelectedDeviceProfile()
     {

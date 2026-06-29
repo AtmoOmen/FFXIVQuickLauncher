@@ -264,11 +264,8 @@ internal sealed class AccountDeviceProfileWindowViewModel
             return;
         }
 
-        var targetAccount = account ?? throw new InvalidOperationException("当前未加载账号设备信息。");
-        var shouldRestoreSavedPreset = DynamicEnabled
-                                       && !targetAccount.DeviceProfileDynamicEnabled
-                                       && !snapshotTouched
-                                       && savedIndependentPreset != null;
+        var targetAccount            = account ?? throw new InvalidOperationException("当前未加载账号设备信息。");
+        var shouldRestoreSavedPreset = DynamicEnabled && !targetAccount.DeviceProfileDynamicEnabled && !snapshotTouched && savedIndependentPreset != null;
 
         if (persistChangesToAccountManager)
         {
@@ -529,8 +526,7 @@ internal sealed class AccountDeviceProfileWindowViewModel
         accountManager.GetSharedDeviceProfilePreset();
 
     private DeviceProfilePreset? GetPreset(string presetId) =>
-        Presets.FirstOrDefault(preset => string.Equals(preset.Id, presetId, StringComparison.Ordinal))
-        ?? accountManager.FindDeviceProfilePreset(presetId);
+        Presets.FirstOrDefault(preset => string.Equals(preset.Id, presetId, StringComparison.Ordinal)) ?? accountManager.FindDeviceProfilePreset(presetId);
 
     private void ApplyPreset(DeviceProfilePreset preset)
     {
@@ -627,9 +623,9 @@ internal sealed class AccountDeviceProfileWindowViewModel
 
     private bool TryCreateCurrentSnapshot(out DeviceProfileSnapshot snapshot)
     {
-        if (!TryNormalizeDeviceId(DeviceId, out var normalizedDeviceId, out _)
-            || !TryNormalizeMacAddress(MacAddress, out var normalizedMacAddress, out _)
-            || !TryNormalizeHostName(HostName, out var normalizedHostName, out _))
+        if (!TryNormalizeDeviceId(DeviceId, out var normalizedDeviceId, out _)       ||
+            !TryNormalizeMacAddress(MacAddress, out var normalizedMacAddress, out _) ||
+            !TryNormalizeHostName(HostName, out var normalizedHostName, out _))
         {
             snapshot = null!;
             return false;
@@ -646,8 +642,7 @@ internal sealed class AccountDeviceProfileWindowViewModel
 
     private void RebuildDeviceIdFromCurrentFields()
     {
-        if (!TryNormalizeMacAddress(MacAddress, out var normalizedMacAddress, out _)
-            || !TryNormalizeHostName(HostName, out var normalizedHostName, out _))
+        if (!TryNormalizeMacAddress(MacAddress, out var normalizedMacAddress, out _) || !TryNormalizeHostName(HostName, out var normalizedHostName, out _))
         {
             DeviceId = FakeMachineInfo.CreateDeviceId();
             return;

@@ -43,11 +43,15 @@ public partial class AccountSwitcherSlide
             return;
 
         ViewModel.AccountSwitcher.IsSearchMode = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
-        {
-            SearchTextBox.Focus();
-            SearchTextBox.CaretIndex = SearchTextBox.Text.Length;
-        });
+        Dispatcher.BeginInvoke
+        (
+            DispatcherPriority.Loaded,
+            () =>
+            {
+                SearchTextBox.Focus();
+                SearchTextBox.CaretIndex = SearchTextBox.Text.Length;
+            }
+        );
     }
 
     private void CloseSearchButton_OnClick(object sender, RoutedEventArgs e)
@@ -126,15 +130,14 @@ public partial class AccountSwitcherSlide
         var mousePosition = e.GetPosition(null);
         var difference    = accountSwitcherDragStartPoint - mousePosition;
 
-        if (sender is not ListView listView
-            || FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not ListViewItem listViewItem
-            || listView.ItemContainerGenerator.ItemFromContainer(listViewItem) is not AccountSwitcherEntry accountEntry
-            || e.LeftButton               != MouseButtonState.Pressed
-            || draggedAccountSwitcherItem == null)
+        if (sender is not ListView listView                                                                          ||
+            FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not ListViewItem listViewItem          ||
+            listView.ItemContainerGenerator.ItemFromContainer(listViewItem) is not AccountSwitcherEntry accountEntry ||
+            e.LeftButton               != MouseButtonState.Pressed                                                   ||
+            draggedAccountSwitcherItem == null)
             return;
 
-        if (Math.Abs(difference.X)    <= SystemParameters.MinimumHorizontalDragDistance
-            && Math.Abs(difference.Y) <= SystemParameters.MinimumVerticalDragDistance)
+        if (Math.Abs(difference.X) <= SystemParameters.MinimumHorizontalDragDistance && Math.Abs(difference.Y) <= SystemParameters.MinimumVerticalDragDistance)
             return;
 
         var data = new DataObject("AccountSwitcherEntry", accountEntry);

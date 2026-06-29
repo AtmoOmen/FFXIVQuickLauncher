@@ -21,7 +21,7 @@ public partial class SettingsWindow
         viewModel.ReloadFromSettings();
 
         InitializeComponent();
-        DataContext                            = viewModel;
+        DataContext                                   = viewModel;
         CompanionAppListView.ContextMenu?.DataContext = viewModel;
 
         DiscordButton.Click += (_, _) => Process.Start(new ProcessStartInfo(Links.DISCORD_URL) { UseShellExecute = true });

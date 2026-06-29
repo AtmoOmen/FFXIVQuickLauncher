@@ -66,6 +66,16 @@ public partial class MainWindow
 
         Model.ReloadHeadlines += () => _ = RequestHeadlinesRefreshAsync();
 
+        Model.ShowSnackbar += message => Dispatcher.Invoke(() => CopySnackbar.MessageQueue?.Enqueue(message));
+
+        Model.RequestSwitchToCurrentAccount += () => Dispatcher.Invoke
+        (() =>
+            {
+                if (accountManager.CurrentAccount is { } account)
+                    SwitchAccount(account, false);
+            }
+        );
+
         // 订阅控件事件
         NewsCarousel.BannerClicked             += OnBannerClicked;
         NewsList.NewsClicked                   += OnNewsClicked;

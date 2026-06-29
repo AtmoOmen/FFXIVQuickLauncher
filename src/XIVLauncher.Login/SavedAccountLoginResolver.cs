@@ -94,7 +94,7 @@ internal sealed class SavedAccountLoginResolver
                 (
                     account => account.AccountType == XIVAccountType.WeGame
                                && string.Equals(account.WeGameLoginAccount, username, StringComparison.Ordinal)
-                ) ?? savedAccount;
+                );
 
                 accountType = XIVAccountType.WeGame;
 

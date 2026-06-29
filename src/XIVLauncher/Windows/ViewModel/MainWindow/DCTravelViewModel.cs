@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -53,11 +52,11 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         this.requestShowProgressAction    = requestShowProgressAction;
         this.requestOpenReturnAction      = requestOpenReturnAction;
         this.setCurrentAreaAction         = setCurrentAreaAction;
-        this.activateAction                = activateAction;
+        this.activateAction               = activateAction;
         this.getDcTravelClientFunc        = getDcTravelClientFunc;
 
         travelOrderCommand        = new AsyncCommand(async _ => await StartTravelAsync(),    () => SelectedTargetGroup != null && SelectedCharacter != null && !isLoading && !isUnderMaintenance);
-        travelBackCommand         = new AsyncCommand(async _ => await OpenReturnPageAsync(), () => SelectedOrder       != null && !isLoading && !isUnderMaintenance);
+        travelBackCommand         = new AsyncCommand(async _ => await OpenReturnPageAsync(), () => SelectedOrder       != null && !isLoading                && !isUnderMaintenance);
         refreshOrdersCommand      = new AsyncCommand(async _ => await RefreshOrdersAsync());
         confirmTravelBackCommand  = new AsyncCommand(async _ => await ConfirmTravelBackAsync(), () => ReturnSelectedCurrentGroup != null && !isLoading && !isUnderMaintenance);
         backToDashboardCommand    = new SyncCommand(_ => this.requestBackToDashboardAction());
@@ -275,7 +274,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     } = string.Empty;
 
     private DCTravelMigrationOrder? pendingReturnOrder;
-    private string? pendingTargetGroupName;
+    private string?                 pendingTargetGroupName;
 
     // 进度页属性
     public string TravelProgressText
@@ -453,6 +452,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
                 try
                 {
                     var chars = await client.QueryRoleList(SelectedSourceArea.AreaID, g.GroupID);
+
                     foreach (var c in chars)
                     {
                         c.ServerName = g.GroupName;
@@ -543,10 +543,10 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
         await Task.Delay(1);
 
-        pendingReturnOrder = SelectedOrder;
+        pendingReturnOrder     = SelectedOrder;
         pendingTargetGroupName = pendingReturnOrder.TargetGroupName;
 
-        ReturnOrderInfo          = $"{pendingReturnOrder.GroupName}  |  {pendingReturnOrder.CreateTime}";
+        ReturnOrderInfo = $"{pendingReturnOrder.GroupName}  |  {pendingReturnOrder.CreateTime}";
 
         ReturnSourceAreas.Clear();
         foreach (var a in SourceAreas)
@@ -581,9 +581,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             await RefreshOrdersAsync();
 
             if (pendingReturnOrder != null && !string.IsNullOrWhiteSpace(pendingReturnOrder.SourceAreaName))
-            {
                 UpdateCurrentArea(pendingReturnOrder.SourceAreaName);
-            }
 
             activateAction();
         }
@@ -619,9 +617,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
                 var targetGroup = ReturnCurrentGroups.FirstOrDefault(g => g.GroupName == targetGroupName);
                 if (targetGroup != null)
-                {
                     ReturnSelectedCurrentGroup = targetGroup;
-                }
             }
         }
         catch (Exception ex)
@@ -644,6 +640,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
             MigrationOrders.Clear();
             var addedRoles = new HashSet<string>();
+
             foreach (var o in result.Orders)
             {
                 // 源大区与服务器直接采用订单响应自带字段，与目标侧保持一致，避免按 groupId 反查命中错误服务器

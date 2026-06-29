@@ -16,31 +16,27 @@
 
     <Grid Margin="24,0,24,0" VerticalAlignment="Center">
         <StackPanel>
-            <Border Style="{StaticResource DashboardInfoCardStyle}" Margin="0,0,0,12">
-                <Grid Margin="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="当前账号" FontSize="11" Opacity="0.6" />
-                        <TextBlock Text="{Binding DashboardPage.AccountName}"
-                                   FontSize="14" FontWeight="SemiBold"
-                                   TextWrapping="Wrap"
-                                   Margin="0,2,0,0" />
-                    </StackPanel>
-                    <Button Grid.Column="1"
-                            Style="{StaticResource HeaderUtilityButtonStyle}"
-                            Width="28" Height="28"
-                            VerticalAlignment="Center"
-                            Tag="{Binding DashboardPage.AccountName}"
-                            Click="CopyAccountField_OnClick"
-                            ToolTip="复制账号">
-                        <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16"
-                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                    </Button>
-                </Grid>
-            </Border>
+            <materialDesign:Card Style="{StaticResource DashboardAccountCardStyle}"
+                                 Margin="0,0,0,12"
+                                 MouseLeftButtonUp="AccountCard_OnClick">
+                <materialDesign:Card.ContextMenu>
+                    <ContextMenu Style="{StaticResource LoginActionContextMenuStyle}">
+                        <MenuItem Header="复制账号"
+                                  Style="{StaticResource LoginActionMenuItemStyle}"
+                                  Click="CopyAccountField_OnMenuItemClick" />
+                        <MenuItem Header="设备信息"
+                                  Style="{StaticResource LoginActionMenuItemStyle}"
+                                  Command="{Binding DashboardPage.OpenDeviceProfileCommand}" />
+                    </ContextMenu>
+                </materialDesign:Card.ContextMenu>
+                <StackPanel>
+                    <TextBlock Text="当前账号" FontSize="11" Opacity="0.6" />
+                    <TextBlock Text="{Binding DashboardPage.AccountName}"
+                               FontSize="14" FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Margin="0,2,0,0" />
+                </StackPanel>
+            </materialDesign:Card>
 
             <TextBlock Text="选择大区" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
 

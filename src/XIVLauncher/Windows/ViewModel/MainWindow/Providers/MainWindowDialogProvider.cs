@@ -1,6 +1,6 @@
 using System.Windows;
-using XIVLauncher.Account;
 using Microsoft.WindowsAPICodePack.Dialogs;
+using XIVLauncher.Account;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Providers;
 

@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
     <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
     <!-- 菜单样式 -->
@@ -76,5 +77,23 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="10" />
         <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style x:Key="DashboardAccountCardStyle"
+           TargetType="{x:Type materialDesign:Card}"
+           BasedOn="{StaticResource {x:Type materialDesign:Card}}">
+        <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.BackgroundDark}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="UniformCornerRadius" Value="10" />
+        <Setter Property="Padding" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="materialDesign:ElevationAssist.Elevation" Value="Dp0" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="materialDesign:ElevationAssist.Elevation" Value="Dp2" />
+                <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 </ResourceDictionary>

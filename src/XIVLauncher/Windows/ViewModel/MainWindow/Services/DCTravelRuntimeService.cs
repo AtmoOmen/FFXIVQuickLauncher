@@ -1,7 +1,7 @@
 using Serilog;
-using XIVLauncher.Login;
 using XIVLauncher.Common.Util;
 using XIVLauncher.DCTravel;
+using XIVLauncher.Login;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
 
@@ -14,7 +14,7 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
     private CancellationTokenSource? recoveryCts;
     private Task?                    recoveryTask;
 
-    public DCTravelClient  Client    { get; }
+    public DCTravelClient    Client   { get; }
     public DCTravelListener? Listener { get; private set; }
 
     /// <summary>
@@ -59,7 +59,7 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
 
         // 无论初始化是否成功, 始终启动监听器 —— 游戏内插件可通过 RPC 错误区分维护状态
         Listener = new DCTravelListener(Client, DcTravelPort, false);
-        _ = Listener.StartAsync();
+        _        = Listener.StartAsync();
         Log.Information("[DCTravelListener] 打开监听端口: {DcTravelPort}", DcTravelPort);
 
         try
@@ -106,7 +106,7 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
         }
         finally
         {
-            Listener = null;
+            Listener     = null;
             DcTravelPort = 0;
         }
     }
@@ -126,7 +126,7 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
 
         StopMaintenanceRecovery();
 
-        recoveryCts = new CancellationTokenSource();
+        recoveryCts  = new CancellationTokenSource();
         recoveryTask = RunMaintenanceRecoveryLoopAsync(recoveryCts.Token);
     }
 

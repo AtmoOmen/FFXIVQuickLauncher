@@ -204,8 +204,7 @@ public partial class AccountDeviceProfileWindow
             return;
 
         var json = File.ReadAllText(dialog.FileName, Encoding.UTF8);
-        var data = JsonSerializer.Deserialize<AccountDeviceProfileExchangeData>(json, ExchangeJsonOptions)
-                   ?? throw new InvalidOperationException("导入文件内容为空或格式无效。");
+        var data = JsonSerializer.Deserialize<AccountDeviceProfileExchangeData>(json, ExchangeJsonOptions) ?? throw new InvalidOperationException("导入文件内容为空或格式无效。");
 
         if (data.Version != CURRENT_EXCHANGE_FORMAT_VERSION)
             throw new InvalidOperationException($"不支持的设备信息文件版本：{data.Version}。");

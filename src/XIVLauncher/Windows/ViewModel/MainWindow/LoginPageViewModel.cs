@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Serilog;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Login;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Xaml;
@@ -57,8 +58,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 
         LoginTypeOptions = [.. LoginTypeOption.Get()];
 
-        loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == App.Settings.SelectedLoginType)
-                          ?? LoginTypeOptions.First(x => x.LoginType       == LoginType.Slide);
+        loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == App.Settings.SelectedLoginType) ?? LoginTypeOptions.First(x => x.LoginType == LoginType.Slide);
 
         startLoginCommand        = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start), () => CanStartLogin);
         loginNoStartCommand      = new AsyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Update), () => !this.isBusyFunc());
@@ -137,6 +137,8 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
         {
             if (!SetProperty(ref field, value))
                 return;
+
+            RefreshAccountStatus();
 
             if (!isApplyingLoginType)
                 RefreshStartLoginState();
@@ -263,7 +265,13 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     {
         get;
         private set => SetProperty(ref field, value);
-    } = "快速登录";
+    } = "记住账号";
+
+    public bool IsNewAccountBadgeVisible
+    {
+        get;
+        private set => SetProperty(ref field, value);
+    }
 
     public string UsernameHint
     {
@@ -327,9 +335,9 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 
     private bool IsLoginInputComplete => loginTypeOption.LoginType switch
     {
-        LoginType.QRCode     => true,
-        LoginType.WeGame    => !string.IsNullOrWhiteSpace(Username) || !string.IsNullOrWhiteSpace(Password) || IsReadWegameInfo || IsFastLogin,
-        _                    => !string.IsNullOrWhiteSpace(Username) && (!IsPasswordVisible || !string.IsNullOrWhiteSpace(Password))
+        LoginType.QRCode => true,
+        LoginType.WeGame => !string.IsNullOrWhiteSpace(Username) || !string.IsNullOrWhiteSpace(Password) || IsReadWegameInfo || IsFastLogin,
+        _                => !string.IsNullOrWhiteSpace(Username) && (!IsPasswordVisible || !string.IsNullOrWhiteSpace(Password))
     };
 
     private void ApplyLoginType(LoginType loginType)
@@ -343,7 +351,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
             IsPasswordVisible       = false;
             IsFastLoginVisible      = true;
             IsReadWegameInfoVisible = false;
-            FastLoginText           = "快速登录";
+            FastLoginText           = "记住账号";
             UsernameHint            = "盛趣账号";
             UsernameToolTip         = "输入盛趣账号";
             PasswordHint            = "密码";
@@ -372,7 +380,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
                     IsFastLoginEnabled      = false;
                     IsFastLogin             = true;
                     IsReadWegameInfoVisible = true;
-                    FastLoginText           = "快速登录";
+                    FastLoginText           = "记住账号";
                     ReadWeGameInfoText      = "强制重新抓包";
                     IsReadWegameInfo        = false;
                     UsernameHint            = "WeGame 账号（可选）";
@@ -387,7 +395,20 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
             isApplyingLoginType = false;
         }
 
+        RefreshAccountStatus();
         RefreshStartLoginState();
+    }
+
+    private void RefreshAccountStatus()
+    {
+        var loginType = loginTypeOption?.LoginType ?? LoginType.Slide;
+        var accountType = loginType == LoginType.WeGame
+                              ? XIVAccountType.WeGame
+                              : XIVAccountType.Sdo;
+
+        var exists = !string.IsNullOrWhiteSpace(Username) && App.AccountManager.FindAccount(Username, accountType) != null;
+
+        IsNewAccountBadgeVisible = IsUsernameVisible && !exists && !string.IsNullOrWhiteSpace(Username);
     }
 
     private void RefreshStartLoginState()

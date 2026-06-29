@@ -133,19 +133,32 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <TextBox x:Name="LoginUsername"
-                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                     materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
-                     materialDesign:HintAssist.Hint="{Binding LoginPage.UsernameHint}"
-                     TextChanged="LoginUsername_OnTextChanged"
-                     ToolTipService.ShowOnDisabled="True"
-                     TextWrapping="NoWrap"
-                     Text="{Binding LoginPage.Username, UpdateSourceTrigger=PropertyChanged}"
-                     ToolTip="{Binding LoginPage.UsernameToolTip}"
-                     IsEnabled="{Binding LoginPage.IsUsernameEnabled}"
-                     Visibility="{Binding LoginPage.IsUsernameVisible, Converter={StaticResource BoolToVis}}"
-                     Cursor="IBeam"
-                     Margin="0,0,0,8" />
+            <Grid Margin="0,0,0,8">
+                <TextBox x:Name="LoginUsername"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                         materialDesign:HintAssist.Hint="{Binding LoginPage.UsernameHint}"
+                         TextChanged="LoginUsername_OnTextChanged"
+                         ToolTipService.ShowOnDisabled="True"
+                         TextWrapping="NoWrap"
+                         Text="{Binding LoginPage.Username, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="{Binding LoginPage.UsernameToolTip}"
+                         IsEnabled="{Binding LoginPage.IsUsernameEnabled}"
+                         Visibility="{Binding LoginPage.IsUsernameVisible, Converter={StaticResource BoolToVis}}"
+                         Cursor="IBeam" />
+                <Border VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Margin="0,0,12,0"
+                        CornerRadius="4"
+                        Padding="6,2"
+                        Background="#30FFFFFF"
+                        Visibility="{Binding LoginPage.IsNewAccountBadgeVisible, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="新账号"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               Opacity="0.7" />
+                </Border>
+            </Grid>
 
             <PasswordBox x:Name="LoginPassword"
                          Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
@@ -163,7 +176,7 @@
                           IsChecked="{Binding LoginPage.IsFastLogin}"
                           IsEnabled="{Binding LoginPage.IsFastLoginEnabled}"
                           Visibility="{Binding LoginPage.IsFastLoginVisible, Converter={StaticResource BoolToVis}}"
-                          ToolTip="勾选后, 在登录时会自动保存账号信息, 以供下次快速登录"
+                          ToolTip="勾选后, 登录成功会保存账号信息, 下次可免密快速登录"
                           Margin="0,0,16,0" />
                 <CheckBox x:Name="ReadWeGameInfoCheckBox"
                           Content="{Binding LoginPage.ReadWeGameInfoText}"

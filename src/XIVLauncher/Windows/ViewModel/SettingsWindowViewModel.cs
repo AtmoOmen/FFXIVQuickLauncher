@@ -1,19 +1,14 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
-using XIVLauncher.CompanionApp;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
+using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Xaml;
@@ -25,7 +20,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     public ObservableCollection<CompanionAppEntry> CompanionAppEntries { get; } = [];
 
     public ObservableCollection<CredTypeOptionItem> CredTypeOptions { get; } = [];
-    
+
     public ICommand AddCompanionAppCommand => addCompanionAppCommand;
 
     public ICommand RemoveSelectedCompanionAppCommand => removeSelectedCompanionAppCommand;
@@ -38,13 +33,13 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 
     public ICommand OpenAdvancedSettingsCommand => openAdvancedSettingsCommand;
 
-    private readonly SyncCommand  addCompanionAppCommand;
-    private readonly SyncCommand  editSelectedCompanionAppCommand;
-    private readonly SyncCommand  removeSelectedCompanionAppCommand;
-    private readonly SyncCommand  openGitHubCommand;
-    private readonly SyncCommand  openBackupToolCommand;
-    private readonly SyncCommand  openOriginalLauncherCommand;
-    private readonly SyncCommand  openAdvancedSettingsCommand;
+    private readonly SyncCommand addCompanionAppCommand;
+    private readonly SyncCommand editSelectedCompanionAppCommand;
+    private readonly SyncCommand removeSelectedCompanionAppCommand;
+    private readonly SyncCommand openGitHubCommand;
+    private readonly SyncCommand openBackupToolCommand;
+    private readonly SyncCommand openOriginalLauncherCommand;
+    private readonly SyncCommand openAdvancedSettingsCommand;
 
     public bool CanEditSelectedCompanionApp => SelectedCompanionAppEntry?.CompanionApp != null;
 
@@ -249,13 +244,13 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         _dialogService         = dialogService         ?? new DialogService();
         _externalLaunchService = externalLaunchService ?? new ExternalLaunchService();
 
-        addCompanionAppCommand             = new SyncCommand(_ => AddCompanionApp());
-        editSelectedCompanionAppCommand    = new SyncCommand(_ => EditSelectedCompanionApp(),   () => CanEditSelectedCompanionApp);
-        removeSelectedCompanionAppCommand  = new SyncCommand(_ => RemoveSelectedCompanionApp(), () => SelectedCompanionAppEntry != null);
-        openGitHubCommand           = new SyncCommand(_ => OpenGitHub());
-        openBackupToolCommand       = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
-        openOriginalLauncherCommand = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
-        openAdvancedSettingsCommand = new SyncCommand(_ => OpenAdvancedSettings());
+        addCompanionAppCommand            = new SyncCommand(_ => AddCompanionApp());
+        editSelectedCompanionAppCommand   = new SyncCommand(_ => EditSelectedCompanionApp(),   () => CanEditSelectedCompanionApp);
+        removeSelectedCompanionAppCommand = new SyncCommand(_ => RemoveSelectedCompanionApp(), () => SelectedCompanionAppEntry != null);
+        openGitHubCommand                 = new SyncCommand(_ => OpenGitHub());
+        openBackupToolCommand             = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
+        openOriginalLauncherCommand       = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
+        openAdvancedSettingsCommand       = new SyncCommand(_ => OpenAdvancedSettings());
 
         InitializeCredTypeOptions();
         ReloadFromSettings();
@@ -265,8 +260,8 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     {
         var patchPath = Paths.ResolvePatchPath(App.Settings.PatchPath, Paths.RoamingPath);
 
-        GamePath  = App.Settings.GamePath?.FullName ?? string.Empty;
-        PatchPath = patchPath.FullName;
+        GamePath           = App.Settings.GamePath?.FullName ?? string.Empty;
+        PatchPath          = patchPath.FullName;
         WeGameLauncherPath = App.Settings.WeGameLauncherPath ?? string.Empty;
 
         AskBeforePatching                           = App.Settings.AskBeforePatchInstall;
@@ -358,7 +353,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         SettingsSaved?.Invoke(this, EventArgs.Empty);
         return true;
     }
-    
+
     public void AddCompanionApp()
     {
         var result = _dialogService.ShowCompanionAppSetup();
@@ -369,7 +364,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         (
             new CompanionAppEntry
             {
-                IsEnabled = true,
+                IsEnabled    = true,
                 CompanionApp = result
             }
         );

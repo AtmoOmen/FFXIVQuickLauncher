@@ -131,7 +131,8 @@
                             <Setter Property="Padding" Value="8,4" />
                             <Style.Triggers>
                                 <Trigger Property="IsFocused" Value="True">
-                                    <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                    <Setter Property="BorderBrush"
+                                            Value="{DynamicResource MaterialDesign.Brush.Primary}" />
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -457,7 +458,8 @@
                                                 <DataTrigger Binding="{Binding Account.QuickLoginEnabled}" Value="True">
                                                     <Setter Property="Kind" Value="AccountKeyOutline" />
                                                 </DataTrigger>
-                                                <DataTrigger Binding="{Binding Account.QuickLoginEnabled}" Value="False">
+                                                <DataTrigger Binding="{Binding Account.QuickLoginEnabled}"
+                                                             Value="False">
                                                     <Setter Property="Visibility" Value="Collapsed" />
                                                 </DataTrigger>
                                             </Style.Triggers>

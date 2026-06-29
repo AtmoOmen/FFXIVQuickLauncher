@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using Serilog;
@@ -12,8 +10,8 @@ namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
 public class GameRunner
 (
     DalamudSession dalamudSession,
-    bool            dalamudOk,
-    DirectoryInfo   dotnetRuntimePath
+    bool           dalamudOk,
+    DirectoryInfo  dotnetRuntimePath
 ) : IGameRunner
 {
     public Process Start(string path, string workingDirectory, string arguments, IDictionary<string, string> environment, DPIAwareness dpiAwareness)

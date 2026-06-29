@@ -38,8 +38,7 @@ public partial class LoadingDialog
         interop.EnsureHandle();
     }
 
-    public void SetMessage(string message)
-    {
+    public void SetMessage(string message) =>
         Dispatcher.Invoke
         (() =>
             {
@@ -50,10 +49,8 @@ public partial class LoadingDialog
                 ViewModel.DetailText          = message;
             }
         );
-    }
 
-    public new void ShowDialog()
-    {
+    public new void ShowDialog() =>
         Dispatcher.Invoke
         (() =>
             {
@@ -63,10 +60,8 @@ public partial class LoadingDialog
                 Show();
             }
         );
-    }
 
-    public void HideDialog()
-    {
+    public void HideDialog() =>
         Dispatcher.Invoke
         (() =>
             {
@@ -76,10 +71,8 @@ public partial class LoadingDialog
                 Hide();
             }
         );
-    }
 
-    public void ReportProgress(long? size, long downloaded, double? progress)
-    {
+    public void ReportProgress(long? size, long downloaded, double? progress) =>
         Dispatcher.Invoke
         (() =>
             {
@@ -101,10 +94,8 @@ public partial class LoadingDialog
                 }
             }
         );
-    }
 
-    public void ReportProgress(int progress)
-    {
+    public void ReportProgress(int progress) =>
         Dispatcher.Invoke
         (() =>
             {
@@ -119,7 +110,6 @@ public partial class LoadingDialog
                 ViewModel.PercentageText          = $"{clampedProgress}%";
             }
         );
-    }
 
     protected override void OnClosed(EventArgs e)
     {

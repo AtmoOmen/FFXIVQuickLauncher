@@ -3,11 +3,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Serilog;
-using XIVLauncher.Common;
-using XIVLauncher.CompanionApp;
 using XIVLauncher.Common.Http;
+using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Support;
+
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
 
 public sealed class GameLaunchService
@@ -32,9 +32,9 @@ public sealed class GameLaunchService
             App.Settings.CompanionAppList ??= [];
 
             var companionApps = App.Settings.CompanionAppList
-                            .Where(entry => entry.IsEnabled && entry.CompanionApp != null)
-                            .Select(entry => entry.CompanionApp)
-                            .ToList();
+                                   .Where(entry => entry.IsEnabled && entry.CompanionApp != null)
+                                   .Select(entry => entry.CompanionApp)
+                                   .ToList();
 
             companionAppManager.Start(companionApps);
             return companionAppManager;
@@ -125,7 +125,7 @@ public sealed class GameLaunchService
                 noThird
             )
         );
-        var dalamudOk      = EnsureDalamudUpdate(dalamudSession, App.Settings.GamePath, true);
+        var dalamudOk = EnsureDalamudUpdate(dalamudSession, App.Settings.GamePath, true);
 
         Troubleshooting.LogTroubleshooting();
 
@@ -195,9 +195,7 @@ public sealed class GameLaunchService
 
             var ensurementErrorMessage = "下载 Dalamud 相关文件异常\n请检查本地网络连接, 或关闭杀毒软件\n游戏将照常启动, 但无法使用 Dalamud";
 
-            if (appendWafStatusCodeHint
-                && ex.FindHttpRequestException() is { StatusCode: not null } httpRequestException
-                && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+            if (appendWafStatusCodeHint && ex.FindHttpRequestException() is { StatusCode: not null } httpRequestException && (int)httpRequestException.StatusCode is 403 or 444 or 522)
                 ensurementErrorMessage = $"服务器错误: {httpRequestException.StatusCode}\n{httpRequestException.Message}\n{ensurementErrorMessage}";
             else
                 ensurementErrorMessage = $"错误: {ex.Message}\n{ensurementErrorMessage}";

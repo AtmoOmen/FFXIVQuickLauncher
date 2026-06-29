@@ -282,9 +282,7 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
         => AutoInjectProcessSelector.CleanupAttemptedProcessIds(FFXIVProcesses, autoInjectAttemptedProcessIds);
 
     private bool CanAutoInject() =>
-        AutoInjectEnabled
-        && !isLoggingInFunc()
-        && !IsInjecting;
+        AutoInjectEnabled && !isLoggingInFunc() && !IsInjecting;
 
     private void SyncAutoInjectState()
     {

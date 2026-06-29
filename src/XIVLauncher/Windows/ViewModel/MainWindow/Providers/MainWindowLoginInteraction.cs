@@ -1,6 +1,6 @@
-using System.Windows;
-using System.Diagnostics;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Windows;
 using XIVLauncher.Account;
 using XIVLauncher.Login;
 using XIVLauncher.Windows.Services;
@@ -9,13 +9,12 @@ namespace XIVLauncher.Windows.ViewModel.MainWindow.Providers;
 
 public sealed class MainWindowLoginInteraction
 (
-    Window window,
-    LoginPageViewModel loginPage,
+    Window                   window,
+    LoginPageViewModel       loginPage,
     MainWindowDialogProvider dialogProvider
 ) : ILoginWorkflowInteraction
 {
-    public void ShowQrCode(byte[] qrBytes)
-    {
+    public void ShowQrCode(byte[] qrBytes) =>
         window.Dispatcher.Invoke
         (() =>
             {
@@ -23,7 +22,6 @@ public sealed class MainWindowLoginInteraction
                 loginPage.IsQrCodeExpired   = false;
             }
         );
-    }
 
     public void ShowVerificationCode(string code) =>
         window.Dispatcher.Invoke(() => loginPage.LoginMessage = $"确认码: {code}");
@@ -99,6 +97,7 @@ public sealed class MainWindowLoginInteraction
         try
         {
             using var process = Process.Start(startInfo);
+
             if (process == null)
             {
                 ShowError("启动复制进程失败");

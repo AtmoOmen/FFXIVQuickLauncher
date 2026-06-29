@@ -14,6 +14,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private readonly Action<LoginAfterAction> requestStartGameAction;
     private readonly Action                   requestSwitchAccountAction;
     private readonly Action                   requestOpenDCTravelAction;
+    private readonly Action                   requestOpenDeviceProfileAction;
     private readonly Action<LoginArea>        requestSetAreaAction;
 
     private readonly SyncCommand  startGameCommand;
@@ -22,6 +23,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private readonly SyncCommand  startGameNoThirdCommand;
     private readonly AsyncCommand switchAccountCommand;
     private readonly SyncCommand  openDCTravelCommand;
+    private readonly SyncCommand  openDeviceProfileCommand;
     private readonly SyncCommand  openPaymentCommand;
     private readonly SyncCommand  openShopCommand;
     private readonly SyncCommand  openOfficialAccountCommand;
@@ -33,13 +35,15 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         Action<LoginAfterAction> requestStartGameAction,
         Action                   requestSwitchAccountAction,
         Action                   requestOpenDCTravelAction,
+        Action                   requestOpenDeviceProfileAction,
         Action<LoginArea>        requestSetAreaAction
     )
     {
-        this.requestStartGameAction     = requestStartGameAction;
-        this.requestSwitchAccountAction = requestSwitchAccountAction;
-        this.requestOpenDCTravelAction  = requestOpenDCTravelAction;
-        this.requestSetAreaAction       = requestSetAreaAction;
+        this.requestStartGameAction         = requestStartGameAction;
+        this.requestSwitchAccountAction     = requestSwitchAccountAction;
+        this.requestOpenDCTravelAction      = requestOpenDCTravelAction;
+        this.requestOpenDeviceProfileAction = requestOpenDeviceProfileAction;
+        this.requestSetAreaAction           = requestSetAreaAction;
 
         startGameCommand           = new SyncCommand(_ => this.requestStartGameAction(LoginAfterAction.Start));
         startGameNoDalamudCommand  = new SyncCommand(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutDalamud));
@@ -47,6 +51,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         startGameNoThirdCommand    = new SyncCommand(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutThird));
         switchAccountCommand       = new AsyncCommand(async _ => await SwitchAccount(), () => !isSwitchingAccount);
         openDCTravelCommand        = new SyncCommand(_ => this.requestOpenDCTravelAction());
+        openDeviceProfileCommand   = new SyncCommand(_ => this.requestOpenDeviceProfileAction());
         openPaymentCommand         = new SyncCommand(_ => Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute  = true }));
         openShopCommand            = new SyncCommand(_ => Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true }));
         openOfficialAccountCommand = new SyncCommand(_ => Process.Start(new ProcessStartInfo(Links.SDO_BILIBILI_URL) { UseShellExecute = true }));
@@ -60,6 +65,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     public ICommand StartGameNoThirdCommand    => startGameNoThirdCommand;
     public ICommand SwitchAccountCommand       => switchAccountCommand;
     public ICommand OpenDCTravelCommand        => openDCTravelCommand;
+    public ICommand OpenDeviceProfileCommand   => openDeviceProfileCommand;
     public ICommand OpenPaymentCommand         => openPaymentCommand;
     public ICommand OpenShopCommand            => openShopCommand;
     public ICommand OpenOfficialAccountCommand => openOfficialAccountCommand;

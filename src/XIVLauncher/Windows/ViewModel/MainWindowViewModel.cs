@@ -57,9 +57,12 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     public AccountManager AccountManager { get; private set; } = App.AccountManager;
     public Window         Window         { get; private set; }
 
-    public Action Activate        { get; set; } = null!;
-    public Action Hide            { get; set; } = null!;
-    public Action ReloadHeadlines { get; set; } = null!;
+    public Action         Activate        { get; set; } = null!;
+    public Action         Hide            { get; set; } = null!;
+    public Action         ReloadHeadlines { get; set; } = null!;
+    public Action<string> ShowSnackbar    { get; set; } = null!;
+
+    public Action? RequestSwitchToCurrentAccount { get; set; }
 
     public bool IsLoggingIn { get; set; }
 
@@ -128,8 +131,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             new ShortcutService(),
             CloseAccountSwitcher
         );
-        AccountSwitcherButtonCommand = new SyncCommand(ExecuteAccountSwitcherButton);
-        refreshDalamudInfoCommand    = new SyncCommand(_ => RefreshDalamudInfo(), () => Settings.EnableHooks && App.Dalamud.Updater.State != DalamudUpdater.DownloadState.Unknown);
+        AccountSwitcher.AccountRemoved += OnAccountRemoved;
+        AccountSwitcherButtonCommand   =  new SyncCommand(ExecuteAccountSwitcherButton);
+        refreshDalamudInfoCommand      =  new SyncCommand(_ => RefreshDalamudInfo(), () => Settings.EnableHooks && App.Dalamud.Updater.State != DalamudUpdater.DownloadState.Unknown);
         LoginPage = new LoginPageViewModel
         (
             () => IsLoggingIn,
@@ -160,6 +164,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             HandleStartGameFromDashboard,
             HandleSwitchAccount,
             HandleOpenDCTravel,
+            HandleOpenDeviceProfile,
             HandleSetAreaFromDashboard
         );
         DCTravelPage = new DCTravelViewModel
@@ -199,6 +204,15 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public void CloseAccountSwitcher() =>
         IsAccountSwitcherOpen = false;
+
+    private void OnAccountRemoved(string removedUserName) =>
+        Window.Dispatcher.Invoke
+        (() =>
+            {
+                if (string.Equals(LoginPage.Username, removedUserName, StringComparison.Ordinal))
+                    LoginPage.Username = string.Empty;
+            }
+        );
 
     #region 界面控制
 
@@ -391,7 +405,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         if (workflowResult.IsAccountPersisted)
         {
             Window.Dispatcher.Invoke
-            (() => { AccountSwitcher.RefreshEntries(AccountManager.CurrentAccountID, false); }
+            (() =>
+                {
+                    AccountSwitcher.RefreshEntries(AccountManager.CurrentAccountID, false);
+
+                    if (workflowResult.IsNewAccount)
+                        ShowSnackbar($"新账号已保存: {AccountManager.CurrentAccount?.DisplayName}");
+                }
             );
         }
 
@@ -595,8 +615,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             return;
 
         var account = AccountManager.Accounts.FirstOrDefault
-        (item => item.AccountType == XIVAccountType.WeGame
-                 && string.Equals(item.WeGameLoginAccount, username, StringComparison.Ordinal)
+        (item => item.AccountType == XIVAccountType.WeGame && string.Equals(item.WeGameLoginAccount, username, StringComparison.Ordinal)
         );
 
         if (account?.WeGameQuickLoginSecret == null)
@@ -639,8 +658,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 return true;
         }
 
-        return CustomMessageBox.Show(message, title, MessageBoxButton.YesNo, parentWindow: Window)
-               != MessageBoxResult.No;
+        return CustomMessageBox.Show(message, title, MessageBoxButton.YesNo, parentWindow: Window) != MessageBoxResult.No;
     }
 
     private bool ConfirmGamePatchInstall()
@@ -747,6 +765,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         try
         {
             var checkResult = await GameUpdater.Check(App.Settings.GamePath, false, CancellationToken.None).ConfigureAwait(false);
+
             if (checkResult.NeedsUpdate)
             {
                 if (!ConfirmGamePatchInstall())
@@ -1321,10 +1340,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
             var ensurementErrorMessage = "下载 Dalamud 相关文件异常\n请检查本地网络连接, 或关闭杀毒软件\n点击确定将继续以不启用 Dalamud 的方式启动游戏";
 
-            if (appendWafStatusCodeHint
-                && ex is HttpRequestException httpRequestException
-                && httpRequestException.StatusCode.HasValue
-                && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+            if (appendWafStatusCodeHint && ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
                 ensurementErrorMessage = $"服务器错误: {httpRequestException.StatusCode}\n{ensurementErrorMessage}";
             else
                 ensurementErrorMessage = $"错误: {ex.Message}\n{ensurementErrorMessage}";
@@ -1500,8 +1516,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             {
                 try
                 {
-                    if (await ProcessLoginResultAsync(currentGameLaunchContext, action).ConfigureAwait(false)
-                        && App.Settings.ExitLauncherWhenGameExit)
+                    if (await ProcessLoginResultAsync(currentGameLaunchContext, action).ConfigureAwait(false) && App.Settings.ExitLauncherWhenGameExit)
                         Environment.Exit(0);
                 }
                 catch (Exception ex)
@@ -1536,8 +1551,21 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         CancelLogin();
         currentGameLaunchContext = null;
         SwitchCard(LoginCardType.MainPage);
+        AccountSwitcher.RefreshEntries(AccountManager.CurrentAccountID, false);
+        RequestSwitchToCurrentAccount?.Invoke();
 
         Task.Run(() => { DcTravelRuntimeService.Stop(); });
+    }
+
+    private void HandleOpenDeviceProfile()
+    {
+        var account = AccountManager.CurrentAccount;
+        if (account == null)
+            return;
+
+        var dialogService = new DialogService(Window);
+        dialogService.ShowAccountDeviceProfileSettings(account, AccountManager);
+        AccountSwitcher.RefreshEntries(AccountManager.CurrentAccountID, false);
     }
 
     private void HandleOpenDCTravel()
