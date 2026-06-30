@@ -32,9 +32,9 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public DCTravelViewModel DCTravelPage { get; }
 
-    private ICommand AccountSwitcherButtonCommand { get; }
+    public ICommand AccountSwitcherButtonCommand { get; }
     
-    private ICommand RefreshDalamudInfoCommand { get; }
+    public ICommand RefreshDalamudInfoCommand { get; }
 
     public AccountSwitcherViewModel AccountSwitcher { get; }
 
