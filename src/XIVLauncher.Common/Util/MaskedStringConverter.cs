@@ -7,7 +7,13 @@ public class MaskMiddleConverter : JsonConverter
     public override bool CanConvert(Type objectType) =>
         objectType == typeof(string) || objectType == typeof(List<string>);
 
-    public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+    public override object ReadJson
+    (
+        JsonReader     reader,
+        Type           objectType,
+        object?        existingValue,
+        JsonSerializer serializer
+    )
     {
         if (objectType == typeof(List<string>))
         {
@@ -35,29 +41,36 @@ public class MaskMiddleConverter : JsonConverter
         throw new JsonSerializationException($"Unexpected token type: {reader.TokenType}");
     }
 
-    public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+    public override void WriteJson
+    (
+        JsonWriter     writer,
+        object?        value,
+        JsonSerializer serializer
+    )
     {
-        if (value == null)
+        switch (value)
         {
-            writer.WriteNull();
-            return;
-        }
-
-        if (value is string str)
-        {
-            var masked = MaskString(str);
-            writer.WriteValue(masked);
-        }
-        else if (value is List<string> list)
-        {
-            writer.WriteStartArray();
-            foreach (var item in list)
-                writer.WriteValue(MaskString(item));
-            writer.WriteEndArray();
+            case null:
+                writer.WriteNull();
+                return;
+            case string str:
+            {
+                var masked = MaskString(str);
+                writer.WriteValue(masked);
+                break;
+            }
+            case List<string> list:
+            {
+                writer.WriteStartArray();
+                foreach (var item in list)
+                    writer.WriteValue(MaskString(item));
+                writer.WriteEndArray();
+                break;
+            }
         }
     }
 
-    private string MaskString(string input)
+    private static string MaskString(string input)
     {
         if (string.IsNullOrEmpty(input) || input.Length <= 2)
         {
@@ -66,6 +79,6 @@ public class MaskMiddleConverter : JsonConverter
         }
 
         var maskLength = input.Length - 2;
-        return $"{input[0]}{new string('*', maskLength)}{input[input.Length - 1]}";
+        return $"{input[0]}{new string('*', maskLength)}{input[^1]}";
     }
 }

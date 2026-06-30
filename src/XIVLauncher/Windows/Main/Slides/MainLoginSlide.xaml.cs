@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using XIVLauncher.Windows.ViewModel;
+using XIVLauncher.Windows.ViewModel.Main;
 
 namespace XIVLauncher.Windows.Main.Slides;
 

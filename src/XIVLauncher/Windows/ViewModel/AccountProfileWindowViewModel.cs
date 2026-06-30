@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Windows.ViewModel.MainWindow;
+using XIVLauncher.Windows.ViewModel.Main;
 
 namespace XIVLauncher.Windows.ViewModel;
 

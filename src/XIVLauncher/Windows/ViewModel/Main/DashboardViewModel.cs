@@ -7,7 +7,7 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Login;
 using XIVLauncher.Xaml;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow;
+namespace XIVLauncher.Windows.ViewModel.Main;
 
 public sealed class DashboardViewModel : INotifyPropertyChanged
 {

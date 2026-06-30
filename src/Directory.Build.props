@@ -5,8 +5,7 @@
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     </PropertyGroup>
     <PropertyGroup Label="Documentation">
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <NoWarn>$(NoWarn);CS1591</NoWarn>
+        <NoWarn>$(NoWarn);1701;1702;CS0414;CS8601;CS8602;CS8604;CS8603;IDE1006;IDE0300;MSB3270;MSB324;CS0649;CA2211;CS8509;CS8625;MSB3305;CS8618;CS8600;CS8605;CS8620</NoWarn>
     </PropertyGroup>
     <PropertyGroup Label="Project">
         <!--

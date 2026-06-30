@@ -3,7 +3,7 @@ using XIVLauncher.Common.Util;
 using XIVLauncher.DCTravel;
 using XIVLauncher.Login;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
+namespace XIVLauncher.Windows.ViewModel.Main.Services;
 
 public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposable
 {

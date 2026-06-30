@@ -15,7 +15,7 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Xaml;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow;
+namespace XIVLauncher.Windows.ViewModel.Main;
 
 internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 {
@@ -54,14 +54,6 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
     private readonly SyncCommand removeAccountCommand;
     private readonly SyncCommand setProfilePictureCommand;
     private readonly SyncCommand configureDeviceProfileCommand;
-
-    public ICommand CreateDesktopShortcutCommand => createDesktopShortcutCommand;
-
-    public ICommand RemoveAccountCommand => removeAccountCommand;
-
-    public ICommand SetProfilePictureCommand => setProfilePictureCommand;
-
-    public ICommand ConfigureDeviceProfileCommand => configureDeviceProfileCommand;
 
     public AccountSwitcherEntry? SelectedEntry
     {

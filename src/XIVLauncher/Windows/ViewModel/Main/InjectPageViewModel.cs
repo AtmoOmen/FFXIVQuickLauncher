@@ -6,10 +6,10 @@ using System.Windows.Input;
 using Serilog;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Util;
-using XIVLauncher.Windows.ViewModel.MainWindow.Services;
+using XIVLauncher.Windows.ViewModel.Main.Services;
 using XIVLauncher.Xaml;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow;
+namespace XIVLauncher.Windows.ViewModel.Main;
 
 public sealed class InjectPageViewModel : INotifyPropertyChanged
 {

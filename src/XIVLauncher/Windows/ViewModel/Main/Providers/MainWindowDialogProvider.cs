@@ -2,7 +2,7 @@ using System.Windows;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using XIVLauncher.Account;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow.Providers;
+namespace XIVLauncher.Windows.ViewModel.Main.Providers;
 
 public sealed class MainWindowDialogProvider
 (

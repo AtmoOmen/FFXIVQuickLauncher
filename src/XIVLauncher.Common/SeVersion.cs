@@ -40,9 +40,10 @@ public class SeVersion : IComparable, IComparable<SeVersion>, IEquatable<SeVersi
 
     public static bool operator >=(SeVersion x, SeVersion y) => ReferenceEquals(x, null) ? ReferenceEquals(y, null) : x.CompareTo(y) >= 0;
 
-    public override bool Equals(object obj) => Equals(obj as SeVersion);
+    public override bool Equals(object? obj) => 
+        Equals(obj as SeVersion);
 
-    public bool Equals(SeVersion other)
+    public bool Equals(SeVersion? other)
     {
         if (ReferenceEquals(null, other)) return false;
         if (ReferenceEquals(this, other)) return true;
@@ -52,7 +53,7 @@ public class SeVersion : IComparable, IComparable<SeVersion>, IEquatable<SeVersi
     public override int GetHashCode() =>
         HashCode.Combine(Year, Month, Day, Revision, Part);
 
-    public int CompareTo(SeVersion other)
+    public int CompareTo(SeVersion? other)
     {
         if (ReferenceEquals(this, other)) return 0;
         if (ReferenceEquals(null, other)) return 1;
@@ -68,12 +69,13 @@ public class SeVersion : IComparable, IComparable<SeVersion>, IEquatable<SeVersi
         return Part.CompareTo(other.Part);
     }
 
-    public int CompareTo(object obj)
-    {
-        if (obj == null) return 1;
-        if (obj is SeVersion other) return CompareTo(other);
-        throw new ArgumentException($"Object must be of type {nameof(SeVersion)}");
-    }
+    public int CompareTo(object? obj) =>
+        obj switch
+        {
+            null            => 1,
+            SeVersion other => CompareTo(other),
+            _               => throw new ArgumentException($"Object must be of type {nameof(SeVersion)}")
+        };
 
     public override string ToString() =>
         string.Format(CultureInfo.InvariantCulture, "{0:0000}.{1:00}.{2:00}.{3:0000}.{4:0000}", Year, Month, Day, Revision, Part);

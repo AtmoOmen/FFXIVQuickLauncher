@@ -6,7 +6,7 @@ using Serilog;
 using XIVLauncher.DCTravel;
 using XIVLauncher.Xaml;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow;
+namespace XIVLauncher.Windows.ViewModel.Main;
 
 public sealed class DCTravelViewModel : INotifyPropertyChanged
 {

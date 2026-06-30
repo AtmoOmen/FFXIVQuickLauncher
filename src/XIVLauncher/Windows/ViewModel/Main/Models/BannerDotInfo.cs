@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow.Models;
+namespace XIVLauncher.Windows.ViewModel.Main.Models;
 
 public class BannerDotInfo : INotifyPropertyChanged
 {

@@ -8,7 +8,7 @@ using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Support;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
+namespace XIVLauncher.Windows.ViewModel.Main.Services;
 
 public sealed class GameLaunchService
 (

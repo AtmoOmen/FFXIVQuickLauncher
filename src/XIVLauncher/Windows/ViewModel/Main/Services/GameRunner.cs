@@ -5,7 +5,7 @@ using XIVLauncher.Common;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Dalamud;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
+namespace XIVLauncher.Windows.ViewModel.Main.Services;
 
 public class GameRunner
 (

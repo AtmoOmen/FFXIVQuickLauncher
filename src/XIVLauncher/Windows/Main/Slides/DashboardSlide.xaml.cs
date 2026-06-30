@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using MaterialDesignThemes.Wpf;
 using XIVLauncher.Windows.ViewModel;
+using XIVLauncher.Windows.ViewModel.Main;
 
 namespace XIVLauncher.Windows.Main.Slides;
 

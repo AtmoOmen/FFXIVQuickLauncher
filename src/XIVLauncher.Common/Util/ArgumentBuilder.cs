@@ -38,15 +38,13 @@ public sealed class ArgumentBuilder
         return this;
     }
 
-    public string Build()
-    {
-        return arguments.Aggregate
-                        (
-                            new StringBuilder(),
-                            (whole, part) => whole.Append($" {part.Key}={part.Value}")
-                        )
-                        .ToString();
-    }
+    public string Build() =>
+        arguments.Aggregate
+                 (
+                     new StringBuilder(),
+                     (whole, part) => whole.Append($" {part.Key}={part.Value}")
+                 )
+                 .ToString();
 
     public string BuildEncrypted(uint key)
     {
@@ -141,10 +139,8 @@ public sealed class ArgumentBuilder
                 (l, r) = (p[i], p[i + 1]) = Encrypt(l, r);
 
             for (var i = 0; i < s.GetLength(0); i++)
-            {
-                for (var j = 0; j < s.GetLength(1); j += 2)
-                    (l, r) = (s[i, j], s[i, j + 1]) = Encrypt(l, r);
-            }
+            for (var j = 0; j < s.GetLength(1); j += 2)
+                (l, r) = (s[i, j], s[i, j + 1]) = Encrypt(l, r);
         }
 
         public byte[] Encrypt(byte[] data)
@@ -190,13 +186,8 @@ public sealed class ArgumentBuilder
             }
         }
 
-        private uint F(uint i)
-        {
-            return (s[0, i >> 24]
-                    + s[1, i >> 16 & 0xFF]
-                    ^ s[2, i >> 8 & 0xFF])
-                   + s[3, i & 0xFF];
-        }
+        private uint F(uint i) =>
+            (s[0, i >> 24] + s[1, i >> 16 & 0xFF] ^ s[2, i >> 8 & 0xFF]) + s[3, i & 0xFF];
 
         private (uint, uint) Encrypt(uint l, uint r)
         {
@@ -233,7 +224,11 @@ public sealed class ArgumentBuilder
                 var n = 0u;
 
                 for (var j = 0; j < 4 && enumerator.MoveNext(); j++)
-                    n = (uint)(n << 8 | (sbyte)enumerator.Current); // NOTE(goat): THIS IS A BUG! SE's implementation wrongly uses signed numbers for this, so we need to as well.
+#pragma warning disable CS0675 // 对进行了带符号扩展的操作数使用了按位或运算符
+                    n = (uint)(n << 8 |
+                               (sbyte)enumerator
+                                   .Current); // NOTE(goat): THIS IS A BUG! SE's implementation wrongly uses signed numbers for this, so we need to as well.
+#pragma warning restore CS0675                // 对进行了带符号扩展的操作数使用了按位或运算符
 
                 yield return (i, n);
             }

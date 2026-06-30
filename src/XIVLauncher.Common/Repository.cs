@@ -59,8 +59,13 @@ public static class RepoExtensions
             fileStream.Flush();
         }
 
-        public bool IsBaseVer(DirectoryInfo gamePath) =>
-            repo.GetVer(gamePath) == FFXIV.BASE_GAME_VERSION;
+        public bool IsBaseVer(DirectoryInfo? gamePath)
+        {
+            if (gamePath == null)
+                return true;
+            
+            return repo.GetVer(gamePath) == FFXIV.BASE_GAME_VERSION;
+        }
 
         private DirectoryInfo GetRepoPath(DirectoryInfo gamePath) =>
             repo switch

@@ -13,6 +13,8 @@ using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Login;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
+using XIVLauncher.Windows.ViewModel.Main;
+using XIVLauncher.Windows.ViewModel.Main.Models;
 using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.Main;
@@ -347,7 +349,7 @@ public partial class MainWindow
             return;
 
         SwitchAccount(selectedAccount, true);
-        Model.SwitchCard(MainWindowViewModel.LoginCardType.MainPage, false);
+        Model.SwitchCard(LoginCardType.MainPage, false);
     }
 
     private void OnAccountFieldCopyRequested(object? sender, string text)

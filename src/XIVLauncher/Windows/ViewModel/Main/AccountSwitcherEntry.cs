@@ -6,7 +6,7 @@ using System.Windows.Media.Imaging;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow;
+namespace XIVLauncher.Windows.ViewModel.Main;
 
 internal class AccountSwitcherEntry
 {
@@ -77,10 +77,8 @@ internal class AccountSwitcherEntry
     private static string[] EnumerateCustomProfileImagePaths(XIVAccount account)
     {
         var profileImageDirectory = GetProfileImageDirectory();
-        if (!Directory.Exists(profileImageDirectory))
-            return [];
+        return !Directory.Exists(profileImageDirectory) ? [] : Directory.GetFiles(profileImageDirectory, $"{GetProfileImageFileKey(account)}.*");
 
-        return Directory.GetFiles(profileImageDirectory, $"{GetProfileImageFileKey(account)}.*");
     }
 
     private static string GetProfileImageDirectory() =>

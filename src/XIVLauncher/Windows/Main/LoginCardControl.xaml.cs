@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.ViewModel;
+using XIVLauncher.Windows.ViewModel.Main;
 
 namespace XIVLauncher.Windows.Main;
 

@@ -5,7 +5,7 @@ using XIVLauncher.Account;
 using XIVLauncher.Login;
 using XIVLauncher.Windows.Services;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow.Providers;
+namespace XIVLauncher.Windows.ViewModel.Main.Providers;
 
 public sealed class MainWindowLoginInteraction
 (

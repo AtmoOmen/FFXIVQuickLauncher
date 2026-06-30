@@ -16,7 +16,7 @@ using XIVLauncher.GamePatchV3.Update;
 using XIVLauncher.GamePatchV3.Update.Models;
 using XIVLauncher.Windows.GameClientFiles;
 
-namespace XIVLauncher.Windows.ViewModel.MainWindow.Services;
+namespace XIVLauncher.Windows.ViewModel.Main.Services;
 
 public sealed class GameClientFileTaskService
 (

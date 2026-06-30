@@ -9,6 +9,7 @@
     xmlns:system="clr-namespace:System;assembly=mscorlib"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     xmlns:main="clr-namespace:XIVLauncher.Windows.Main"
+    xmlns:main1="clr-namespace:XIVLauncher.Windows.ViewModel.Main"
     mc:Ignorable="d"
     Title="XIVLauncherCN (Soil)"
     Width="780"
@@ -18,7 +19,7 @@
     TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
     Background="{DynamicResource MaterialDesign.Brush.Background}"
     Closing="MainWindow_OnClosing"
-    d:DataContext="{d:DesignInstance viewModel:MainWindowViewModel}">
+    d:DataContext="{d:DesignInstance main1:MainWindowViewModel}">
 
     <Window.Resources>
         <system:Double x:Key="BannerCardWidth">450</system:Double>

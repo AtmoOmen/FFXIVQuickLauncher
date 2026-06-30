@@ -4,7 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using XIVLauncher.Windows.ViewModel;
-using XIVLauncher.Windows.ViewModel.MainWindow;
+using XIVLauncher.Windows.ViewModel.Main;
 
 namespace XIVLauncher.Windows.Main.Slides;
 
