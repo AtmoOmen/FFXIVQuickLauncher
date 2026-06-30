@@ -3,7 +3,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Input;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
@@ -17,31 +16,19 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 {
-    public ObservableCollection<CompanionAppEntry> CompanionAppEntries { get; } = [];
+    public ObservableCollection<CompanionAppEntry>  CompanionAppEntries { get; } = [];
+    public ObservableCollection<CredTypeOptionItem> CredTypeOptions     { get; } = [];
 
-    public ObservableCollection<CredTypeOptionItem> CredTypeOptions { get; } = [];
+    public SyncCommand AddCompanionAppCommand            { get; }
+    public SyncCommand EditSelectedCompanionAppCommand   { get; }
+    public SyncCommand RemoveSelectedCompanionAppCommand { get; }
+    public SyncCommand OpenGitHubCommand                 { get; }
+    public SyncCommand OpenBackupToolCommand             { get; }
+    public SyncCommand OpenOriginalLauncherCommand       { get; }
+    public SyncCommand OpenAdvancedSettingsCommand       { get; }
 
-    public ICommand AddCompanionAppCommand => addCompanionAppCommand;
-
-    public ICommand RemoveSelectedCompanionAppCommand => removeSelectedCompanionAppCommand;
-
-    public ICommand OpenGitHubCommand => openGitHubCommand;
-
-    public ICommand OpenBackupToolCommand => openBackupToolCommand;
-
-    public ICommand OpenOriginalLauncherCommand => openOriginalLauncherCommand;
-
-    public ICommand OpenAdvancedSettingsCommand => openAdvancedSettingsCommand;
-
-    private readonly SyncCommand addCompanionAppCommand;
-    private readonly SyncCommand editSelectedCompanionAppCommand;
-    private readonly SyncCommand removeSelectedCompanionAppCommand;
-    private readonly SyncCommand openGitHubCommand;
-    private readonly SyncCommand openBackupToolCommand;
-    private readonly SyncCommand openOriginalLauncherCommand;
-    private readonly SyncCommand openAdvancedSettingsCommand;
-
-    public bool CanEditSelectedCompanionApp => SelectedCompanionAppEntry?.CompanionApp != null;
+    public bool CanEditSelectedCompanionApp => 
+        SelectedCompanionAppEntry?.CompanionApp != null;
 
     public Visibility GamePathWarningVisibility =>
         string.IsNullOrWhiteSpace(GamePathWarningMessage) ? Visibility.Collapsed : Visibility.Visible;
@@ -55,8 +42,8 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
                 return;
 
             RefreshGamePathWarning();
-            openBackupToolCommand.RaiseCanExecuteChanged();
-            openOriginalLauncherCommand.RaiseCanExecuteChanged();
+            OpenBackupToolCommand.RaiseCanExecuteChanged();
+            OpenOriginalLauncherCommand.RaiseCanExecuteChanged();
         }
     } = string.Empty;
 
@@ -205,8 +192,8 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
             if (!SetProperty(ref field, value))
                 return;
 
-            editSelectedCompanionAppCommand.RaiseCanExecuteChanged();
-            removeSelectedCompanionAppCommand.RaiseCanExecuteChanged();
+            EditSelectedCompanionAppCommand.RaiseCanExecuteChanged();
+            RemoveSelectedCompanionAppCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -244,13 +231,13 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         _dialogService         = dialogService         ?? new DialogService();
         _externalLaunchService = externalLaunchService ?? new ExternalLaunchService();
 
-        addCompanionAppCommand            = new SyncCommand(_ => AddCompanionApp());
-        editSelectedCompanionAppCommand   = new SyncCommand(_ => EditSelectedCompanionApp(),   () => CanEditSelectedCompanionApp);
-        removeSelectedCompanionAppCommand = new SyncCommand(_ => RemoveSelectedCompanionApp(), () => SelectedCompanionAppEntry != null);
-        openGitHubCommand                 = new SyncCommand(_ => OpenGitHub());
-        openBackupToolCommand             = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
-        openOriginalLauncherCommand       = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
-        openAdvancedSettingsCommand       = new SyncCommand(_ => OpenAdvancedSettings());
+        AddCompanionAppCommand            = new SyncCommand(_ => AddCompanionApp());
+        EditSelectedCompanionAppCommand   = new SyncCommand(_ => EditSelectedCompanionApp(),   () => CanEditSelectedCompanionApp);
+        RemoveSelectedCompanionAppCommand = new SyncCommand(_ => RemoveSelectedCompanionApp(), () => SelectedCompanionAppEntry != null);
+        OpenGitHubCommand                 = new SyncCommand(_ => OpenGitHub());
+        OpenBackupToolCommand             = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
+        OpenOriginalLauncherCommand       = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
+        OpenAdvancedSettingsCommand       = new SyncCommand(_ => OpenAdvancedSettings());
 
         InitializeCredTypeOptions();
         ReloadFromSettings();
@@ -372,7 +359,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
 
     public void EditSelectedCompanionApp()
     {
-        if (SelectedCompanionAppEntry?.CompanionApp is not CompanionAppConfiguration companionApp)
+        if (SelectedCompanionAppEntry?.CompanionApp is not { } companionApp)
             return;
 
         var index  = CompanionAppEntries.IndexOf(SelectedCompanionAppEntry);

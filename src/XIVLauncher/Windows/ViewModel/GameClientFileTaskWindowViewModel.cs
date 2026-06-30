@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Input;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Xaml;
 
@@ -8,22 +7,28 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public sealed class GameClientFileTaskWindowViewModel : INotifyPropertyChanged
 {
-    private readonly SyncCommand primaryButtonCommand;
-    private readonly SyncCommand secondaryButtonCommand;
-    private readonly SyncCommand closeButtonCommand;
+    public SyncCommand PrimaryButtonCommand { get; }
+    public SyncCommand SecondaryButtonCommand { get; }
+    public SyncCommand CloseButtonCommand { get; }
 
     public GameClientFileTaskWindowViewModel()
     {
-        primaryButtonCommand   = new SyncCommand(_ => ActionRequested?.Invoke(GameClientFileTaskWindowAction.Primary),   () => IsPrimaryButtonEnabled);
-        secondaryButtonCommand = new SyncCommand(_ => ActionRequested?.Invoke(GameClientFileTaskWindowAction.Secondary), () => IsSecondaryButtonEnabled);
-        closeButtonCommand     = new SyncCommand(_ => ActionRequested?.Invoke(GameClientFileTaskWindowAction.Close),     () => IsCloseButtonEnabled);
+        PrimaryButtonCommand = new
+        (
+            _ => ActionRequested?.Invoke(GameClientFileTaskWindowAction.Primary),
+            () => IsPrimaryButtonEnabled
+        );
+        SecondaryButtonCommand = new
+        (
+            _ => ActionRequested?.Invoke(GameClientFileTaskWindowAction.Secondary),
+            () => IsSecondaryButtonEnabled
+        );
+        CloseButtonCommand = new
+        (
+            _ => ActionRequested?.Invoke(GameClientFileTaskWindowAction.Close),
+            () => IsCloseButtonEnabled
+        );
     }
-
-    public ICommand PrimaryButtonCommand => primaryButtonCommand;
-
-    public ICommand SecondaryButtonCommand => secondaryButtonCommand;
-
-    public ICommand CloseButtonCommand => closeButtonCommand;
 
     public Action<GameClientFileTaskWindowAction>? ActionRequested { get; set; }
 
@@ -101,7 +106,7 @@ public sealed class GameClientFileTaskWindowViewModel : INotifyPropertyChanged
             if (!SetProperty(ref field, value))
                 return;
 
-            primaryButtonCommand.RaiseCanExecuteChanged();
+            PrimaryButtonCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -125,7 +130,7 @@ public sealed class GameClientFileTaskWindowViewModel : INotifyPropertyChanged
             if (!SetProperty(ref field, value))
                 return;
 
-            secondaryButtonCommand.RaiseCanExecuteChanged();
+            SecondaryButtonCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -149,7 +154,7 @@ public sealed class GameClientFileTaskWindowViewModel : INotifyPropertyChanged
             if (!SetProperty(ref field, value))
                 return;
 
-            closeButtonCommand.RaiseCanExecuteChanged();
+            CloseButtonCommand.RaiseCanExecuteChanged();
         }
     }
 

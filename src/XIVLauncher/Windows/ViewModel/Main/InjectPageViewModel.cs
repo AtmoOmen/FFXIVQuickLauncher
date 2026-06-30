@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Input;
 using Serilog;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Util;
@@ -13,6 +12,10 @@ namespace XIVLauncher.Windows.ViewModel.Main;
 
 public sealed class InjectPageViewModel : INotifyPropertyChanged
 {
+    public SyncCommand InjectGameCommand             { get; }
+    public SyncCommand BringProcessForegroundCommand { get; }
+    public SyncCommand ReturnToLoginPageCommand      { get; }
+    
     private readonly Window                  window;
     private readonly GameLaunchService       gameLaunchService;
     private readonly SettingsWindowViewModel settings;
@@ -21,9 +24,6 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
     private readonly Action                  hideLoadingDialogAction;
     private readonly Action                  activateWindowAction;
     private readonly HashSet<int>            autoInjectAttemptedProcessIds = [];
-    private readonly SyncCommand             injectGameCommand;
-    private readonly SyncCommand             bringProcessForegroundCommand;
-    private readonly SyncCommand             returnToLoginPageCommand;
 
     private CancellationTokenSource? processRefreshCancelSource;
     private CancellationTokenSource? autoInjectDelayCancelSource;
@@ -54,12 +54,16 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
         {
             OnPropertyChanged(nameof(HasAvailableProcesses));
             OnPropertyChanged(nameof(ProcessSelectionHint));
-            injectGameCommand.RaiseCanExecuteChanged();
-            bringProcessForegroundCommand.RaiseCanExecuteChanged();
+            InjectGameCommand.RaiseCanExecuteChanged();
+            BringProcessForegroundCommand.RaiseCanExecuteChanged();
         };
 
-        injectGameCommand = new SyncCommand(_ => StartInject(SelectedProcess, false), () => !this.isLoggingInFunc() && !IsInjecting && SelectedProcess != null);
-        bringProcessForegroundCommand = new SyncCommand
+        InjectGameCommand = new SyncCommand
+        (
+            _ => StartInject(SelectedProcess, false),
+            () => !this.isLoggingInFunc() && !IsInjecting && SelectedProcess != null
+        );
+        BringProcessForegroundCommand = new
         (
             _ =>
             {
@@ -68,16 +72,14 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
             },
             () => SelectedProcess != null
         );
-        returnToLoginPageCommand = new SyncCommand(_ => requestReturnToLoginPageAction(), () => !this.isLoggingInFunc());
+        ReturnToLoginPageCommand = new
+        (
+            _ => requestReturnToLoginPageAction(),
+            () => !this.isLoggingInFunc()
+        );
 
         ReloadSettings();
     }
-
-    public ICommand InjectGameCommand => injectGameCommand;
-
-    public ICommand BringProcessForegroundCommand => bringProcessForegroundCommand;
-
-    public ICommand ReturnToLoginPageCommand => returnToLoginPageCommand;
 
     public string ReturnButtonText
     {
@@ -132,8 +134,8 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
             selectedProcess = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanOperateOnSelectedProcess));
-            injectGameCommand.RaiseCanExecuteChanged();
-            bringProcessForegroundCommand.RaiseCanExecuteChanged();
+            InjectGameCommand.RaiseCanExecuteChanged();
+            BringProcessForegroundCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -165,9 +167,9 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
 
     public void RefreshCommandStates()
     {
-        injectGameCommand.RaiseCanExecuteChanged();
-        bringProcessForegroundCommand.RaiseCanExecuteChanged();
-        returnToLoginPageCommand.RaiseCanExecuteChanged();
+        InjectGameCommand.RaiseCanExecuteChanged();
+        BringProcessForegroundCommand.RaiseCanExecuteChanged();
+        ReturnToLoginPageCommand.RaiseCanExecuteChanged();
     }
 
     private bool IsInjecting
@@ -178,7 +180,7 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
             if (!SetProperty(ref isInjecting, value))
                 return;
 
-            injectGameCommand.RaiseCanExecuteChanged();
+            InjectGameCommand.RaiseCanExecuteChanged();
             SyncAutoInjectState();
         }
     }

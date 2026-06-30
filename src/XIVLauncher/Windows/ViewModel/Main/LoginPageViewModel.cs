@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Serilog;
 using XIVLauncher.Common.Game;
@@ -12,6 +11,20 @@ namespace XIVLauncher.Windows.ViewModel.Main;
 
 public sealed class LoginPageViewModel : INotifyPropertyChanged
 {
+    public SyncCommand  StartLoginCommand        { get; }
+    public AsyncCommand LoginNoStartCommand      { get; }
+    public SyncCommand  LoginNoDalamudCommand    { get; }
+    public SyncCommand  LoginNoPluginsCommand    { get; }
+    public SyncCommand  LoginNoThirdCommand      { get; }
+    public AsyncCommand LoginRepairCommand       { get; }
+    public AsyncCommand RunIntegrityCheckCommand { get; }
+    public SyncCommand  LoginCancelCommand       { get; }
+    public SyncCommand  LoginForceQRCommand      { get; }
+    public SyncCommand  RefreshQrCodeCommand     { get; }
+    public SyncCommand  InjectModeSwitchCommand  { get; }
+    public SyncCommand  BackToMainPageCommand    { get; }
+    public SyncCommand  FakeStartCommand         { get; }
+    
     private readonly Func<bool>                                   isBusyFunc;
     private readonly Action<LoginPageViewModel, LoginAfterAction> requestLoginAction;
     private readonly Func<GameClientFileTaskKind, Task>           requestGameClientFileTaskAction;
@@ -20,20 +33,6 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     private readonly Action                                       requestShowInjectPageAction;
     private readonly Action                                       requestBackToMainPageAction;
     private readonly Action                                       requestFakeStartAction;
-
-    private readonly SyncCommand  startLoginCommand;
-    private readonly AsyncCommand loginNoStartCommand;
-    private readonly SyncCommand  loginNoDalamudCommand;
-    private readonly SyncCommand  loginNoPluginsCommand;
-    private readonly SyncCommand  loginNoThirdCommand;
-    private readonly AsyncCommand loginRepairCommand;
-    private readonly AsyncCommand runIntegrityCheckCommand;
-    private readonly SyncCommand  loginCancelCommand;
-    private readonly SyncCommand  loginForceQRCommand;
-    private readonly SyncCommand  refreshQrCodeCommand;
-    private readonly SyncCommand  injectModeSwitchCommand;
-    private readonly SyncCommand  backToMainPageCommand;
-    private readonly SyncCommand  fakeStartCommand;
 
     public LoginPageViewModel
     (
@@ -58,50 +57,69 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 
         LoginTypeOptions = [.. LoginTypeOption.Get()];
 
-        loginTypeOption = LoginTypeOptions.FirstOrDefault
-                              (x => x.LoginType == App.Settings.SelectedLoginType) ??
-                          LoginTypeOptions.First(x => x.LoginType == LoginType.Slide);
+        loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == App.Settings.SelectedLoginType) ??
+                          LoginTypeOptions.First(x => x.LoginType          == LoginType.Slide);
 
-        startLoginCommand        = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.Start), () => CanStartLogin);
-        loginNoStartCommand      = new AsyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Update), () => !this.isBusyFunc());
-        loginNoDalamudCommand    = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutDalamud), () => !this.isBusyFunc());
-        loginNoPluginsCommand    = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutPlugins), () => !this.isBusyFunc());
-        loginNoThirdCommand      = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.StartWithoutThird),   () => !this.isBusyFunc());
-        loginRepairCommand       = new AsyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Repair),         () => !this.isBusyFunc());
-        runIntegrityCheckCommand = new AsyncCommand(_ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.IntegrityCheck), () => !this.isBusyFunc());
-        loginForceQRCommand      = new SyncCommand(_ => this.requestLoginAction(this, LoginAfterAction.ForceQR), () => !this.isBusyFunc());
-        loginCancelCommand       = new SyncCommand(_ => this.requestCancelLoginAction());
-        refreshQrCodeCommand     = new SyncCommand(_ => this.requestRefreshQrCodeAction(this), () => !this.isBusyFunc() && IsQrCodeExpired);
-        injectModeSwitchCommand  = new SyncCommand(_ => this.requestShowInjectPageAction(),    () => !this.isBusyFunc());
-        backToMainPageCommand    = new SyncCommand(_ => this.requestBackToMainPageAction());
-        fakeStartCommand         = new SyncCommand(_ => this.requestFakeStartAction(), () => !this.isBusyFunc());
+        StartLoginCommand = new
+        (
+            _ => this.requestLoginAction(this, LoginAfterAction.Start),
+            () => CanStartLogin
+        );
+        LoginNoStartCommand = new
+        (
+            _ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Update),
+            () => !this.isBusyFunc()
+        );
+        LoginNoDalamudCommand = new
+        (
+            _ => this.requestLoginAction(this, LoginAfterAction.StartWithoutDalamud),
+            () => !this.isBusyFunc()
+        );
+        LoginNoPluginsCommand = new
+        (
+            _ => this.requestLoginAction(this, LoginAfterAction.StartWithoutPlugins),
+            () => !this.isBusyFunc()
+        );
+        LoginNoThirdCommand = new
+        (
+            _ => this.requestLoginAction(this, LoginAfterAction.StartWithoutThird),
+            () => !this.isBusyFunc()
+        );
+        LoginRepairCommand = new
+        (
+            _ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Repair),
+            () => !this.isBusyFunc()
+        );
+        RunIntegrityCheckCommand = new
+        (
+            _ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.IntegrityCheck),
+            () => !this.isBusyFunc()
+        );
+        LoginForceQRCommand = new
+        (
+            _ => this.requestLoginAction(this, LoginAfterAction.ForceQR),
+            () => !this.isBusyFunc()
+        );
+        LoginCancelCommand = new(_ => this.requestCancelLoginAction());
+        RefreshQrCodeCommand = new
+        (
+            _ => this.requestRefreshQrCodeAction(this),
+            () => !this.isBusyFunc() && IsQrCodeExpired
+        );
+        InjectModeSwitchCommand = new
+        (
+            _ => this.requestShowInjectPageAction(),
+            () => !this.isBusyFunc()
+        );
+        BackToMainPageCommand = new(_ => this.requestBackToMainPageAction());
+        FakeStartCommand = new
+        (
+            _ => this.requestFakeStartAction(),
+            () => !this.isBusyFunc()
+        );
 
         ApplyLoginType(loginTypeOption.LoginType);
     }
-
-    public ICommand StartLoginCommand => startLoginCommand;
-
-    public ICommand LoginNoStartCommand => loginNoStartCommand;
-
-    public ICommand LoginNoDalamudCommand => loginNoDalamudCommand;
-
-    public ICommand LoginNoPluginsCommand => loginNoPluginsCommand;
-
-    public ICommand LoginNoThirdCommand => loginNoThirdCommand;
-
-    public ICommand LoginRepairCommand => loginRepairCommand;
-
-    public ICommand RunIntegrityCheckCommand => runIntegrityCheckCommand;
-
-    public ICommand LoginCancelCommand => loginCancelCommand;
-
-    public ICommand RefreshQrCodeCommand => refreshQrCodeCommand;
-
-    public ICommand InjectModeSwitchCommand => injectModeSwitchCommand;
-
-    public ICommand BackToMainPageCommand => backToMainPageCommand;
-
-    public ICommand FakeStartCommand => fakeStartCommand;
 
     public LoginTypeOption[] LoginTypeOptions { get; }
 
@@ -223,7 +241,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
             if (!SetProperty(ref field, value))
                 return;
 
-            refreshQrCodeCommand.RaiseCanExecuteChanged();
+            RefreshQrCodeCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -315,19 +333,19 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 
     public void RefreshCommandStates()
     {
-        startLoginCommand.RaiseCanExecuteChanged();
-        loginNoStartCommand.RaiseCanExecuteChanged();
-        loginNoDalamudCommand.RaiseCanExecuteChanged();
-        loginNoPluginsCommand.RaiseCanExecuteChanged();
-        loginNoThirdCommand.RaiseCanExecuteChanged();
-        loginRepairCommand.RaiseCanExecuteChanged();
-        runIntegrityCheckCommand.RaiseCanExecuteChanged();
-        loginCancelCommand.RaiseCanExecuteChanged();
-        loginForceQRCommand.RaiseCanExecuteChanged();
-        refreshQrCodeCommand.RaiseCanExecuteChanged();
-        injectModeSwitchCommand.RaiseCanExecuteChanged();
-        backToMainPageCommand.RaiseCanExecuteChanged();
-        fakeStartCommand.RaiseCanExecuteChanged();
+        StartLoginCommand.RaiseCanExecuteChanged();
+        LoginNoStartCommand.RaiseCanExecuteChanged();
+        LoginNoDalamudCommand.RaiseCanExecuteChanged();
+        LoginNoPluginsCommand.RaiseCanExecuteChanged();
+        LoginNoThirdCommand.RaiseCanExecuteChanged();
+        LoginRepairCommand.RaiseCanExecuteChanged();
+        RunIntegrityCheckCommand.RaiseCanExecuteChanged();
+        LoginCancelCommand.RaiseCanExecuteChanged();
+        LoginForceQRCommand.RaiseCanExecuteChanged();
+        RefreshQrCodeCommand.RaiseCanExecuteChanged();
+        InjectModeSwitchCommand.RaiseCanExecuteChanged();
+        BackToMainPageCommand.RaiseCanExecuteChanged();
+        FakeStartCommand.RaiseCanExecuteChanged();
         OnPropertyChanged(nameof(CanStartLogin));
     }
 
@@ -416,7 +434,7 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     private void RefreshStartLoginState()
     {
         OnPropertyChanged(nameof(CanStartLogin));
-        startLoginCommand.RaiseCanExecuteChanged();
+        StartLoginCommand.RaiseCanExecuteChanged();
     }
 
     private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

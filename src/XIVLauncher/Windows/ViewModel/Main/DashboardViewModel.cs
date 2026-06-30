@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Windows.Input;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Login;
 using XIVLauncher.Xaml;
@@ -11,22 +10,22 @@ namespace XIVLauncher.Windows.ViewModel.Main;
 
 public sealed class DashboardViewModel : INotifyPropertyChanged
 {
+    public SyncCommand  StartGameCommand           { get; }
+    public SyncCommand  StartGameNoDalamudCommand  { get; }
+    public SyncCommand  StartGameNoPluginsCommand  { get; }
+    public SyncCommand  StartGameNoThirdCommand    { get; }
+    public AsyncCommand SwitchAccountCommand       { get; }
+    public SyncCommand  OpenDCTravelCommand        { get; }
+    public SyncCommand  OpenDeviceProfileCommand   { get; }
+    public SyncCommand  OpenPaymentCommand         { get; }
+    public SyncCommand  OpenShopCommand            { get; }
+    public SyncCommand  OpenOfficialAccountCommand { get; }
+    
     private readonly Action<LoginAfterAction> requestStartGameAction;
     private readonly Action                   requestSwitchAccountAction;
     private readonly Action                   requestOpenDCTravelAction;
     private readonly Action                   requestOpenDeviceProfileAction;
     private readonly Action<LoginArea>        requestSetAreaAction;
-
-    private readonly SyncCommand  startGameCommand;
-    private readonly SyncCommand  startGameNoDalamudCommand;
-    private readonly SyncCommand  startGameNoPluginsCommand;
-    private readonly SyncCommand  startGameNoThirdCommand;
-    private readonly AsyncCommand switchAccountCommand;
-    private readonly SyncCommand  openDCTravelCommand;
-    private readonly SyncCommand  openDeviceProfileCommand;
-    private readonly SyncCommand  openPaymentCommand;
-    private readonly SyncCommand  openShopCommand;
-    private readonly SyncCommand  openOfficialAccountCommand;
 
     private bool isSwitchingAccount;
 
@@ -45,30 +44,19 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         this.requestOpenDeviceProfileAction = requestOpenDeviceProfileAction;
         this.requestSetAreaAction           = requestSetAreaAction;
 
-        startGameCommand           = new SyncCommand(_ => this.requestStartGameAction(LoginAfterAction.Start));
-        startGameNoDalamudCommand  = new SyncCommand(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutDalamud));
-        startGameNoPluginsCommand  = new SyncCommand(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutPlugins));
-        startGameNoThirdCommand    = new SyncCommand(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutThird));
-        switchAccountCommand       = new AsyncCommand(async _ => await SwitchAccount(), () => !isSwitchingAccount);
-        openDCTravelCommand        = new SyncCommand(_ => this.requestOpenDCTravelAction());
-        openDeviceProfileCommand   = new SyncCommand(_ => this.requestOpenDeviceProfileAction());
-        openPaymentCommand         = new SyncCommand(_ => Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute  = true }));
-        openShopCommand            = new SyncCommand(_ => Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true }));
-        openOfficialAccountCommand = new SyncCommand(_ => Process.Start(new ProcessStartInfo(Links.SDO_BILIBILI_URL) { UseShellExecute = true }));
+        StartGameCommand           = new(_ => this.requestStartGameAction(LoginAfterAction.Start));
+        StartGameNoDalamudCommand  = new(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutDalamud));
+        StartGameNoPluginsCommand  = new(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutPlugins));
+        StartGameNoThirdCommand    = new(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutThird));
+        SwitchAccountCommand       = new(async _ => await SwitchAccount(), () => !isSwitchingAccount);
+        OpenDCTravelCommand        = new(_ => this.requestOpenDCTravelAction());
+        OpenDeviceProfileCommand   = new(_ => this.requestOpenDeviceProfileAction());
+        OpenPaymentCommand         = new(_ => Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute  = true }));
+        OpenShopCommand            = new(_ => Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true }));
+        OpenOfficialAccountCommand = new(_ => Process.Start(new ProcessStartInfo(Links.SDO_BILIBILI_URL) { UseShellExecute = true }));
 
         Areas = [];
     }
-
-    public ICommand StartGameCommand           => startGameCommand;
-    public ICommand StartGameNoDalamudCommand  => startGameNoDalamudCommand;
-    public ICommand StartGameNoPluginsCommand  => startGameNoPluginsCommand;
-    public ICommand StartGameNoThirdCommand    => startGameNoThirdCommand;
-    public ICommand SwitchAccountCommand       => switchAccountCommand;
-    public ICommand OpenDCTravelCommand        => openDCTravelCommand;
-    public ICommand OpenDeviceProfileCommand   => openDeviceProfileCommand;
-    public ICommand OpenPaymentCommand         => openPaymentCommand;
-    public ICommand OpenShopCommand            => openShopCommand;
-    public ICommand OpenOfficialAccountCommand => openOfficialAccountCommand;
 
     public ObservableCollection<LoginArea> Areas { get; }
 
@@ -142,7 +130,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
             if (!SetProperty(ref isSwitchingAccount, value))
                 return;
 
-            switchAccountCommand.RaiseCanExecuteChanged();
+            SwitchAccountCommand.RaiseCanExecuteChanged();
         }
     }
 

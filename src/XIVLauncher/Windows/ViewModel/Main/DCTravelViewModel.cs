@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Input;
 using Serilog;
 using XIVLauncher.DCTravel;
 using XIVLauncher.Xaml;
@@ -10,6 +9,16 @@ namespace XIVLauncher.Windows.ViewModel.Main;
 
 public sealed class DCTravelViewModel : INotifyPropertyChanged
 {
+    public AsyncCommand TravelOrderCommand        { get; }
+    public AsyncCommand TravelBackCommand         { get; }
+    public AsyncCommand RefreshOrdersCommand      { get; }
+    public AsyncCommand ConfirmTravelBackCommand  { get; }
+    public SyncCommand  BackToDashboardCommand    { get; }
+    public SyncCommand  OpenHistoryCommand        { get; }
+    public SyncCommand  BackToTravelCommand       { get; }
+    public SyncCommand  ReturnFromProgressCommand { get; }
+    public SyncCommand  CancelReturnCommand       { get; }
+    
     private readonly Action               requestBackToDashboardAction;
     private readonly Action               requestOpenHistoryAction;
     private readonly Action               requestBackToTravelAction;
@@ -18,21 +27,11 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     private readonly Action<string>       setCurrentAreaAction;
     private readonly Action               activateAction;
     private readonly Func<DCTravelClient> getDcTravelClientFunc;
-
-    private readonly AsyncCommand travelOrderCommand;
-    private readonly AsyncCommand travelBackCommand;
-    private readonly AsyncCommand refreshOrdersCommand;
-    private readonly AsyncCommand confirmTravelBackCommand;
-    private readonly SyncCommand  backToDashboardCommand;
-    private readonly SyncCommand  openHistoryCommand;
-    private readonly SyncCommand  backToTravelCommand;
-    private readonly SyncCommand  returnFromProgressCommand;
-    private readonly SyncCommand  cancelReturnCommand;
-
-    private bool                     isLoading;
-    private bool                     isUnderMaintenance;
-    private string                   maintenanceMessage = string.Empty;
+    
     private CancellationTokenSource? pollCts;
+
+    private bool isLoading;
+    private bool isUnderMaintenance;
 
     public DCTravelViewModel
     (
@@ -55,17 +54,30 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         this.activateAction               = activateAction;
         this.getDcTravelClientFunc        = getDcTravelClientFunc;
 
-        travelOrderCommand = new AsyncCommand
-            (async _ => await StartTravelAsync(), () => SelectedTargetGroup != null && SelectedCharacter != null && !isLoading && !isUnderMaintenance);
-        travelBackCommand    = new AsyncCommand(async _ => await OpenReturnPageAsync(), () => SelectedOrder != null && !isLoading && !isUnderMaintenance);
-        refreshOrdersCommand = new AsyncCommand(async _ => await RefreshOrdersAsync());
-        confirmTravelBackCommand = new AsyncCommand
-            (async _ => await ConfirmTravelBackAsync(), () => ReturnSelectedCurrentGroup != null && !isLoading && !isUnderMaintenance);
-        backToDashboardCommand    = new SyncCommand(_ => this.requestBackToDashboardAction());
-        openHistoryCommand        = new SyncCommand(_ => this.requestOpenHistoryAction());
-        backToTravelCommand       = new SyncCommand(_ => this.requestBackToTravelAction());
-        returnFromProgressCommand = new SyncCommand(_ => CancelPollAndReturn());
-        cancelReturnCommand       = new SyncCommand(_ => this.requestOpenHistoryAction());
+        TravelOrderCommand = new
+        (
+            async _ => await StartTravelAsync(),
+            () => SelectedTargetGroup != null &&
+                  SelectedCharacter   != null &&
+                  !isLoading                  &&
+                  !isUnderMaintenance
+        );
+        TravelBackCommand = new
+        (
+            async _ => await OpenReturnPageAsync(),
+            () => SelectedOrder != null && !isLoading && !isUnderMaintenance
+        );
+        RefreshOrdersCommand = new(async _ => await RefreshOrdersAsync());
+        ConfirmTravelBackCommand = new
+        (
+            async _ => await ConfirmTravelBackAsync(),
+            () => ReturnSelectedCurrentGroup != null && !isLoading && !isUnderMaintenance
+        );
+        BackToDashboardCommand    = new(_ => this.requestBackToDashboardAction());
+        OpenHistoryCommand        = new(_ => this.requestOpenHistoryAction());
+        BackToTravelCommand       = new(_ => this.requestBackToTravelAction());
+        ReturnFromProgressCommand = new(_ => CancelPollAndReturn());
+        CancelReturnCommand       = new(_ => this.requestOpenHistoryAction());
 
         SourceAreas     = [];
         TargetAreas     = [];
@@ -79,16 +91,6 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(HasNoMigrationOrders));
         };
     }
-
-    public ICommand TravelOrderCommand        => travelOrderCommand;
-    public ICommand TravelBackCommand         => travelBackCommand;
-    public ICommand RefreshOrdersCommand      => refreshOrdersCommand;
-    public ICommand BackToDashboardCommand    => backToDashboardCommand;
-    public ICommand OpenHistoryCommand        => openHistoryCommand;
-    public ICommand BackToTravelCommand       => backToTravelCommand;
-    public ICommand ReturnFromProgressCommand => returnFromProgressCommand;
-    public ICommand ConfirmTravelBackCommand  => confirmTravelBackCommand;
-    public ICommand CancelReturnCommand       => cancelReturnCommand;
 
     public ObservableCollection<DCTravelArea> SourceAreas { get; }
 
@@ -130,7 +132,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             if (value != null && SelectedSourceArea != null)
                 _ = LoadTargetAreasAsync();
 
-            travelOrderCommand.RaiseCanExecuteChanged();
+            TravelOrderCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -163,7 +165,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
                 return;
 
             OnPropertyChanged(nameof(CanTravelOrder));
-            travelOrderCommand.RaiseCanExecuteChanged();
+            TravelOrderCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -180,7 +182,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             if (!SetProperty(ref field, value))
                 return;
 
-            travelBackCommand.RaiseCanExecuteChanged();
+            TravelBackCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -196,9 +198,9 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(IsCharacterEnabled));
             OnPropertyChanged(nameof(CharacterHint));
             OnPropertyChanged(nameof(CanTravelOrder));
-            travelOrderCommand.RaiseCanExecuteChanged();
-            travelBackCommand.RaiseCanExecuteChanged();
-            confirmTravelBackCommand.RaiseCanExecuteChanged();
+            TravelOrderCommand.RaiseCanExecuteChanged();
+            TravelBackCommand.RaiseCanExecuteChanged();
+            ConfirmTravelBackCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -214,9 +216,9 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
             OnPropertyChanged(nameof(IsNotUnderMaintenance));
             OnPropertyChanged(nameof(CanTravelOrder));
-            travelOrderCommand.RaiseCanExecuteChanged();
-            travelBackCommand.RaiseCanExecuteChanged();
-            confirmTravelBackCommand.RaiseCanExecuteChanged();
+            TravelOrderCommand.RaiseCanExecuteChanged();
+            TravelBackCommand.RaiseCanExecuteChanged();
+            ConfirmTravelBackCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -224,9 +226,9 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     public string MaintenanceMessage
     {
-        get => maintenanceMessage;
-        set => SetProperty(ref maintenanceMessage, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public bool IsCharacterVisible   => SelectedSourceArea != null;
     public bool IsCharacterEnabled   => SelectedSourceArea != null && !isLoading;
@@ -265,7 +267,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             if (!SetProperty(ref field, value))
                 return;
 
-            confirmTravelBackCommand.RaiseCanExecuteChanged();
+            ConfirmTravelBackCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -629,7 +631,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         finally
         {
             IsLoading = false;
-            confirmTravelBackCommand.RaiseCanExecuteChanged();
+            ConfirmTravelBackCommand.RaiseCanExecuteChanged();
         }
     }
 

@@ -50,10 +50,10 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         }
     } = string.Empty;
 
-    private readonly SyncCommand createDesktopShortcutCommand;
-    private readonly SyncCommand removeAccountCommand;
-    private readonly SyncCommand setProfilePictureCommand;
-    private readonly SyncCommand configureDeviceProfileCommand;
+    public SyncCommand CreateDesktopShortcutCommand { get; }
+    public SyncCommand RemoveAccountCommand { get; }
+    public SyncCommand SetProfilePictureCommand { get; }
+    public SyncCommand ConfigureDeviceProfileCommand { get; }
 
     public AccountSwitcherEntry? SelectedEntry
     {
@@ -64,10 +64,10 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
                 return;
 
             OnPropertyChanged(nameof(IsSelectedAccountPasswordNotSaved));
-            createDesktopShortcutCommand.RaiseCanExecuteChanged();
-            removeAccountCommand.RaiseCanExecuteChanged();
-            setProfilePictureCommand.RaiseCanExecuteChanged();
-            configureDeviceProfileCommand.RaiseCanExecuteChanged();
+            CreateDesktopShortcutCommand.RaiseCanExecuteChanged();
+            RemoveAccountCommand.RaiseCanExecuteChanged();
+            SetProfilePictureCommand.RaiseCanExecuteChanged();
+            ConfigureDeviceProfileCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -80,10 +80,10 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
                 return;
 
             OnPropertyChanged(nameof(IsSelectedAccountPasswordNotSaved));
-            createDesktopShortcutCommand.RaiseCanExecuteChanged();
-            removeAccountCommand.RaiseCanExecuteChanged();
-            setProfilePictureCommand.RaiseCanExecuteChanged();
-            configureDeviceProfileCommand.RaiseCanExecuteChanged();
+            CreateDesktopShortcutCommand.RaiseCanExecuteChanged();
+            RemoveAccountCommand.RaiseCanExecuteChanged();
+            SetProfilePictureCommand.RaiseCanExecuteChanged();
+            ConfigureDeviceProfileCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -131,10 +131,10 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         this.shortcutService = shortcutService ?? new ShortcutService();
         this.requestClose    = requestClose;
 
-        createDesktopShortcutCommand  = new SyncCommand(_ => CreateDesktopShortcut(),          () => ActiveEntry != null);
-        removeAccountCommand          = new SyncCommand(_ => RemoveSelectedAccount(),          () => ActiveEntry != null);
-        setProfilePictureCommand      = new SyncCommand(_ => SetSelectedProfilePicture(),      () => ActiveEntry != null);
-        configureDeviceProfileCommand = new SyncCommand(_ => ConfigureSelectedDeviceProfile(), () => ActiveEntry != null);
+        CreateDesktopShortcutCommand  = new(_ => CreateDesktopShortcut(),          () => ActiveEntry != null);
+        RemoveAccountCommand          = new(_ => RemoveSelectedAccount(),          () => ActiveEntry != null);
+        SetProfilePictureCommand      = new(_ => SetSelectedProfilePicture(),      () => ActiveEntry != null);
+        ConfigureDeviceProfileCommand = new(_ => ConfigureSelectedDeviceProfile(), () => ActiveEntry != null);
         RefreshEntries();
     }
 
