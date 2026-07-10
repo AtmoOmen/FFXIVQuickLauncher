@@ -29,6 +29,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     private readonly Func<DCTravelClient> getDcTravelClientFunc;
     
     private CancellationTokenSource? pollCts;
+    private CancellationTokenSource? charactersLoadCts;
 
     private bool isLoading;
     private bool isUnderMaintenance;
@@ -102,16 +103,20 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             if (!SetProperty(ref field, value))
                 return;
 
+            charactersLoadCts?.Cancel();
+            charactersLoadCts = new CancellationTokenSource();
+
             TargetAreas.Clear();
             TargetGroups.Clear();
             Characters.Clear();
+            SelectedCharacter = null;
             OnPropertyChanged(nameof(IsCharacterVisible));
             OnPropertyChanged(nameof(IsCharacterEnabled));
             OnPropertyChanged(nameof(CharacterHint));
             OnPropertyChanged(nameof(IsTargetAreaVisible));
             OnPropertyChanged(nameof(IsTargetGroupVisible));
             OnPropertyChanged(nameof(CanTravelOrder));
-            _ = LoadCharactersAsync();
+            _ = LoadCharactersAsync(charactersLoadCts.Token);
         }
     }
 
@@ -441,9 +446,9 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task LoadCharactersAsync()
+    private async Task LoadCharactersAsync(CancellationToken ct)
     {
-        if (SelectedSourceArea == null || isLoading) return;
+        if (SelectedSourceArea == null) return;
         IsLoading = true;
 
         try
@@ -453,9 +458,13 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
             foreach (var g in SelectedSourceArea.GroupList)
             {
+                ct.ThrowIfCancellationRequested();
+
                 try
                 {
                     var chars = await client.QueryRoleList(SelectedSourceArea.AreaID, g.GroupID);
+
+                    ct.ThrowIfCancellationRequested();
 
                     foreach (var c in chars)
                     {
@@ -463,11 +472,19 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
                         Characters.Add(c);
                     }
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     Log.Warning(ex, "[DCTravelVM] 加载角色失败 A={AreaID} G={GroupID}", SelectedSourceArea.AreaID, g.GroupID);
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
         catch (Exception ex)
         {
@@ -475,7 +492,8 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         }
         finally
         {
-            IsLoading = false;
+            if (!ct.IsCancellationRequested)
+                IsLoading = false;
         }
     }
 
