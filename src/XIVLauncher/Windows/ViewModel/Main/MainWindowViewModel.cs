@@ -103,6 +103,13 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                         );
                         if (uiArea != null)
                             LoginPage?.Area = uiArea;
+
+                        var dashboardArea = DashboardPage.Areas.FirstOrDefault
+                        (a =>
+                             string.Equals(a.AreaName, name, StringComparison.Ordinal)
+                        );
+                        if (dashboardArea != null)
+                            DashboardPage.SelectedArea = dashboardArea;
                     }
                 );
             }
