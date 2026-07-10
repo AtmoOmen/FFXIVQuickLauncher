@@ -220,6 +220,19 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
 
     #endregion
 
+    #region 超域旅行配置
+
+    /// <summary>
+    ///     超域旅行完成后是否自动启动游戏
+    /// </summary>
+    public bool DCTravelAutoStartGameOnComplete
+    {
+        get;
+        set => Set(ref field, value);
+    } = true;
+
+    #endregion
+
     #region 补丁更新配置
 
     /// <summary>

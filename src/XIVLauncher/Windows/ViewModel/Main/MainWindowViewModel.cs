@@ -176,8 +176,22 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             () => SwitchCard(LoginCardType.DCTravelReturn),
             DashboardFlow.HandleSetCurrentAreaFromDCTravel,
             () => Activate(),
+            () => Window.Dispatcher.Invoke
+            (() =>
+                {
+                    SwitchCard(LoginCardType.Dashboard, false);
+                    DashboardFlow.HandleStartGameFromDashboard(LoginAfterAction.Start);
+                }
+            ),
             () => DCTravelRuntimeService.Client
         );
+
+        DCTravelPage.AutoStartGameOnComplete = App.Settings.DCTravelAutoStartGameOnComplete;
+        DCTravelPage.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(DCTravelPage.AutoStartGameOnComplete))
+                App.Settings.DCTravelAutoStartGameOnComplete = DCTravelPage.AutoStartGameOnComplete;
+        };
 
         UpdateDalamudStatusText();
 

@@ -235,6 +235,12 @@
                     </StackPanel>
                 </Border>
 
+                <CheckBox Content="完成时自动启动游戏"
+                          IsChecked="{Binding DCTravelPage.AutoStartGameOnComplete}"
+                          HorizontalAlignment="Center"
+                          FontSize="11"
+                          Margin="0,0,0,12" />
+
                 <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />

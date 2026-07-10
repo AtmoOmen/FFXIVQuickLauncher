@@ -26,6 +26,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     private readonly Action               requestOpenReturnAction;
     private readonly Action<string>       setCurrentAreaAction;
     private readonly Action               activateAction;
+    private readonly Action               onTravelCompleteAction;
     private readonly Func<DCTravelClient> getDcTravelClientFunc;
     
     private CancellationTokenSource? pollCts;
@@ -43,6 +44,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         Action               requestOpenReturnAction,
         Action<string>       setCurrentAreaAction,
         Action               activateAction,
+        Action               onTravelCompleteAction,
         Func<DCTravelClient> getDcTravelClientFunc
     )
     {
@@ -53,6 +55,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         this.requestOpenReturnAction      = requestOpenReturnAction;
         this.setCurrentAreaAction         = setCurrentAreaAction;
         this.activateAction               = activateAction;
+        this.onTravelCompleteAction       = onTravelCompleteAction;
         this.getDcTravelClientFunc        = getDcTravelClientFunc;
 
         TravelOrderCommand = new
@@ -245,6 +248,12 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     public bool CanTravelOrder =>
         SelectedSourceArea != null && SelectedCharacter != null && SelectedTargetArea != null && SelectedTargetGroup != null && !isLoading && !isUnderMaintenance;
 
+    public bool AutoStartGameOnComplete
+    {
+        get;
+        set => SetProperty(ref field, value);
+    } = true;
+
     // 超域返回页属性
     public ObservableCollection<DCTravelArea> ReturnSourceAreas { get; } = [];
 
@@ -352,7 +361,10 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             if (SelectedTargetArea != null)
                 UpdateCurrentArea(SelectedTargetArea.AreaName);
 
-            activateAction();
+            if (AutoStartGameOnComplete)
+                onTravelCompleteAction();
+            else
+                activateAction();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -605,7 +617,10 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
             if (pendingReturnOrder != null && !string.IsNullOrWhiteSpace(pendingReturnOrder.SourceAreaName))
                 UpdateCurrentArea(pendingReturnOrder.SourceAreaName);
 
-            activateAction();
+            if (AutoStartGameOnComplete)
+                onTravelCompleteAction();
+            else
+                activateAction();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
