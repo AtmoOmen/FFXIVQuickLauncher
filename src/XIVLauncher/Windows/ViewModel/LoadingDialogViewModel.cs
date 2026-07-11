@@ -1,70 +1,30 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal class LoadingDialogViewModel : INotifyPropertyChanged
+internal partial class LoadingDialogViewModel : ObservableObject
 {
-    public string HeaderText
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = "正在准备更新...";
+    [ObservableProperty]
+    public partial string HeaderText { get; set; } = "正在准备更新...";
 
-    public string DetailText
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string DetailText { get; set; } = string.Empty;
 
-    public string PercentageText
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string PercentageText { get; set; } = string.Empty;
 
-    public bool IsProgressBarVisible
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = true;
+    [ObservableProperty]
+    public partial bool IsProgressBarVisible { get; set; } = true;
 
-    public bool IsDetailTextVisible
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool IsDetailTextVisible { get; set; }
 
-    public bool IsPercentageTextVisible
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool IsPercentageTextVisible { get; set; }
 
-    public bool IsProgressIndeterminate
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = true;
+    [ObservableProperty]
+    public partial bool IsProgressIndeterminate { get; set; } = true;
 
-    public double ProgressValue
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
+    [ObservableProperty]
+    public partial double ProgressValue { get; set; }
 }

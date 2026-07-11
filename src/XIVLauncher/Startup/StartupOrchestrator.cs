@@ -44,7 +44,7 @@ public class StartupOrchestrator
 
         cancellationToken.ThrowIfCancellationRequested();
         InitializeVelopack();
-        
+
 #if RELEASE
         cancellationToken.ThrowIfCancellationRequested();
         await CheckUpdatesAsync();
@@ -140,7 +140,7 @@ public class StartupOrchestrator
         {
             if (!string.IsNullOrEmpty(commandLineOptions.RoamingPath))
                 Paths.OverrideRoamingPath(commandLineOptions.RoamingPath);
-            
+
             context.Settings.Update
             (settings =>
                 {

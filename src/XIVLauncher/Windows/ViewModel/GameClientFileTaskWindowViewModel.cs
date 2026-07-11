@@ -1,168 +1,91 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using XIVLauncher.Windows.GameClientFiles;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-public sealed class GameClientFileTaskWindowViewModel : INotifyPropertyChanged
+public sealed partial class GameClientFileTaskWindowViewModel : ObservableObject
 {
-    public SyncCommand PrimaryButtonCommand { get; }
-    public SyncCommand SecondaryButtonCommand { get; }
-    public SyncCommand CloseButtonCommand { get; }
-
-    public GameClientFileTaskWindowViewModel()
-    {
-        PrimaryButtonCommand = new
-        (
-            _ => ActionRequested?.Invoke(GameClientFileTaskWindowAction.Primary),
-            () => IsPrimaryButtonEnabled
-        );
-        SecondaryButtonCommand = new
-        (
-            _ => ActionRequested?.Invoke(GameClientFileTaskWindowAction.Secondary),
-            () => IsSecondaryButtonEnabled
-        );
-        CloseButtonCommand = new
-        (
-            _ => ActionRequested?.Invoke(GameClientFileTaskWindowAction.Close),
-            () => IsCloseButtonEnabled
-        );
-    }
-
     public Action<GameClientFileTaskWindowAction>? ActionRequested { get; set; }
 
-    public string Title
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string Title { get; private set; } = string.Empty;
 
-    public string PhaseText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string PhaseText { get; private set; } = string.Empty;
 
-    public string DetailText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string DetailText { get; private set; } = string.Empty;
 
-    public double Progress
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial double Progress { get; private set; }
 
-    public bool IsProgressIndeterminate
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool IsProgressIndeterminate { get; private set; }
 
-    public string StatusText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string StatusText { get; private set; } = string.Empty;
 
-    public string SpeedText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string SpeedText { get; private set; } = string.Empty;
 
-    public string EtaText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string EtaText { get; private set; } = string.Empty;
 
-    public IReadOnlyList<GameClientFileTaskItemSnapshot> Items
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = [];
+    [ObservableProperty]
+    public partial IReadOnlyList<GameClientFileTaskItemSnapshot> Items { get; private set; } = [];
 
-    public string PrimaryButtonText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string PrimaryButtonText { get; private set; } = string.Empty;
 
-    public bool IsPrimaryButtonVisible
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PrimaryButtonCommand))]
+    public partial bool IsPrimaryButtonVisible { get; private set; }
 
-    public bool IsPrimaryButtonEnabled
-    {
-        get;
-        private set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PrimaryButtonCommand))]
+    public partial bool IsPrimaryButtonEnabled { get; private set; }
 
-            PrimaryButtonCommand.RaiseCanExecuteChanged();
-        }
-    }
+    [ObservableProperty]
+    public partial string SecondaryButtonText { get; private set; } = string.Empty;
 
-    public string SecondaryButtonText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial bool IsSecondaryButtonVisible { get; private set; }
 
-    public bool IsSecondaryButtonVisible
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SecondaryButtonCommand))]
+    public partial bool IsSecondaryButtonEnabled { get; private set; }
 
-    public bool IsSecondaryButtonEnabled
-    {
-        get;
-        private set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    public partial string CloseButtonText { get; private set; } = string.Empty;
 
-            SecondaryButtonCommand.RaiseCanExecuteChanged();
-        }
-    }
+    [ObservableProperty]
+    public partial bool IsCloseButtonVisible { get; private set; }
 
-    public string CloseButtonText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CloseButtonCommand))]
+    public partial bool IsCloseButtonEnabled { get; private set; }
 
-    public bool IsCloseButtonVisible
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool IsRunning { get; private set; }
 
-    public bool IsCloseButtonEnabled
-    {
-        get;
-        private set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [RelayCommand(CanExecute = nameof(CanPrimaryButton))]
+    private void PrimaryButton() =>
+        ActionRequested?.Invoke(GameClientFileTaskWindowAction.Primary);
 
-            CloseButtonCommand.RaiseCanExecuteChanged();
-        }
-    }
+    private bool CanPrimaryButton() => IsPrimaryButtonEnabled;
 
-    public bool IsRunning
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    }
+    [RelayCommand(CanExecute = nameof(CanSecondaryButton))]
+    private void SecondaryButton() =>
+        ActionRequested?.Invoke(GameClientFileTaskWindowAction.Secondary);
+
+    private bool CanSecondaryButton() => IsSecondaryButtonEnabled;
+
+    [RelayCommand(CanExecute = nameof(CanCloseButton))]
+    private void CloseButton() =>
+        ActionRequested?.Invoke(GameClientFileTaskWindowAction.Close);
+
+    private bool CanCloseButton() => IsCloseButtonEnabled;
 
     public void ApplySnapshot(GameClientFileTaskSnapshot snapshot)
     {
@@ -197,16 +120,4 @@ public sealed class GameClientFileTaskWindowViewModel : INotifyPropertyChanged
 
         ActionRequested?.Invoke(GameClientFileTaskWindowAction.Close);
     }
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        return true;
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

@@ -4,7 +4,6 @@
         <AssemblyTitle>XIVLauncherCN (Soil)</AssemblyTitle>
         <Description>Custom launcher for the most critically acclaimed MMO's CN server.</Description>
         <VersionPrefix>2.3.5</VersionPrefix>
-        <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -13,17 +12,15 @@
         <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <UseWPF>true</UseWPF>
-        <LangVersion>latest</LangVersion>
         <Deterministic>true</Deterministic>
         <OutputPath>..\bin\</OutputPath>
-        <Nullable>enable</Nullable>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     </PropertyGroup>
 
     <!-- Assets -->
     <ItemGroup>
-        <Resource Include="Resources\*.*" />
-        <Resource Include="Resources\Fonts\*.ttf" />
+        <Resource Include="Resources\*.*"/>
+        <Resource Include="Resources\Fonts\*.ttf"/>
     </ItemGroup>
 
     <PropertyGroup>
@@ -42,10 +39,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Resource Remove="Resources\aria2c-xl.exe" />
-        <Resource Remove="Resources\CHANGELOG.txt" />
-        <Resource Remove="Resources\COPYING.aria2" />
-        <Resource Remove="Resources\LICENSE.txt" />
+        <Resource Remove="Resources\aria2c-xl.exe"/>
+        <Resource Remove="Resources\CHANGELOG.txt"/>
+        <Resource Remove="Resources\COPYING.aria2"/>
+        <Resource Remove="Resources\LICENSE.txt"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -64,7 +61,7 @@
         <Content Include="Resources\LICENSE.txt">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <None Remove="Resources\7zr.exe" />
+        <None Remove="Resources\7zr.exe"/>
         <Content Include="Resources\7zr.exe">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
@@ -77,129 +74,129 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="CalcBinding" />
-        <PackageReference Include="CommandLineParser" />
-        <PackageReference Include="Downloader" />
-        <PackageReference Include="Dragablz" />
-        <PackageReference Include="Extended.Wpf.Toolkit" />
-        <PackageReference Include="MahApps.Metro.IconPacks" />
-        <PackageReference Include="MaterialDesignThemes" />
-        <PackageReference Include="MdXaml" />
-        <PackageReference Include="MdXaml.Plugins" />
-        <PackageReference Include="Microsoft.WindowsAPICodePack-Shell" />
-        <PackageReference Include="Serilog" />
-        <PackageReference Include="Serilog.Enrichers.Sensitive" />
-        <PackageReference Include="Serilog.Sinks.Async" />
-        <PackageReference Include="Serilog.Sinks.Console" />
-        <PackageReference Include="Serilog.Sinks.Debug" />
-        <PackageReference Include="Serilog.Sinks.File" />
-        <PackageReference Include="SharedMemory" />
-        <PackageReference Include="Stylet" />
-        <PackageReference Include="Velopack" />
+        <PackageReference Include="CalcBinding"/>
+        <PackageReference Include="CommandLineParser"/>
+        <PackageReference Include="Downloader"/>
+        <PackageReference Include="Dragablz"/>
+        <PackageReference Include="Extended.Wpf.Toolkit"/>
+        <PackageReference Include="MahApps.Metro.IconPacks"/>
+        <PackageReference Include="MaterialDesignThemes"/>
+        <PackageReference Include="MdXaml"/>
+        <PackageReference Include="MdXaml.Plugins"/>
+        <PackageReference Include="Microsoft.WindowsAPICodePack-Shell"/>
+        <PackageReference Include="Serilog"/>
+        <PackageReference Include="Serilog.Enrichers.Sensitive"/>
+        <PackageReference Include="Serilog.Sinks.Async"/>
+        <PackageReference Include="Serilog.Sinks.Console"/>
+        <PackageReference Include="Serilog.Sinks.Debug"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="SharedMemory"/>
+        <PackageReference Include="CommunityToolkit.Mvvm"/>
+        <PackageReference Include="Velopack"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\XIVLauncher.Account\XIVLauncher.Account.csproj" />
-        <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj" />
-        <ProjectReference Include="..\XIVLauncher.CompanionApp\XIVLauncher.CompanionApp.csproj" />
-        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />
-        <ProjectReference Include="..\XIVLauncher.DCTravel\XIVLauncher.DCTravel.csproj" />
-        <ProjectReference Include="..\XIVLauncher.Dalamud\XIVLauncher.Dalamud.csproj" />
-        <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj" />
-        <ProjectReference Include="..\XIVLauncher.Login\XIVLauncher.Login.csproj" />
+        <ProjectReference Include="..\XIVLauncher.Account\XIVLauncher.Account.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.ArgReader\XIVLauncher.ArgReader.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.CompanionApp\XIVLauncher.CompanionApp.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.DCTravel\XIVLauncher.DCTravel.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Dalamud\XIVLauncher.Dalamud.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Login\XIVLauncher.Login.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Page Update="Windows\Main\MainWindow.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\AccountSwitcherSlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\DashboardSlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\DCTravelHistorySlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\DCTravelProgressSlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\DCTravelSlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\DCTravelReturnSlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\InjectSlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\LoginingSlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\MainLoginSlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\Slides\ScanQRSlide.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\LoginCardControl.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\LoginCardSlideResources.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\NewsCarouselControl.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
-      <Page Update="Windows\Main\NewsListControl.xaml">
-        <Generator>MSBuild:Compile</Generator>
-        <XamlRuntime>Wpf</XamlRuntime>
-        <SubType>Designer</SubType>
-      </Page>
+        <Page Update="Windows\Main\MainWindow.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\AccountSwitcherSlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\DashboardSlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\DCTravelHistorySlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\DCTravelProgressSlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\DCTravelSlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\DCTravelReturnSlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\InjectSlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\LoginingSlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\MainLoginSlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\Slides\ScanQRSlide.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\LoginCardControl.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\LoginCardSlideResources.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\NewsCarouselControl.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+        <Page Update="Windows\Main\NewsListControl.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
     </ItemGroup>
 
     <Target Name="CopyVcdiffShimToOutput" AfterTargets="Build">
         <ItemGroup>
-            <VcdiffShimOutput Include="$(MSBuildProjectDirectory)\..\bin\VcdiffShim\**\*" />
+            <VcdiffShimOutput Include="$(MSBuildProjectDirectory)\..\bin\VcdiffShim\**\*"/>
         </ItemGroup>
 
-        <RemoveDir Directories="$(OutDir)VcdiffShim" />
-        <Copy SourceFiles="@(VcdiffShimOutput)" DestinationFiles="@(VcdiffShimOutput-&gt;'$(OutDir)VcdiffShim\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+        <RemoveDir Directories="$(OutDir)VcdiffShim"/>
+        <Copy SourceFiles="@(VcdiffShimOutput)" DestinationFiles="@(VcdiffShimOutput-&gt;'$(OutDir)VcdiffShim\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true"/>
     </Target>
 
     <Target Name="CopyApkalluCallerStageToOutput" AfterTargets="Build" Condition="Exists('$(ApkalluCallerStage)')">
         <Copy SourceFiles="$(ApkalluCallerStage)"
               DestinationFiles="$(OutDir)Resources\version.dll"
-              SkipUnchangedFiles="true" />
+              SkipUnchangedFiles="true"/>
     </Target>
 
     <PropertyGroup>
@@ -215,36 +212,36 @@
             BeforeTargets="BeforeBuild"
             Condition="'$(SkipApkalluCaller)' != 'true'">
         <Error Condition="!Exists('$(ApkalluCallerDir)\Cargo.toml')"
-               Text="ApkalluCaller submodule not initialized. Run 'git submodule update --init --recursive' from the repo root, or pass /p:SkipApkalluCaller=true to skip (WeGame token capture will be unavailable)." />
+               Text="ApkalluCaller submodule not initialized. Run 'git submodule update --init --recursive' from the repo root, or pass /p:SkipApkalluCaller=true to skip (WeGame token capture will be unavailable)."/>
 
         <Exec Command="cargo --version" ConsoleToMsBuild="true" IgnoreExitCode="true">
-            <Output TaskParameter="ExitCode" PropertyName="_CargoExitCode" />
+            <Output TaskParameter="ExitCode" PropertyName="_CargoExitCode"/>
         </Exec>
         <Error Condition="'$(_CargoExitCode)' != '0'"
-               Text="'cargo' not found on PATH. Install the Rust toolchain from https://rustup.rs and reopen Visual Studio, or pass /p:SkipApkalluCaller=true." />
+               Text="'cargo' not found on PATH. Install the Rust toolchain from https://rustup.rs and reopen Visual Studio, or pass /p:SkipApkalluCaller=true."/>
 
         <Exec Command="rustup target add $(ApkalluCallerTarget)"
               WorkingDirectory="$(ApkalluCallerDir)"
-              ConsoleToMsBuild="true" />
+              ConsoleToMsBuild="true"/>
 
         <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $path = '$(ApkalluCallerSource)'; $utf8 = [System.Text.UTF8Encoding]::new($false); $content = [System.IO.File]::ReadAllText($path, $utf8); $patched = $content.Replace('_mm_pause();', 'unsafe { _mm_pause(); }'); if ($patched -ne $content) { [System.IO.File]::WriteAllText($path, $patched, $utf8) }&quot;"
               WorkingDirectory="$(ApkalluCallerDir)"
-              ConsoleToMsBuild="true" />
+              ConsoleToMsBuild="true"/>
 
         <Exec Command="cargo build --release --target $(ApkalluCallerTarget)"
               WorkingDirectory="$(ApkalluCallerDir)"
-              ConsoleToMsBuild="true" />
+              ConsoleToMsBuild="true"/>
 
         <Error Condition="!Exists('$(ApkalluCallerOutput)')"
-               Text="ApkalluCaller build succeeded but '$(ApkalluCallerOutput)' is missing." />
+               Text="ApkalluCaller build succeeded but '$(ApkalluCallerOutput)' is missing."/>
 
         <Copy SourceFiles="$(ApkalluCallerOutput)"
               DestinationFiles="$(ApkalluCallerStage)"
-              SkipUnchangedFiles="true" />
+              SkipUnchangedFiles="true"/>
 
         <Exec Command="git -C &quot;$(ApkalluCallerDir)&quot; checkout -- src/lib.rs"
               WorkingDirectory="$(ApkalluCallerDir)"
-              ConsoleToMsBuild="true" />
+              ConsoleToMsBuild="true"/>
     </Target>
 
     <!-- Git -->
@@ -254,10 +251,10 @@
             <VerFile>$(IntermediateOutputPath)gitver</VerFile>
         </PropertyGroup>
         <!-- write the hash to the temp file.-->
-        <Exec Command="git -C &quot;$(ProjectDir.Replace('\','\\'))&quot; describe --tags --long --always --dirty &gt; $(VerFile)" />
+        <Exec Command="git -C &quot;$(ProjectDir.Replace('\','\\'))&quot; describe --tags --long --always --dirty &gt; $(VerFile)"/>
         <!-- read the version into the GitVersion itemGroup-->
         <ReadLinesFromFile File="$(VerFile)">
-            <Output TaskParameter="Lines" ItemName="GitVersion" />
+            <Output TaskParameter="Lines" ItemName="GitVersion"/>
         </ReadLinesFromFile>
         <!-- Set the BuildHash property to contain the GitVersion, if it wasn't already set.-->
         <PropertyGroup>
@@ -271,7 +268,7 @@
         </PropertyGroup>
         <!-- includes the CustomAssemblyInfo for compilation into your project -->
         <ItemGroup>
-            <Compile Include="$(CustomAssemblyInfoFile)" />
+            <Compile Include="$(CustomAssemblyInfoFile)"/>
         </ItemGroup>
         <!-- defines the AssemblyMetadata attribute that will be written -->
         <ItemGroup>
@@ -286,7 +283,7 @@
             </AssemblyAttributes>
         </ItemGroup>
         <!-- writes the attribute to the customAssemblyInfo file -->
-        <WriteCodeFragment Language="C#" OutputFile="$(CustomAssemblyInfoFile)" AssemblyAttributes="@(AssemblyAttributes)" />
+        <WriteCodeFragment Language="C#" OutputFile="$(CustomAssemblyInfoFile)" AssemblyAttributes="@(AssemblyAttributes)"/>
     </Target>
 
 </Project>

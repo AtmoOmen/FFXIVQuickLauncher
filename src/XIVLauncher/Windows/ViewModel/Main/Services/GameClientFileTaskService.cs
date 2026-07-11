@@ -134,8 +134,10 @@ public sealed class GameClientFileTaskService
         }
 
         if (!checkResult.NeedsUpdate)
+        {
             return await WaitForCloseAsync(viewModel, CreateSuccessSnapshot(TITLE, "更新检查已完成", "当前没有待安装的更新内容"), GameClientFileTaskResultStatus.Success).ConfigureAwait
                        (false);
+        }
 
         if (checkResult.UpdatePlan == null)
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "获取游戏更新计划失败"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
@@ -280,8 +282,10 @@ public sealed class GameClientFileTaskService
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, patchPathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
         if (GameHelpers.CheckIsGameOpen())
+        {
             return await WaitForCloseAsync
                        (viewModel, CreateFailureSnapshot(TITLE, "官方启动器或游戏正在运行", "请关闭相关进程后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
+        }
 
         return await RunRepairerAsync(viewModel).ConfigureAwait(false);
     }
@@ -405,9 +409,11 @@ public sealed class GameClientFileTaskService
         using var mutex = new Mutex(false, "XivLauncherIsPatching");
 
         if (!mutex.WaitOne(0, false))
+        {
             return await WaitForCloseAsync
                        (viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait
                        (false);
+        }
 
         if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以修复游戏"))
             return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消修复"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
@@ -490,9 +496,11 @@ public sealed class GameClientFileTaskService
         using var mutex = new Mutex(false, "XivLauncherIsPatching");
 
         if (!mutex.WaitOne(0, false))
+        {
             return await WaitForCloseAsync
                        (viewModel, CreateFailureSnapshot(TITLE, "另一实例正在执行游戏更新", "请关闭其他 XIVLauncher 实例后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait
                        (false);
+        }
 
         if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以安装游戏"))
             return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消安装"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
@@ -1058,7 +1066,7 @@ public sealed class GameClientFileTaskService
             return string.Empty;
 
         var remainingSeconds = (int)Math.Ceiling((double)remaining / speed);
-        remainingSeconds = Math.Clamp(remainingSeconds, 0, 60 * 60 * 100 - 1);
+        remainingSeconds = Math.Clamp(remainingSeconds, 0, (60 * 60 * 100) - 1);
         if (remainingSeconds < 60 * 60)
             return $"{remainingSeconds / 60:00}:{remainingSeconds % 60:00}";
 

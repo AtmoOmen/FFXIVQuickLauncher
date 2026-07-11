@@ -1,27 +1,20 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Media;
+using CommunityToolkit.Mvvm.ComponentModel;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Windows.ViewModel.Main;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal sealed class AccountProfileWindowViewModel : INotifyPropertyChanged
+internal sealed partial class AccountProfileWindowViewModel : ObservableObject
 {
     private XIVAccount selectedAccount = null!;
 
-    public string AccountDisplayName
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string AccountDisplayName { get; private set; } = string.Empty;
 
-    public string UserDefinedName
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string UserDefinedName { get; set; } = string.Empty;
 
     public string OriginalUserName { get; private set; } = string.Empty;
 
@@ -29,23 +22,12 @@ internal sealed class AccountProfileWindowViewModel : INotifyPropertyChanged
 
     public string AccountType { get; private set; } = string.Empty;
 
-    public string SelectedFilePath
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedFile))]
+    public partial string SelectedFilePath { get; set; } = string.Empty;
 
-            OnPropertyChanged(nameof(HasSelectedFile));
-        }
-    } = string.Empty;
-
-    public ImageSource PreviewImage
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = AccountSwitcherEntry.GetDefaultProfileImage();
+    [ObservableProperty]
+    public partial ImageSource PreviewImage { get; set; } = AccountSwitcherEntry.GetDefaultProfileImage();
 
     public bool HasSelectedFile =>
         !string.IsNullOrWhiteSpace(SelectedFilePath);
@@ -88,19 +70,4 @@ internal sealed class AccountProfileWindowViewModel : INotifyPropertyChanged
         SelectedFilePath = string.Empty;
         PreviewImage     = AccountSwitcherEntry.GetDefaultProfileImage();
     }
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

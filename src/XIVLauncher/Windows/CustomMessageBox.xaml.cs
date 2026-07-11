@@ -9,13 +9,13 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows;
 
@@ -44,7 +44,7 @@ public partial class CustomMessageBox
         viewModel.ApplyBuilder(builder);
         DataContext = viewModel;
 
-        ViewModel.CopyMessageTextCommand = new SyncCommand(p => Clipboard.SetText(_builder.Text));
+        ViewModel.CopyMessageTextCommand = new RelayCommand(() => Clipboard.SetText(_builder.Text));
 
         if (builder.ParentWindow?.IsVisible ?? false)
         {
@@ -276,7 +276,7 @@ public partial class CustomMessageBox
                     continue;
 
                 case '"':
-                    quoted.Append('\\', numberBackslashes * 2 + 1);
+                    quoted.Append('\\', (numberBackslashes * 2) + 1);
                     quoted.Append(chr);
                     break;
 
@@ -684,9 +684,11 @@ public partial class CustomMessageBox
             MessageBoxResult result;
 
             if (ParentWindow != null)
+            {
                 result = Dispatcher.CurrentDispatcher == ParentWindow.Dispatcher
                              ? ShowAssumingDispatcherThread()
                              : ParentWindow.Dispatcher.Invoke(ShowAssumingDispatcherThread);
+            }
             else
             {
                 if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
@@ -698,12 +700,16 @@ public partial class CustomMessageBox
             if (ExitOnCloseMode == ExitOnCloseModes.ExitOnClose)
             {
                 Log.CloseAndFlush();
+
                 if (result == MessageBoxResult.Yes)
+                {
                     Process.Start
                     (
                         Process.GetCurrentProcess().MainModule!.FileName,
                         string.Join(" ", Environment.GetCommandLineArgs().Skip(1).Select(x => EncodeParameterArgument(x)))
                     );
+                }
+
                 Environment.Exit(-1);
             }
 

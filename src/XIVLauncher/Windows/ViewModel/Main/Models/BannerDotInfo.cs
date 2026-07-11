@@ -1,23 +1,11 @@
-using System.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Models;
 
-public class BannerDotInfo : INotifyPropertyChanged
+public partial class BannerDotInfo : ObservableObject
 {
-    public bool Active
-    {
-        get;
-        set
-        {
-            if (field == value)
-                return;
-
-            field = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Active)));
-        }
-    }
+    [ObservableProperty]
+    public partial bool Active { get; set; }
 
     public int Index { get; set; }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

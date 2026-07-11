@@ -6,8 +6,8 @@ using XIVLauncher.Account;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.CompanionApp;
-using XIVLauncher.Login;
 using XIVLauncher.Dalamud;
+using XIVLauncher.Login;
 using XIVLauncher.Settings.Converters;
 using XIVLauncher.Xaml;
 

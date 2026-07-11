@@ -1,24 +1,13 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using XIVLauncher.DCTravel;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
 
-public sealed class DCTravelViewModel : INotifyPropertyChanged
+public sealed partial class DCTravelViewModel : ObservableObject
 {
-    public AsyncCommand TravelOrderCommand        { get; }
-    public AsyncCommand TravelBackCommand         { get; }
-    public AsyncCommand RefreshOrdersCommand      { get; }
-    public AsyncCommand ConfirmTravelBackCommand  { get; }
-    public SyncCommand  BackToDashboardCommand    { get; }
-    public SyncCommand  OpenHistoryCommand        { get; }
-    public SyncCommand  BackToTravelCommand       { get; }
-    public SyncCommand  ReturnFromProgressCommand { get; }
-    public SyncCommand  CancelReturnCommand       { get; }
-    
     private readonly Action               requestBackToDashboardAction;
     private readonly Action               requestOpenHistoryAction;
     private readonly Action               requestBackToTravelAction;
@@ -28,12 +17,9 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
     private readonly Action               activateAction;
     private readonly Action               onTravelCompleteAction;
     private readonly Func<DCTravelClient> getDcTravelClientFunc;
-    
+
     private CancellationTokenSource? pollCts;
     private CancellationTokenSource? charactersLoadCts;
-
-    private bool isLoading;
-    private bool isUnderMaintenance;
 
     public DCTravelViewModel
     (
@@ -58,31 +44,6 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         this.onTravelCompleteAction       = onTravelCompleteAction;
         this.getDcTravelClientFunc        = getDcTravelClientFunc;
 
-        TravelOrderCommand = new
-        (
-            async _ => await StartTravelAsync(),
-            () => SelectedTargetGroup != null &&
-                  SelectedCharacter   != null &&
-                  !isLoading                  &&
-                  !isUnderMaintenance
-        );
-        TravelBackCommand = new
-        (
-            async _ => await OpenReturnPageAsync(),
-            () => SelectedOrder != null && !isLoading && !isUnderMaintenance
-        );
-        RefreshOrdersCommand = new(async _ => await RefreshOrdersAsync());
-        ConfirmTravelBackCommand = new
-        (
-            async _ => await ConfirmTravelBackAsync(),
-            () => ReturnSelectedCurrentGroup != null && !isLoading && !isUnderMaintenance
-        );
-        BackToDashboardCommand    = new(_ => this.requestBackToDashboardAction());
-        OpenHistoryCommand        = new(_ => this.requestOpenHistoryAction());
-        BackToTravelCommand       = new(_ => this.requestBackToTravelAction());
-        ReturnFromProgressCommand = new(_ => CancelPollAndReturn());
-        CancelReturnCommand       = new(_ => this.requestOpenHistoryAction());
-
         SourceAreas     = [];
         TargetAreas     = [];
         TargetGroups    = [];
@@ -98,214 +59,192 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     public ObservableCollection<DCTravelArea> SourceAreas { get; }
 
-    public DCTravelArea? SelectedSourceArea
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCharacterVisible))]
+    [NotifyPropertyChangedFor(nameof(IsCharacterEnabled))]
+    [NotifyPropertyChangedFor(nameof(CharacterHint))]
+    [NotifyPropertyChangedFor(nameof(IsTargetAreaVisible))]
+    [NotifyPropertyChangedFor(nameof(IsTargetGroupVisible))]
+    [NotifyPropertyChangedFor(nameof(CanTravelOrder))]
+    [NotifyCanExecuteChangedFor(nameof(TravelOrderCommand))]
+    public partial DCTravelArea? SelectedSourceArea { get; set; }
+
+    partial void OnSelectedSourceAreaChanged(DCTravelArea? value)
     {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+        charactersLoadCts?.Cancel();
+        charactersLoadCts = new CancellationTokenSource();
 
-            charactersLoadCts?.Cancel();
-            charactersLoadCts = new CancellationTokenSource();
-
-            TargetAreas.Clear();
-            TargetGroups.Clear();
-            Characters.Clear();
-            SelectedCharacter = null;
-            OnPropertyChanged(nameof(IsCharacterVisible));
-            OnPropertyChanged(nameof(IsCharacterEnabled));
-            OnPropertyChanged(nameof(CharacterHint));
-            OnPropertyChanged(nameof(IsTargetAreaVisible));
-            OnPropertyChanged(nameof(IsTargetGroupVisible));
-            OnPropertyChanged(nameof(CanTravelOrder));
-            _ = LoadCharactersAsync(charactersLoadCts.Token);
-        }
+        TargetAreas.Clear();
+        TargetGroups.Clear();
+        Characters.Clear();
+        SelectedCharacter = null;
+        _                 = LoadCharactersAsync(charactersLoadCts.Token);
     }
 
     public ObservableCollection<DCTravelCharacter> Characters { get; }
 
-    public DCTravelCharacter? SelectedCharacter
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTargetAreaVisible))]
+    [NotifyPropertyChangedFor(nameof(IsTargetGroupVisible))]
+    [NotifyPropertyChangedFor(nameof(CanTravelOrder))]
+    [NotifyCanExecuteChangedFor(nameof(TravelOrderCommand))]
+    public partial DCTravelCharacter? SelectedCharacter { get; set; }
+
+    partial void OnSelectedCharacterChanged(DCTravelCharacter? value)
     {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+        if (value != null && SelectedSourceArea != null)
+            _ = LoadTargetAreasAsync();
 
-            OnPropertyChanged(nameof(IsTargetAreaVisible));
-            OnPropertyChanged(nameof(IsTargetGroupVisible));
-            OnPropertyChanged(nameof(CanTravelOrder));
-
-            if (value != null && SelectedSourceArea != null)
-                _ = LoadTargetAreasAsync();
-
-            TravelOrderCommand.RaiseCanExecuteChanged();
-        }
+        TravelOrderCommand.NotifyCanExecuteChanged();
     }
 
     public ObservableCollection<DCTravelArea> TargetAreas { get; }
 
-    public DCTravelArea? SelectedTargetArea
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsTargetGroupVisible))]
+    [NotifyPropertyChangedFor(nameof(CanTravelOrder))]
+    public partial DCTravelArea? SelectedTargetArea { get; set; }
 
-            TargetGroups.Clear();
-            OnPropertyChanged(nameof(IsTargetGroupVisible));
-            OnPropertyChanged(nameof(CanTravelOrder));
-            if (value != null)
-                _ = LoadTargetGroupsAsync();
-        }
+    partial void OnSelectedTargetAreaChanged(DCTravelArea? value)
+    {
+        TargetGroups.Clear();
+        if (value != null)
+            _ = LoadTargetGroupsAsync();
     }
 
     public ObservableCollection<DCTravelGroup> TargetGroups { get; }
 
-    public DCTravelGroup? SelectedTargetGroup
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            OnPropertyChanged(nameof(CanTravelOrder));
-            TravelOrderCommand.RaiseCanExecuteChanged();
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanTravelOrder))]
+    [NotifyCanExecuteChangedFor(nameof(TravelOrderCommand))]
+    public partial DCTravelGroup? SelectedTargetGroup { get; set; }
 
     public ObservableCollection<DCTravelMigrationOrder> MigrationOrders { get; }
 
     public bool HasMigrationOrders   => MigrationOrders.Count > 0;
     public bool HasNoMigrationOrders => MigrationOrders.Count == 0;
 
-    public DCTravelMigrationOrder? SelectedOrder
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(TravelBackCommand))]
+    public partial DCTravelMigrationOrder? SelectedOrder { get; set; }
 
-            TravelBackCommand.RaiseCanExecuteChanged();
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotLoading))]
+    [NotifyPropertyChangedFor(nameof(IsCharacterEnabled))]
+    [NotifyPropertyChangedFor(nameof(CharacterHint))]
+    [NotifyPropertyChangedFor(nameof(CanTravelOrder))]
+    [NotifyCanExecuteChangedFor(nameof(TravelOrderCommand))]
+    [NotifyCanExecuteChangedFor(nameof(TravelBackCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ConfirmTravelBackCommand))]
+    public partial bool IsLoading { get; set; }
 
-    public bool IsLoading
-    {
-        get => isLoading;
-        set
-        {
-            if (!SetProperty(ref isLoading, value))
-                return;
+    public bool IsNotLoading => !IsLoading;
 
-            OnPropertyChanged(nameof(IsNotLoading));
-            OnPropertyChanged(nameof(IsCharacterEnabled));
-            OnPropertyChanged(nameof(CharacterHint));
-            OnPropertyChanged(nameof(CanTravelOrder));
-            TravelOrderCommand.RaiseCanExecuteChanged();
-            TravelBackCommand.RaiseCanExecuteChanged();
-            ConfirmTravelBackCommand.RaiseCanExecuteChanged();
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotUnderMaintenance))]
+    [NotifyPropertyChangedFor(nameof(CanTravelOrder))]
+    [NotifyCanExecuteChangedFor(nameof(TravelOrderCommand))]
+    [NotifyCanExecuteChangedFor(nameof(TravelBackCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ConfirmTravelBackCommand))]
+    public partial bool IsUnderMaintenance { get; set; }
 
-    public bool IsNotLoading => !isLoading;
+    public bool IsNotUnderMaintenance => !IsUnderMaintenance;
 
-    public bool IsUnderMaintenance
-    {
-        get => isUnderMaintenance;
-        set
-        {
-            if (!SetProperty(ref isUnderMaintenance, value))
-                return;
-
-            OnPropertyChanged(nameof(IsNotUnderMaintenance));
-            OnPropertyChanged(nameof(CanTravelOrder));
-            TravelOrderCommand.RaiseCanExecuteChanged();
-            TravelBackCommand.RaiseCanExecuteChanged();
-            ConfirmTravelBackCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    public bool IsNotUnderMaintenance => !isUnderMaintenance;
-
-    public string MaintenanceMessage
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string MaintenanceMessage { get; set; } = string.Empty;
 
     public bool IsCharacterVisible   => SelectedSourceArea != null;
-    public bool IsCharacterEnabled   => SelectedSourceArea != null && !isLoading;
+    public bool IsCharacterEnabled   => SelectedSourceArea != null && !IsLoading;
     public bool IsTargetAreaVisible  => SelectedCharacter  != null;
     public bool IsTargetGroupVisible => SelectedTargetArea != null;
 
-    public string CharacterHint => isLoading && SelectedSourceArea != null ? "(获取角色信息中)" : "选择角色";
+    public string CharacterHint => IsLoading && SelectedSourceArea != null ? "(获取角色信息中)" : "选择角色";
 
     public bool CanTravelOrder =>
-        SelectedSourceArea != null && SelectedCharacter != null && SelectedTargetArea != null && SelectedTargetGroup != null && !isLoading && !isUnderMaintenance;
+        SelectedSourceArea != null && SelectedCharacter != null && SelectedTargetArea != null && SelectedTargetGroup != null && !IsLoading && !IsUnderMaintenance;
 
-    public bool AutoStartGameOnComplete
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = true;
+    [ObservableProperty]
+    public partial bool AutoStartGameOnComplete { get; set; } = true;
 
     // 超域返回页属性
     public ObservableCollection<DCTravelArea> ReturnSourceAreas { get; } = [];
 
-    public DCTravelArea? ReturnSelectedSourceArea
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    public partial DCTravelArea? ReturnSelectedSourceArea { get; set; }
 
-            ReturnCurrentGroups.Clear();
-            if (value != null)
-                _ = LoadReturnCurrentGroupsAsync();
-        }
+    partial void OnReturnSelectedSourceAreaChanged(DCTravelArea? value)
+    {
+        ReturnCurrentGroups.Clear();
+        if (value != null)
+            _ = LoadReturnCurrentGroupsAsync();
     }
 
     public ObservableCollection<DCTravelGroup> ReturnCurrentGroups { get; } = [];
 
-    public DCTravelGroup? ReturnSelectedCurrentGroup
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConfirmTravelBackCommand))]
+    public partial DCTravelGroup? ReturnSelectedCurrentGroup { get; set; }
 
-            ConfirmTravelBackCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    public string ReturnOrderInfo
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string ReturnOrderInfo { get; set; } = string.Empty;
 
     private DCTravelMigrationOrder? pendingReturnOrder;
     private string?                 pendingTargetGroupName;
 
     // 进度页属性
-    public string TravelProgressText
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = "正在提交传送请求…";
+    [ObservableProperty]
+    public partial string TravelProgressText { get; set; } = "正在提交传送请求…";
 
-    public bool IsTravelInProgress
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = true;
+    [ObservableProperty]
+    public partial bool IsTravelInProgress { get; set; } = true;
+
+    [RelayCommand(CanExecute = nameof(CanTravelOrderExecute))]
+    private async Task TravelOrder() =>
+        await StartTravelAsync();
+
+    private bool CanTravelOrderExecute() =>
+        SelectedTargetGroup != null &&
+        SelectedCharacter   != null &&
+        !IsLoading                  &&
+        !IsUnderMaintenance;
+
+    [RelayCommand(CanExecute = nameof(CanTravelBack))]
+    private async Task TravelBack() =>
+        await OpenReturnPageAsync();
+
+    private bool CanTravelBack() =>
+        SelectedOrder != null && !IsLoading && !IsUnderMaintenance;
+
+    [RelayCommand]
+    private async Task RefreshOrders() =>
+        await RefreshOrdersAsync();
+
+    [RelayCommand(CanExecute = nameof(CanConfirmTravelBack))]
+    private async Task ConfirmTravelBack() =>
+        await ConfirmTravelBackAsync();
+
+    private bool CanConfirmTravelBack() =>
+        ReturnSelectedCurrentGroup != null && !IsLoading && !IsUnderMaintenance;
+
+    [RelayCommand]
+    private void BackToDashboard() =>
+        requestBackToDashboardAction();
+
+    [RelayCommand]
+    private void OpenHistory() =>
+        requestOpenHistoryAction();
+
+    [RelayCommand]
+    private void BackToTravel() =>
+        requestBackToTravelAction();
+
+    [RelayCommand]
+    private void ReturnFromProgress() =>
+        CancelPollAndReturn();
+
+    [RelayCommand]
+    private void CancelReturn() =>
+        requestOpenHistoryAction();
 
     public async Task InitializeAsync(string? currentAreaName = null)
     {
@@ -436,7 +375,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     private async Task RefreshTravelDataAsync()
     {
-        if (isLoading) return;
+        if (IsLoading) return;
         IsLoading = true;
 
         try
@@ -496,7 +435,6 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         }
         catch (OperationCanceledException)
         {
-            return;
         }
         catch (Exception ex)
         {
@@ -511,7 +449,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     private async Task LoadTargetAreasAsync()
     {
-        if (SelectedSourceArea == null || SelectedCharacter == null || isLoading) return;
+        if (SelectedSourceArea == null || SelectedCharacter == null || IsLoading) return;
         IsLoading = true;
 
         try
@@ -549,7 +487,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     private async Task LoadTargetGroupsAsync()
     {
-        if (SelectedTargetArea == null || isLoading) return;
+        if (SelectedTargetArea == null || IsLoading) return;
         IsLoading = true;
 
         try
@@ -573,7 +511,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     private async Task OpenReturnPageAsync()
     {
-        if (SelectedOrder == null || isLoading) return;
+        if (SelectedOrder == null || IsLoading) return;
 
         await Task.Delay(1);
 
@@ -594,7 +532,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     private async Task ConfirmTravelBackAsync()
     {
-        if (pendingReturnOrder == null || ReturnSelectedCurrentGroup == null || isLoading) return;
+        if (pendingReturnOrder == null || ReturnSelectedCurrentGroup == null || IsLoading) return;
 
         var group = ReturnSelectedCurrentGroup;
 
@@ -632,7 +570,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
 
     private async Task LoadReturnCurrentGroupsAsync()
     {
-        if (ReturnSelectedSourceArea == null || isLoading) return;
+        if (ReturnSelectedSourceArea == null || IsLoading) return;
         IsLoading = true;
 
         try
@@ -664,7 +602,7 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         finally
         {
             IsLoading = false;
-            ConfirmTravelBackCommand.RaiseCanExecuteChanged();
+            ConfirmTravelBackCommand.NotifyCanExecuteChanged();
         }
     }
 
@@ -689,20 +627,5 @@ public sealed class DCTravelViewModel : INotifyPropertyChanged
         {
             Log.Warning(ex, "[DCTravelVM] 加载历史订单失败");
         }
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
     }
 }

@@ -1,18 +1,17 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows;
+using CommunityToolkit.Mvvm.ComponentModel;
 using XIVLauncher.Account;
 using XIVLauncher.Account.DeviceProfiles;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal sealed class AccountDeviceProfileWindowViewModel
+internal sealed partial class AccountDeviceProfileWindowViewModel
 (
     AccountManager accountManager
-) : INotifyPropertyChanged
+) : ObservableObject
 {
     private static readonly Regex DeviceIdPattern = new
     (
@@ -64,17 +63,11 @@ internal sealed class AccountDeviceProfileWindowViewModel
 
     public long GeneratedUtcTicks { get; private set; }
 
-    public string AccountDisplayName
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string AccountDisplayName { get; private set; } = string.Empty;
 
-    public string PresetRemark
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string PresetRemark { get; set; } = string.Empty;
 
     public string SelectedPresetId
     {
@@ -92,31 +85,15 @@ internal sealed class AccountDeviceProfileWindowViewModel
         }
     } = string.Empty;
 
-    public bool DynamicEnabled
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEditRotationDays))]
+    [NotifyPropertyChangedFor(nameof(CanEditDeviceDetails))]
+    [NotifyPropertyChangedFor(nameof(CanSelectPreset))]
+    public partial bool DynamicEnabled { get; set; }
 
-            OnPropertyChanged(nameof(CanEditRotationDays));
-            OnPropertyChanged(nameof(CanEditDeviceDetails));
-            OnPropertyChanged(nameof(CanSelectPreset));
-        }
-    }
-
-    public bool PeriodicRefreshEnabled
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            OnPropertyChanged(nameof(CanEditRotationDays));
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanEditRotationDays))]
+    public partial bool PeriodicRefreshEnabled { get; set; }
 
     public int RotationDays
     {
@@ -129,43 +106,25 @@ internal sealed class AccountDeviceProfileWindowViewModel
         }
     } = AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS;
 
-    public string DeviceId
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    public partial string DeviceId { get; set; } = string.Empty;
 
-            OnSnapshotFieldsChanged();
-        }
-    } = string.Empty;
+    partial void OnDeviceIdChanged(string value) =>
+        OnSnapshotFieldsChanged();
 
-    public string MacAddress
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MacHash))]
+    [NotifyPropertyChangedFor(nameof(CasCid))]
+    public partial string MacAddress { get; set; } = string.Empty;
 
-            OnPropertyChanged(nameof(MacHash));
-            OnPropertyChanged(nameof(CasCid));
-            OnSnapshotFieldsChanged();
-        }
-    } = string.Empty;
+    partial void OnMacAddressChanged(string value) =>
+        OnSnapshotFieldsChanged();
 
-    public string HostName
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    public partial string HostName { get; set; } = string.Empty;
 
-            OnSnapshotFieldsChanged();
-        }
-    } = string.Empty;
+    partial void OnHostNameChanged(string value) =>
+        OnSnapshotFieldsChanged();
 
     public void Load(XIVAccount targetAccount)
     {
@@ -685,19 +644,4 @@ internal sealed class AccountDeviceProfileWindowViewModel
         GeneratedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
         snapshotTouched   = true;
     }
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

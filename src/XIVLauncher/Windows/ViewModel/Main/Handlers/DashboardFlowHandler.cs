@@ -23,7 +23,8 @@ internal sealed class DashboardFlowHandler
             {
                 try
                 {
-                    if (await vm.GameLaunchFlow.LaunchGameWithRetryLoop(vm.CurrentGameLaunchContext, action).ConfigureAwait(false) && App.Settings.ExitLauncherWhenGameExit)
+                    if (await vm.GameLaunchFlow.LaunchGameWithRetryLoop(vm.CurrentGameLaunchContext, action).ConfigureAwait(false) &&
+                        App.Settings.ExitLauncherWhenGameExit)
                         Environment.Exit(0);
                 }
                 catch (Exception ex)
@@ -166,6 +167,6 @@ internal sealed class DashboardFlowHandler
 
     public void RefreshGameVersion() =>
         vm.DashboardPage.GameVersion = App.Settings.GamePath != null
-                                        ? Repository.Ffxiv.GetVer(App.Settings.GamePath)
-                                        : string.Empty;
+                                           ? Repository.Ffxiv.GetVer(App.Settings.GamePath)
+                                           : string.Empty;
 }

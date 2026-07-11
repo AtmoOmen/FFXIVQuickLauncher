@@ -2,11 +2,9 @@ using System.Text;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common;
-using XIVLauncher.GamePatchV3;
+using XIVLauncher.Dalamud;
 using XIVLauncher.GamePatchV3.Integrity;
 using XIVLauncher.GamePatchV3.Integrity.Models;
-using XIVLauncher.GamePatchV3.Models;
-using XIVLauncher.Dalamud;
 
 namespace XIVLauncher.Support;
 

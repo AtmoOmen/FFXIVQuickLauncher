@@ -129,8 +129,7 @@ public partial class App
         OnUnhandledException(sender, new UnhandledExceptionEventArgs(e.Exception, true));
     }
 
-    private void OnUnhandledException(object? sender, UnhandledExceptionEventArgs e)
-    {
+    private void OnUnhandledException(object? sender, UnhandledExceptionEventArgs e) =>
         Dispatcher.Invoke
         (() =>
             {
@@ -159,7 +158,6 @@ public partial class App
                 Environment.Exit(-1);
             }
         );
-    }
 
     #endregion
 
@@ -212,7 +210,7 @@ public partial class App
                     continue;
 
                 case '\"':
-                    quoted.Append('\\', numberBackslashes * 2 + 1);
+                    quoted.Append('\\', (numberBackslashes * 2) + 1);
                     break;
 
                 default:

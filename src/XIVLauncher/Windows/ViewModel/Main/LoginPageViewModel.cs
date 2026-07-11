@@ -1,30 +1,15 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Login;
 using XIVLauncher.Windows.GameClientFiles;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
 
-public sealed class LoginPageViewModel : INotifyPropertyChanged
+public sealed partial class LoginPageViewModel : ObservableObject
 {
-    public SyncCommand  StartLoginCommand        { get; }
-    public AsyncCommand LoginNoStartCommand      { get; }
-    public SyncCommand  LoginNoDalamudCommand    { get; }
-    public SyncCommand  LoginNoPluginsCommand    { get; }
-    public SyncCommand  LoginNoThirdCommand      { get; }
-    public AsyncCommand LoginRepairCommand       { get; }
-    public AsyncCommand RunIntegrityCheckCommand { get; }
-    public SyncCommand  LoginCancelCommand       { get; }
-    public SyncCommand  LoginForceQRCommand      { get; }
-    public SyncCommand  RefreshQrCodeCommand     { get; }
-    public SyncCommand  InjectModeSwitchCommand  { get; }
-    public SyncCommand  BackToMainPageCommand    { get; }
-    public SyncCommand  FakeStartCommand         { get; }
-    
     private readonly Func<bool>                                   isBusyFunc;
     private readonly Action<LoginPageViewModel, LoginAfterAction> requestLoginAction;
     private readonly Func<GameClientFileTaskKind, Task>           requestGameClientFileTaskAction;
@@ -60,123 +45,47 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
         loginTypeOption = LoginTypeOptions.FirstOrDefault(x => x.LoginType == App.Settings.SelectedLoginType) ??
                           LoginTypeOptions.First(x => x.LoginType          == LoginType.Slide);
 
-        StartLoginCommand = new
-        (
-            _ => this.requestLoginAction(this, LoginAfterAction.Start),
-            () => CanStartLogin
-        );
-        LoginNoStartCommand = new
-        (
-            _ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Update),
-            () => !this.isBusyFunc()
-        );
-        LoginNoDalamudCommand = new
-        (
-            _ => this.requestLoginAction(this, LoginAfterAction.StartWithoutDalamud),
-            () => !this.isBusyFunc()
-        );
-        LoginNoPluginsCommand = new
-        (
-            _ => this.requestLoginAction(this, LoginAfterAction.StartWithoutPlugins),
-            () => !this.isBusyFunc()
-        );
-        LoginNoThirdCommand = new
-        (
-            _ => this.requestLoginAction(this, LoginAfterAction.StartWithoutThird),
-            () => !this.isBusyFunc()
-        );
-        LoginRepairCommand = new
-        (
-            _ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.Repair),
-            () => !this.isBusyFunc()
-        );
-        RunIntegrityCheckCommand = new
-        (
-            _ => this.requestGameClientFileTaskAction(GameClientFileTaskKind.IntegrityCheck),
-            () => !this.isBusyFunc()
-        );
-        LoginForceQRCommand = new
-        (
-            _ => this.requestLoginAction(this, LoginAfterAction.ForceQR),
-            () => !this.isBusyFunc()
-        );
-        LoginCancelCommand = new(_ => this.requestCancelLoginAction());
-        RefreshQrCodeCommand = new
-        (
-            _ => this.requestRefreshQrCodeAction(this),
-            () => !this.isBusyFunc() && IsQrCodeExpired
-        );
-        InjectModeSwitchCommand = new
-        (
-            _ => this.requestShowInjectPageAction(),
-            () => !this.isBusyFunc()
-        );
-        BackToMainPageCommand = new(_ => this.requestBackToMainPageAction());
-        FakeStartCommand = new
-        (
-            _ => this.requestFakeStartAction(),
-            () => !this.isBusyFunc()
-        );
-
         ApplyLoginType(loginTypeOption.LoginType);
     }
 
     public LoginTypeOption[] LoginTypeOptions { get; }
 
-    public bool IsFastLogin
+    [ObservableProperty]
+    public partial bool IsFastLogin { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsFastLoginEnabled { get; private set; } = true;
+
+    [ObservableProperty]
+    public partial bool IsReadWegameInfo { get; set; }
+
+    partial void OnIsReadWegameInfoChanged(bool value)
     {
-        get;
-        set => SetProperty(ref field, value);
+        if (isApplyingLoginType)
+            return;
+
+        RefreshStartLoginState();
     }
 
-    public bool IsFastLoginEnabled
+    [ObservableProperty]
+    public partial string Username { get; set; } = string.Empty;
+
+    partial void OnUsernameChanged(string value)
     {
-        get;
-        private set => SetProperty(ref field, value);
-    } = true;
+        RefreshAccountStatus();
 
-    public bool IsReadWegameInfo
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            if (isApplyingLoginType)
-                return;
-
+        if (!isApplyingLoginType)
             RefreshStartLoginState();
-        }
     }
 
-    public string Username
+    [ObservableProperty]
+    public partial string Password { get; set; } = string.Empty;
+
+    partial void OnPasswordChanged(string value)
     {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            RefreshAccountStatus();
-
-            if (!isApplyingLoginType)
-                RefreshStartLoginState();
-        }
-    } = string.Empty;
-
-    public string Password
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            if (!isApplyingLoginType)
-                RefreshStartLoginState();
-        }
-    } = string.Empty;
+        if (!isApplyingLoginType)
+            RefreshStartLoginState();
+    }
 
     public LoginTypeOption LoginTypeOption
     {
@@ -201,127 +110,62 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
         set => App.Settings.SelectedServer = value;
     }
 
-    public LoginArea? Area
-    {
-        get;
-        set
-        {
-            var oldArea = field;
+    [ObservableProperty]
+    public partial LoginArea? Area { get; set; }
 
-            if (!SetProperty(ref field, value))
-                return;
+    partial void OnAreaChanged(LoginArea? oldValue, LoginArea? newValue) =>
+        Log.Information("大区变更 {OldArea} -> {NewArea}", oldValue, newValue);
 
-            Log.Information("大区变更 {OldArea} -> {NewArea}", oldArea, value);
-        }
-    }
+    [ObservableProperty]
+    public partial LoginArea[] LoginAreas { get; set; } = [];
 
-    public LoginArea[] LoginAreas
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = [];
+    [ObservableProperty]
+    public partial string LoginMessage { get; set; } = string.Empty;
 
-    public string LoginMessage
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial BitmapImage? QRCodeBitmapImage { get; set; }
 
-    public BitmapImage? QRCodeBitmapImage
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
-
-    public bool IsQrCodeExpired
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            RefreshQrCodeCommand.RaiseCanExecuteChanged();
-        }
-    }
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RefreshQrCodeCommand))]
+    public partial bool IsQrCodeExpired { get; set; }
 
     public bool CanStartLogin => !isBusyFunc() && IsLoginInputComplete;
 
-    public bool IsUsernameVisible
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = true;
+    [ObservableProperty]
+    public partial bool IsUsernameVisible { get; private set; } = true;
 
-    public bool IsUsernameEnabled
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = true;
+    [ObservableProperty]
+    public partial bool IsUsernameEnabled { get; private set; } = true;
 
-    public bool IsPasswordVisible
-    {
-        get;
-        private set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-        }
-    }
+    [ObservableProperty]
+    public partial bool IsPasswordVisible { get; private set; }
 
-    public bool IsFastLoginVisible
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = true;
+    [ObservableProperty]
+    public partial bool IsFastLoginVisible { get; private set; } = true;
 
-    public bool IsReadWegameInfoVisible
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool IsReadWegameInfoVisible { get; private set; }
 
-    public string FastLoginText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = "记住账号";
+    [ObservableProperty]
+    public partial string FastLoginText { get; private set; } = "记住账号";
 
-    public bool IsNewAccountBadgeVisible
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool IsNewAccountBadgeVisible { get; private set; }
 
-    public string UsernameHint
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = "盛趣账号";
+    [ObservableProperty]
+    public partial string UsernameHint { get; private set; } = "盛趣账号";
 
-    public string UsernameToolTip
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = "输入盛趣账号";
+    [ObservableProperty]
+    public partial string UsernameToolTip { get; private set; } = "输入盛趣账号";
 
-    public string PasswordHint
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = "密码";
+    [ObservableProperty]
+    public partial string PasswordHint { get; private set; } = "密码";
 
-    public string ReadWeGameInfoText
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = "重新获取账号信息";
+    [ObservableProperty]
+    public partial string ReadWeGameInfoText { get; private set; } = "重新获取账号信息";
 
-    public string ReadWeGameInfoToolTip
-    {
-        get;
-        private set => SetProperty(ref field, value);
-    } = "勾选后启动 WeGame 并读取当前启动账号的 SndaID 和 SID";
+    [ObservableProperty]
+    public partial string ReadWeGameInfoToolTip { get; private set; } = "勾选后启动 WeGame 并读取当前启动账号的 SndaID 和 SID";
 
     public void SelectLoginType(LoginType loginType)
     {
@@ -333,19 +177,19 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
 
     public void RefreshCommandStates()
     {
-        StartLoginCommand.RaiseCanExecuteChanged();
-        LoginNoStartCommand.RaiseCanExecuteChanged();
-        LoginNoDalamudCommand.RaiseCanExecuteChanged();
-        LoginNoPluginsCommand.RaiseCanExecuteChanged();
-        LoginNoThirdCommand.RaiseCanExecuteChanged();
-        LoginRepairCommand.RaiseCanExecuteChanged();
-        RunIntegrityCheckCommand.RaiseCanExecuteChanged();
-        LoginCancelCommand.RaiseCanExecuteChanged();
-        LoginForceQRCommand.RaiseCanExecuteChanged();
-        RefreshQrCodeCommand.RaiseCanExecuteChanged();
-        InjectModeSwitchCommand.RaiseCanExecuteChanged();
-        BackToMainPageCommand.RaiseCanExecuteChanged();
-        FakeStartCommand.RaiseCanExecuteChanged();
+        StartLoginCommand.NotifyCanExecuteChanged();
+        LoginNoStartCommand.NotifyCanExecuteChanged();
+        LoginNoDalamudCommand.NotifyCanExecuteChanged();
+        LoginNoPluginsCommand.NotifyCanExecuteChanged();
+        LoginNoThirdCommand.NotifyCanExecuteChanged();
+        LoginRepairCommand.NotifyCanExecuteChanged();
+        RunIntegrityCheckCommand.NotifyCanExecuteChanged();
+        LoginCancelCommand.NotifyCanExecuteChanged();
+        LoginForceQRCommand.NotifyCanExecuteChanged();
+        RefreshQrCodeCommand.NotifyCanExecuteChanged();
+        InjectModeSwitchCommand.NotifyCanExecuteChanged();
+        BackToMainPageCommand.NotifyCanExecuteChanged();
+        FakeStartCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanStartLogin));
     }
 
@@ -359,6 +203,66 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
         LoginType.WeGame => !string.IsNullOrWhiteSpace(Username) || !string.IsNullOrWhiteSpace(Password) || IsReadWegameInfo || IsFastLogin,
         _                => !string.IsNullOrWhiteSpace(Username) && (!IsPasswordVisible || !string.IsNullOrWhiteSpace(Password))
     };
+
+    [RelayCommand(CanExecute = nameof(CanStartLoginExecute))]
+    private void StartLogin() =>
+        requestLoginAction(this, LoginAfterAction.Start);
+
+    private bool CanStartLoginExecute() => CanStartLogin;
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
+    private Task LoginNoStart() =>
+        requestGameClientFileTaskAction(GameClientFileTaskKind.Update);
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
+    private void LoginNoDalamud() =>
+        requestLoginAction(this, LoginAfterAction.StartWithoutDalamud);
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
+    private void LoginNoPlugins() =>
+        requestLoginAction(this, LoginAfterAction.StartWithoutPlugins);
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
+    private void LoginNoThird() =>
+        requestLoginAction(this, LoginAfterAction.StartWithoutThird);
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
+    private Task LoginRepair() =>
+        requestGameClientFileTaskAction(GameClientFileTaskKind.Repair);
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
+    private Task RunIntegrityCheck() =>
+        requestGameClientFileTaskAction(GameClientFileTaskKind.IntegrityCheck);
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
+    private void LoginForceQR() =>
+        requestLoginAction(this, LoginAfterAction.ForceQR);
+
+    [RelayCommand]
+    private void LoginCancel() =>
+        requestCancelLoginAction();
+
+    [RelayCommand(CanExecute = nameof(CanRefreshQrCode))]
+    private void RefreshQrCode() =>
+        requestRefreshQrCodeAction(this);
+
+    private bool CanRefreshQrCode() =>
+        !isBusyFunc() && IsQrCodeExpired;
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
+    private void InjectModeSwitch() =>
+        requestShowInjectPageAction();
+
+    [RelayCommand]
+    private void BackToMainPage() =>
+        requestBackToMainPageAction();
+
+    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
+    private void FakeStart() =>
+        requestFakeStartAction();
+
+    private bool CanExecuteWhenNotBusy() =>
+        !isBusyFunc();
 
     private void ApplyLoginType(LoginType loginType)
     {
@@ -434,21 +338,6 @@ public sealed class LoginPageViewModel : INotifyPropertyChanged
     private void RefreshStartLoginState()
     {
         OnPropertyChanged(nameof(CanStartLogin));
-        StartLoginCommand.RaiseCanExecuteChanged();
+        StartLoginCommand.NotifyCanExecuteChanged();
     }
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

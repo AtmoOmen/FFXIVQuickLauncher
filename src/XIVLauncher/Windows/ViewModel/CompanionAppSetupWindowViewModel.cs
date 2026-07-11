@@ -1,56 +1,39 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using CommunityToolkit.Mvvm.ComponentModel;
 using XIVLauncher.CompanionApp;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-public sealed class CompanionAppSetupWindowViewModel : INotifyPropertyChanged
+public sealed partial class CompanionAppSetupWindowViewModel : ObservableObject
 {
     public bool CanStopWhenGameExits => !RunAsAdmin && LaunchTrigger == CompanionAppLaunchTrigger.GameLaunch;
 
-    public string FilePath
+    [ObservableProperty]
+    public partial string FilePath { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string Arguments { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanStopWhenGameExits))]
+    public partial bool RunAsAdmin { get; set; }
+
+    partial void OnRunAsAdminChanged(bool value)
     {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
-
-    public string Arguments
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
-
-    public bool RunAsAdmin
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            if (value)
-                StopWhenGameExits = false;
-
-            OnPropertyChanged(nameof(CanStopWhenGameExits));
-        }
+        if (value)
+            StopWhenGameExits = false;
     }
 
-    public CompanionAppLaunchTrigger LaunchTrigger
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LaunchOnGameStart))]
+    [NotifyPropertyChangedFor(nameof(LaunchOnGameExit))]
+    [NotifyPropertyChangedFor(nameof(CanStopWhenGameExits))]
+    public partial CompanionAppLaunchTrigger LaunchTrigger { get; set; } = CompanionAppLaunchTrigger.GameLaunch;
+
+    partial void OnLaunchTriggerChanged(CompanionAppLaunchTrigger value)
     {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            if (value != CompanionAppLaunchTrigger.GameLaunch)
-                StopWhenGameExits = false;
-
-            OnPropertyChanged(nameof(LaunchOnGameStart));
-            OnPropertyChanged(nameof(LaunchOnGameExit));
-            OnPropertyChanged(nameof(CanStopWhenGameExits));
-        }
-    } = CompanionAppLaunchTrigger.GameLaunch;
+        if (value != CompanionAppLaunchTrigger.GameLaunch)
+            StopWhenGameExits = false;
+    }
 
     public bool LaunchOnGameStart
     {
@@ -72,11 +55,8 @@ public sealed class CompanionAppSetupWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public bool StopWhenGameExits
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool StopWhenGameExits { get; set; }
 
     public void Load(CompanionAppConfiguration? companionApp)
     {
@@ -104,19 +84,4 @@ public sealed class CompanionAppSetupWindowViewModel : INotifyPropertyChanged
             StopWhenGameExits = LaunchTrigger == CompanionAppLaunchTrigger.GameLaunch && !RunAsAdmin && StopWhenGameExits
         };
     }
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

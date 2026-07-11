@@ -3,7 +3,6 @@ using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Media.Imaging;
-using XIVLauncher.Common;
 using XIVLauncher.Common.Util;
 using XIVLauncher.GamePatchV3.Repair;
 using XIVLauncher.Windows;

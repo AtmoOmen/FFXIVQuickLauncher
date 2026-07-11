@@ -1,67 +1,42 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using CommunityToolkit.Mvvm.ComponentModel;
 using MaterialDesignThemes.Wpf;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal class CustomMessageBoxViewModel : INotifyPropertyChanged
+internal partial class CustomMessageBoxViewModel : ObservableObject
 {
     public ICommand? CopyMessageTextCommand { get; set; }
 
-    public string MessageText
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string MessageText { get; set; } = string.Empty;
 
-    public string Description
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string Description { get; set; } = string.Empty;
 
-    public string InputText
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string InputText { get; set; } = string.Empty;
 
-    public string Button1Text
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string Button1Text { get; set; } = string.Empty;
 
-    public string Button2Text
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string Button2Text { get; set; } = string.Empty;
 
-    public string Button3Text
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string Button3Text { get; set; } = string.Empty;
 
     public Visibility Button2Visibility { get; set; } = Visibility.Collapsed;
 
     public Visibility Button3Visibility { get; set; } = Visibility.Collapsed;
 
-    public Visibility DescriptionVisibility
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = Visibility.Collapsed;
+    [ObservableProperty]
+    public partial Visibility DescriptionVisibility { get; set; } = Visibility.Collapsed;
 
-    public Visibility InputVisibility
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = Visibility.Collapsed;
+    [ObservableProperty]
+    public partial Visibility InputVisibility { get; set; } = Visibility.Collapsed;
 
     public Visibility OfficialLauncherVisibility { get; set; } = Visibility.Collapsed;
 
@@ -73,29 +48,17 @@ internal class CustomMessageBoxViewModel : INotifyPropertyChanged
 
     public Visibility PackTroubleshootingVisibility { get; set; } = Visibility.Collapsed;
 
-    public Visibility IconVisibility
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = Visibility.Collapsed;
+    [ObservableProperty]
+    public partial Visibility IconVisibility { get; set; } = Visibility.Collapsed;
 
-    public PackIconKind IconKind
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = PackIconKind.AlertOctagon;
+    [ObservableProperty]
+    public partial PackIconKind IconKind { get; set; } = PackIconKind.AlertOctagon;
 
-    public Brush? IconBrush
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial Brush? IconBrush { get; set; }
 
-    public bool IsPrimaryButtonEnabled
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = true;
+    [ObservableProperty]
+    public partial bool IsPrimaryButtonEnabled { get; set; } = true;
 
     public MessageBoxButton Buttons { get; private set; }
 
@@ -182,19 +145,4 @@ internal class CustomMessageBoxViewModel : INotifyPropertyChanged
                 break;
         }
     }
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

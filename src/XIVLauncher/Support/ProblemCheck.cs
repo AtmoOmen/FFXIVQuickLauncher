@@ -57,8 +57,8 @@ internal static class ProblemCheck
                                 .WithButtons(MessageBoxButton.YesNo)
                                 .WithImage(MessageBoxImage.Error)
                                 .WithParentWindow(parentWindow)
-                                .Show()
-                == MessageBoxResult.Yes)
+                                .Show() ==
+                MessageBoxResult.Yes)
             {
                 try
                 {
@@ -87,15 +87,16 @@ internal static class ProblemCheck
             var dxgiInfo  = FileVersionInfo.GetVersionInfo(dxgi.FullName);
             var d3d11Info = FileVersionInfo.GetVersionInfo(d3d11.FullName);
 
-            if (dxgiInfo.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) == true && d3d11Info.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) == true)
+            if (dxgiInfo.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase)  == true &&
+                d3d11Info.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) == true)
             {
                 if (CustomMessageBox.Builder
                                     .NewFrom("检测到 GShade 安装损坏\n\n游戏无法启动, 是否让 XIVLauncher 修复? 需要重新安装 GShade")
                                     .WithButtons(MessageBoxButton.YesNo)
                                     .WithImage(MessageBoxImage.Error)
                                     .WithParentWindow(parentWindow)
-                                    .Show()
-                    == MessageBoxResult.Yes)
+                                    .Show() ==
+                    MessageBoxResult.Yes)
                 {
                     try
                     {
@@ -124,15 +125,16 @@ internal static class ProblemCheck
             if (dinput8.Exists)
                 dinput8Info = FileVersionInfo.GetVersionInfo(dinput8.FullName);
 
-            if ((d3d11Info?.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) ?? false) || (dinput8Info?.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) ?? false))
+            if ((d3d11Info?.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase)   ?? false) ||
+                (dinput8Info?.ProductName?.Equals("GShade", StringComparison.OrdinalIgnoreCase) ?? false))
             {
                 if (CustomMessageBox.Builder
                                     .NewFrom("GShade 安装模式不适合与 XIVLauncher 一起使用, 是否让 XIVLauncher 修复?\n\n这不会更改预设或设置, 只是提高与 XIVLauncher 功能的兼容性")
                                     .WithButtons(MessageBoxButton.YesNo)
                                     .WithImage(MessageBoxImage.Warning)
                                     .WithParentWindow(parentWindow)
-                                    .Show()
-                    == MessageBoxResult.Yes)
+                                    .Show() ==
+                    MessageBoxResult.Yes)
                 {
                     try
                     {
@@ -183,10 +185,11 @@ internal static class ProblemCheck
                                         Verb             = "runas",
                                         FileName         = "reg.exe",
                                         WorkingDirectory = Environment.SystemDirectory,
-                                        Arguments        = $"add \"HKLM\\SOFTWARE\\GShade\\Installations\\{gshadeInstsToFix.Pop()}\" /v \"altdxmode\" /t \"REG_SZ\" /d \"0\" /f",
-                                        UseShellExecute  = true,
-                                        CreateNoWindow   = true,
-                                        WindowStyle      = ProcessWindowStyle.Hidden
+                                        Arguments =
+                                            $"add \"HKLM\\SOFTWARE\\GShade\\Installations\\{gshadeInstsToFix.Pop()}\" /v \"altdxmode\" /t \"REG_SZ\" /d \"0\" /f",
+                                        UseShellExecute = true,
+                                        CreateNoWindow  = true,
+                                        WindowStyle     = ProcessWindowStyle.Hidden
                                     };
 
                                     var gshadeProcess = StartElevated(gshadePsi);

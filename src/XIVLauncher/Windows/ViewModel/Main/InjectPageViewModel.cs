@@ -1,21 +1,16 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows.ViewModel.Main.Services;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
 
-public sealed class InjectPageViewModel : INotifyPropertyChanged
+public sealed partial class InjectPageViewModel : ObservableObject
 {
-    public SyncCommand InjectGameCommand             { get; }
-    public SyncCommand BringProcessForegroundCommand { get; }
-    public SyncCommand ReturnToLoginPageCommand      { get; }
-    
     private readonly Window                  window;
     private readonly GameLaunchService       gameLaunchService;
     private readonly SettingsWindowViewModel settings;
@@ -23,6 +18,7 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
     private readonly Action<string>          showLoadingDialogAction;
     private readonly Action                  hideLoadingDialogAction;
     private readonly Action                  activateWindowAction;
+    private readonly Action                  requestReturnToLoginPageAction;
     private readonly HashSet<int>            autoInjectAttemptedProcessIds = [];
 
     private CancellationTokenSource? processRefreshCancelSource;
@@ -42,106 +38,75 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
         Action                  requestReturnToLoginPageAction
     )
     {
-        this.window                  = window;
-        this.gameLaunchService       = gameLaunchService;
-        this.settings                = settings;
-        this.isLoggingInFunc         = isLoggingInFunc;
-        this.showLoadingDialogAction = showLoadingDialogAction;
-        this.hideLoadingDialogAction = hideLoadingDialogAction;
-        this.activateWindowAction    = activateWindowAction;
+        this.window                         = window;
+        this.gameLaunchService              = gameLaunchService;
+        this.settings                       = settings;
+        this.isLoggingInFunc                = isLoggingInFunc;
+        this.showLoadingDialogAction        = showLoadingDialogAction;
+        this.hideLoadingDialogAction        = hideLoadingDialogAction;
+        this.activateWindowAction           = activateWindowAction;
+        this.requestReturnToLoginPageAction = requestReturnToLoginPageAction;
 
         FFXIVProcesses.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasAvailableProcesses));
             OnPropertyChanged(nameof(ProcessSelectionHint));
-            InjectGameCommand.RaiseCanExecuteChanged();
-            BringProcessForegroundCommand.RaiseCanExecuteChanged();
+            InjectGameCommand.NotifyCanExecuteChanged();
+            BringProcessForegroundCommand.NotifyCanExecuteChanged();
         };
-
-        InjectGameCommand = new SyncCommand
-        (
-            _ => StartInject(SelectedProcess, false),
-            () => !this.isLoggingInFunc() && !IsInjecting && SelectedProcess != null
-        );
-        BringProcessForegroundCommand = new
-        (
-            _ =>
-            {
-                if (SelectedProcess != null)
-                    PlatformHelpers.BringProcessForeground(SelectedProcess.ProcessID);
-            },
-            () => SelectedProcess != null
-        );
-        ReturnToLoginPageCommand = new
-        (
-            _ => requestReturnToLoginPageAction(),
-            () => !this.isLoggingInFunc()
-        );
 
         ReloadSettings();
     }
 
-    public string ReturnButtonText
-    {
-        get => returnButtonText;
-        set => SetProperty(ref returnButtonText, value);
-    }
+    [ObservableProperty]
+    public partial string ReturnButtonText { get; set; } = "返回账号登录";
 
     public ObservableCollection<FFXIVProcess> FFXIVProcesses { get; } = [];
 
-    public bool AutoInjectEnabled
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InjectGameCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BringProcessForegroundCommand))]
+    [NotifyPropertyChangedFor(nameof(CanOperateOnSelectedProcess))]
+    public partial FFXIVProcess? SelectedProcess { get; set; }
+
+    [ObservableProperty]
+    public partial bool AutoInjectEnabled { get; set; }
+
+    partial void OnAutoInjectEnabledChanged(bool value)
     {
-        get => autoInjectEnabled;
-        set
+        App.Settings.ManualInjectAutoInjectEnabled = value;
+
+        if (!value)
         {
-            if (!SetProperty(ref autoInjectEnabled, value))
-                return;
-
-            App.Settings.ManualInjectAutoInjectEnabled = value;
-
-            if (!value)
-            {
-                CancelPendingAutoInject();
-                autoInjectAttemptedProcessIds.Clear();
-            }
-
-            SyncAutoInjectState();
+            CancelPendingAutoInject();
+            autoInjectAttemptedProcessIds.Clear();
         }
+
+        SyncAutoInjectState();
     }
 
-    public decimal? ManualInjectDelayMs
+    [ObservableProperty]
+    public partial decimal? ManualInjectDelayMs { get; set; }
+
+    partial void OnManualInjectDelayMsChanged(decimal? value)
     {
-        get => manualInjectDelayMs;
-        set
-        {
-            if (!SetProperty(ref manualInjectDelayMs, value))
-                return;
-
-            App.Settings.ManualInjectDelayMs = value ?? 0;
-            settings.ManualInjectDelayMs     = value;
-            SyncAutoInjectState();
-        }
-    }
-
-    public FFXIVProcess? SelectedProcess
-    {
-        get => selectedProcess;
-        set
-        {
-            if (ReferenceEquals(selectedProcess, value))
-                return;
-
-            selectedProcess = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(CanOperateOnSelectedProcess));
-            InjectGameCommand.RaiseCanExecuteChanged();
-            BringProcessForegroundCommand.RaiseCanExecuteChanged();
-        }
+        App.Settings.ManualInjectDelayMs = value ?? 0;
+        settings.ManualInjectDelayMs     = value;
+        SyncAutoInjectState();
     }
 
     public bool HasAvailableProcesses => FFXIVProcesses.Count > 0;
 
     public bool CanOperateOnSelectedProcess => SelectedProcess != null;
+
+    public string ProcessSelectionHint => HasAvailableProcesses ? "选择要注入的进程" : "未检测到可注入进程";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InjectGameCommand))]
+    public partial bool IsInjecting { get; private set; }
+
+    partial void OnIsInjectingChanged(bool value) =>
+        SyncAutoInjectState();
 
     public void ReloadSettings()
     {
@@ -163,27 +128,36 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
     public void StopRefreshing(bool clearCollection) =>
         StopRefreshFFXIVProcess(clearCollection);
 
-    public string ProcessSelectionHint => HasAvailableProcesses ? "选择要注入的进程" : "未检测到可注入进程";
-
     public void RefreshCommandStates()
     {
-        InjectGameCommand.RaiseCanExecuteChanged();
-        BringProcessForegroundCommand.RaiseCanExecuteChanged();
-        ReturnToLoginPageCommand.RaiseCanExecuteChanged();
+        InjectGameCommand.NotifyCanExecuteChanged();
+        BringProcessForegroundCommand.NotifyCanExecuteChanged();
+        ReturnToLoginPageCommand.NotifyCanExecuteChanged();
     }
 
-    private bool IsInjecting
+    [RelayCommand(CanExecute = nameof(CanInjectGame))]
+    private void InjectGame() =>
+        StartInject(SelectedProcess, false);
+
+    private bool CanInjectGame() =>
+        !isLoggingInFunc() && !IsInjecting && SelectedProcess != null;
+
+    [RelayCommand(CanExecute = nameof(CanBringProcessForeground))]
+    private void BringProcessForeground()
     {
-        get => isInjecting;
-        set
-        {
-            if (!SetProperty(ref isInjecting, value))
-                return;
-
-            InjectGameCommand.RaiseCanExecuteChanged();
-            SyncAutoInjectState();
-        }
+        if (SelectedProcess != null)
+            PlatformHelpers.BringProcessForeground(SelectedProcess.ProcessID);
     }
+
+    private bool CanBringProcessForeground() =>
+        SelectedProcess != null;
+
+    [RelayCommand(CanExecute = nameof(CanReturnToLoginPage))]
+    private void ReturnToLoginPage() =>
+        requestReturnToLoginPageAction();
+
+    private bool CanReturnToLoginPage() =>
+        !isLoggingInFunc();
 
     private void StartInject(FFXIVProcess? targetProcess, bool isAutoInjection)
     {
@@ -441,25 +415,4 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
         FFXIVProcesses.Clear();
         SelectedProcess = null;
     }
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    private bool          autoInjectEnabled;
-    private decimal?      manualInjectDelayMs;
-    private FFXIVProcess? selectedProcess;
-    private bool          isInjecting;
-    private string        returnButtonText = "返回账号登录";
 }

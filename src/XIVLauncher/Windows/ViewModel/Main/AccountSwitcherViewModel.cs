@@ -1,91 +1,56 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows;
 using System.Windows.Data;
-using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.Services;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
 
-internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
+internal sealed partial class AccountSwitcherViewModel : ObservableObject
 {
     public ObservableCollection<AccountSwitcherEntry> Entries { get; } = [];
 
     public event Action<string>? AccountRemoved;
 
-    /// <summary>是否处于搜索模式</summary>
-    public bool IsSearchMode
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    public partial bool IsSearchMode { get; set; }
 
-            if (!value)
-                SearchText = string.Empty;
-        }
+    partial void OnIsSearchModeChanged(bool value)
+    {
+        if (!value)
+            SearchText = string.Empty;
     }
 
-    /// <summary>搜索关键词, 为空时不过滤</summary>
-    public string SearchText
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    public partial string SearchText { get; set; } = string.Empty;
 
-            ApplySearchFilter();
-        }
-    } = string.Empty;
+    partial void OnSearchTextChanged(string value) =>
+        ApplySearchFilter();
 
-    public SyncCommand CreateDesktopShortcutCommand { get; }
-    public SyncCommand RemoveAccountCommand { get; }
-    public SyncCommand SetProfilePictureCommand { get; }
-    public SyncCommand ConfigureDeviceProfileCommand { get; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSelectedAccountPasswordNotSaved))]
+    [NotifyCanExecuteChangedFor(nameof(CreateDesktopShortcutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveAccountCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SetProfilePictureCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ConfigureDeviceProfileCommand))]
+    public partial AccountSwitcherEntry? SelectedEntry { get; set; }
 
-    public AccountSwitcherEntry? SelectedEntry
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            OnPropertyChanged(nameof(IsSelectedAccountPasswordNotSaved));
-            CreateDesktopShortcutCommand.RaiseCanExecuteChanged();
-            RemoveAccountCommand.RaiseCanExecuteChanged();
-            SetProfilePictureCommand.RaiseCanExecuteChanged();
-            ConfigureDeviceProfileCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    public AccountSwitcherEntry? ContextEntry
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            OnPropertyChanged(nameof(IsSelectedAccountPasswordNotSaved));
-            CreateDesktopShortcutCommand.RaiseCanExecuteChanged();
-            RemoveAccountCommand.RaiseCanExecuteChanged();
-            SetProfilePictureCommand.RaiseCanExecuteChanged();
-            ConfigureDeviceProfileCommand.RaiseCanExecuteChanged();
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSelectedAccountPasswordNotSaved))]
+    [NotifyCanExecuteChangedFor(nameof(CreateDesktopShortcutCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveAccountCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SetProfilePictureCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ConfigureDeviceProfileCommand))]
+    public partial AccountSwitcherEntry? ContextEntry { get; set; }
 
     public bool IsSelectedAccountPasswordNotSaved
     {
@@ -131,12 +96,98 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         this.shortcutService = shortcutService ?? new ShortcutService();
         this.requestClose    = requestClose;
 
-        CreateDesktopShortcutCommand  = new(_ => CreateDesktopShortcut(),          () => ActiveEntry != null);
-        RemoveAccountCommand          = new(_ => RemoveSelectedAccount(),          () => ActiveEntry != null);
-        SetProfilePictureCommand      = new(_ => SetSelectedProfilePicture(),      () => ActiveEntry != null);
-        ConfigureDeviceProfileCommand = new(_ => ConfigureSelectedDeviceProfile(), () => ActiveEntry != null);
         RefreshEntries();
     }
+
+    [RelayCommand(CanExecute = nameof(CanOperateActiveEntry))]
+    public void CreateDesktopShortcut()
+    {
+        var activeEntry = ActiveEntry;
+        if (activeEntry == null)
+            return;
+
+        try
+        {
+            var iconPath     = ResolveShortcutIconPath(activeEntry);
+            var launcherPath = Paths.ResolveExecutablePath();
+            var desktop      = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+
+            shortcutService.CreateShortcut
+            (
+                desktop,
+                $"XIVLauncherCN - {activeEntry.Account.UserName}",
+                launcherPath,
+                $"使用“{activeEntry.Account.UserName}”账号启动 XIVLauncher。",
+                iconPath,
+                $"--account={activeEntry.Account.ID}"
+            );
+        }
+        catch (Exception ex)
+        {
+            dialogService.ShowMessage
+            (
+                $"创建桌面快捷方式失败。\n{ex.Message}",
+                "XIVLauncherCN (Soil)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanOperateActiveEntry))]
+    public void RemoveAccount()
+    {
+        var activeEntry = ActiveEntry;
+        if (activeEntry == null)
+            return;
+
+        var removedUserName   = activeEntry.Account.UserName;
+        var selectedAccountId = SelectedEntry?.Account.ID;
+        AccountSwitcherEntry.RemoveCustomProfileImage(activeEntry.Account);
+        accountManager.RemoveAccount(activeEntry.Account);
+        RefreshEntries(selectedAccountId == activeEntry.Account.ID ? null : selectedAccountId);
+        AccountRemoved?.Invoke(removedUserName);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanOperateActiveEntry))]
+    public void SetProfilePicture()
+    {
+        var selectedEntry = ActiveEntry;
+        if (selectedEntry == null)
+            return;
+
+        requestClose?.Invoke();
+
+        if (!dialogService.ShowProfilePictureInput(selectedEntry.Account, out var profileImagePath))
+            return;
+
+        var account = FindTrackedAccount(selectedEntry.Account);
+
+        if (string.IsNullOrWhiteSpace(profileImagePath))
+            AccountSwitcherEntry.RemoveCustomProfileImage(account);
+        else
+            AccountSwitcherEntry.SaveCustomProfileImage(account, profileImagePath);
+
+        accountManager.Save();
+
+        RefreshEntries(SelectedEntry?.Account.ID);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanOperateActiveEntry))]
+    public void ConfigureDeviceProfile()
+    {
+        var selectedEntry = ActiveEntry;
+        if (selectedEntry == null)
+            return;
+
+        var account = FindTrackedAccount(selectedEntry.Account);
+        requestClose?.Invoke();
+        var changed = dialogService.ShowAccountDeviceProfileSettings(account, accountManager);
+        if (changed)
+            RefreshEntries(SelectedEntry?.Account.ID);
+    }
+
+    private bool CanOperateActiveEntry() => ActiveEntry != null;
 
     public void RefreshEntries(string? selectedAccountId = null, bool useCurrentAccountSelection = true)
     {
@@ -202,95 +253,11 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
         SelectedEntry = Entries[toIndex];
     }
 
-    public void CreateDesktopShortcut()
-    {
-        var activeEntry = ActiveEntry;
-        if (activeEntry == null)
-            return;
-
-        try
-        {
-            var iconPath     = ResolveShortcutIconPath(activeEntry);
-            var launcherPath = Paths.ResolveExecutablePath();
-            var desktop      = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-
-            shortcutService.CreateShortcut
-            (
-                desktop,
-                $"XIVLauncherCN - {activeEntry.Account.UserName}",
-                launcherPath,
-                $"使用“{activeEntry.Account.UserName}”账号启动 XIVLauncher。",
-                iconPath,
-                $"--account={activeEntry.Account.ID}"
-            );
-        }
-        catch (Exception ex)
-        {
-            dialogService.ShowMessage
-            (
-                $"创建桌面快捷方式失败。\n{ex.Message}",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
-        }
-    }
-
-    public void RemoveSelectedAccount()
-    {
-        var activeEntry = ActiveEntry;
-        if (activeEntry == null)
-            return;
-
-        var removedUserName   = activeEntry.Account.UserName;
-        var selectedAccountId = SelectedEntry?.Account.ID;
-        AccountSwitcherEntry.RemoveCustomProfileImage(activeEntry.Account);
-        accountManager.RemoveAccount(activeEntry.Account);
-        RefreshEntries(selectedAccountId == activeEntry.Account.ID ? null : selectedAccountId);
-        AccountRemoved?.Invoke(removedUserName);
-    }
-
-    public void SetSelectedProfilePicture()
-    {
-        var selectedEntry = ActiveEntry;
-        if (selectedEntry == null)
-            return;
-
-        requestClose?.Invoke();
-
-        if (!dialogService.ShowProfilePictureInput(selectedEntry.Account, out var profileImagePath))
-            return;
-
-        var account = FindTrackedAccount(selectedEntry.Account);
-
-        if (string.IsNullOrWhiteSpace(profileImagePath))
-            AccountSwitcherEntry.RemoveCustomProfileImage(account);
-        else
-            AccountSwitcherEntry.SaveCustomProfileImage(account, profileImagePath);
-
-        accountManager.Save();
-
-        RefreshEntries(SelectedEntry?.Account.ID);
-    }
-
     private static bool HasSavedSecret(XIVAccount account) =>
         account.QuickLoginEnabled                                  ||
         !string.IsNullOrWhiteSpace(account.SdoPassword)            ||
         !string.IsNullOrWhiteSpace(account.WeGameQuickLoginSecret) ||
         !string.IsNullOrWhiteSpace(account.SdoQuickLoginSecret);
-
-    public void ConfigureSelectedDeviceProfile()
-    {
-        var selectedEntry = ActiveEntry;
-        if (selectedEntry == null)
-            return;
-
-        var account = FindTrackedAccount(selectedEntry.Account);
-        requestClose?.Invoke();
-        var changed = dialogService.ShowAccountDeviceProfileSettings(account, accountManager);
-        if (changed)
-            RefreshEntries(SelectedEntry?.Account.ID);
-    }
 
     private static Bitmap BitmapSourceToBitmap(BitmapSource bitmapSource)
     {
@@ -366,19 +333,4 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
 
     private XIVAccount FindTrackedAccount(XIVAccount account) =>
         accountManager.Accounts.First(existing => existing.ID == account.ID);
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

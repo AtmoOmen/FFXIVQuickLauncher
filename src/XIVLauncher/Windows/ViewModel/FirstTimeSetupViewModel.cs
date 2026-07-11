@@ -1,38 +1,26 @@
-using System.ComponentModel;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Input;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows.Services;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
+internal sealed partial class FirstTimeSetupViewModel : ObservableObject
 {
-    public ICommand NextCommand { get; }
+    [ObservableProperty]
+    public partial string GamePath { get; set; } = string.Empty;
 
-    public string GamePath
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial bool EnableDalamud { get; set; } = true;
 
-    public bool EnableDalamud
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = true;
+    [ObservableProperty]
+    public partial int CurrentStepIndex { get; set; }
 
-    public int CurrentStepIndex
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    public bool WasCompleted { get; private set; }
 
-    public           bool             WasCompleted { get; private set; }
     private readonly IDialogService   _dialogService;
     private readonly IShortcutService _shortcutService;
 
@@ -41,9 +29,38 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
         _dialogService   = dialogService   ?? new DialogService();
         _shortcutService = shortcutService ?? new ShortcutService();
 
-        NextCommand = new SyncCommand(_ => MoveNext());
-
         GamePath = Paths.GetGamePath() ?? string.Empty;
+    }
+
+    [RelayCommand]
+    public void MoveNext()
+    {
+        switch (CurrentStepIndex)
+        {
+            case 0:
+                if (!ValidateGamePath())
+                    return;
+
+                CurrentStepIndex++;
+                return;
+
+            case 1:
+                App.Settings.Update
+                (settings =>
+                    {
+                        settings.GamePath         = new DirectoryInfo(GamePath);
+                        settings.DalamudEnabled   = EnableDalamud;
+                        settings.CompanionAppList = [];
+                    }
+                );
+
+                WasCompleted = true;
+                CloseRequested?.Invoke(this, EventArgs.Empty);
+                return;
+
+            default:
+                return;
+        }
     }
 
     public void EnsureDesktopShortcut()
@@ -64,36 +81,6 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation
             );
-        }
-    }
-
-    public bool MoveNext()
-    {
-        switch (CurrentStepIndex)
-        {
-            case 0:
-                if (!ValidateGamePath())
-                    return false;
-
-                CurrentStepIndex++;
-                return true;
-
-            case 1:
-                App.Settings.Update
-                (settings =>
-                    {
-                        settings.GamePath         = new DirectoryInfo(GamePath);
-                        settings.DalamudEnabled   = EnableDalamud;
-                        settings.CompanionAppList = [];
-                    }
-                );
-
-                WasCompleted = true;
-                CloseRequested?.Invoke(this, EventArgs.Empty);
-                return true;
-
-            default:
-                return false;
         }
     }
 
@@ -156,19 +143,4 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
     }
 
     public event EventHandler? CloseRequested;
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

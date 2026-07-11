@@ -1,8 +1,9 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Game;
@@ -14,14 +15,11 @@ using XIVLauncher.Windows.ViewModel.Main.Handlers;
 using XIVLauncher.Windows.ViewModel.Main.Models;
 using XIVLauncher.Windows.ViewModel.Main.Providers;
 using XIVLauncher.Windows.ViewModel.Main.Services;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
 
-internal class MainWindowViewModel : INotifyPropertyChanged
+internal partial class MainWindowViewModel : ObservableObject
 {
-    public event PropertyChangedEventHandler? PropertyChanged;
-    
     public SettingsWindowViewModel Settings { get; }
 
     public LoginPageViewModel LoginPage { get; }
@@ -31,10 +29,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     public DashboardViewModel DashboardPage { get; }
 
     public DCTravelViewModel DCTravelPage { get; }
-
-    public ICommand AccountSwitcherButtonCommand { get; }
-    
-    public ICommand RefreshDalamudInfoCommand { get; }
 
     public AccountSwitcherViewModel AccountSwitcher { get; }
 
@@ -49,7 +43,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     public Action? RequestSwitchToCurrentAccount { get; set; }
 
-    public bool IsLoggingIn { get; set; }
+    [ObservableProperty]
+    public partial bool IsLoggingIn { get; set; }
 
     internal MainWindowDialogProvider  DialogProvider            { get; }
     internal DCTravelRuntimeService    DCTravelRuntimeService    { get; }
@@ -59,17 +54,17 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     internal LoginFlowHandler      LoginFlow      { get; }
     internal GameLaunchFlowHandler GameLaunchFlow { get; }
     internal DashboardFlowHandler  DashboardFlow  { get; }
-    
+
     public GameLaunchContext? CurrentGameLaunchContext { get; set; }
-    
+
     private LoginCardType injectModeSourceCard = LoginCardType.MainPage;
 
     public MainWindowViewModel(Window window)
     {
-        Window               = window;
-        Settings             = new(new DialogService(window), new ExternalLaunchService());
-        DialogProvider       = new(window);
-        Launcher             = new();
+        Window         = window;
+        Settings       = new(new DialogService(window), new ExternalLaunchService());
+        DialogProvider = new(window);
+        Launcher       = new();
 
         var loginWorkflowService = new LoginWorkflowService(App.AccountManager, new WeGameTokenCaptureCoordinator());
 
@@ -129,14 +124,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             CloseAccountSwitcher
         );
         AccountSwitcher.AccountRemoved += OnAccountRemoved;
-
-        AccountSwitcherButtonCommand = new SyncCommand(ExecuteAccountSwitcherButton);
-
-        RefreshDalamudInfoCommand = new SyncCommand
-        (
-            _ => RefreshDalamudInfo(),
-            () => Settings.EnableHooks && App.Dalamud.Updater.State != DalamudUpdater.DownloadState.Unknown
-        );
 
         LoginPage = new LoginPageViewModel
         (
@@ -264,6 +251,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     public void CancelLogin() =>
         LoginFlow.CancelLogin();
 
+    [RelayCommand]
     private void ExecuteAccountSwitcherButton(object parameter) =>
         SwitchCard(LoginCardType.AccountSwitcher);
 
@@ -284,8 +272,12 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     #region Dalamud 状态
 
+    [RelayCommand(CanExecute = nameof(CanRefreshDalamudInfo))]
     private void RefreshDalamudInfo() =>
         App.Dalamud.RunUpdater(true);
+
+    private bool CanRefreshDalamudInfo() =>
+        Settings.EnableHooks && App.Dalamud.Updater.State != DalamudUpdater.DownloadState.Unknown;
 
     private void DalamudUpdaterStatusChanged(DalamudStatusSnapshot _)
     {
@@ -313,7 +305,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     }
 
     private void RefreshDalamudInfoCommandState() =>
-        (RefreshDalamudInfoCommand as SyncCommand).RaiseCanExecuteChanged();
+        RefreshDalamudInfoCommand.NotifyCanExecuteChanged();
 
     private static string GetDalamudLoadingText(DalamudStatusSnapshot updater)
     {
@@ -329,12 +321,6 @@ internal class MainWindowViewModel : INotifyPropertyChanged
     #endregion
 
     #region 事件
-
-    private void OnPropertyChanged(string propertyName)
-    {
-        var handler = PropertyChanged;
-        handler?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
 
     public void OnWindowClosed(object? sender, object args)
     {
@@ -354,68 +340,26 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
     #region Bindings
 
-    public bool IsEnabled
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(IsEnabled));
-        }
-    }
+    [ObservableProperty]
+    public partial bool IsEnabled { get; set; }
 
-    public int LoginCardTransitionerIndex
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(LoginCardTransitionerIndex));
-        }
-    } = 1;
+    [ObservableProperty]
+    public partial int LoginCardTransitionerIndex { get; set; } = 1;
 
-    public bool IsLoadingDialogOpen
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(IsLoadingDialogOpen));
-        }
-    }
+    [ObservableProperty]
+    public partial bool IsLoadingDialogOpen { get; set; }
 
-    public bool IsAccountSwitcherOpen
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(IsAccountSwitcherOpen));
-        }
-    }
+    [ObservableProperty]
+    public partial bool IsAccountSwitcherOpen { get; set; }
 
-    public string LoadingDialogMessage
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(LoadingDialogMessage));
-        }
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string LoadingDialogMessage { get; set; } = string.Empty;
 
-    public string DalamudStatusText
-    {
-        get;
-        set
-        {
-            field = value;
-            OnPropertyChanged(nameof(DalamudStatusText));
-        }
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string DalamudStatusText { get; set; } = string.Empty;
 
     #endregion
-    
+
     #region 常量
 
     public const string PRESUDO_PASSWORD = "********假的密码********";

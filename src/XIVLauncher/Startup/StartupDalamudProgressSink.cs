@@ -3,7 +3,10 @@ using XIVLauncher.Windows;
 
 namespace XIVLauncher.Startup;
 
-internal sealed class StartupDalamudProgressSink(LoadingDialog overlay) : IDalamudProgressSink
+internal sealed class StartupDalamudProgressSink
+(
+    LoadingDialog overlay
+) : IDalamudProgressSink
 {
     public void ShowLoading() => overlay.ShowDialog();
 

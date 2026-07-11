@@ -1,33 +1,19 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Login;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
 
-public sealed class DashboardViewModel : INotifyPropertyChanged
+public sealed partial class DashboardViewModel : ObservableObject
 {
-    public SyncCommand  StartGameCommand           { get; }
-    public SyncCommand  StartGameNoDalamudCommand  { get; }
-    public SyncCommand  StartGameNoPluginsCommand  { get; }
-    public SyncCommand  StartGameNoThirdCommand    { get; }
-    public AsyncCommand SwitchAccountCommand       { get; }
-    public SyncCommand  OpenDCTravelCommand        { get; }
-    public SyncCommand  OpenDeviceProfileCommand   { get; }
-    public SyncCommand  OpenPaymentCommand         { get; }
-    public SyncCommand  OpenShopCommand            { get; }
-    public SyncCommand  OpenOfficialAccountCommand { get; }
-    
     private readonly Action<LoginAfterAction> requestStartGameAction;
     private readonly Action                   requestSwitchAccountAction;
     private readonly Action                   requestOpenDCTravelAction;
     private readonly Action                   requestOpenDeviceProfileAction;
     private readonly Action<LoginArea>        requestSetAreaAction;
-
-    private bool isSwitchingAccount;
 
     public DashboardViewModel
     (
@@ -44,28 +30,49 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         this.requestOpenDeviceProfileAction = requestOpenDeviceProfileAction;
         this.requestSetAreaAction           = requestSetAreaAction;
 
-        StartGameCommand           = new(_ => this.requestStartGameAction(LoginAfterAction.Start));
-        StartGameNoDalamudCommand  = new(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutDalamud));
-        StartGameNoPluginsCommand  = new(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutPlugins));
-        StartGameNoThirdCommand    = new(_ => this.requestStartGameAction(LoginAfterAction.StartWithoutThird));
-        SwitchAccountCommand       = new(async _ => await SwitchAccount(), () => !isSwitchingAccount);
-        OpenDCTravelCommand        = new(_ => this.requestOpenDCTravelAction());
-        OpenDeviceProfileCommand   = new(_ => this.requestOpenDeviceProfileAction());
-        OpenPaymentCommand         = new(_ => Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute  = true }));
-        OpenShopCommand            = new(_ => Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true }));
-        OpenOfficialAccountCommand = new(_ => Process.Start(new ProcessStartInfo(Links.SDO_BILIBILI_URL) { UseShellExecute = true }));
-
         Areas = [];
     }
 
     public ObservableCollection<LoginArea> Areas { get; }
+
+    [ObservableProperty]
+    public partial bool IsSwitchingAccount { get; set; }
+
+    partial void OnIsSwitchingAccountChanged(bool value) =>
+        SwitchAccountCommand.NotifyCanExecuteChanged();
+
+    [ObservableProperty]
+    public partial string AccountName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string GameVersion { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string AreaName { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsAreaOnline))]
+    [NotifyPropertyChangedFor(nameof(IsAreaMaintenance))]
+    public partial int AreaStatus { get; set; }
+
+    public bool IsAreaOnline      => AreaStatus != 4;
+    public bool IsAreaMaintenance => AreaStatus == 4;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDCTravelAvailable))]
+    public partial bool IsDCTravelUnderMaintenance { get; set; }
+
+    public bool IsDCTravelAvailable => !IsDCTravelUnderMaintenance;
 
     public LoginArea? SelectedArea
     {
         get;
         set
         {
-            if (!SetProperty(ref field, value) || value == null)
+            if (!SetProperty(ref field, value))
+                return;
+
+            if (value == null)
                 return;
 
             requestSetAreaAction(value);
@@ -74,66 +81,23 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         }
     }
 
-    public string AccountName
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [RelayCommand]
+    private void StartGame() =>
+        requestStartGameAction(LoginAfterAction.Start);
 
-    public string GameVersion
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [RelayCommand]
+    private void StartGameNoDalamud() =>
+        requestStartGameAction(LoginAfterAction.StartWithoutDalamud);
 
-    public string AreaName
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [RelayCommand]
+    private void StartGameNoPlugins() =>
+        requestStartGameAction(LoginAfterAction.StartWithoutPlugins);
 
-    public int AreaStatus
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [RelayCommand]
+    private void StartGameNoThird() =>
+        requestStartGameAction(LoginAfterAction.StartWithoutThird);
 
-            OnPropertyChanged(nameof(IsAreaOnline));
-            OnPropertyChanged(nameof(IsAreaMaintenance));
-        }
-    }
-
-    public bool IsAreaOnline      => AreaStatus != 4;
-    public bool IsAreaMaintenance => AreaStatus == 4;
-
-    public bool IsDCTravelUnderMaintenance
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            OnPropertyChanged(nameof(IsDCTravelAvailable));
-        }
-    }
-
-    public bool IsDCTravelAvailable => !IsDCTravelUnderMaintenance;
-
-    public bool IsSwitchingAccount
-    {
-        get => isSwitchingAccount;
-        set
-        {
-            if (!SetProperty(ref isSwitchingAccount, value))
-                return;
-
-            SwitchAccountCommand.RaiseCanExecuteChanged();
-        }
-    }
-
+    [RelayCommand(CanExecute = nameof(CanSwitchAccount))]
     private async Task SwitchAccount()
     {
         IsSwitchingAccount = true;
@@ -142,18 +106,26 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         IsSwitchingAccount = false;
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
+    private bool CanSwitchAccount() =>
+        !IsSwitchingAccount;
 
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    [RelayCommand]
+    private void OpenDCTravel() =>
+        requestOpenDCTravelAction();
 
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
+    [RelayCommand]
+    private void OpenDeviceProfile() =>
+        requestOpenDeviceProfileAction();
 
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
+    [RelayCommand]
+    private void OpenPayment() =>
+        Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute = true });
+
+    [RelayCommand]
+    private void OpenShop() =>
+        Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true });
+
+    [RelayCommand]
+    private void OpenOfficialAccount() =>
+        Process.Start(new ProcessStartInfo(Links.SDO_BILIBILI_URL) { UseShellExecute = true });
 }

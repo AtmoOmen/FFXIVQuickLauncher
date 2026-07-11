@@ -1,8 +1,8 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Windows;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
@@ -10,78 +10,45 @@ using XIVLauncher.Common.Util;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Windows.Services;
-using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-public sealed class SettingsWindowViewModel : INotifyPropertyChanged
+public sealed partial class SettingsWindowViewModel : ObservableObject
 {
     public ObservableCollection<CompanionAppEntry>  CompanionAppEntries { get; } = [];
     public ObservableCollection<CredTypeOptionItem> CredTypeOptions     { get; } = [];
 
-    public SyncCommand AddCompanionAppCommand            { get; }
-    public SyncCommand EditSelectedCompanionAppCommand   { get; }
-    public SyncCommand RemoveSelectedCompanionAppCommand { get; }
-    public SyncCommand OpenGitHubCommand                 { get; }
-    public SyncCommand OpenBackupToolCommand             { get; }
-    public SyncCommand OpenOriginalLauncherCommand       { get; }
-    public SyncCommand OpenAdvancedSettingsCommand       { get; }
-
-    public bool CanEditSelectedCompanionApp => 
+    public bool CanEditSelectedCompanionApp =>
         SelectedCompanionAppEntry?.CompanionApp != null;
 
     public Visibility GamePathWarningVisibility =>
         string.IsNullOrWhiteSpace(GamePathWarningMessage) ? Visibility.Collapsed : Visibility.Visible;
 
-    public string GamePath
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenBackupToolCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenOriginalLauncherCommand))]
+    public partial string GamePath { get; set; } = string.Empty;
 
-            RefreshGamePathWarning();
-            OpenBackupToolCommand.RaiseCanExecuteChanged();
-            OpenOriginalLauncherCommand.RaiseCanExecuteChanged();
-        }
-    } = string.Empty;
+    partial void OnGamePathChanged(string value) =>
+        RefreshGamePathWarning();
 
-    public string PatchPath
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string PatchPath { get; set; } = string.Empty;
 
-    public string WeGameLauncherPath
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string WeGameLauncherPath { get; set; } = string.Empty;
 
-    public bool AskBeforePatching
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool AskBeforePatching { get; set; }
 
-    public bool ExitLauncherAfterGameExit
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool ExitLauncherAfterGameExit { get; set; }
 
-    public bool KeepPatches
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool KeepPatches { get; set; }
 
-    public bool RequireDeviceProfileSetupForNewAccountLogin
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool RequireDeviceProfileSetupForNewAccountLogin { get; set; }
 
     public decimal? DalamudInjectionDelayMs
     {
@@ -98,17 +65,11 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public decimal? ManualInjectDelayMs
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial decimal? ManualInjectDelayMs { get; set; }
 
-    public bool EnableHooks
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool EnableHooks { get; set; }
 
     public bool EnableDcTravel
     {
@@ -120,57 +81,34 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         }
     } = true;
 
-    public string LaunchArgs
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string LaunchArgs { get; set; } = string.Empty;
 
-    public int DpiAwarenessIndex
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = (int)DPIAwareness.Unaware;
+    [ObservableProperty]
+    public partial int DpiAwarenessIndex { get; set; } = (int)DPIAwareness.Unaware;
 
-    public decimal? SpeedLimitMb
+    [ObservableProperty]
+    public partial decimal? SpeedLimitMb { get; set; }
+
+    [ObservableProperty]
+    public partial CredType SelectedCredType { get; set; } = CredType.WindowsCredManager;
+
+    partial void OnSelectedCredTypeChanged(CredType value) =>
+        SyncSelectedCredTypeOption();
+
+    [ObservableProperty]
+    public partial CredTypeOptionItem? SelectedCredTypeOption { get; set; }
+
+    partial void OnSelectedCredTypeOptionChanged(CredTypeOptionItem? value)
     {
-        get;
-        set => SetProperty(ref field, value);
+        if (value == null || SelectedCredType == value.Value)
+            return;
+
+        SelectedCredType = value.Value;
     }
 
-    public CredType SelectedCredType
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-
-            SyncSelectedCredTypeOption();
-        }
-    } = CredType.WindowsCredManager;
-
-    public CredTypeOptionItem? SelectedCredTypeOption
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value) || value == null || SelectedCredType == value.Value)
-                return;
-
-            SelectedCredType = value.Value;
-        }
-    }
-
-    public bool UseEntryPointLoadMethod
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
-        }
-    } = true;
+    [ObservableProperty]
+    public partial bool UseEntryPointLoadMethod { get; set; } = true;
 
     public bool UseDllInjectLoadMethod
     {
@@ -184,42 +122,20 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public CompanionAppEntry? SelectedCompanionAppEntry
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(EditSelectedCompanionAppCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveSelectedCompanionAppCommand))]
+    public partial CompanionAppEntry? SelectedCompanionAppEntry { get; set; }
 
-            EditSelectedCompanionAppCommand.RaiseCanExecuteChanged();
-            RemoveSelectedCompanionAppCommand.RaiseCanExecuteChanged();
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GamePathWarningVisibility))]
+    public partial string GamePathWarningMessage { get; set; } = string.Empty;
 
-    public string GamePathWarningMessage
-    {
-        get;
-        set
-        {
-            if (!SetProperty(ref field, value))
-                return;
+    [ObservableProperty]
+    public partial string VersionLabelText { get; set; } = "XIVLauncher";
 
-            OnPropertyChanged(nameof(GamePathWarningVisibility));
-        }
-    } = string.Empty;
-
-    public string VersionLabelText
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = "XIVLauncher";
-
-    public string CommitLabelText
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string CommitLabelText { get; set; } = string.Empty;
 
     private const int BYTES_TO_MB = 1048576;
 
@@ -231,17 +147,98 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         _dialogService         = dialogService         ?? new DialogService();
         _externalLaunchService = externalLaunchService ?? new ExternalLaunchService();
 
-        AddCompanionAppCommand            = new SyncCommand(_ => AddCompanionApp());
-        EditSelectedCompanionAppCommand   = new SyncCommand(_ => EditSelectedCompanionApp(),   () => CanEditSelectedCompanionApp);
-        RemoveSelectedCompanionAppCommand = new SyncCommand(_ => RemoveSelectedCompanionApp(), () => SelectedCompanionAppEntry != null);
-        OpenGitHubCommand                 = new SyncCommand(_ => OpenGitHub());
-        OpenBackupToolCommand             = new SyncCommand(_ => OpenBackupTool(),       () => !string.IsNullOrWhiteSpace(GamePath));
-        OpenOriginalLauncherCommand       = new SyncCommand(_ => OpenOriginalLauncher(), () => !string.IsNullOrWhiteSpace(GamePath));
-        OpenAdvancedSettingsCommand       = new SyncCommand(_ => OpenAdvancedSettings());
-
         InitializeCredTypeOptions();
         ReloadFromSettings();
     }
+
+    [RelayCommand]
+    private void AddCompanionApp()
+    {
+        var result = _dialogService.ShowCompanionAppSetup();
+        if (result == null || string.IsNullOrWhiteSpace(result.FilePath))
+            return;
+
+        CompanionAppEntries.Add
+        (
+            new CompanionAppEntry
+            {
+                IsEnabled    = true,
+                CompanionApp = result
+            }
+        );
+    }
+
+    [RelayCommand(CanExecute = nameof(CanEditSelectedCompanionApp))]
+    private void EditSelectedCompanionApp()
+    {
+        if (SelectedCompanionAppEntry?.CompanionApp is not { } companionApp)
+            return;
+
+        var index  = CompanionAppEntries.IndexOf(SelectedCompanionAppEntry);
+        var result = _dialogService.ShowCompanionAppSetup(companionApp);
+        if (result == null || index < 0)
+            return;
+
+        CompanionAppEntries[index] = new CompanionAppEntry
+        {
+            IsEnabled    = SelectedCompanionAppEntry.IsEnabled,
+            CompanionApp = result
+        };
+        SelectedCompanionAppEntry = CompanionAppEntries[index];
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRemoveSelectedCompanionApp))]
+    private void RemoveSelectedCompanionApp()
+    {
+        if (SelectedCompanionAppEntry == null)
+            return;
+
+        CompanionAppEntries.Remove(SelectedCompanionAppEntry);
+        SelectedCompanionAppEntry = null;
+    }
+
+    private bool CanRemoveSelectedCompanionApp() =>
+        SelectedCompanionAppEntry != null;
+
+    [RelayCommand]
+    private void OpenGitHub() =>
+        _externalLaunchService.OpenUrl(Links.REPO_URL);
+
+    [RelayCommand(CanExecute = nameof(CanOpenGamePathCommand))]
+    private void OpenBackupTool()
+    {
+        if (string.IsNullOrWhiteSpace(GamePath))
+            return;
+
+        _externalLaunchService.OpenExecutable(Path.Combine(GamePath, "boot", "ffxivconfig64.exe"));
+    }
+
+    [RelayCommand(CanExecute = nameof(CanOpenGamePathCommand))]
+    private void OpenOriginalLauncher()
+    {
+        var gamePath = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : App.Settings.GamePath;
+        GameHelpers.StartOfficialLauncher(gamePath);
+    }
+
+    private bool CanOpenGamePathCommand() =>
+        !string.IsNullOrWhiteSpace(GamePath);
+
+    [RelayCommand]
+    private void OpenAdvancedSettings() =>
+        _dialogService.ShowAdvancedSettings();
+
+    public void OpenLicense() =>
+        _externalLaunchService.OpenPath(Path.Combine(Paths.ResourcesPath, "LICENSE.txt"));
+
+    public void OpenChangelog()
+    {
+        var version = AppUtil.GetAssemblyVersion();
+        if (!string.IsNullOrWhiteSpace(version))
+            _dialogService.ShowChangelog(version);
+    }
+
+    public void OpenSharedDeviceProfile() =>
+        _dialogService.ShowSharedDeviceProfileSettings(App.AccountManager);
 
     public void ReloadFromSettings()
     {
@@ -341,82 +338,6 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         return true;
     }
 
-    public void AddCompanionApp()
-    {
-        var result = _dialogService.ShowCompanionAppSetup();
-        if (result == null || string.IsNullOrWhiteSpace(result.FilePath))
-            return;
-
-        CompanionAppEntries.Add
-        (
-            new CompanionAppEntry
-            {
-                IsEnabled    = true,
-                CompanionApp = result
-            }
-        );
-    }
-
-    public void EditSelectedCompanionApp()
-    {
-        if (SelectedCompanionAppEntry?.CompanionApp is not { } companionApp)
-            return;
-
-        var index  = CompanionAppEntries.IndexOf(SelectedCompanionAppEntry);
-        var result = _dialogService.ShowCompanionAppSetup(companionApp);
-        if (result == null || index < 0)
-            return;
-
-        CompanionAppEntries[index] = new CompanionAppEntry
-        {
-            IsEnabled    = SelectedCompanionAppEntry.IsEnabled,
-            CompanionApp = result
-        };
-        SelectedCompanionAppEntry = CompanionAppEntries[index];
-    }
-
-    public void RemoveSelectedCompanionApp()
-    {
-        if (SelectedCompanionAppEntry == null)
-            return;
-
-        CompanionAppEntries.Remove(SelectedCompanionAppEntry);
-        SelectedCompanionAppEntry = null;
-    }
-
-    public void OpenGitHub() =>
-        _externalLaunchService.OpenUrl(Links.REPO_URL);
-
-    public void OpenBackupTool()
-    {
-        if (string.IsNullOrWhiteSpace(GamePath))
-            return;
-
-        _externalLaunchService.OpenExecutable(Path.Combine(GamePath, "boot", "ffxivconfig64.exe"));
-    }
-
-    public void OpenOriginalLauncher()
-    {
-        var gamePath = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : App.Settings.GamePath;
-        GameHelpers.StartOfficialLauncher(gamePath);
-    }
-
-    public void OpenLicense() =>
-        _externalLaunchService.OpenPath(Path.Combine(Paths.ResourcesPath, "LICENSE.txt"));
-
-    public void OpenAdvancedSettings() =>
-        _dialogService.ShowAdvancedSettings();
-
-    public void OpenChangelog()
-    {
-        var version = AppUtil.GetAssemblyVersion();
-        if (!string.IsNullOrWhiteSpace(version))
-            _dialogService.ShowChangelog(version);
-    }
-
-    public void OpenSharedDeviceProfile() =>
-        _dialogService.ShowSharedDeviceProfileSettings(App.AccountManager);
-
     private void InitializeCredTypeOptions() =>
         ReplaceCredTypeOptions(BuildCredTypeOptions(true));
 
@@ -494,19 +415,4 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         string   Display,
         bool     IsEnabled
     );
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }

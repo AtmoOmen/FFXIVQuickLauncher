@@ -55,7 +55,7 @@ public partial class SettingsWindow
         if (e.ChangedButton != MouseButton.Left)
             return;
 
-        ViewModel.EditSelectedCompanionApp();
+        ViewModel.EditSelectedCompanionAppCommand.Execute(null);
     }
 
     private void CompanionAppListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)

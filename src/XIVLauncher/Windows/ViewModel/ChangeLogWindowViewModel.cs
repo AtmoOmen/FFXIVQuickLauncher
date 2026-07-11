@@ -1,34 +1,12 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-internal class ChangeLogWindowViewModel : INotifyPropertyChanged
+internal partial class ChangeLogWindowViewModel : ObservableObject
 {
-    public string UpdateNotice
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = string.Empty;
+    [ObservableProperty]
+    public partial string UpdateNotice { get; set; } = string.Empty;
 
-    public string ChangeLogText
-    {
-        get;
-        set => SetProperty(ref field, value);
-    } = "正在加载更新日志...";
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
+    [ObservableProperty]
+    public partial string ChangeLogText { get; set; } = "正在加载更新日志...";
 }

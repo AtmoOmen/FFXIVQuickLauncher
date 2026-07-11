@@ -1,29 +1,19 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Serilog.Events;
 using XIVLauncher.Support;
 
 namespace XIVLauncher.Windows.ViewModel;
 
-public class AdvancedSettingsViewModel : INotifyPropertyChanged
+public partial class AdvancedSettingsViewModel : ObservableObject
 {
-    public bool TreatNonZeroExitCodeAsFailure
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool TreatNonZeroExitCodeAsFailure { get; set; }
 
-    public bool EnableVerboseLog
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool EnableVerboseLog { get; set; }
 
-    public bool EnableSkipUpdate
-    {
-        get;
-        set => SetProperty(ref field, value);
-    }
+    [ObservableProperty]
+    public partial bool EnableSkipUpdate { get; set; }
 
     public void Load()
     {
@@ -45,19 +35,4 @@ public class AdvancedSettingsViewModel : INotifyPropertyChanged
 
         LogInit.LevelSwitch.MinimumLevel = EnableVerboseLog ? LogEventLevel.Verbose : LogInit.GetDefaultLevel();
     }
-
-    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 }
