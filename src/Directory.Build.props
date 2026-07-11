@@ -1,29 +1,13 @@
-<!-- Contains required properties for XIVLauncher projects. -->
 <Project>
-    <PropertyGroup Label="C#">
-        <LangVersion>latest</LangVersion>
-        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <PropertyGroup Label="Target">
+        <PlatformTarget>x64</PlatformTarget>
+        <Platforms>x64</Platforms>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>preview</LangVersion>
+        <NoWarn>1701;1702;CS0414;CS8601;CS8602;CS8604;CS8603;IDE1006;IDE0300;MSB3270;MSB324;CS0649;CA2211;CS8509;CS8625;MSB3305;CS8618;CS8600;CS8605;CS8620;NU1903</NoWarn>
+        <SatelliteResourceLanguages>xxx</SatelliteResourceLanguages>
     </PropertyGroup>
-    <PropertyGroup Label="Documentation">
-        <NoWarn>$(NoWarn);1701;1702;CS0414;CS8601;CS8602;CS8604;CS8603;IDE1006;IDE0300;MSB3270;MSB324;CS0649;CA2211;CS8509;CS8625;MSB3305;CS8618;CS8600;CS8605;CS8620</NoWarn>
-    </PropertyGroup>
-    <PropertyGroup Label="Project">
-        <!--
-        NU1701:
-          DeepEqual is not netstandard-compatible. This is fine since we run tests with .NET Framework anyway.
-          This is required due to https://github.com/NuGet/Home/issues/5740
-        -->
-        <NoWarn>$(NoWarn);NU1701</NoWarn>
-    </PropertyGroup>
-    <PropertyGroup Label="Nuget">
-        <IsPackable>false</IsPackable>
-        <Authors>XIVLauncher Contributors</Authors>
-        <PackageLicenseExpression>GPLv3</PackageLicenseExpression>
-        <PackageProjectUrl>https://github.com/AtmoOmen/FFXIVQuickLauncher</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/AtmoOmen/FFXIVQuickLauncher</RepositoryUrl>
-        <PackageReleaseNotes>Automated release</PackageReleaseNotes>
-        <Company>goatsoft</Company>
-        <Copyright>Copyright (c) goatsoft</Copyright>
-        <PackageTags>mmo</PackageTags>
-    </PropertyGroup>
+
 </Project>
