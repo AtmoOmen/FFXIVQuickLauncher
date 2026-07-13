@@ -190,47 +190,16 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <Grid Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Button Grid.Column="0"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        materialDesign:ButtonAssist.CornerRadius="16"
-                        Height="36" FontSize="12"
-                        Command="{Binding DCTravelPage.TravelBackCommand}"
-                        IsEnabled="{Binding DCTravelPage.IsNotLoading}">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ArrowLeftBold" Width="16" Height="16" Margin="0,0,6,0"
-                                                 VerticalAlignment="Center" />
-                        <TextBlock Text="超域返回" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="2"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        materialDesign:ButtonAssist.CornerRadius="16"
-                        Height="36" FontSize="12"
-                        Command="{Binding DCTravelPage.RefreshOrdersCommand}"
-                        IsEnabled="{Binding DCTravelPage.IsNotLoading}">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16" Margin="0,0,6,0"
-                                                 VerticalAlignment="Center" />
-                        <TextBlock Text="刷新" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-            </Grid>
-
-            <Button Style="{StaticResource MaterialDesignFlatButton}"
-                    Command="{Binding DCTravelPage.BackToTravelCommand}"
-                    Margin="0,0,0,4" Height="24" Padding="8,0"
-                    HorizontalAlignment="Center"
-                    Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}">
+            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="16"
+                    Height="36" FontSize="12"
+                    Command="{Binding DCTravelPage.TravelBackCommand}"
+                    IsEnabled="{Binding DCTravelPage.IsNotLoading}"
+                    Margin="0,0,0,0">
                 <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="ArrowLeft" Width="12" Height="12" Margin="0,0,4,0"
+                    <materialDesign:PackIcon Kind="ArrowLeftBold" Width="16" Height="16" Margin="0,0,6,0"
                                              VerticalAlignment="Center" />
-                    <TextBlock Text="返回" FontSize="11" VerticalAlignment="Center" />
+                    <TextBlock Text="超域返回" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
         </StackPanel>

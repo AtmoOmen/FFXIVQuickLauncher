@@ -143,6 +143,136 @@
                 </StackPanel>
             </Grid>
 
+            <!-- DCTravel 顶栏 (仅 DCTravel 显示) -->
+            <Grid Grid.Row="0" Margin="8,8,8,0">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger
+                                Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                Value="5">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Style="{StaticResource HeaderUtilityButtonStyle}"
+                        ToolTip="返回"
+                        Command="{Binding DCTravelPage.BackToDashboardCommand}"
+                        HorizontalAlignment="Left">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+
+                <Button Grid.Column="1"
+                        Style="{StaticResource HeaderUtilityButtonStyle}"
+                        ToolTip="历史订单"
+                        Command="{Binding DCTravelPage.OpenHistoryCommand}">
+                    <materialDesign:PackIcon Kind="History" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+            </Grid>
+
+            <!-- DCTravel 历史记录顶栏 (仅 History 显示) -->
+            <Grid Grid.Row="0" Margin="8,8,8,0">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger
+                                Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                Value="6">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Style="{StaticResource HeaderUtilityButtonStyle}"
+                        ToolTip="返回"
+                        Command="{Binding DCTravelPage.BackToTravelCommand}"
+                        HorizontalAlignment="Left">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+
+                <Button Grid.Column="1"
+                        Style="{StaticResource HeaderUtilityButtonStyle}"
+                        ToolTip="刷新"
+                        Command="{Binding DCTravelPage.RefreshOrdersCommand}"
+                        IsEnabled="{Binding DCTravelPage.IsNotLoading}">
+                    <materialDesign:PackIcon Kind="Refresh" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+            </Grid>
+
+            <!-- DCTravel 进度顶栏 (仅 Progress 显示) -->
+            <Grid Grid.Row="0" Margin="8,8,8,0">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger
+                                Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                Value="7">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+
+                <Button ToolTip="返回"
+                        Command="{Binding DCTravelPage.ReturnFromProgressCommand}"
+                        HorizontalAlignment="Left">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource HeaderUtilityButtonStyle}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding DCTravelPage.IsTravelInProgress}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+            </Grid>
+
+            <!-- DCTravel 超域返回顶栏 (仅 Return 显示) -->
+            <Grid Grid.Row="0" Margin="8,8,8,0">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger
+                                Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                Value="8">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+
+                <Button Style="{StaticResource HeaderUtilityButtonStyle}"
+                        ToolTip="返回"
+                        Command="{Binding DCTravelPage.CancelReturnCommand}"
+                        HorizontalAlignment="Left">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+            </Grid>
+
             <materialDesign:Transitioner x:Name="LoginCardTransitioner" Grid.Row="1"
                                          VerticalAlignment="Stretch"
                                          SelectedIndex="{Binding LoginCardTransitionerIndex}">

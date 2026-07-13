@@ -50,24 +50,7 @@
                        HorizontalAlignment="Center"
                        TextAlignment="Center"
                        TextWrapping="Wrap"
-                       Margin="0,0,0,20" />
-
-            <Button Content="返回"
-                    Command="{Binding DCTravelPage.ReturnFromProgressCommand}"
-                    materialDesign:ButtonAssist.CornerRadius="16"
-                    HorizontalAlignment="Center"
-                    Width="120">
-                <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding DCTravelPage.IsTravelInProgress}" Value="False">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
-            </Button>
+                       Margin="0,0,0,0" />
         </StackPanel>
     </Grid>
 </UserControl>

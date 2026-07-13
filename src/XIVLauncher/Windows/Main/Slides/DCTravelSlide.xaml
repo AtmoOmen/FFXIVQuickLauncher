@@ -20,7 +20,7 @@
             <StackPanel>
                 <Border CornerRadius="8"
                         Padding="12,10,12,10"
-                        Margin="0,0,0,12"
+                        Margin="0,0,0,8"
                         Background="#33FF9800"
                         BorderBrush="#66FF9800"
                         BorderThickness="1"
@@ -41,19 +41,6 @@
                         Padding="10,8,10,8"
                         Margin="0,0,0,8">
                     <StackPanel>
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="AccountBox" Width="14" Height="14"
-                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <TextBlock Grid.Column="1" Text="出发角色" FontSize="11" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                       VerticalAlignment="Center" />
-                        </Grid>
-
                         <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                   materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
                                   materialDesign:HintAssist.Hint="原始大区"
@@ -68,7 +55,7 @@
                                   SelectedItem="{Binding DCTravelPage.SelectedCharacter}"
                                   IsEnabled="{Binding DCTravelPage.IsCharacterEnabled}"
                                   Visibility="{Binding DCTravelPage.IsCharacterVisible, Converter={StaticResource BoolToVis}}"
-                                  Margin="0,0,0,4">
+                                  Margin="0,0,0,0">
                             <ComboBox.Resources>
                                 <CollectionViewSource x:Key="CharactersView"
                                                       Source="{Binding DCTravelPage.Characters}">
@@ -109,29 +96,10 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                    </StackPanel>
-                </Border>
 
-                <Border BorderThickness="1"
-                        BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}"
-                        Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
-                        CornerRadius="12"
-                        Padding="10,8,10,8"
-                        Margin="0,0,0,8"
-                        Visibility="{Binding DCTravelPage.IsTargetAreaVisible, Converter={StaticResource BoolToVis}}">
-                    <StackPanel>
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <materialDesign:PackIcon Kind="Compass" Width="14" Height="14"
-                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <TextBlock Grid.Column="1" Text="旅行目的地" FontSize="11" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                       VerticalAlignment="Center" />
-                        </Grid>
+                        <Separator Visibility="{Binding DCTravelPage.IsTargetAreaVisible, Converter={StaticResource BoolToVis}}"
+                                   Margin="0,8,0,8"
+                                   Background="{DynamicResource MaterialDesign.Brush.Card.Border}" />
 
                         <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}"
                                   materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
@@ -192,7 +160,7 @@
                                   ItemsSource="{Binding DCTravelPage.TargetGroups}"
                                   SelectedItem="{Binding DCTravelPage.SelectedTargetGroup}"
                                   Visibility="{Binding DCTravelPage.IsTargetGroupVisible, Converter={StaticResource BoolToVis}}"
-                                  Margin="0,0,0,4">
+                                  Margin="0,0,0,0">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal">
@@ -239,48 +207,18 @@
                           IsChecked="{Binding DCTravelPage.AutoStartGameOnComplete}"
                           HorizontalAlignment="Center"
                           FontSize="11"
-                          Margin="0,0,0,12" />
+                          Margin="0,0,0,8" />
 
-                <Grid Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="8" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
-                            materialDesign:ButtonAssist.CornerRadius="16"
-                            Height="36" FontSize="12"
-                            Command="{Binding DCTravelPage.TravelOrderCommand}"
-                            IsEnabled="{Binding DCTravelPage.CanTravelOrder}">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Rocket" Width="16" Height="16" Margin="0,0,6,0"
-                                                     VerticalAlignment="Center" />
-                            <TextBlock Text="超域旅行" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                    <Button Grid.Column="2"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                            materialDesign:ButtonAssist.CornerRadius="16"
-                            Height="36" FontSize="12"
-                            Command="{Binding DCTravelPage.OpenHistoryCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="History" Width="16" Height="16" Margin="0,0,6,0"
-                                                     VerticalAlignment="Center" />
-                            <TextBlock Text="历史" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
-                </Grid>
-
-                <Button Style="{StaticResource MaterialDesignFlatButton}"
-                        Command="{Binding DCTravelPage.BackToDashboardCommand}"
-                        Margin="0,0,0,4" Height="24" Padding="8,0"
-                        HorizontalAlignment="Center"
-                        Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}">
+                <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="16"
+                        Height="36" FontSize="12"
+                        Command="{Binding DCTravelPage.TravelOrderCommand}"
+                        IsEnabled="{Binding DCTravelPage.CanTravelOrder}"
+                        Margin="0,0,0,0">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ArrowLeft" Width="12" Height="12" Margin="0,0,4,0"
+                        <materialDesign:PackIcon Kind="Rocket" Width="16" Height="16" Margin="0,0,6,0"
                                                  VerticalAlignment="Center" />
-                        <TextBlock Text="返回" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="超域旅行" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </StackPanel>

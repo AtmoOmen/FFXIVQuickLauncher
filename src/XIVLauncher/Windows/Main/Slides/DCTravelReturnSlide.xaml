@@ -16,9 +16,7 @@
 
     <Grid Margin="20,0,20,0" VerticalAlignment="Center">
         <StackPanel>
-            <TextBlock Text="超域返回" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
-
-            <Border Style="{StaticResource DashboardInfoCardStyle}" Padding="10" Margin="0,0,0,12">
+            <Border Style="{StaticResource DashboardInfoCardStyle}" Padding="10" Margin="0,0,0,8">
                 <StackPanel>
                     <TextBlock Text="返回订单" FontSize="11" Opacity="0.6" />
                     <TextBlock Text="{Binding DCTravelPage.ReturnOrderInfo}" FontSize="13" Margin="0,2,0,0" />
@@ -39,50 +37,24 @@
                       ItemsSource="{Binding DCTravelPage.ReturnCurrentGroups}"
                       SelectedItem="{Binding DCTravelPage.ReturnSelectedCurrentGroup}"
                       DisplayMemberPath="GroupName"
-                      Margin="0,0,0,16" />
+                      Margin="0,0,0,8" />
 
             <CheckBox Content="完成时自动启动游戏"
                       IsChecked="{Binding DCTravelPage.AutoStartGameOnComplete}"
                       HorizontalAlignment="Center"
                       FontSize="11"
-                      Margin="0,0,0,12" />
+                      Margin="0,0,0,8" />
 
-            <Grid Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Button Grid.Column="0"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        materialDesign:ButtonAssist.CornerRadius="16"
-                        Height="36" FontSize="12"
-                        Command="{Binding DCTravelPage.ConfirmTravelBackCommand}"
-                        IsEnabled="{Binding DCTravelPage.IsNotLoading}">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ArrowLeftBold" Width="16" Height="16" Margin="0,0,6,0"
-                                                 VerticalAlignment="Center" />
-                        <TextBlock Text="确认" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="2"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        materialDesign:ButtonAssist.CornerRadius="16"
-                        Height="36" FontSize="12"
-                        Command="{Binding DCTravelPage.CancelReturnCommand}">
-                    <TextBlock Text="取消" VerticalAlignment="Center" />
-                </Button>
-            </Grid>
-
-            <Button Style="{StaticResource MaterialDesignFlatButton}"
-                    Command="{Binding DCTravelPage.CancelReturnCommand}"
-                    Margin="0,0,0,4" Height="24" Padding="8,0"
-                    HorizontalAlignment="Center"
-                    Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}">
+            <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="16"
+                    Height="36" FontSize="12"
+                    Command="{Binding DCTravelPage.ConfirmTravelBackCommand}"
+                    IsEnabled="{Binding DCTravelPage.IsNotLoading}"
+                    Margin="0,0,0,0">
                 <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="ArrowLeft" Width="12" Height="12" Margin="0,0,4,0"
+                    <materialDesign:PackIcon Kind="ArrowLeftBold" Width="16" Height="16" Margin="0,0,6,0"
                                              VerticalAlignment="Center" />
-                    <TextBlock Text="返回" FontSize="11" VerticalAlignment="Center" />
+                    <TextBlock Text="确认返回" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
         </StackPanel>
