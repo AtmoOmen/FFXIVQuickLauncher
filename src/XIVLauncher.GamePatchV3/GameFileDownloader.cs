@@ -328,7 +328,9 @@ public class GameFileDownloader : IDisposable
     (
         ulong size
     ) =>
-        size > long.MaxValue ? long.MaxValue : (long)size;
+        size > long.MaxValue ?
+            long.MaxValue :
+            (long)size;
 
     private long GetTotalQueuedSize
     (
@@ -426,9 +428,11 @@ public class GameFileDownloader : IDisposable
     )
     {
         filePath = GamePathNormalizer.NormalizeDownloadPath(filePath).TrimStart('\\');
-        var pathEnd       = filePath.LastIndexOf('\\');
-        var directoryPath = pathEnd < 0 ? string.Empty : filePath[..pathEnd].Replace('\\', '/');
-        var uri           = new Uri($"{downloadBaseUrl}/{directoryPath}/{GetFileKey(filePath)}");
+        var pathEnd = filePath.LastIndexOf('\\');
+        var directoryPath = pathEnd < 0 ?
+                                string.Empty :
+                                filePath[..pathEnd].Replace('\\', '/');
+        var uri = new Uri($"{downloadBaseUrl}/{directoryPath}/{GetFileKey(filePath)}");
         return CDNLinkSigner.Sign(uri);
     }
 

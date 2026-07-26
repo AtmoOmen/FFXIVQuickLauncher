@@ -36,6 +36,12 @@ internal sealed class TransferSpeedEstimator
 
         var previousProgress = Interlocked.Exchange(ref baselineProgress, progress);
         var transferred      = progress - previousProgress;
-        Interlocked.Exchange(ref speed, transferred <= 0 ? 0 : (long)(transferred / (double)elapsed * Stopwatch.Frequency));
+        Interlocked.Exchange
+        (
+            ref speed,
+            transferred <= 0 ?
+                0 :
+                (long)(transferred / (double)elapsed * Stopwatch.Frequency)
+        );
     }
 }
