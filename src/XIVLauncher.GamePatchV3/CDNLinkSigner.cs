@@ -6,7 +6,10 @@ namespace XIVLauncher.GamePatchV3;
 
 public static class CDNLinkSigner
 {
-    public static Uri Sign(Uri uri)
+    public static Uri Sign
+    (
+        Uri uri
+    )
     {
         var timeStampHex = DateTimeOffset.Now.ToUnixTimeSeconds().ToString("x");
         var hashBytes    = MD5.HashData(Encoding.UTF8.GetBytes($"{SdoInfos.CDN_KEY}{uri.AbsolutePath}{timeStampHex}"));

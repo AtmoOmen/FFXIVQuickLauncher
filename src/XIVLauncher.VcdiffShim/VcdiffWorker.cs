@@ -62,6 +62,7 @@ public class VcdiffWorker : IDisposable
         }
         catch (OperationCanceledException)
         {
+            Log.Debug("[VcdiffShim] 父进程等待已取消");
         }
         finally
         {
@@ -69,45 +70,39 @@ public class VcdiffWorker : IDisposable
         }
     }
 
-    private async Task<byte[]> HandleRequestAsync(ulong _, byte[] data)
+    private Task<byte[]> HandleRequestAsync(ulong _, byte[] data)
     {
-        using var reader = new BinaryReader(new MemoryStream(data));
-        var       opcode = reader.ReadInt32();
-
-        if (opcode != VCDIFF_OPCODE)
-        {
-            Log.Error("[VcdiffShim] 未知 opcode: {Opcode}", opcode);
-            return BuildErrorResponse("未知的操作码");
-        }
-
-        var sourceFile   = reader.ReadString();
-        var targetFile   = reader.ReadString();
-        var expectedMd5  = reader.ReadString();
-        var expectedSize = reader.ReadInt64();
-        var deltaSize    = reader.ReadInt32();
-
-        if (deltaSize < 0)
-            throw new InvalidDataException("V3 差分数据长度无效");
-
-        var deltaData = reader.ReadBytes(deltaSize);
-        if (deltaData.Length != deltaSize)
-            throw new InvalidDataException("V3 差分数据不完整");
-
-        Log.Information("[VcdiffShim] 收到差分合并请求, 源 {SourceFile}, 差分大小 {DeltaSize}, 目标 {TargetFile}", sourceFile, deltaData.Length, targetFile);
-
         try
         {
-            ApplyVcdiffInternal(sourceFile, deltaData, targetFile, expectedMd5, expectedSize);
-            return BuildSuccessResponse();
+            using var reader = new BinaryReader(new MemoryStream(data));
+            var       opcode = reader.ReadInt32();
+
+            if (opcode != VCDIFF_OPCODE)
+                throw new InvalidDataException($"未知的操作码: {opcode}");
+
+            var sourceFile   = reader.ReadString();
+            var targetFile   = reader.ReadString();
+            var expectedMd5  = reader.ReadString();
+            var expectedSize = reader.ReadInt64();
+            var deltaSize    = reader.ReadInt32();
+            var deltaOffset  = checked((int)reader.BaseStream.Position);
+
+            if (deltaSize < 0 || deltaOffset > data.Length - deltaSize)
+                throw new InvalidDataException("V3 差分数据不完整");
+
+            Log.Information("[VcdiffShim] 收到差分合并请求, 源 {SourceFile}, 差分大小 {DeltaSize}, 目标 {TargetFile}", sourceFile, deltaSize, targetFile);
+
+            ApplyVcdiffInternal(sourceFile, data, deltaOffset, deltaSize, targetFile, expectedMd5, expectedSize);
+            return Task.FromResult(BuildSuccessResponse());
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[VcdiffShim] 差分合并失败");
-            return BuildErrorResponse(ex.ToString());
+            return Task.FromResult(BuildErrorResponse(ex.ToString()));
         }
     }
 
-    private void ApplyVcdiffInternal(string sourceFile, byte[] deltaData, string targetFile, string expectedMd5, long expectedSize)
+    private void ApplyVcdiffInternal(string sourceFile, byte[] requestData, int deltaOffset, int deltaSize, string targetFile, string expectedMd5, long expectedSize)
     {
         var targetParentDir = Path.GetDirectoryName(targetFile) ?? throw new InvalidOperationException();
         Directory.CreateDirectory(targetParentDir);
@@ -121,7 +116,7 @@ public class VcdiffWorker : IDisposable
             (
                 "[VcdiffShim] 差分合并开始, 源 {SourceFile}, 差分大小 {DeltaSize}, 目标 {TargetFile}, 临时文件 {TempPath}, 期望大小 {ExpectedSize}",
                 sourceFile,
-                deltaData.Length,
+                deltaSize,
                 targetFile,
                 tempPath,
                 expectedSize
@@ -129,7 +124,7 @@ public class VcdiffWorker : IDisposable
 
             var mergeTicks = Stopwatch.GetTimestamp();
             Log.Information("[VcdiffShim] 正在合并差分, 源 {SourcePath}, 临时目标 {TempPath}", sourceFile, tempPath);
-            RunXdeltaHelper(sourceFile, deltaData, tempPath);
+            RunXdeltaHelper(sourceFile, requestData, deltaOffset, deltaSize, tempPath);
             Log.Information("[VcdiffShim] 差分合并完成, 耗时 {ElapsedMs} ms", Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
 
             if (expectedSize >= 0 && new FileInfo(tempPath).Length != expectedSize)
@@ -161,22 +156,23 @@ public class VcdiffWorker : IDisposable
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
+                    Log.Warning(ex, "[VcdiffShim] 无法删除差分临时文件 {Path}", tempPath);
                 }
             }
         }
     }
 
-    private void RunXdeltaHelper(string sourceFile, byte[] deltaData, string tempPath)
+    private void RunXdeltaHelper(string sourceFile, byte[] requestData, int deltaOffset, int deltaSize, string tempPath)
     {
-        var handle = GCHandle.Alloc(deltaData, GCHandleType.Pinned);
+        var handle = GCHandle.Alloc(requestData, GCHandleType.Pinned);
 
         try
         {
             var result = decodeWithDeltaMemory
             (
                 sourceFile,
-                handle.AddrOfPinnedObject(),
-                (nuint)deltaData.Length,
+                IntPtr.Add(handle.AddrOfPinnedObject(), deltaOffset),
+                (nuint)deltaSize,
                 tempPath
             );
 
@@ -192,10 +188,10 @@ public class VcdiffWorker : IDisposable
                 nativeError,
                 sourceFile,
                 sourceInfo.Length,
-                deltaData.Length,
+                deltaSize,
                 tempPath
             );
-            throw new InvalidDataException($"V3 差分合并失败: 返回码 {result}, 原因 {nativeError}, 源文件 {sourceInfo.Length} 字节, 差分 {deltaData.Length} 字节");
+            throw new InvalidDataException($"V3 差分合并失败: 返回码 {result}, 原因 {nativeError}, 源文件 {sourceInfo.Length} 字节, 差分 {deltaSize} 字节");
         }
         finally
         {

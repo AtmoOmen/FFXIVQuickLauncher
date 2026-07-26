@@ -6,27 +6,34 @@ namespace XIVLauncher.GamePatchV3.Install;
 
 public sealed class GameInstaller
 {
-    public long                               Speed                   { get; private set; }
-    public int                                TaskIndex               { get; private set; }
-    public long                               Progress                { get; private set; }
-    public long                               Total                   { get; private set; }
-    public int                                TaskCount               { get; private set; }
-    public string                             CurrentFile             { get; private set; } = string.Empty;
+    public long                                Speed                   => speedEstimator.Speed;
+    public int                                 TaskIndex               { get; private set; }
+    public long                                Progress                { get; private set; }
+    public long                                Total                   { get; private set; }
+    public int                                 TaskCount               { get; private set; }
+    public string                              CurrentFile             { get; private set; } = string.Empty;
     public GameFileDownloader.InstallTaskState CurrentMetaInstallState { get; private set; } = GameFileDownloader.InstallTaskState.NotStarted;
-    public InstallState                       State                   { get; private set; } = InstallState.NotStarted;
+    public InstallState                        State                   { get; private set; } = InstallState.NotStarted;
 
     private readonly string                  gamePath;
     private readonly TimeSpan                progressUpdateInterval;
-    private readonly List<Tuple<long, long>> reportedProgresses = [];
-    private          CancellationTokenSource cts                = new();
+    private readonly TransferSpeedEstimator  speedEstimator = new();
+    private          CancellationTokenSource cts            = new();
 
-    public GameInstaller(string gamePath, TimeSpan progressUpdateInterval)
+    public GameInstaller
+    (
+        string   gamePath,
+        TimeSpan progressUpdateInterval
+    )
     {
         this.gamePath               = gamePath;
         this.progressUpdateInterval = progressUpdateInterval;
     }
 
-    public async Task RunAsync(CancellationToken cancellationToken = default)
+    public async Task RunAsync
+    (
+        CancellationToken cancellationToken = default
+    )
     {
         cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var token = cts.Token;
@@ -41,10 +48,20 @@ public sealed class GameInstaller
                                       .ToList();
 
             using var downloader = new GameFileDownloader();
-            downloader.ProgressReportInterval = progressUpdateInterval.TotalMilliseconds > 0 ? (int)progressUpdateInterval.TotalMilliseconds : 250;
+            downloader.ProgressReportInterval = progressUpdateInterval.TotalMilliseconds > 0 ?
+                                                    (int)progressUpdateInterval.TotalMilliseconds :
+                                                    250;
             var installProgressTaskIndex = 0;
 
-            void UpdateInstallProgress(int sourceIndex, long progress, long max, GameFileDownloader.InstallTaskState state)
+            void UpdateInstallProgress
+            (
+                int                                 sourceIndex,
+                long                                fileProgress,
+                long                                fileTotal,
+                long                                totalProgress,
+                long                                total,
+                GameFileDownloader.InstallTaskState state
+            )
             {
                 if (targetRelativePaths.Count <= 0)
                     return;
@@ -52,16 +69,16 @@ public sealed class GameInstaller
                 CurrentFile = targetRelativePaths[Math.Min(sourceIndex, targetRelativePaths.Count - 1)];
                 if (state == GameFileDownloader.InstallTaskState.Complete)
                     TaskIndex = Interlocked.Increment(ref installProgressTaskIndex);
-                Progress = Math.Min(progress, max);
-                Total    = max;
+                Progress = Math.Min(totalProgress, total);
+                Total    = total;
                 CurrentMetaInstallState = state switch
                 {
                     GameFileDownloader.InstallTaskState.Connecting  => GameFileDownloader.InstallTaskState.Connecting,
                     GameFileDownloader.InstallTaskState.Downloading => GameFileDownloader.InstallTaskState.Downloading,
                     GameFileDownloader.InstallTaskState.Complete    => GameFileDownloader.InstallTaskState.Complete,
-                    _                                              => GameFileDownloader.InstallTaskState.NotStarted
+                    _                                               => GameFileDownloader.InstallTaskState.NotStarted
                 };
-                RecordProgressForEstimation();
+                speedEstimator.Update(totalProgress);
             }
 
             downloader.OnInstallProgress += UpdateInstallProgress;
@@ -74,9 +91,10 @@ public sealed class GameInstaller
                 State                   = InstallState.Installing;
                 CurrentMetaInstallState = GameFileDownloader.InstallTaskState.Connecting;
 
-                for (var fileIndex = 0; fileIndex < targetRelativePaths.Count; fileIndex++) downloader.QueueInstall(fileIndex, installTargets[fileIndex].DownloadPath);
+                for (var fileIndex = 0; fileIndex < targetRelativePaths.Count; fileIndex++)
+                    downloader.QueueInstall(fileIndex, installTargets[fileIndex].DownloadPath);
 
-                await downloader.Install(gamePath, 8, token).ConfigureAwait(false);
+                await downloader.Install(gamePath, Math.Clamp(Environment.ProcessorCount, 8, 16), token).ConfigureAwait(false);
 
                 if (!string.IsNullOrWhiteSpace(remoteIntegrity.GameVersion))
                 {
@@ -107,17 +125,6 @@ public sealed class GameInstaller
 
     public void Cancel() =>
         cts.Cancel();
-
-    private void RecordProgressForEstimation()
-    {
-        var now = DateTime.Now.Ticks;
-        reportedProgresses.Add(Tuple.Create(now, Progress));
-        while (now - reportedProgresses.First().Item1 > 10 * 1000 * 8000)
-            reportedProgresses.RemoveAt(0);
-
-        var elapsedMs = reportedProgresses.Last().Item1 - reportedProgresses.First().Item1;
-        Speed = elapsedMs == 0 ? 0 : (reportedProgresses.Last().Item2 - reportedProgresses.First().Item2) * 10 * 1000 * 1000 / elapsedMs;
-    }
 
     public enum InstallState
     {

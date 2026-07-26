@@ -2,7 +2,11 @@ namespace XIVLauncher.GamePatchV3;
 
 internal static class GamePathNormalizer
 {
-    public static bool TryNormalizeGameRelativePath(string path, out string gameRelativePath)
+    public static bool TryNormalizeGameRelativePath
+    (
+        string     path,
+        out string gameRelativePath
+    )
     {
         gameRelativePath = string.Empty;
         if (string.IsNullOrWhiteSpace(path))
@@ -16,25 +20,46 @@ internal static class GamePathNormalizer
         return true;
     }
 
-    public static string NormalizeLocalRelativePath(string path) =>
+    public static string NormalizeLocalRelativePath
+    (
+        string path
+    ) =>
         NormalizeRelativePath(path);
 
-    public static string ToCanonicalSdoPathFromGameRelativePath(string gameRelativePath) =>
+    public static string ToCanonicalSdoPathFromGameRelativePath
+    (
+        string gameRelativePath
+    ) =>
         "\\" + gameRelativePath.Replace('/', '\\');
 
-    public static string ToCanonicalSdoPathFromLocalRelativePath(string localRelativePath) =>
+    public static string ToCanonicalSdoPathFromLocalRelativePath
+    (
+        string localRelativePath
+    ) =>
         ToCanonicalSdoPathFromGameRelativePath($"{GAME_PREFIX}{NormalizeLocalRelativePath(localRelativePath)}");
 
-    public static string CombineWithRootPath(string rootPath, string gameRelativePath) =>
+    public static string CombineWithRootPath
+    (
+        string rootPath,
+        string gameRelativePath
+    ) =>
         Path.Combine(rootPath, gameRelativePath.Replace('/', Path.DirectorySeparatorChar));
 
-    public static string NormalizeDownloadPath(string path)
+    public static string NormalizeDownloadPath
+    (
+        string path
+    )
     {
         var normalized = path.Replace('/', '\\');
-        return normalized.StartsWith('\\') ? normalized : "\\" + normalized;
+        return normalized.StartsWith('\\') ?
+                   normalized :
+                   "\\" + normalized;
     }
 
-    private static string NormalizeRelativePath(string path)
+    private static string NormalizeRelativePath
+    (
+        string path
+    )
     {
         var segments = new List<string>();
 
@@ -51,6 +76,9 @@ internal static class GamePathNormalizer
                 continue;
             }
 
+            if (segment.IndexOfAny(InvalidFileNameChars) >= 0)
+                return string.Empty;
+
             segments.Add(segment);
         }
 
@@ -58,4 +86,6 @@ internal static class GamePathNormalizer
     }
 
     private const string GAME_PREFIX = "game/";
+
+    private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
 }

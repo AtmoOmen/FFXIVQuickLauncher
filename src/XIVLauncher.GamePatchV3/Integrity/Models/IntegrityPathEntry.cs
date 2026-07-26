@@ -11,7 +11,10 @@ public readonly record struct IntegrityPathEntry
     ulong  Size
 )
 {
-    public static List<IntegrityPathEntry> BuildEntries(IntegrityCheckResult remoteIntegrity)
+    public static List<IntegrityPathEntry> BuildEntries
+    (
+        IntegrityCheckResult remoteIntegrity
+    )
     {
         var selectedEntriesByCanonicalPath = new Dictionary<string, IntegrityPathEntry>(StringComparer.OrdinalIgnoreCase);
         var originalIndex                  = 0;
@@ -33,7 +36,9 @@ public readonly record struct IntegrityPathEntry
                 gameRelativePath,
                 localRelativePath,
                 entry.Value,
-                remoteIntegrity.Sizes is not null && remoteIntegrity.Sizes.TryGetValue(entry.Key, out var size) ? size : 0
+                remoteIntegrity.Sizes is not null && remoteIntegrity.Sizes.TryGetValue(entry.Key, out var size) ?
+                    size :
+                    0
             );
 
             if (selectedEntriesByCanonicalPath.TryGetValue(candidate.CanonicalSdoPath, out var existing))
@@ -49,7 +54,11 @@ public readonly record struct IntegrityPathEntry
                                              .ToList();
     }
 
-    private static IntegrityPathEntry SelectPreferredEntry(IntegrityPathEntry existing, IntegrityPathEntry candidate)
+    private static IntegrityPathEntry SelectPreferredEntry
+    (
+        IntegrityPathEntry existing,
+        IntegrityPathEntry candidate
+    )
     {
         if (string.Equals(candidate.DownloadPath, candidate.CanonicalSdoPath, StringComparison.OrdinalIgnoreCase))
             return candidate;

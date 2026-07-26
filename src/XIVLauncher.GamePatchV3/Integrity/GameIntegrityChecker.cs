@@ -1,5 +1,5 @@
-using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using System.Text;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
@@ -25,9 +25,9 @@ public static class GameIntegrityChecker
             using var metadataClient = new GamePatchMetadataClient();
             var       remoteVersion  = await metadataClient.DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
             var       targetArea     = remoteVersion.Areas.FirstOrDefault(area => area.Id == "0") ?? remoteVersion.Areas.FirstOrDefault();
-            var minimumSupportedDataVersion = targetArea == null
-                                                  ? SdoInfos.DEFAULT_MINIMUM_SUPPORTED_DATA_VERSION
-                                                  : GamePatchMetadataClient.ResolveMinimumSupportedDataVersion(targetArea);
+            var minimumSupportedDataVersion = targetArea == null ?
+                                                  SdoInfos.DEFAULT_MINIMUM_SUPPORTED_DATA_VERSION :
+                                                  GamePatchMetadataClient.ResolveMinimumSupportedDataVersion(targetArea);
             var localResolution = GamePatchMetadataClient.ResolveLocalVersion(localVersion, remoteVersion);
 
             if (!GamePatchMetadataClient.IsSupportedDataVersion(localResolution.DataVersion, minimumSupportedDataVersion))
@@ -66,68 +66,88 @@ public static class GameIntegrityChecker
         return CompareIntegrity(remoteIntegrity, localIntegrity, onlyIndex);
     }
 
-    // 纯比对: 据远端与本地完整性结果产出比对结论与报告, 不涉及网络/扫描, 便于测试 Valid/Mismatch/Missing/Size 四类
-    internal static IntegrityCheckCompareOutcome CompareIntegrity(IntegrityCheckResult remoteIntegrity, IntegrityCheckResult localIntegrity, bool onlyIndex = false)
+    internal static IntegrityCheckCompareOutcome CompareIntegrity
+    (
+        IntegrityCheckResult remoteIntegrity,
+        IntegrityCheckResult localIntegrity,
+        bool                 onlyIndex = false
+    )
     {
         var remoteIntegrityEntries = IntegrityPathEntry.BuildEntries(remoteIntegrity);
-        var report                 = string.Empty;
+        var report                 = new StringBuilder();
         var failed                 = false;
 
-        foreach (var hashEntry in remoteIntegrityEntries
-                                  .Select(entry => new { entry.CanonicalSdoPath, entry.Hash, entry.Size })
-                                  .Where
-                                  (hashEntry => !onlyIndex
-                                                || hashEntry.CanonicalSdoPath.EndsWith(".index",  StringComparison.Ordinal)
-                                                || hashEntry.CanonicalSdoPath.EndsWith(".index2", StringComparison.Ordinal)
-                                  )
-                                  .Where(hashEntry => !hashEntry.CanonicalSdoPath.Equals("\\game\\LocalVersion3.xml", StringComparison.OrdinalIgnoreCase)))
+        foreach (var hashEntry in remoteIntegrityEntries)
         {
+            if (onlyIndex                                                                           &&
+                !hashEntry.CanonicalSdoPath.EndsWith(".index",  StringComparison.OrdinalIgnoreCase) &&
+                !hashEntry.CanonicalSdoPath.EndsWith(".index2", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (hashEntry.CanonicalSdoPath.Equals("\\game\\LocalVersion3.xml", StringComparison.OrdinalIgnoreCase))
+                continue;
+
             if (localIntegrity.Hashes.TryGetValue(hashEntry.CanonicalSdoPath, out var localHash))
             {
-                if (localIntegrity.Sizes.TryGetValue(hashEntry.CanonicalSdoPath, out var localSize)
-                    && localSize != hashEntry.Size)
+                if (localIntegrity.Sizes.TryGetValue(hashEntry.CanonicalSdoPath, out var localSize) && localSize != hashEntry.Size)
                 {
-                    report += $"Size mismatch: {hashEntry.CanonicalSdoPath}\n";
-                    failed =  true;
+                    report.Append("Size mismatch: ").AppendLine(hashEntry.CanonicalSdoPath);
+                    failed = true;
                     continue;
                 }
 
                 if (!string.Equals(localHash, hashEntry.Hash, StringComparison.OrdinalIgnoreCase))
                 {
-                    report += $"Mismatch: {hashEntry.CanonicalSdoPath}\n";
-                    failed =  true;
+                    report.Append("Mismatch: ").AppendLine(hashEntry.CanonicalSdoPath);
+                    failed = true;
                 }
             }
             else
             {
-                report += $"Missing: {hashEntry.CanonicalSdoPath}\n";
-                failed =  true;
+                report.Append("Missing: ").AppendLine(hashEntry.CanonicalSdoPath);
+                failed = true;
             }
         }
 
         return new IntegrityCheckCompareOutcome
         {
-            CompareResult   = failed ? IntegrityCheckCompareResult.Invalid : IntegrityCheckCompareResult.Valid,
-            Report          = report,
+            CompareResult = failed ?
+                                IntegrityCheckCompareResult.Invalid :
+                                IntegrityCheckCompareResult.Valid,
+            Report          = report.ToString(),
             RemoteIntegrity = remoteIntegrity
         };
     }
 
-    public static async Task<string> GetFileMd5Hash(string filePath, CancellationToken cancellationToken = default)
+    public static async Task<string> GetFileMd5Hash
+    (
+        string            filePath,
+        CancellationToken cancellationToken = default
+    )
     {
-        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var       md5    = MD5.Create();
-        var             hash   = await md5.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
+        await using var stream = new FileStream
+        (
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete,
+            HASH_BUFFER_SIZE,
+            FileOptions.Asynchronous | FileOptions.SequentialScan
+        );
+        var hash = await MD5.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
         return Convert.ToHexString(hash);
     }
 
-    public static async Task<IntegrityCheckResult> DownloadIntegrityCheckForVersion(CancellationToken cancellationToken = default)
+    public static async Task<IntegrityCheckResult> DownloadIntegrityCheckForVersion
+    (
+        CancellationToken cancellationToken = default
+    )
     {
         using var metadataClient = new GamePatchMetadataClient();
         return await metadataClient.DownloadIntegrityCheck(cancellationToken).ConfigureAwait(false);
     }
 
-    public static Task<IntegrityCheckResult> RunIntegrityCheckAsync
+    public static async Task<IntegrityCheckResult> RunIntegrityCheckAsync
     (
         DirectoryInfo                      gamePath,
         IProgress<IntegrityCheckProgress>? progress,
@@ -135,59 +155,69 @@ public static class GameIntegrityChecker
         CancellationToken                  cancellationToken = default
     )
     {
-        var files = CheckDirectory(gamePath, gamePath.FullName, progress, onlyIndex, cancellationToken);
-        return Task.FromResult
-        (
-            new IntegrityCheckResult
-            {
-                GameVersion = Repository.Ffxiv.GetVer(gamePath),
-                Hashes      = files.ToDictionary(x => x.Key, x => x.Value.Hash),
-                Sizes       = files.ToDictionary(x => x.Key, x => x.Value.Size)
-            }
-        );
+        var files = await CheckDirectoryAsync(gamePath, progress, onlyIndex, cancellationToken).ConfigureAwait(false);
+        return new IntegrityCheckResult
+        {
+            GameVersion = Repository.Ffxiv.GetVer(gamePath),
+            Hashes      = files.ToDictionary(x => x.Path, x => x.Hash, StringComparer.OrdinalIgnoreCase),
+            Sizes       = files.ToDictionary(x => x.Path, x => x.Size, StringComparer.OrdinalIgnoreCase)
+        };
     }
 
-    private static ConcurrentDictionary<string, (string Hash, ulong Size)> CheckDirectory
+    private static async Task<List<(string Path, string Hash, ulong Size)>> CheckDirectoryAsync
     (
         DirectoryInfo                      directory,
-        string                             rootDirectory,
         IProgress<IntegrityCheckProgress>? progress,
         bool                               onlyIndex,
         CancellationToken                  cancellationToken
     )
     {
-        var filesToProcess = new List<FileInfo>();
-        CollectFiles(directory, rootDirectory, onlyIndex, filesToProcess);
+        var rootDirectory = directory.FullName;
+        var filesToProcess = await Task.Run
+                             (
+                                 () =>
+                                 {
+                                     var files = new List<FileInfo>();
+                                     CollectFiles(directory, rootDirectory, onlyIndex, files, cancellationToken);
+                                     return files;
+                                 },
+                                 cancellationToken
+                             ).ConfigureAwait(false);
 
-        var results            = new ConcurrentDictionary<string, (string Hash, ulong Size)>();
+        var results            = new (string Path, string Hash, ulong Size)?[filesToProcess.Count];
         var processedFileCount = 0;
         var options = new ParallelOptions
         {
-            MaxDegreeOfParallelism = Math.Min(Math.Max(Environment.ProcessorCount - 2, 1), 32),
+            MaxDegreeOfParallelism = Math.Min(Math.Max(Environment.ProcessorCount, 1), MAX_HASH_CONCURRENCY),
             CancellationToken      = cancellationToken
         };
 
-        Parallel.ForEach
+        await Parallel.ForAsync
         (
-            filesToProcess,
+            0,
+            filesToProcess.Count,
             options,
-            file =>
+            async (fileIndex, token) =>
             {
+                var file = filesToProcess[fileIndex];
+
                 try
                 {
                     var relativePath = GetRelativePath(file.FullName, rootDirectory);
-
-                    using var md5 = MD5.Create();
-                    using var stream = new BufferedStream
+                    await using var stream = new FileStream
                     (
-                        file.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite),
-                        1200000
+                        file.FullName,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.ReadWrite | FileShare.Delete,
+                        HASH_BUFFER_SIZE,
+                        FileOptions.Asynchronous | FileOptions.SequentialScan
                     );
-
-                    var hash       = md5.ComputeHash(stream);
+                    var size       = (ulong)stream.Length;
+                    var hash       = await MD5.HashDataAsync(stream, token).ConfigureAwait(false);
                     var hashString = Convert.ToHexString(hash);
 
-                    results.TryAdd(relativePath, (hashString, (ulong)file.Length));
+                    results[fileIndex] = (relativePath, hashString, size);
                     progress?.Report
                     (
                         new IntegrityCheckProgress
@@ -199,24 +229,27 @@ public static class GameIntegrityChecker
                         }
                     );
                 }
-                catch (IOException)
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
-                    // Ignore.
+                    Log.Warning(ex, "[IntegrityCheck] 无法读取游戏文件 {Path}", file.FullName);
                 }
             }
-        );
+        ).ConfigureAwait(false);
 
-        return results;
+        return results.OfType<(string Path, string Hash, ulong Size)>().ToList();
     }
 
     private static void CollectFiles
     (
-        DirectoryInfo  directory,
-        string         rootDirectory,
-        bool           onlyIndex,
-        List<FileInfo> filesToProcess
+        DirectoryInfo     directory,
+        string            rootDirectory,
+        bool              onlyIndex,
+        List<FileInfo>    filesToProcess,
+        CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         foreach (var file in directory.GetFiles())
         {
             var relativePath = GetRelativePath(file.FullName, rootDirectory);
@@ -230,7 +263,9 @@ public static class GameIntegrityChecker
             if (normalizedGameRelativePath.Equals("game/LocalVersion3.xml", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            if (onlyIndex && !relativePath.EndsWith(".index", StringComparison.Ordinal) && !relativePath.EndsWith(".index2", StringComparison.Ordinal))
+            if (onlyIndex                                                             &&
+                !relativePath.EndsWith(".index",  StringComparison.OrdinalIgnoreCase) &&
+                !relativePath.EndsWith(".index2", StringComparison.OrdinalIgnoreCase))
                 continue;
 
             filesToProcess.Add(file);
@@ -238,17 +273,21 @@ public static class GameIntegrityChecker
 
         foreach (var dir in directory.GetDirectories())
         {
-            if (!dir.FullName.ToLowerInvariant().Contains("shade", StringComparison.Ordinal))
-                CollectFiles(dir, rootDirectory, onlyIndex, filesToProcess);
+            if ((dir.Attributes & FileAttributes.ReparsePoint) == 0 && !dir.Name.Contains("shade", StringComparison.OrdinalIgnoreCase))
+                CollectFiles(dir, rootDirectory, onlyIndex, filesToProcess, cancellationToken);
         }
     }
 
-    private static string GetRelativePath(string fullPath, string rootDirectory)
+    private static string GetRelativePath
+    (
+        string fullPath,
+        string rootDirectory
+    )
     {
-        var relative = fullPath[rootDirectory.Length..];
-        relative = relative.Replace("/", "\\");
-        if (!relative.StartsWith("\\", StringComparison.Ordinal))
-            relative = "\\" + relative;
-        return relative;
+        var relative = Path.GetRelativePath(rootDirectory, fullPath).Replace('/', '\\');
+        return "\\" + relative.TrimStart('\\');
     }
+
+    private const int HASH_BUFFER_SIZE     = 131072;
+    private const int MAX_HASH_CONCURRENCY = 4;
 }

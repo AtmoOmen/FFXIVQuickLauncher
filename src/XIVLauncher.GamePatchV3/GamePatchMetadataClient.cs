@@ -20,14 +20,23 @@ public sealed class GamePatchMetadataClient : IDisposable
     public void Dispose() =>
         client.Dispose();
 
-    public async Task<GameUpdatePlan?> BuildUpdatePlan(string currentGameVersion, bool forceUpdate, CancellationToken cancellationToken = default)
+    public async Task<GameUpdatePlan?> BuildUpdatePlan
+    (
+        string            currentGameVersion,
+        bool              forceUpdate,
+        CancellationToken cancellationToken = default
+    )
     {
         var remoteVersion = await DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
         return BuildPlanFromRemoteVersion(remoteVersion, currentGameVersion, forceUpdate);
     }
 
-    // 纯计算: 据远端版本信息与当前游戏版本推导更新计划, 不涉及任何 IO, 便于测试多跳链/环路/边界
-    internal static GameUpdatePlan? BuildPlanFromRemoteVersion(RemoteVersion remoteVersion, string currentGameVersion, bool forceUpdate)
+    internal static GameUpdatePlan? BuildPlanFromRemoteVersion
+    (
+        RemoteVersion remoteVersion,
+        string        currentGameVersion,
+        bool          forceUpdate
+    )
     {
         var normalizedGameVersion = NormalizeGameVersion(currentGameVersion);
         Log.Information("[V3Patch] 正在构建更新计划, 当前游戏版本 {CurrentGameVersion}, 强制更新 {ForceUpdate}", normalizedGameVersion, forceUpdate);
@@ -51,28 +60,10 @@ public sealed class GamePatchMetadataClient : IDisposable
 
         var targetGameVersion = ResolveGameVersion(remoteVersion, targetArea.Must);
 
-        List<GameVersionPackage> packages = [];
-        var                      cursor   = currentVersion;
-        HashSet<string>          visited  = [];
+        var packages = FindUpdatePackages(remoteVersion.Packages, currentVersion, targetArea.Must);
 
-        while (!string.Equals(cursor, targetArea.Must, StringComparison.Ordinal))
-        {
-            if (string.IsNullOrWhiteSpace(cursor) || !visited.Add(cursor))
-                throw new InvalidDataException("未能解析可用的 V3 更新路径");
-
-            var package = remoteVersion.Packages.FirstOrDefault
-                          (entry => string.Equals(entry.From,  cursor,          StringComparison.Ordinal)
-                                    && string.Equals(entry.To, targetArea.Must, StringComparison.Ordinal)
-                          )
-                          ?? remoteVersion.Packages.FirstOrDefault(entry => string.Equals(entry.From, cursor, StringComparison.Ordinal));
-
-            if (package == null)
-                throw new InvalidDataException($"未找到 V3 更新包: {cursor} -> {targetArea.Must}");
-
-            packages.Add(package);
+        foreach (var package in packages)
             Log.Information("[V3Patch] 已选择更新包 {PackageName}, 版本 {FromVersion} -> {ToVersion}", package.Name, package.From, package.To);
-            cursor = package.To;
-        }
 
         var updatePlan = new GameUpdatePlan
         {
@@ -87,17 +78,83 @@ public sealed class GamePatchMetadataClient : IDisposable
             Packages           = packages
         };
         Log.Information
-            ("[V3Patch] 更新计划构建完成, 当前数据版本 {CurrentDataVersion}, 目标数据版本 {TargetDataVersion}, 包数量 {PackageCount}", updatePlan.CurrentDataVersion, updatePlan.TargetDataVersion, updatePlan.Packages.Count);
+        (
+            "[V3Patch] 更新计划构建完成, 当前数据版本 {CurrentDataVersion}, 目标数据版本 {TargetDataVersion}, 包数量 {PackageCount}",
+            updatePlan.CurrentDataVersion,
+            updatePlan.TargetDataVersion,
+            updatePlan.Packages.Count
+        );
         return updatePlan;
     }
 
-    public async Task<IntegrityCheckResult> DownloadIntegrityCheck(CancellationToken cancellationToken = default)
+    private static List<GameVersionPackage> FindUpdatePackages
+    (
+        IReadOnlyList<GameVersionPackage> availablePackages,
+        string                            currentVersion,
+        string                            targetVersion
+    )
+    {
+        if (string.Equals(currentVersion, targetVersion, StringComparison.Ordinal))
+            return [];
+
+        var versionsToVisit = new Queue<string>();
+        var predecessors    = new Dictionary<string, (string PreviousVersion, GameVersionPackage Package)>(StringComparer.Ordinal);
+        var visited         = new HashSet<string>(StringComparer.Ordinal) { currentVersion };
+        versionsToVisit.Enqueue(currentVersion);
+
+        while (versionsToVisit.TryDequeue(out var version))
+        {
+            foreach (var package in availablePackages)
+            {
+                if (!string.Equals(package.From, version, StringComparison.Ordinal) || string.IsNullOrWhiteSpace(package.To) || !visited.Add(package.To))
+                    continue;
+
+                predecessors.Add(package.To, (version, package));
+                if (string.Equals(package.To, targetVersion, StringComparison.Ordinal))
+                    return BuildPackagePath(predecessors, currentVersion, targetVersion);
+
+                versionsToVisit.Enqueue(package.To);
+            }
+        }
+
+        throw new InvalidDataException($"未找到 V3 更新包: {currentVersion} -> {targetVersion}");
+    }
+
+    private static List<GameVersionPackage> BuildPackagePath
+    (
+        IReadOnlyDictionary<string, (string PreviousVersion, GameVersionPackage Package)> predecessors,
+        string                                                                            currentVersion,
+        string                                                                            targetVersion
+    )
+    {
+        List<GameVersionPackage> packages = [];
+        var                      cursor   = targetVersion;
+
+        while (!string.Equals(cursor, currentVersion, StringComparison.Ordinal))
+        {
+            var predecessor = predecessors[cursor];
+            packages.Add(predecessor.Package);
+            cursor = predecessor.PreviousVersion;
+        }
+
+        packages.Reverse();
+        return packages;
+    }
+
+    public async Task<IntegrityCheckResult> DownloadIntegrityCheck
+    (
+        CancellationToken cancellationToken = default
+    )
     {
         var remoteVersion = await DownloadRemoteVersion(cancellationToken).ConfigureAwait(false);
         return await DownloadIntegrityCheck(remoteVersion, cancellationToken).ConfigureAwait(false);
     }
 
-    internal async Task<IntegrityCheckResult> DownloadIntegrityCheck(RemoteVersion remoteVersion, CancellationToken cancellationToken = default)
+    internal async Task<IntegrityCheckResult> DownloadIntegrityCheck
+    (
+        RemoteVersion     remoteVersion,
+        CancellationToken cancellationToken = default
+    )
     {
         var responseText   = await DownloadString(SdoInfos.CLIENT_ALL_FILES_LIST_URL, cancellationToken).ConfigureAwait(false);
         var integrityLines = responseText.Trim().Split();
@@ -125,25 +182,37 @@ public sealed class GamePatchMetadataClient : IDisposable
             if (lineParts.Length < 3)
                 continue;
 
-            if (!GamePathNormalizer.TryNormalizeGameRelativePath(lineParts[0], out _))
+            if (!GamePathNormalizer.TryNormalizeGameRelativePath(lineParts[0], out _) || string.IsNullOrWhiteSpace(lineParts[2]))
                 continue;
 
             var filePath = GamePathNormalizer.NormalizeDownloadPath(lineParts[0]);
             result.Hashes[filePath] = lineParts[2];
-            result.Sizes[filePath]  = ulong.Parse(lineParts[1]);
+
+            if (!ulong.TryParse(lineParts[1], out var fileSize))
+            {
+                result.Hashes.Remove(filePath);
+                continue;
+            }
+
+            result.Sizes[filePath] = fileSize;
         }
 
         return result;
     }
 
-    public async Task<RemoteVersion> DownloadRemoteVersion(CancellationToken cancellationToken = default)
+    public async Task<RemoteVersion> DownloadRemoteVersion
+    (
+        CancellationToken cancellationToken = default
+    )
     {
         var json = await DownloadString(SdoInfos.REMOTE_VERSION_URL, cancellationToken).ConfigureAwait(false);
-        return JsonSerializer.Deserialize<RemoteVersion>(json, SerializerOptions)
-               ?? throw new InvalidDataException("未能解析 V3 远端版本信息");
+        return JsonSerializer.Deserialize<RemoteVersion>(json, SerializerOptions) ?? throw new InvalidDataException("未能解析 V3 远端版本信息");
     }
 
-    private static GameVersionArea GetTargetArea(RemoteVersion remoteVersion)
+    private static GameVersionArea GetTargetArea
+    (
+        RemoteVersion remoteVersion
+    )
     {
         var targetArea = remoteVersion.Areas.FirstOrDefault(area => area.Id == "0") ?? remoteVersion.Areas.FirstOrDefault();
         return targetArea ?? throw new InvalidDataException("V3 远端版本信息缺少 area 配置");
@@ -166,7 +235,11 @@ public sealed class GamePatchMetadataClient : IDisposable
         return string.Empty;
     }
 
-    private async Task<string> DownloadString(string url, CancellationToken cancellationToken)
+    private async Task<string> DownloadString
+    (
+        string            url,
+        CancellationToken cancellationToken
+    )
     {
         var ticks = Stopwatch.GetTimestamp();
         Log.Information("[V3Patch] 正在下载元数据 {Url}", url);
@@ -177,7 +250,11 @@ public sealed class GamePatchMetadataClient : IDisposable
         return content;
     }
 
-    internal static (string DataVersion, string ViewVersion) ResolveLocalVersion(string currentGameVersion, RemoteVersion remoteVersion)
+    internal static (string DataVersion, string ViewVersion) ResolveLocalVersion
+    (
+        string        currentGameVersion,
+        RemoteVersion remoteVersion
+    )
     {
         var normalizedGameVersion = NormalizeGameVersion(currentGameVersion);
         if (string.IsNullOrWhiteSpace(normalizedGameVersion))
@@ -190,23 +267,36 @@ public sealed class GamePatchMetadataClient : IDisposable
         return (string.Empty, normalizedGameVersion);
     }
 
-    internal static string ResolveGameVersion(RemoteVersion remoteVersion, string dataVersion)
+    internal static string ResolveGameVersion
+    (
+        RemoteVersion remoteVersion,
+        string        dataVersion
+    )
     {
         var matchedPackage = remoteVersion.Packages.FirstOrDefault(package => string.Equals(package.To, dataVersion, StringComparison.Ordinal));
         if (matchedPackage != null)
             return NormalizeVersionView(matchedPackage.VersionView);
 
         var matchedArea = remoteVersion.Areas.FirstOrDefault
-        (area => string.Equals(area.Must,   dataVersion, StringComparison.Ordinal)
-                 || string.Equals(area.Max, dataVersion, StringComparison.Ordinal)
+        (area => string.Equals(area.Must, dataVersion, StringComparison.Ordinal) || string.Equals(area.Max, dataVersion, StringComparison.Ordinal)
         );
-        return matchedArea == null ? string.Empty : NormalizeVersionView(matchedArea.View);
+        return matchedArea == null ?
+                   string.Empty :
+                   NormalizeVersionView(matchedArea.View);
     }
 
-    internal static bool IsSupportedDataVersion(string dataVersion, string minimumSupportedDataVersion) =>
+    internal static bool IsSupportedDataVersion
+    (
+        string dataVersion,
+        string minimumSupportedDataVersion
+    ) =>
         !string.IsNullOrWhiteSpace(dataVersion) && CompareDataVersions(dataVersion, minimumSupportedDataVersion) >= 0;
 
-    internal static int CompareDataVersions(string left, string right)
+    internal static int CompareDataVersions
+    (
+        string left,
+        string right
+    )
     {
         var leftParts  = left.Split('.');
         var rightParts = right.Split('.');
@@ -214,9 +304,13 @@ public sealed class GamePatchMetadataClient : IDisposable
 
         for (var index = 0; index < partCount; index++)
         {
-            var leftValue  = index < leftParts.Length  && int.TryParse(leftParts[index],  out var parsedLeft) ? parsedLeft : 0;
-            var rightValue = index < rightParts.Length && int.TryParse(rightParts[index], out var parsedRight) ? parsedRight : 0;
-            var compare    = leftValue.CompareTo(rightValue);
+            var leftValue = index < leftParts.Length && int.TryParse(leftParts[index], out var parsedLeft) ?
+                                parsedLeft :
+                                0;
+            var rightValue = index < rightParts.Length && int.TryParse(rightParts[index], out var parsedRight) ?
+                                 parsedRight :
+                                 0;
+            var compare = leftValue.CompareTo(rightValue);
             if (compare != 0)
                 return compare;
         }
@@ -224,40 +318,63 @@ public sealed class GamePatchMetadataClient : IDisposable
         return 0;
     }
 
-    internal static string ResolveMinimumSupportedDataVersion(GameVersionArea targetArea)
+    internal static string ResolveMinimumSupportedDataVersion
+    (
+        GameVersionArea targetArea
+    )
     {
         var normalizedMinimum = NormalizeGameVersion(targetArea.Min);
-        return string.IsNullOrWhiteSpace(normalizedMinimum) ? SdoInfos.DEFAULT_MINIMUM_SUPPORTED_DATA_VERSION : normalizedMinimum;
+        return string.IsNullOrWhiteSpace(normalizedMinimum) ?
+                   SdoInfos.DEFAULT_MINIMUM_SUPPORTED_DATA_VERSION :
+                   normalizedMinimum;
     }
 
-    private static string CreateUnsupportedVersionMessage(string gameVersion, string minimumSupportedDataVersion, string? dataVersion = null)
+    private static string CreateUnsupportedVersionMessage
+    (
+        string  gameVersion,
+        string  minimumSupportedDataVersion,
+        string? dataVersion = null
+    )
     {
-        var versionText = string.IsNullOrWhiteSpace(dataVersion)
-                              ? $"游戏版本 {gameVersion}"
-                              : $"游戏版本 {gameVersion}, 数据版本 {dataVersion}";
+        var versionText = string.IsNullOrWhiteSpace(dataVersion) ?
+                              $"游戏版本 {gameVersion}" :
+                              $"游戏版本 {gameVersion}, 数据版本 {dataVersion}";
         return $"当前游戏版本过旧或无法识别, {versionText}, 最低支持的数据版本为 {minimumSupportedDataVersion}, 请先使用“修复游戏文件”更新到最新版本, 或重新下载完整游戏";
     }
 
-    private static bool IsMatchingGameVersion(string versionView, string gameVersion)
+    private static bool IsMatchingGameVersion
+    (
+        string versionView,
+        string gameVersion
+    )
     {
         if (string.IsNullOrWhiteSpace(versionView))
             return false;
 
         var normalizedVersionView = NormalizeVersionView(versionView);
-        return string.Equals(normalizedVersionView,                gameVersion, StringComparison.Ordinal)
-               || string.Equals(NormalizeGameVersion(versionView), gameVersion, StringComparison.Ordinal);
+        return string.Equals
+                   (normalizedVersionView, gameVersion, StringComparison.Ordinal) ||
+               string.Equals(NormalizeGameVersion(versionView), gameVersion, StringComparison.Ordinal);
     }
 
-    private static string NormalizeGameVersion(string gameVersion) =>
+    private static string NormalizeGameVersion
+    (
+        string gameVersion
+    ) =>
         gameVersion.Trim().Trim('\uFEFF').Trim();
 
-    private static string NormalizeVersionView(string? versionView)
+    private static string NormalizeVersionView
+    (
+        string? versionView
+    )
     {
         if (string.IsNullOrWhiteSpace(versionView))
             return string.Empty;
 
         var normalizedVersionView = NormalizeGameVersion(versionView);
         var separatorIndex        = normalizedVersionView.IndexOf('_');
-        return separatorIndex < 0 ? normalizedVersionView : normalizedVersionView[..separatorIndex];
+        return separatorIndex < 0 ?
+                   normalizedVersionView :
+                   normalizedVersionView[..separatorIndex];
     }
 }

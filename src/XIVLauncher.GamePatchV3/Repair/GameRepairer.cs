@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Serilog;
 using XIVLauncher.GamePatchV3.Integrity;
@@ -23,32 +24,31 @@ public sealed class GameRepairer
         public long   Total    { get; } = total;
     }
 
-    public long                               Speed                         { get; private set; }
-    public int                                TaskIndex                     { get; private set; }
-    public long                               Progress                      { get; private set; }
-    public long                               Total                         { get; private set; }
-    public int                                TaskCount                     { get; private set; }
-    public string                             CurrentFile                   { get; private set; } = string.Empty;
-    public int                                NumBrokenFiles                { get; private set; }
-    public List<string>                       MovedFiles                    { get; }              = [];
-    public string                             MovedFileToDir                { get; private set; } = string.Empty;
+    public long                                Speed                         => speedEstimator.Speed;
+    public int                                 TaskIndex                     { get; private set; }
+    public long                                Progress                      { get; private set; }
+    public long                                Total                         { get; private set; }
+    public int                                 TaskCount                     { get; private set; }
+    public string                              CurrentFile                   { get; private set; } = string.Empty;
+    public int                                 NumBrokenFiles                { get; private set; }
+    public List<string>                        MovedFiles                    { get; }              = [];
+    public string                              MovedFileToDir                { get; private set; } = string.Empty;
     public GameFileDownloader.InstallTaskState CurrentMetaInstallState       { get; private set; } = GameFileDownloader.InstallTaskState.NotStarted;
-    public int                                CurrentInstallBrokenFileCount { get; private set; }
-    public bool                               IsDownloading                 { get; private set; }
-    public RepairState                        State                         { get; private set; } = RepairState.NotStarted;
+    public int                                 CurrentInstallBrokenFileCount { get; private set; }
+    public bool                                IsDownloading                 { get; private set; }
+    public RepairState                         State                         { get; private set; } = RepairState.NotStarted;
 
-    private readonly Lock                                  installProgressLock                 = new();
-    private readonly Dictionary<int, InstallProgressEntry> currentInstallProgressBySourceIndex = new();
-    private readonly List<Tuple<long, long>>               reportedProgresses                  = [];
-    private          CancellationTokenSource               cts                                 = new();
+    private readonly ConcurrentDictionary<int, InstallProgressEntry> currentInstallProgressBySourceIndex = new();
+    private readonly TransferSpeedEstimator                          speedEstimator                      = new();
+    private          CancellationTokenSource                         cts                                 = new();
 
-    public Dictionary<int, InstallProgressEntry> GetCurrentInstallProgressEntries()
-    {
-        lock (installProgressLock)
-            return currentInstallProgressBySourceIndex.ToDictionary(x => x.Key, x => x.Value);
-    }
+    public Dictionary<int, InstallProgressEntry> GetCurrentInstallProgressEntries() =>
+        currentInstallProgressBySourceIndex.ToDictionary(x => x.Key, x => x.Value);
 
-    public async Task RunAsync(CancellationToken cancellationToken = default)
+    public async Task RunAsync
+    (
+        CancellationToken cancellationToken = default
+    )
     {
         cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var token = cts.Token;
@@ -64,10 +64,18 @@ public sealed class GameRepairer
             var fileBroken = Enumerable.Repeat(false, targetRelativePaths.Count).ToList();
 
             using var downloader = new GameFileDownloader();
-            downloader.ProgressReportInterval = progressUpdateInterval.TotalMilliseconds > 0 ? (int)progressUpdateInterval.TotalMilliseconds : 250;
+            downloader.ProgressReportInterval = progressUpdateInterval.TotalMilliseconds > 0 ?
+                                                    (int)progressUpdateInterval.TotalMilliseconds :
+                                                    250;
             var installProgressTaskIndex = 0;
 
-            void UpdateVerifyProgress(int targetIndex, int count, long progress, long max)
+            void UpdateVerifyProgress
+            (
+                int  targetIndex,
+                int  count,
+                long progress,
+                long max
+            )
             {
                 if (targetRelativePaths.Count <= 0)
                     return;
@@ -76,10 +84,18 @@ public sealed class GameRepairer
                 TaskIndex   = count;
                 Progress    = Math.Min(progress, max);
                 Total       = max;
-                RecordProgressForEstimation();
+                speedEstimator.Update(Progress);
             }
 
-            void UpdateInstallProgress(int sourceIndex, long progress, long max, GameFileDownloader.InstallTaskState state)
+            void UpdateInstallProgress
+            (
+                int                                 sourceIndex,
+                long                                fileProgress,
+                long                                fileTotal,
+                long                                totalProgress,
+                long                                total,
+                GameFileDownloader.InstallTaskState state
+            )
             {
                 if (targetRelativePaths.Count <= 0)
                     return;
@@ -87,17 +103,17 @@ public sealed class GameRepairer
                 CurrentFile = targetRelativePaths[Math.Min(sourceIndex, targetRelativePaths.Count - 1)];
                 if (state == GameFileDownloader.InstallTaskState.Complete)
                     TaskIndex = Interlocked.Increment(ref installProgressTaskIndex);
-                Progress = Math.Min(progress, max);
-                Total    = max;
+                Progress = Math.Min(totalProgress, total);
+                Total    = total;
                 CurrentMetaInstallState = state switch
                 {
                     GameFileDownloader.InstallTaskState.Connecting  => GameFileDownloader.InstallTaskState.Connecting,
                     GameFileDownloader.InstallTaskState.Downloading => GameFileDownloader.InstallTaskState.Downloading,
                     GameFileDownloader.InstallTaskState.Complete    => GameFileDownloader.InstallTaskState.Complete,
-                    _                                              => GameFileDownloader.InstallTaskState.NotStarted
+                    _                                               => GameFileDownloader.InstallTaskState.NotStarted
                 };
-                UpdateInstallProgressEntry(sourceIndex, CurrentFile, progress, max);
-                RecordProgressForEstimation();
+                UpdateInstallProgressEntry(sourceIndex, CurrentFile, fileProgress, fileTotal);
+                speedEstimator.Update(totalProgress);
             }
 
             downloader.OnVerifyProgress  += UpdateVerifyProgress;
@@ -119,12 +135,12 @@ public sealed class GameRepairer
                 {
                     CurrentMetaInstallState = GameFileDownloader.InstallTaskState.NotStarted;
                     Progress                = Total = TaskIndex = 0;
-                    reportedProgresses.Clear();
+                    speedEstimator.Reset();
 
-                    await downloader.VerifyFiles(gamePath, attemptIndex > 0, Math.Min(Math.Max(Environment.ProcessorCount - 2, 1), 32), token).ConfigureAwait(false);
+                    await downloader.VerifyFiles(gamePath, attemptIndex > 0, Math.Min(Math.Max(Environment.ProcessorCount, 1), 4), token).ConfigureAwait(false);
 
                     var brokenFiles = downloader.GetBrokenFiles();
-                    reportedProgresses.Clear();
+                    speedEstimator.Reset();
                     TaskIndex = 0;
                     TaskCount = brokenFiles.Count;
 
@@ -146,7 +162,7 @@ public sealed class GameRepairer
                         }
 
                         CurrentMetaInstallState = GameFileDownloader.InstallTaskState.Connecting;
-                        await downloader.Install(gamePath, 8, token).ConfigureAwait(false);
+                        await downloader.Install(gamePath, Math.Clamp(Environment.ProcessorCount, 8, 16), token).ConfigureAwait(false);
                         CurrentInstallBrokenFileCount = 0;
                         ResetInstallProgressDisplay();
                         continue;
@@ -169,7 +185,7 @@ public sealed class GameRepairer
             }
 
             var gameRootPath = Path.Combine(gamePath, "game");
-            await MoveUnnecessaryFiles(gameRootPath, [..targetRelativePaths], token).ConfigureAwait(false);
+            MoveUnnecessaryFiles(gameRootPath, targetRelativePaths, token);
 
             State = RepairState.Done;
         }
@@ -192,72 +208,61 @@ public sealed class GameRepairer
     public void Cancel() =>
         cts.Cancel();
 
-    private async Task MoveUnnecessaryFiles(string path, HashSet<string> targetRelativePaths, CancellationToken cancellationToken)
+    private void MoveUnnecessaryFiles
+    (
+        string                      path,
+        IReadOnlyCollection<string> targetRelativePaths,
+        CancellationToken           cancellationToken
+    )
     {
-        MovedFileToDir = Path.Combine(path, "repair_recycler", DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+        MovedFileToDir = Path.Combine(path, "repair_recycler", DateTime.Now.ToString("yyyyMMdd_HHmmss_fff"));
 
         var rootPathInfo = new DirectoryInfo(path);
         path = rootPathInfo.FullName;
+        var targetFiles       = targetRelativePaths.Select(NormalizeRelativePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var targetDirectories = BuildTargetDirectories(targetFiles);
 
-        Queue<DirectoryInfo>   directoriesToVisit = new();
-        HashSet<DirectoryInfo> directoriesVisited = [];
+        Queue<DirectoryInfo> directoriesToVisit = new();
         directoriesToVisit.Enqueue(rootPathInfo);
-        directoriesVisited.Add(rootPathInfo);
 
         while (directoriesToVisit.Count != 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var dir = directoriesToVisit.Dequeue();
 
-            if (!dir.FullName.ToLowerInvariant().Replace('\\', '/').StartsWith(path.ToLowerInvariant().Replace('\\', '/'), StringComparison.Ordinal))
+            var relativeDirPath = dir == rootPathInfo ?
+                                      string.Empty :
+                                      GetRelativePath(path, dir.FullName);
+            if (ShouldIgnore(relativeDirPath))
                 continue;
 
-            var relativeDirPath = dir == rootPathInfo ? string.Empty : dir.FullName[(path.Length + 1)..].Replace('\\', '/');
-            if (GameIgnoreUnnecessaryFilePatterns.Any(x => x.IsMatch(relativeDirPath)))
-                continue;
-
-            if (!dir.EnumerateFileSystemInfos().Any())
+            foreach (var subdir in dir.GetDirectories())
             {
-                if (Directory.Exists(dir.FullName))
-                    Directory.Delete(dir.FullName);
-                Directory.CreateDirectory(Path.Combine(MovedFileToDir, relativeDirPath));
-                continue;
-            }
-
-            foreach (var subdir in dir.EnumerateDirectories())
-            {
-                if (directoriesVisited.Contains(subdir))
+                cancellationToken.ThrowIfCancellationRequested();
+                if ((subdir.Attributes & FileAttributes.ReparsePoint) != 0)
                     continue;
 
-                if (!subdir.FullName.ToLowerInvariant().Replace('\\', '/').StartsWith(path.ToLowerInvariant().Replace('\\', '/'), StringComparison.Ordinal))
+                var relativePath = GetRelativePath(path, subdir.FullName) + "/";
+                if (ShouldIgnore(relativePath))
                     continue;
 
-                var relativePath = subdir.FullName[(path.Length + 1)..].Replace('\\', '/') + "/";
-
-                if (GameIgnoreUnnecessaryFilePatterns.Any(x => x.IsMatch(relativePath)))
-                    continue;
-
-                if (!targetRelativePaths.Any(x => x.TrimStart('\\').Replace('\\', '/').ToLowerInvariant().StartsWith(relativePath.ToLowerInvariant(), StringComparison.Ordinal)))
+                if (!targetDirectories.Contains(relativePath))
                 {
                     MoveFileToRecycler(subdir.FullName, Path.Combine(MovedFileToDir, relativePath));
                     MovedFiles.Add(relativePath);
                 }
                 else
-                {
-                    directoriesVisited.Add(subdir);
                     directoriesToVisit.Enqueue(subdir);
-                }
             }
 
-            foreach (var file in dir.EnumerateFiles())
+            foreach (var file in dir.GetFiles())
             {
-                if (!file.FullName.ToLowerInvariant().Replace('\\', '/').StartsWith(path.ToLowerInvariant().Replace('\\', '/'), StringComparison.Ordinal))
+                cancellationToken.ThrowIfCancellationRequested();
+                var relativePath = GetRelativePath(path, file.FullName);
+                if (targetFiles.Contains(relativePath))
                     continue;
 
-                var relativePath = file.FullName[(path.Length + 1)..].Replace('\\', '/');
-                if (targetRelativePaths.Any(x => x.Replace('\\', '/').ToLowerInvariant() == relativePath.ToLowerInvariant()))
-                    continue;
-
-                if (GameIgnoreUnnecessaryFilePatterns.Any(x => x.IsMatch(relativePath)))
+                if (ShouldIgnore(relativePath))
                     continue;
 
                 MoveFileToRecycler(file.FullName, Path.Combine(MovedFileToDir, relativePath));
@@ -266,7 +271,51 @@ public sealed class GameRepairer
         }
     }
 
-    private static void MoveFileToRecycler(string source, string target)
+    private static HashSet<string> BuildTargetDirectories
+    (
+        IEnumerable<string> targetFiles
+    )
+    {
+        var targetDirectories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var targetFile in targetFiles)
+        {
+            var separatorIndex = targetFile.LastIndexOf('/');
+
+            while (separatorIndex >= 0)
+            {
+                targetDirectories.Add(targetFile[..(separatorIndex + 1)]);
+                separatorIndex = targetFile.LastIndexOf('/', separatorIndex - 1);
+            }
+        }
+
+        return targetDirectories;
+    }
+
+    private static string NormalizeRelativePath
+    (
+        string path
+    ) =>
+        path.TrimStart('\\', '/').Replace('\\', '/');
+
+    private static string GetRelativePath
+    (
+        string rootPath,
+        string fullPath
+    ) =>
+        NormalizeRelativePath(Path.GetRelativePath(rootPath, fullPath));
+
+    private static bool ShouldIgnore
+    (
+        string relativePath
+    ) =>
+        GameIgnoreUnnecessaryFilePatterns.Any(pattern => pattern.IsMatch(relativePath));
+
+    private static void MoveFileToRecycler
+    (
+        string source,
+        string target
+    )
     {
         if (File.Exists(source))
         {
@@ -289,30 +338,25 @@ public sealed class GameRepairer
             Directory.Delete(sourceParentDir);
     }
 
-    private void RecordProgressForEstimation()
-    {
-        var now = DateTime.Now.Ticks;
-        reportedProgresses.Add(Tuple.Create(now, Progress));
-        while (now - reportedProgresses.First().Item1 > 10 * 1000 * 8000)
-            reportedProgresses.RemoveAt(0);
-
-        var elapsedMs = reportedProgresses.Last().Item1 - reportedProgresses.First().Item1;
-        Speed = elapsedMs == 0 ? 0 : (reportedProgresses.Last().Item2 - reportedProgresses.First().Item2) * 10 * 1000 * 1000 / elapsedMs;
-    }
-
     private void ResetInstallProgressDisplay()
     {
         IsDownloading = false;
-        lock (installProgressLock)
-            currentInstallProgressBySourceIndex.Clear();
+        currentInstallProgressBySourceIndex.Clear();
     }
 
-    private void UpdateInstallProgressEntry(int sourceIndex, string filePath, long progress, long total)
+    private void UpdateInstallProgressEntry
+    (
+        int    sourceIndex,
+        string filePath,
+        long   progress,
+        long   total
+    )
     {
         IsDownloading = true;
-        var effectiveProgress = total > 0 ? Math.Min(progress, total) : progress;
-        lock (installProgressLock)
-            currentInstallProgressBySourceIndex[sourceIndex] = new InstallProgressEntry(filePath, effectiveProgress, total);
+        var effectiveProgress = total > 0 ?
+                                    Math.Min(progress, total) :
+                                    progress;
+        currentInstallProgressBySourceIndex[sourceIndex] = new InstallProgressEntry(filePath, effectiveProgress, total);
     }
 
     public enum RepairState
@@ -325,11 +369,17 @@ public sealed class GameRepairer
         Error
     }
 
-    public static bool AdminAccessRequired(string gameRootPath)
+    public static bool AdminAccessRequired
+    (
+        string gameRootPath
+    )
     {
         string tempFn;
+
         do
+        {
             tempFn = Path.Combine(gameRootPath, Guid.NewGuid().ToString());
+        }
         while (File.Exists(tempFn));
 
         try
@@ -345,15 +395,16 @@ public sealed class GameRepairer
         return false;
     }
 
-    public static List<FileInfo> GetRelevantFiles(string gamePath)
+    public static List<FileInfo> GetRelevantFiles
+    (
+        string gamePath
+    )
     {
         var rootPathInfo = new DirectoryInfo(gamePath);
         gamePath = rootPathInfo.FullName;
 
-        Queue<DirectoryInfo>   directoriesToVisit = new();
-        HashSet<DirectoryInfo> directoriesVisited = new();
+        Queue<DirectoryInfo> directoriesToVisit = new();
         directoriesToVisit.Enqueue(rootPathInfo);
-        directoriesVisited.Add(rootPathInfo);
 
         List<FileInfo> files = [];
 
@@ -361,16 +412,15 @@ public sealed class GameRepairer
         {
             var dir = directoriesToVisit.Dequeue();
 
-            if (!dir.FullName.ToLowerInvariant().Replace('\\', '/').StartsWith(gamePath.ToLowerInvariant().Replace('\\', '/'), StringComparison.Ordinal))
-                continue;
-
-            var relativeDirPath = dir == rootPathInfo ? string.Empty : dir.FullName[(gamePath.Length + 1)..].Replace('\\', '/');
-            if (GameIgnoreUnnecessaryFilePatterns.Any(x => x.IsMatch(relativeDirPath)))
+            var relativeDirPath = dir == rootPathInfo ?
+                                      string.Empty :
+                                      GetRelativePath(gamePath, dir.FullName);
+            if (ShouldIgnore(relativeDirPath))
                 continue;
 
             foreach (var subdir in dir.EnumerateDirectories())
             {
-                if (!directoriesVisited.Add(subdir))
+                if ((subdir.Attributes & FileAttributes.ReparsePoint) != 0)
                     continue;
 
                 directoriesToVisit.Enqueue(subdir);
@@ -379,9 +429,8 @@ public sealed class GameRepairer
             files.AddRange
             (
                 from file in dir.EnumerateFiles()
-                where file.FullName.ToLowerInvariant().Replace('\\', '/').StartsWith(gamePath.ToLowerInvariant().Replace('\\', '/'), StringComparison.Ordinal)
-                let relativePath = file.FullName[(gamePath.Length + 1)..].Replace('\\', '/')
-                where !GameIgnoreUnnecessaryFilePatterns.Any(x => x.IsMatch(relativePath))
+                let relativePath = GetRelativePath(gamePath, file.FullName)
+                where !ShouldIgnore(relativePath)
                 select file
             );
         }
@@ -391,10 +440,10 @@ public sealed class GameRepairer
 
     private static readonly Regex[] GameIgnoreUnnecessaryFilePatterns =
     [
-        new(@"^ffxivgame\.(?:bck|ver)$", RegexOptions.IgnoreCase),
-        new(@"^sqpack/ex([1-9][0-9]*)/ex\1\.(?:bck|ver)$", RegexOptions.IgnoreCase),
-        new(@"^My Games/.*$", RegexOptions.IgnoreCase),
-        new(@"^Launcher3Configs/.*$", RegexOptions.IgnoreCase),
-        new(@"^repair_recycler/.*$", RegexOptions.IgnoreCase)
+        new(@"^ffxivgame\.(?:bck|ver)$", RegexOptions.IgnoreCase                   | RegexOptions.CultureInvariant | RegexOptions.Compiled),
+        new(@"^sqpack/ex([1-9][0-9]*)/ex\1\.(?:bck|ver)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled),
+        new(@"^My Games/.*$", RegexOptions.IgnoreCase                              | RegexOptions.CultureInvariant | RegexOptions.Compiled),
+        new(@"^Launcher3Configs/.*$", RegexOptions.IgnoreCase                      | RegexOptions.CultureInvariant | RegexOptions.Compiled),
+        new(@"^repair_recycler/.*$", RegexOptions.IgnoreCase                       | RegexOptions.CultureInvariant | RegexOptions.Compiled)
     ];
 }

@@ -6,7 +6,12 @@ namespace XIVLauncher.GamePatchV3.Update;
 
 public static class GameUpdater
 {
-    public static async Task<GameUpdateCheckResult> Check(DirectoryInfo gamePath, bool forceBaseVersion, CancellationToken cancellationToken = default)
+    public static async Task<GameUpdateCheckResult> Check
+    (
+        DirectoryInfo     gamePath,
+        bool              forceBaseVersion,
+        CancellationToken cancellationToken = default
+    )
     {
         var currentGameVersion = Repository.Ffxiv.GetVer(gamePath).Trim().Trim('\uFEFF').Trim();
         Log.Information("[UpdateClient] 当前游戏版本 {CurrentGameVersion}, 强制基线 {ForceBaseVersion}", currentGameVersion, forceBaseVersion);
