@@ -1,4 +1,4 @@
-﻿namespace XIVLauncher.Common.Constant;
+namespace XIVLauncher.Common.Constant;
 
 public static class SdoInfos
 {
@@ -7,6 +7,10 @@ public static class SdoInfos
     
     // 原来的老启动器, 现在用做游戏登录等各种操作鉴权
     public const string APP_ID = "100001900";
+
+    public const string PAYMENT_APP_ID = "211";
+
+    public const string SHOPPING_APP_ID = "6666";
 
     public const string CDN_KEY = "EKUWRI5KXXAIDlQ0mBNLa7XkjU1JNFuL";
 

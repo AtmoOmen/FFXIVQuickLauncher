@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.ViewModel.Main;
 
 namespace XIVLauncher.Windows.Main;
@@ -90,9 +89,4 @@ public partial class LoginCardControl
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 
-    private void PayPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute = true });
-
-    private void ShoppingPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true });
 }

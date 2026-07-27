@@ -274,6 +274,18 @@ public sealed class LoginChannelContext
         return await SsoLoginAsync(tgt, guid).ConfigureAwait(false);
     }
 
+    public async Task<Uri> GetWebLoginUriAsync(string tgt, string guid, string serviceUrl, string appId)
+    {
+        if (!Uri.TryCreate(serviceUrl, UriKind.Absolute, out var serviceUri) || serviceUri.Scheme != Uri.UriSchemeHttps)
+            throw new ArgumentException("Service URL 必须是有效的 HTTPS 地址", nameof(serviceUrl));
+        if (string.IsNullOrWhiteSpace(appId))
+            throw new ArgumentException("App ID 不能为空", nameof(appId));
+
+        _ = await GetPromotionInfoAsync(tgt, serviceUrl, appId).ConfigureAwait(false);
+        var ticket = await SsoLoginAsync(tgt, guid, appId).ConfigureAwait(false);
+        return BuildWebLoginUri(serviceUri, ticket);
+    }
+
     public void BindLoginSessionRefresh(ILoginSessionRefreshSink? loginSessionRefreshSink, string tgt, string guid)
     {
         loginSessionRefreshSink?.Bind
@@ -408,6 +420,16 @@ public sealed class LoginChannelContext
         }.Uri;
     }
 
+    private static Uri BuildWebLoginUri(Uri serviceUri, string ticket)
+    {
+        var uriBuilder      = new UriBuilder(serviceUri);
+        var ticketParameter = $"ticket={Uri.EscapeDataString(ticket)}";
+        uriBuilder.Query = string.IsNullOrEmpty(uriBuilder.Query)
+                               ? ticketParameter
+                               : $"{uriBuilder.Query.TrimStart('?')}&{ticketParameter}";
+        return uriBuilder.Uri;
+    }
+
     private async Task<LoginResponse> GetJsonAsSdoClient
     (
         string                endPoint,
@@ -461,7 +483,7 @@ public sealed class LoginChannelContext
     {
         var paras = new List<string> { $"tgt={tgt}" };
         if (serviceUrl != null)
-            paras.Add($"serviceUrl={serviceUrl}");
+            paras.Add($"serviceUrl={Uri.EscapeDataString(serviceUrl)}");
 
         var result = await GetJsonAsSdoClient("getPromotionInfo.json", paras, tgt, appId).ConfigureAwait(false);
         if (result.ReturnCode != 0)

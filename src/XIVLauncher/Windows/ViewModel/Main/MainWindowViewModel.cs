@@ -158,6 +158,7 @@ internal partial class MainWindowViewModel : ObservableObject
             DashboardFlow.HandleSwitchAccount,
             DashboardFlow.HandleOpenDCTravel,
             DashboardFlow.HandleOpenDeviceProfile,
+            DashboardFlow.HandleOpenAuthenticatedSiteAsync,
             DashboardFlow.HandleSetAreaFromDashboard
         );
 

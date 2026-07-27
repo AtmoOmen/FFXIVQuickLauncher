@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Channels;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel.Main.Models;
 
@@ -74,6 +76,29 @@ internal sealed class DashboardFlowHandler
         var dialogService = new DialogService(vm.Window);
         dialogService.ShowAccountDeviceProfileSettings(account, vm.AccountManager);
         vm.AccountSwitcher.RefreshEntries(vm.AccountManager.CurrentAccountID, false);
+    }
+
+    public async Task HandleOpenAuthenticatedSiteAsync(string serviceUrl, string appId)
+    {
+        try
+        {
+            var oauth = vm.CurrentGameLaunchContext?.LoginResult.OAuthLogin
+                        ?? throw new InvalidOperationException("当前登录上下文不存在");
+            if (string.IsNullOrWhiteSpace(oauth.TGT) || string.IsNullOrWhiteSpace(oauth.Guid) || oauth.DeviceProfile == null)
+                throw new InvalidOperationException("当前登录会话不支持网页单点登录");
+
+            var loginContext = new LoginChannelContext(oauth.DeviceProfile);
+            var loginUri     = await loginContext.GetWebLoginUriAsync(oauth.TGT, oauth.Guid, serviceUrl, appId);
+            Process.Start(new ProcessStartInfo(loginUri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Builder
+                            .NewFrom($"无法打开已登录的官方网站: {ex.Message}")
+                            .WithCaption("打开官方网站失败")
+                            .WithParentWindow(vm.Window)
+                            .Show();
+        }
     }
 
     public void HandleOpenDCTravel()
