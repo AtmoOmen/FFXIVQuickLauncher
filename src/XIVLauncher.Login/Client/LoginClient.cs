@@ -55,7 +55,7 @@ public sealed class LoginClient
                 var autoLoginRequest = requestFactory(loginType);
                 return await LoginAsync(loginType, autoLoginRequest, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException && !cancellationToken.IsCancellationRequested)
             {
                 Log.Error(ex, "LoginBySessionKey failed, fallback to {FallbackLoginType}", fallbackLoginType);
                 loginType = fallbackLoginType;

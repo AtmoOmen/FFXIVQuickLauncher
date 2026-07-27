@@ -14,22 +14,23 @@ public sealed class StaticLoginChannel
 
     public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        var guid       = await context.GetGuidAsync().ConfigureAwait(false);
+        var guid       = await context.GetGuidAsync(cancellationToken).ConfigureAwait(false);
         var macAddress = request.DeviceProfile.MacHash;
         var result = await context.GetJsonAsync
                      (
                          "staticLogin.json",
                          [
-                             "checkCodeFlag=1", "encryptFlag=0", $"inputUserId={request.Account}", $"password={request.Secret}", $"mac={macAddress}", $"guid={guid}",
+                            "checkCodeFlag=1", "encryptFlag=0", $"inputUserId={Uri.EscapeDataString(request.Account)}", $"password={Uri.EscapeDataString(request.Secret)}", $"mac={macAddress}", $"guid={guid}",
                              "inputUserType=0&accountDomain=1&autoLoginFlag=0&autoLoginKeepTime=0&supportPic=2"
-                         ]
+                         ],
+                         cancellationToken: cancellationToken
                      ).ConfigureAwait(false);
 
         if (result.ReturnCode == (int)LoginExceptionCode.RiskEnvironment)
-            result = await LoginBySafePhoneSmsAsync(request, result).ConfigureAwait(false);
+            result = await LoginBySafePhoneSmsAsync(request, result, cancellationToken).ConfigureAwait(false);
 
         if (NeedsStaticCaptcha(result))
-            result = await LoginByStaticCaptchaAsync(request, guid, result).ConfigureAwait(false);
+            result = await LoginByStaticCaptchaAsync(request, guid, result, cancellationToken).ConfigureAwait(false);
 
         if (result.ReturnCode != 0 || result.ErrorType != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
@@ -44,20 +45,20 @@ public sealed class StaticLoginChannel
         return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, null, null, LoginType.Static, tgt, guid, request.DeviceProfile);
     }
 
-    private async Task<LoginResponse> LoginByStaticCaptchaAsync(LoginRequest request, string guid, LoginResponse result)
+    private async Task<LoginResponse> LoginByStaticCaptchaAsync(LoginRequest request, string guid, LoginResponse result, CancellationToken cancellationToken)
     {
         var captchaGuid = !string.IsNullOrWhiteSpace(result.Data.Guid) ? result.Data.Guid : guid;
 
         while (NeedsStaticCaptcha(result))
         {
-            var prompt      = await BuildStaticCaptchaPromptAsync(result).ConfigureAwait(false);
+            var prompt      = await BuildStaticCaptchaPromptAsync(result, cancellationToken).ConfigureAwait(false);
             var captchaText = request.PromptCaptchaInput?.Invoke(prompt);
             if (string.IsNullOrWhiteSpace(captchaText))
                 throw new LoginException((int)LoginExceptionCode.CaptchaVerificationCanceled, "已取消登录验证码输入。");
 
             request.ShowLoginMessage?.Invoke("正在校验登录验证码…");
 
-            result = await context.CheckCodeLoginAsync(captchaGuid, captchaText.Trim(), request.QuickLoginEnabled).ConfigureAwait(false);
+            result = await context.CheckCodeLoginAsync(captchaGuid, captchaText.Trim(), request.QuickLoginEnabled, cancellationToken).ConfigureAwait(false);
             if (result.ReturnCode != 0 || result.ErrorType != 0)
                 throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
@@ -71,13 +72,13 @@ public sealed class StaticLoginChannel
         return result;
     }
 
-    private async Task<LoginResponse> LoginBySafePhoneSmsAsync(LoginRequest request, LoginResponse staticLoginResponse)
+    private async Task<LoginResponse> LoginBySafePhoneSmsAsync(LoginRequest request, LoginResponse staticLoginResponse, CancellationToken cancellationToken)
     {
         request.ShowLoginMessage?.Invoke("检测到安全手机验证，正在准备短信验证流程…");
 
-        _ = await context.GetSafePhoneSystemConfigAsync().ConfigureAwait(false);
+        _ = await context.GetSafePhoneSystemConfigAsync(cancellationToken).ConfigureAwait(false);
 
-        var initResult = await context.InitSafePhoneSmsLoginAsync(request.Account, staticLoginResponse.Data.FlowId).ConfigureAwait(false);
+        var initResult = await context.InitSafePhoneSmsLoginAsync(request.Account, staticLoginResponse.Data.FlowId, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (initResult.ReturnCode != 0 || initResult.ErrorType != 0)
             throw new LoginException(initResult.ReturnCode, initResult.Data.FailReason);
 
@@ -90,7 +91,7 @@ public sealed class StaticLoginChannel
 
         request.ShowLoginMessage?.Invoke(BuildSmsPendingMessage(initResult));
 
-        var confirmSendResult = await context.ConfirmSafePhoneSendAsync(flowId).ConfigureAwait(false);
+        var confirmSendResult = await context.ConfirmSafePhoneSendAsync(flowId, cancellationToken: cancellationToken).ConfigureAwait(false);
         if (confirmSendResult.ReturnCode != 0 || confirmSendResult.ErrorType != 0)
             throw new LoginException(confirmSendResult.ReturnCode, confirmSendResult.Data.FailReason);
 
@@ -108,7 +109,7 @@ public sealed class StaticLoginChannel
 
         request.ShowLoginMessage?.Invoke("正在校验安全手机短信验证码…");
 
-        var confirmLoginResult = await context.ConfirmSafePhoneLoginAsync(request.Account, flowId, verifyCode.Trim(), request.QuickLoginEnabled).ConfigureAwait(false);
+        var confirmLoginResult = await context.ConfirmSafePhoneLoginAsync(request.Account, flowId, verifyCode.Trim(), request.QuickLoginEnabled, cancellationToken).ConfigureAwait(false);
         if (confirmLoginResult.ReturnCode != 0 || confirmLoginResult.ErrorType != 0)
             throw new LoginException(confirmLoginResult.ReturnCode, confirmLoginResult.Data.FailReason);
 
@@ -168,9 +169,6 @@ public sealed class StaticLoginChannel
         builder.Append("请输入收到的短信验证码继续登录。");
         return builder.ToString();
     }
-
-    private Task<LoginCaptchaChallenge> BuildStaticCaptchaPromptAsync(LoginResponse result) =>
-        BuildStaticCaptchaPromptAsync(result, CancellationToken.None);
 
     private async Task<LoginCaptchaChallenge> BuildStaticCaptchaPromptAsync(LoginResponse result, CancellationToken cancellationToken)
     {

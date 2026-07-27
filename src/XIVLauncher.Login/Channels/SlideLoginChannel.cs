@@ -19,12 +19,13 @@ public sealed class SlideLoginChannel
         if (request.LoginCancellationTokenSource == null)
             throw new LoginException((int)LoginExceptionCode.SlideTimeoutOrCanceled, "登录取消令牌不能为空");
 
-        var guid = await context.GetGuidAsync().ConfigureAwait(false);
-        await context.CancelPushMessageLoginAsync(string.Empty, guid).ConfigureAwait(false);
-        var (pushMsgSerialNum, pushMsgSessionKey, expiration) = await context.SendPushMessageAsync(request.Account, SLIDE_EXPIRATION_TIME).ConfigureAwait(false);
-        request.ShowVerificationCode?.Invoke(pushMsgSerialNum);
+        var guid = await context.GetGuidAsync(cancellationToken).ConfigureAwait(false);
+        await context.CancelPushMessageLoginAsync(string.Empty, guid, cancellationToken).ConfigureAwait(false);
+        var pushMessageResult = await context.SendPushMessageAsync(request.Account, SLIDE_EXPIRATION_TIME, cancellationToken).ConfigureAwait(false);
+        using var expiration = pushMessageResult.SlideExpiration;
+        request.ShowVerificationCode?.Invoke(pushMessageResult.PushMSGSerialNum);
 
-        var (sndaId, tgt, autoLoginSessionKey) = await WaitForSlideAsync(pushMsgSessionKey, guid, expiration, request.LoginCancellationTokenSource, request.QuickLoginEnabled).ConfigureAwait(false);
+        var (sndaId, tgt, autoLoginSessionKey) = await WaitForSlideAsync(pushMessageResult.PushMSGSessionKey, guid, expiration, request.LoginCancellationTokenSource, request.QuickLoginEnabled).ConfigureAwait(false);
         context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt, guid);
         return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, null, request.QuickLoginEnabled ? autoLoginSessionKey : null, LoginType.Slide, tgt, guid, request.DeviceProfile);
     }
@@ -45,7 +46,8 @@ public sealed class SlideLoginChannel
                              "pushMessageLogin.json",
                              autoLogin
                                  ? [$"pushMsgSessionKey={pushMsgSessionKey}", $"guid={guid}", "autoLoginFlag=1", $"autoLoginKeepTime={AUTO_LOGIN_KEEP_DAYS}"]
-                                 : [$"pushMsgSessionKey={pushMsgSessionKey}", $"guid={guid}"]
+                                 : [$"pushMsgSessionKey={pushMsgSessionKey}", $"guid={guid}"],
+                             cancellationToken: userCancel.Token
                          ).ConfigureAwait(false);
 
             switch (result.ReturnCode)
@@ -54,7 +56,7 @@ public sealed class SlideLoginChannel
                     return (result.Data.SndaID, result.Data.Tgt, result.Data.QuickLoginSecret);
 
                 case -10516808:
-                    await Task.Delay(1000).ConfigureAwait(false);
+                    await Task.Delay(1000, userCancel.Token).ConfigureAwait(false);
                     continue;
 
                 default:

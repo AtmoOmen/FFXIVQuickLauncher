@@ -205,6 +205,7 @@
                         FontWeight="Bold">
                     <Button.ContextMenu>
                         <ContextMenu Language="zh-CN"
+                                     DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
                                      Style="{StaticResource LoginActionContextMenuStyle}">
                             <ContextMenu.Resources>
                                 <Style TargetType="{x:Type MenuItem}"

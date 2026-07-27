@@ -13,10 +13,10 @@ public sealed class SessionKeyLoginChannel
 
     public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        var guid = await context.GetGuidAsync().ConfigureAwait(false);
-        var (sndaId, tgt, newAutoLoginSessionKey) = await context.UpdateAutoLoginSessionKeyAsync(guid, request.Secret).ConfigureAwait(false);
+        var guid = await context.GetGuidAsync(cancellationToken).ConfigureAwait(false);
+        var (sndaId, tgt, newAutoLoginSessionKey) = await context.UpdateAutoLoginSessionKeyAsync(guid, request.Secret, cancellationToken).ConfigureAwait(false);
 
-        var result = await context.GetJsonAsync("fastLogin.json", [$"tgt={tgt}", $"guid={guid}"]).ConfigureAwait(false);
+        var result = await context.GetJsonAsync("fastLogin.json", [$"tgt={tgt}", $"guid={guid}"], cancellationToken: cancellationToken).ConfigureAwait(false);
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason, true);
 

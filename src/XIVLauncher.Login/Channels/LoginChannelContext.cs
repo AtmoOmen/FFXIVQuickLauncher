@@ -71,16 +71,17 @@ public sealed class LoginChannelContext
 
     public Task<LoginResponse> GetJsonAsync
     (
-        string       endPoint,
-        List<string> paras,
-        string?      tgt   = null,
-        string       appId = SdoInfos.LAUNCHER_APP_ID
+        string            endPoint,
+        List<string>      paras,
+        string?           tgt               = null,
+        string            appId             = SdoInfos.LAUNCHER_APP_ID,
+        CancellationToken cancellationToken = default
     ) =>
-        GetJsonAsSdoClient(endPoint, paras, tgt, appId);
+        GetJsonAsSdoClient(endPoint, paras, tgt, appId, cancellationToken);
 
-    public async Task<string> GetGuidAsync()
+    public async Task<string> GetGuidAsync(CancellationToken cancellationToken = default)
     {
-        var result = await GetJsonAsSdoClient("getGuid.json", ["generateDynamicKey=1"]).ConfigureAwait(false);
+        var result = await GetJsonAsSdoClient("getGuid.json", ["generateDynamicKey=1"], cancellationToken: cancellationToken).ConfigureAwait(false);
 
         if (result.ErrorType != 0)
             throw new Exceptions.OAuthLoginException(result.ToString());
@@ -88,10 +89,10 @@ public sealed class LoginChannelContext
         return result.Data.Guid;
     }
 
-    public Task<LoginResponse> GetSafePhoneSystemConfigAsync() =>
-        GetJsonAsSdoClient("/authen/v2/getSystemConfig", ["logintype=godown"]);
+    public Task<LoginResponse> GetSafePhoneSystemConfigAsync(CancellationToken cancellationToken = default) =>
+        GetJsonAsSdoClient("/authen/v2/getSystemConfig", ["logintype=godown"], cancellationToken: cancellationToken);
 
-    public Task<LoginResponse> InitSafePhoneSmsLoginAsync(string account, string? flowId = null, bool isVoice = false)
+    public Task<LoginResponse> InitSafePhoneSmsLoginAsync(string account, string? flowId = null, bool isVoice = false, CancellationToken cancellationToken = default)
     {
         var paras = new List<string>(3)
         {
@@ -102,23 +103,24 @@ public sealed class LoginChannelContext
         if (!string.IsNullOrWhiteSpace(flowId))
             paras.Add($"flowId={flowId}");
 
-        return GetJsonAsSdoClient("/authen/v2/safePhoneSmsLogin/init", paras);
+        return GetJsonAsSdoClient("/authen/v2/safePhoneSmsLogin/init", paras, cancellationToken: cancellationToken);
     }
 
     public Task<LoginResponse> VerifySafePhoneCaptchaAsync(string flowId, string captchaInfo) =>
         GetJsonAsSdoClient("/authen/v2/safePhoneSmsLogin/verifyCaptcha", [$"captchaInfo={captchaInfo}", $"flowId={flowId}"]);
 
-    public Task<LoginResponse> ConfirmSafePhoneSendAsync(string flowId, bool isVoice = false) =>
-        GetJsonAsSdoClient("/authen/v2/safePhoneSmsLogin/confirmSend", [$"flowId={flowId}", $"isVoice={(isVoice ? 1 : 0)}"]);
+    public Task<LoginResponse> ConfirmSafePhoneSendAsync(string flowId, bool isVoice = false, CancellationToken cancellationToken = default) =>
+        GetJsonAsSdoClient("/authen/v2/safePhoneSmsLogin/confirmSend", [$"flowId={flowId}", $"isVoice={(isVoice ? 1 : 0)}"], cancellationToken: cancellationToken);
 
-    public Task<LoginResponse> ConfirmSafePhoneLoginAsync(string account, string flowId, string verifyCode, bool keepLogin) =>
+    public Task<LoginResponse> ConfirmSafePhoneLoginAsync(string account, string flowId, string verifyCode, bool keepLogin, CancellationToken cancellationToken = default) =>
         GetJsonAsSdoClient
         (
             "/authen/v2/safePhoneSmsLogin/confirmLogin",
-            [$"flowId={flowId}", $"inputUserId={account}", $"verifyCode={verifyCode}", $"keepLoginFlag={(keepLogin ? 1 : 0)}"]
+            [$"flowId={flowId}", $"inputUserId={account}", $"verifyCode={verifyCode}", $"keepLoginFlag={(keepLogin ? 1 : 0)}"],
+            cancellationToken: cancellationToken
         );
 
-    public Task<LoginResponse> CheckCodeLoginAsync(string guid, string captchaCode, bool keepLogin)
+    public Task<LoginResponse> CheckCodeLoginAsync(string guid, string captchaCode, bool keepLogin, CancellationToken cancellationToken = default)
     {
         var captchaInfo = JsonConvert.SerializeObject
         (
@@ -140,7 +142,8 @@ public sealed class LoginChannelContext
                 "outInfo=",
                 $"captchaInfo={Uri.EscapeDataString(captchaInfo)}",
                 $"keepLoginFlag={(keepLogin ? 1 : 0)}"
-            ]
+            ],
+            cancellationToken: cancellationToken
         );
     }
 
@@ -164,10 +167,11 @@ public sealed class LoginChannelContext
     public async Task<(string SID, string TGT, string AutoLoginSessionKey)> UpdateAutoLoginSessionKeyAsync
     (
         string guid,
-        string autoLoginSessionKey
+        string autoLoginSessionKey,
+        CancellationToken cancellationToken = default
     )
     {
-        var result = await GetJsonAsSdoClient("autoLogin.json", [$"autoLoginSessionKey={autoLoginSessionKey}", $"guid={guid}"]).ConfigureAwait(false);
+        var result = await GetJsonAsSdoClient("autoLogin.json", [$"autoLoginSessionKey={Uri.EscapeDataString(autoLoginSessionKey)}", $"guid={guid}"], cancellationToken: cancellationToken).ConfigureAwait(false);
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason, true);
 
@@ -179,7 +183,8 @@ public sealed class LoginChannelContext
         string thirdUserID,
         string token,
         bool   autoLogin,
-        int    autoLoginKeepDays
+        int    autoLoginKeepDays,
+        CancellationToken cancellationToken = default
     )
     {
         // WeGame 渠道的 token 来自 sdologin.exe, 绑定的是游戏 appId, thirdPartyLogin 必须用 APP_ID 才能通过校验
@@ -187,10 +192,11 @@ public sealed class LoginChannelContext
                      (
                          "thirdPartyLogin",
                          [
-                             "companyid=310", "islimited=0", $"thridUserId={thirdUserID}", $"token={token}",
+                             "companyid=310", "islimited=0", $"thridUserId={Uri.EscapeDataString(thirdUserID)}", $"token={Uri.EscapeDataString(token)}",
                              autoLogin ? $"autoLoginFlag=1&autoLoginKeepTime={autoLoginKeepDays}" : "autoLoginFlag=0&autoLoginKeepTime=0"
                          ],
-                         appId: SdoInfos.APP_ID
+                         appId: SdoInfos.APP_ID,
+                         cancellationToken: cancellationToken
                      ).ConfigureAwait(false);
 
         if (result.ReturnCode != 0)
@@ -199,9 +205,9 @@ public sealed class LoginChannelContext
         return (result.Data.SndaID, result.Data.Tgt, result.Data.QuickLoginSecret);
     }
 
-    public async Task<string?> GetAccountGroupAsync(string tgt, string sid)
+    public async Task<string?> GetAccountGroupAsync(string tgt, string sid, CancellationToken cancellationToken = default)
     {
-        var result = await GetJsonAsSdoClient("getAccountGroup", [$"serviceUrl={Uri.EscapeDataString(Links.SDO_SERVICE_URL)}", $"tgt={tgt}"]).ConfigureAwait(false);
+        var result = await GetJsonAsSdoClient("getAccountGroup", [$"serviceUrl={Uri.EscapeDataString(Links.SDO_SERVICE_URL)}", $"tgt={tgt}"], cancellationToken: cancellationToken).ConfigureAwait(false);
 
         if (result.ReturnCode != 0 || result.ErrorType != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
@@ -217,13 +223,15 @@ public sealed class LoginChannelContext
     (
         string tgt,
         string sid,
-        int    autoLoginKeepDays
+        int    autoLoginKeepDays,
+        CancellationToken cancellationToken = default
     )
     {
         var result = await GetJsonAsSdoClient
                      (
                          "accountGroupLogin",
-                         [$"serviceUrl={Uri.EscapeDataString(Links.SDO_SERVICE_URL)}", $"tgt={tgt}", $"sndaId={sid}", "autoLoginFlag=1", $"autoLoginKeepTime={autoLoginKeepDays}"]
+                         [$"serviceUrl={Uri.EscapeDataString(Links.SDO_SERVICE_URL)}", $"tgt={tgt}", $"sndaId={sid}", "autoLoginFlag=1", $"autoLoginKeepTime={autoLoginKeepDays}"],
+                         cancellationToken: cancellationToken
                      ).ConfigureAwait(false);
 
         if (result.ReturnCode != 0)
@@ -232,35 +240,41 @@ public sealed class LoginChannelContext
         return (result.Data.Tgt, result.Data.QuickLoginSecret);
     }
 
-    public async Task CancelPushMessageLoginAsync(string pushMSGSessionKey, string guid) =>
-        _ = await GetJsonAsSdoClient("cancelPushMessageLogin.json", [$"pushMsgSessionKey={pushMSGSessionKey}", $"guid={guid}"]).ConfigureAwait(false);
+    public async Task CancelPushMessageLoginAsync(string pushMSGSessionKey, string guid, CancellationToken cancellationToken = default) =>
+        _ = await GetJsonAsSdoClient("cancelPushMessageLogin.json", [$"pushMsgSessionKey={pushMSGSessionKey}", $"guid={guid}"], cancellationToken: cancellationToken).ConfigureAwait(false);
 
-    public async Task<(string PushMSGSerialNum, string PushMSGSessionKey, CancellationTokenSource SlideExpiration)> SendPushMessageAsync(string account, int slideExpirationTime)
+    public async Task<(string PushMSGSerialNum, string PushMSGSessionKey, CancellationTokenSource SlideExpiration)> SendPushMessageAsync(string account, int slideExpirationTime, CancellationToken cancellationToken = default)
     {
-        var slideExpiration = new CancellationTokenSource();
-        slideExpiration.CancelAfter(slideExpirationTime);
-
-        var result = await GetJsonAsSdoClient("sendPushMessage.json", [$"inputUserId={account}"]).ConfigureAwait(false);
+        var result = await GetJsonAsSdoClient("sendPushMessage.json", [$"inputUserId={Uri.EscapeDataString(account)}"], cancellationToken: cancellationToken).ConfigureAwait(false);
         if (result.ReturnCode != 0)
             throw new LoginException(result.ReturnCode, result.Data.FailReason);
 
+        var slideExpiration = new CancellationTokenSource(slideExpirationTime);
         return (result.Data.PushMsgSerialNum, result.Data.PushMsgSessionKey, slideExpiration);
     }
 
-    public async Task<(string CodeKey, byte[] QRCode, CancellationTokenSource CTS)> GetQRCodeAsync(int qrCodeExpirationTime)
+    public async Task<(string CodeKey, byte[] QRCode, CancellationTokenSource CTS)> GetQRCodeAsync(int qrCodeExpirationTime, CancellationToken cancellationToken = default)
     {
-        var qrCodeExpiration = new CancellationTokenSource();
-        qrCodeExpiration.CancelAfter(qrCodeExpirationTime);
-
-        var response = await SendSdoHttpRequestAsync(HttpMethod.Get, "getCodeKey.json", ["maxsize=89"]).ConfigureAwait(false);
+        using var response = await SendSdoHttpRequestAsync(HttpMethod.Get, "getCodeKey.json", ["maxsize=89"], cancellationToken: cancellationToken).ConfigureAwait(false);
         var cookies  = response.Headers.TryGetValues("Set-Cookie", out var setCookieValues) ? setCookieValues : [];
         var codeKey  = cookies.FirstOrDefault(x => x.StartsWith("CODEKEY=", StringComparison.Ordinal))?.Split(';')[0];
         codeKey = codeKey?.Split('=')[1];
         if (string.IsNullOrEmpty(codeKey))
             throw new Exceptions.OAuthLoginException("QRCode下载失败");
 
-        var bytes = await response.Content.ReadAsByteArrayAsync(qrCodeExpiration.Token).ConfigureAwait(false);
-        return (codeKey, bytes, qrCodeExpiration);
+        var qrCodeExpiration = new CancellationTokenSource(qrCodeExpirationTime);
+
+        try
+        {
+            using var linkedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(qrCodeExpiration.Token, cancellationToken);
+            var bytes = await response.Content.ReadAsByteArrayAsync(linkedCancellationSource.Token).ConfigureAwait(false);
+            return (codeKey, bytes, qrCodeExpiration);
+        }
+        catch
+        {
+            qrCodeExpiration.Dispose();
+            throw;
+        }
     }
 
     /// <summary>
@@ -329,12 +343,13 @@ public sealed class LoginChannelContext
         HttpMethod            method,
         string                endPoint,
         IReadOnlyList<string> paras,
-        string?               tgt   = null,
-        string                appId = SdoInfos.LAUNCHER_APP_ID
+        string?               tgt               = null,
+        string                appId             = SdoInfos.LAUNCHER_APP_ID,
+        CancellationToken     cancellationToken = default
     )
     {
         using var request = GetSdoHttpRequestMessage(method, endPoint, paras, tgt, appId);
-        return await loginHttpClient.SendAsync(request).ConfigureAwait(false);
+        return await loginHttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     private HttpRequestMessage GetSdoHttpRequestMessage
@@ -353,7 +368,7 @@ public sealed class LoginChannelContext
             "User-Agent",
             "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1) ; InfoPath.2; .NET CLR 2.0.50727; MS-RTC LM 8; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET CLR 1.1.4322; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)"
         );
-        request.Headers.AddWithoutValidation("Host", SdoInfos.GLOBAL_CAS_DOMAIN);
+        request.Headers.AddWithoutValidation("Host", request.RequestUri!.Host);
 
         if (endPoint is "ssoLogin.json" or "getPromotionInfo.json")
             request.Headers.AddWithoutValidation("Cookie", $"CASTGC={tgt}; CAS_LOGIN_STATE=1");
@@ -438,8 +453,9 @@ public sealed class LoginChannelContext
     (
         string                endPoint,
         IReadOnlyList<string> paras,
-        string?               tgt   = null,
-        string                appId = SdoInfos.LAUNCHER_APP_ID
+        string?               tgt               = null,
+        string                appId             = SdoInfos.LAUNCHER_APP_ID,
+        CancellationToken     cancellationToken = default
     )
     {
         Exception? lastException = null;
@@ -448,11 +464,11 @@ public sealed class LoginChannelContext
         {
             try
             {
-                using var response = await SendSdoHttpRequestAsync(HttpMethod.Get, endPoint, paras, tgt, appId).ConfigureAwait(false);
-                var       reply    = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using var response = await SendSdoHttpRequestAsync(HttpMethod.Get, endPoint, paras, tgt, appId, cancellationToken).ConfigureAwait(false);
+                var       reply    = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 return DeserializeLoginResponse(endPoint, reply);
             }
-            catch (Exception ex) when (attempt == 0 && TrySwitchToFallbackDomain(ex))
+            catch (Exception ex) when (ex is not OperationCanceledException && attempt == 0 && TrySwitchToFallbackDomain(ex))
             {
             }
             catch (Exception ex)

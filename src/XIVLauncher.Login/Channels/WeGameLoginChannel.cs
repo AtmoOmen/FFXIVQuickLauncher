@@ -14,8 +14,8 @@ public sealed class WeGameLoginChannel
 
     public async Task<LoginResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        var guid = await context.GetGuidAsync().ConfigureAwait(false);
-        var (sndaId, tgt, autoLoginSessionKey) = await context.ThirdPartyLoginAsync(request.Account, request.Secret, request.QuickLoginEnabled, AUTO_LOGIN_KEEP_DAYS).ConfigureAwait(false);
+        var guid = await context.GetGuidAsync(cancellationToken).ConfigureAwait(false);
+        var (sndaId, tgt, autoLoginSessionKey) = await context.ThirdPartyLoginAsync(request.Account, request.Secret, request.QuickLoginEnabled, AUTO_LOGIN_KEEP_DAYS, cancellationToken).ConfigureAwait(false);
 
         context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt, guid);
         return LoginChannelContext.BuildOkLoginResult(request.Account, sndaId, null, request.QuickLoginEnabled ? autoLoginSessionKey : null, LoginType.WeGame, tgt, guid, request.DeviceProfile);

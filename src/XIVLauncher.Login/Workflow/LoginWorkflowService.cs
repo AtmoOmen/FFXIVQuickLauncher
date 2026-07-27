@@ -4,6 +4,7 @@ using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Login.Channels;
 using XIVLauncher.Login.Client;
+using XIVLauncher.Login.Exceptions;
 using XIVLauncher.Login.Models;
 using XIVLauncher.Login.WeGame;
 
@@ -30,7 +31,11 @@ public sealed class LoginWorkflowService
             return null;
 
         var deviceProfileSnapshot = deviceProfilePreparation.ResolvedDeviceProfile.Snapshot;
-        var loginResult = await LoginAsync
+        LoginResult loginResult;
+
+        try
+        {
+            loginResult = await LoginAsync
                           (
                               request,
                               resolvedLoginState.FinalLoginType,
@@ -40,6 +45,18 @@ public sealed class LoginWorkflowService
                               deviceProfilePreparation.LoginQuickLoginEnabled,
                               deviceProfileSnapshot
                           ).ConfigureAwait(false);
+        }
+        catch (LoginException) when (resolvedLoginState is
+                                     {
+                                         RequestedLoginType: LoginType.WeGame,
+                                         UsedSavedCredential: true,
+                                         SavedAccount: not null
+                                     })
+        {
+            resolvedLoginState.SavedAccount.WeGameQuickLoginSecret = null;
+            accountManager.Save(resolvedLoginState.SavedAccount);
+            throw;
+        }
 
         var postQrResult = newAccountDeviceProfileCoordinator.ApplyAfterQrLogin(request, deviceProfilePreparation, resolvedLoginState, loginResult);
         if (postQrResult == null)
@@ -140,7 +157,6 @@ public sealed class LoginWorkflowService
             GameLaunchContext                    = new GameLaunchContext(loginResult, resolvedLoginState.Area, request.LoginAreas),
             IsAccountPersisted                   = isAccountPersisted,
             IsNewAccount                         = isNewAccount,
-            UsedSavedWeGameToken                 = resolvedLoginState.RequestedLoginType == LoginType.WeGame && resolvedLoginState.UsedSavedCredential,
             RefreshGameSessionIdByQuickLoginFunc = refreshGameSessionIdByQuickLoginFunc
         };
     }

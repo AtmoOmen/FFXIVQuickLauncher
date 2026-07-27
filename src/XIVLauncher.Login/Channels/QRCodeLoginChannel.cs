@@ -18,25 +18,27 @@ public sealed class QRCodeLoginChannel
         if (request.LoginCancellationTokenSource == null)
             throw new LoginException((int)LoginExceptionCode.ScanTimeoutOrCanceled, "登录取消令牌不能为空");
 
-        var     guid    = await context.GetGuidAsync().ConfigureAwait(false);
+        var     guid    = await context.GetGuidAsync(cancellationToken).ConfigureAwait(false);
         string? sndaID  = null;
         string? tgt     = null;
         string? account = null;
 
         while (!request.LoginCancellationTokenSource.IsCancellationRequested)
         {
-            var (codeKey, qrCode, expiration) = await context.GetQRCodeAsync(QR_CODE_EXPIRATION_TIME).ConfigureAwait(false);
-            request.ShowQRCode?.Invoke(qrCode);
-            (sndaID, tgt, account) = await WaitForScanAsync(codeKey, guid, expiration, request.LoginCancellationTokenSource).ConfigureAwait(false);
+            var qrCodeResult = await context.GetQRCodeAsync(QR_CODE_EXPIRATION_TIME, cancellationToken).ConfigureAwait(false);
+            using var expiration = qrCodeResult.CTS;
+            request.ShowQRCode?.Invoke(qrCodeResult.QRCode);
+            (sndaID, tgt, account) = await WaitForScanAsync(qrCodeResult.CodeKey, guid, expiration, request.LoginCancellationTokenSource).ConfigureAwait(false);
             if (sndaID != null)
                 break;
         }
 
-        var newAccount = await context.GetAccountGroupAsync(tgt!, sndaID!).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        var newAccount = await context.GetAccountGroupAsync(tgt!, sndaID!, cancellationToken).ConfigureAwait(false);
         account = string.IsNullOrEmpty(account) ? newAccount : account;
         string? autoLoginSessionKey = null;
         if (request.QuickLoginEnabled)
-            (tgt, autoLoginSessionKey) = await context.AccountGroupLoginAsync(tgt!, sndaID!, AUTO_LOGIN_KEEP_DAYS).ConfigureAwait(false);
+            (tgt, autoLoginSessionKey) = await context.AccountGroupLoginAsync(tgt!, sndaID!, AUTO_LOGIN_KEEP_DAYS, cancellationToken).ConfigureAwait(false);
 
         context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, tgt!, guid);
         return LoginChannelContext.BuildOkLoginResult(account!, sndaID!, null, request.QuickLoginEnabled ? autoLoginSessionKey : null, LoginType.QRCode, tgt, guid, request.DeviceProfile);
@@ -49,7 +51,8 @@ public sealed class QRCodeLoginChannel
             var result = await context.GetJsonAsync
                          (
                              "codeKeyLogin.json",
-                             [$"codeKey={codeKey}", $"guid={guid}", "autoLoginFlag=1", $"autoLoginKeepTime={AUTO_LOGIN_KEEP_DAYS}", "maxsize=97"]
+                             [$"codeKey={codeKey}", $"guid={guid}", "autoLoginFlag=1", $"autoLoginKeepTime={AUTO_LOGIN_KEEP_DAYS}", "maxsize=97"],
+                             cancellationToken: userCancel.Token
                          ).ConfigureAwait(false);
 
             switch (result.ReturnCode)
@@ -58,7 +61,7 @@ public sealed class QRCodeLoginChannel
                     return (result.Data.SndaID, result.Data.Tgt, result.Data.InputUserID);
 
                 case (int)LoginExceptionCode.QrCodeVerifyFailed:
-                    await Task.Delay(1000).ConfigureAwait(false);
+                    await Task.Delay(1000, userCancel.Token).ConfigureAwait(false);
                     continue;
             }
 
