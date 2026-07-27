@@ -15,6 +15,8 @@ using XIVLauncher.Dalamud;
 using XIVLauncher.GamePatchV3.Update;
 using XIVLauncher.Login;
 using XIVLauncher.Login.Channels;
+using XIVLauncher.Login.Client;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Windows.ViewModel.Main.Services;

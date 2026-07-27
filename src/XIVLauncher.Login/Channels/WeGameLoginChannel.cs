@@ -1,3 +1,6 @@
+using XIVLauncher.Login.Client;
+using XIVLauncher.Login.Models;
+
 namespace XIVLauncher.Login.Channels;
 
 public sealed class WeGameLoginChannel

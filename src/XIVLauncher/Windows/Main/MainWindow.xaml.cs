@@ -11,6 +11,7 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel.Main;
 using XIVLauncher.Windows.ViewModel.Main.Models;

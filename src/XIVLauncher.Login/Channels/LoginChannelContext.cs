@@ -4,6 +4,10 @@ using Serilog;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
+using XIVLauncher.Login.Client;
+using XIVLauncher.Login.Exceptions;
+using XIVLauncher.Login.Models;
+using XIVLauncher.Login.Workflow;
 
 namespace XIVLauncher.Login.Channels;
 
@@ -79,7 +83,7 @@ public sealed class LoginChannelContext
         var result = await GetJsonAsSdoClient("getGuid.json", ["generateDynamicKey=1"]).ConfigureAwait(false);
 
         if (result.ErrorType != 0)
-            throw new OAuthLoginException(result.ToString());
+            throw new Exceptions.OAuthLoginException(result.ToString());
 
         return result.Data.Guid;
     }
@@ -253,7 +257,7 @@ public sealed class LoginChannelContext
         var codeKey  = cookies.FirstOrDefault(x => x.StartsWith("CODEKEY=", StringComparison.Ordinal))?.Split(';')[0];
         codeKey = codeKey?.Split('=')[1];
         if (string.IsNullOrEmpty(codeKey))
-            throw new OAuthLoginException("QRCode下载失败");
+            throw new Exceptions.OAuthLoginException("QRCode下载失败");
 
         var bytes = await response.Content.ReadAsByteArrayAsync(qrCodeExpiration.Token).ConfigureAwait(false);
         return (codeKey, bytes, qrCodeExpiration);

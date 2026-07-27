@@ -3,6 +3,9 @@ using System.Diagnostics;
 using System.Windows;
 using XIVLauncher.Account;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Models;
+using XIVLauncher.Login.WeGame;
+using XIVLauncher.Login.Workflow;
 using XIVLauncher.Windows.Services;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Providers;

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Models;
 
 namespace XIVLauncher.Windows;
 

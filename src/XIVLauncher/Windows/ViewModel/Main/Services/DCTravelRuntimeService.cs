@@ -2,6 +2,7 @@ using Serilog;
 using XIVLauncher.Common.Util;
 using XIVLauncher.DCTravel;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Workflow;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Services;
 

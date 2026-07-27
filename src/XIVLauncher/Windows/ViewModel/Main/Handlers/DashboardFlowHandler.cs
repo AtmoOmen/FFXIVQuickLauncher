@@ -3,6 +3,8 @@ using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Login;
 using XIVLauncher.Login.Channels;
+using XIVLauncher.Login.Client;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel.Main.Models;
 

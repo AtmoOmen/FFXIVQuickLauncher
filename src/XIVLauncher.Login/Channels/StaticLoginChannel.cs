@@ -1,4 +1,7 @@
 using System.Text;
+using XIVLauncher.Login.Client;
+using XIVLauncher.Login.Exceptions;
+using XIVLauncher.Login.Models;
 
 namespace XIVLauncher.Login.Channels;
 

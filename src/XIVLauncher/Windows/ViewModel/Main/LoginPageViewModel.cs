@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Windows.GameClientFiles;
 
 namespace XIVLauncher.Windows.ViewModel.Main;

@@ -8,6 +8,7 @@ using XIVLauncher.Common;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Settings.Converters;
 using XIVLauncher.Xaml;
 

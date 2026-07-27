@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Models;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
 

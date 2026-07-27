@@ -1,3 +1,7 @@
+using XIVLauncher.Login.Client;
+using XIVLauncher.Login.Exceptions;
+using XIVLauncher.Login.Models;
+
 namespace XIVLauncher.Login.Channels;
 
 public sealed class QRCodeLoginChannel
@@ -61,7 +65,7 @@ public sealed class QRCodeLoginChannel
             if (result.Data.FailReason == "二维码不存在或已过期，请重试")
                 throw new LoginException((int)LoginExceptionCode.ScanTimeoutOrCanceled, result.Data.FailReason);
 
-            throw new OAuthLoginException(result.Data.FailReason);
+            throw new Exceptions.OAuthLoginException(result.Data.FailReason);
         }
 
         if (userCancel.IsCancellationRequested)
