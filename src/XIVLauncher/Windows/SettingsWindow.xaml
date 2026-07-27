@@ -526,18 +526,6 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                               Text="加载方式"
-                                               FontSize="15" Margin="0,0,0,16" />
-                                    <RadioButton
-                                        Content="入口点覆写" GroupName="dalamudLoadMethod"
-                                        IsChecked="{Binding UseEntryPointLoadMethod}"
-                                        Margin="0,0,0,12"
-                                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
-                                    <RadioButton
-                                        Content="动态链接库注入" GroupName="dalamudLoadMethod"
-                                        IsChecked="{Binding UseDllInjectLoadMethod}"
-                                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
                                 </StackPanel>
                             </materialDesign:Card>
 

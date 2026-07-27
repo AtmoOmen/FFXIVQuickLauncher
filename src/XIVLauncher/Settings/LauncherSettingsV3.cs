@@ -150,8 +150,8 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     /// </summary>
     public DalamudLoadMethod DalamudLoadMethod
     {
-        get;
-        set => Set(ref field, value);
+        get => field == DalamudLoadMethod.DllInject ? DalamudLoadMethod.EntryPoint : field;
+        set => Set(ref field, value == DalamudLoadMethod.DllInject ? DalamudLoadMethod.EntryPoint : value);
     } = DalamudLoadMethod.EntryPoint;
 
     /// <summary>

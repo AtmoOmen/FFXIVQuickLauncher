@@ -94,15 +94,12 @@ public sealed class GameLaunchService
 
     public bool InjectGameAndCompanionApp(int gamePid, bool noThird = false, bool noPlugins = false)
     {
-        var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;
-        var gameExeFolder = Path.GetDirectoryName(gameExePath);
-        var gamePath      = new DirectoryInfo(gameExeFolder!).Parent;
-
-        if (gamePath == null)
+        using var gameProcess = Process.GetProcessById(gamePid);
+        if (gameProcess.HasExited)
         {
             CustomMessageBox.Show
             (
-                "无法解析游戏目录, 注入失败",
+                "游戏进程已经退出, 注入失败",
                 "XIVLauncherCN (Soil)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -111,14 +108,17 @@ public sealed class GameLaunchService
             return false;
         }
 
-        EnsureDalamudCompatibility();
+        var gamePath = App.Settings.GamePath;
+
+        if (!EnsureDalamudCompatibility())
+            return false;
 
         var dalamudSession = App.Dalamud.CreateLauncher
         (
             gamePath,
             new DalamudLaunchOptions
             (
-                DalamudLoadMethod.DllInject,
+                DalamudLoadMethod.EntryPoint,
                 (int)App.Settings.DalamudInjectionDelayMS,
                 false,
                 noPlugins,
@@ -145,13 +145,14 @@ public sealed class GameLaunchService
         return true;
     }
 
-    public void EnsureDalamudCompatibility()
+    public bool EnsureDalamudCompatibility()
     {
         var dalamudCompatCheck = new DalamudCompatibilityCheck();
 
         try
         {
             dalamudCompatCheck.EnsureCompatibility();
+            return true;
         }
         catch (IDalamudCompatibilityCheck.NoRedistsException ex)
         {
@@ -165,6 +166,7 @@ public sealed class GameLaunchService
                 MessageBoxImage.Exclamation,
                 parentWindow: window
             );
+            return false;
         }
         catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
         {
@@ -178,6 +180,7 @@ public sealed class GameLaunchService
                 MessageBoxImage.Exclamation,
                 parentWindow: window
             );
+            return false;
         }
     }
 

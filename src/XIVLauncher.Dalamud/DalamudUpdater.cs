@@ -15,6 +15,7 @@ public class DalamudUpdater
     public DirectoryInfo Runtime { get; }
 
     private DateTime? lastCompletionUtc;
+    private Task?     updateTask;
 
     public DownloadState State
     {
@@ -88,6 +89,14 @@ public class DalamudUpdater
             Log.Information("[DUPDATE] Dalamud 上次更新已超过 24 小时，将重新检查");
         }
 
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var currentTask = Volatile.Read(ref updateTask);
+        if (currentTask is { IsCompleted: false } || Interlocked.CompareExchange(ref updateTask, completion.Task, currentTask) != currentTask)
+        {
+            Log.Information("[DUPDATE] Dalamud 更新器已在运行, 复用当前任务");
+            return;
+        }
+
         Log.Information("[DUPDATE] 启动 Dalamud 更新器中...");
         EnsurementException = null;
         LoadingDetail       = string.Empty;
@@ -99,29 +108,42 @@ public class DalamudUpdater
         Task.Run
         (async () =>
             {
-                const int MAX_TRIES = 10;
-
-                var isUpdated = false;
-
-                for (var tries = 0; tries < MAX_TRIES; tries++)
+                try
                 {
-                    try
-                    {
-                        await UpdateDalamud(refreshVersionInfo).ConfigureAwait(true);
-                        isUpdated = true;
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries, MAX_TRIES);
-                        EnsurementException = ex;
-                    }
-                }
+                    const int MAX_TRIES = 3;
 
-                State = isUpdated ? DownloadState.Done : DownloadState.NoIntegrity;
+                    var isUpdated = false;
+
+                    for (var tries = 0; tries < MAX_TRIES; tries++)
+                    {
+                        try
+                        {
+                            await UpdateDalamud(refreshVersionInfo).ConfigureAwait(false);
+                            isUpdated = true;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries + 1, MAX_TRIES);
+                            EnsurementException = ex;
+
+                            if (tries + 1 < MAX_TRIES)
+                                await Task.Delay(TimeSpan.FromSeconds(tries + 1)).ConfigureAwait(false);
+                        }
+                    }
+
+                    State = isUpdated ? DownloadState.Done : DownloadState.NoIntegrity;
+                }
+                finally
+                {
+                    completion.TrySetResult();
+                }
             }
         );
     }
+
+    public void WaitForCompletion() =>
+        Volatile.Read(ref updateTask)?.GetAwaiter().GetResult();
 
     #region Steps
 

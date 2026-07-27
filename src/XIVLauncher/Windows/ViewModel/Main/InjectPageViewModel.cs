@@ -97,9 +97,9 @@ public sealed partial class InjectPageViewModel : ObservableObject
 
     public bool HasAvailableProcesses => FFXIVProcesses.Count > 0;
 
-    public bool CanOperateOnSelectedProcess => SelectedProcess != null;
+    public bool CanOperateOnSelectedProcess => SelectedProcess is { HasInjected: false };
 
-    public string ProcessSelectionHint => HasAvailableProcesses ? "选择要注入的进程" : "未检测到可注入进程";
+    public string ProcessSelectionHint => HasAvailableProcesses ? "选择要注入的进程" : "未检测到游戏进程";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(InjectGameCommand))]
@@ -140,7 +140,7 @@ public sealed partial class InjectPageViewModel : ObservableObject
         StartInject(SelectedProcess, false);
 
     private bool CanInjectGame() =>
-        !isLoggingInFunc() && !IsInjecting && SelectedProcess != null;
+        !isLoggingInFunc() && !IsInjecting && CanOperateOnSelectedProcess;
 
     [RelayCommand(CanExecute = nameof(CanBringProcessForeground))]
     private void BringProcessForeground()
@@ -201,7 +201,14 @@ public sealed partial class InjectPageViewModel : ObservableObject
 
                     gameLaunchService.StartCompanionAppsUntilGameExit(targetProcess.ProcessID);
 
-                    window.Dispatcher.Invoke(() => { targetProcess.HasInjected = true; });
+                    window.Dispatcher.Invoke
+                    (() =>
+                        {
+                            targetProcess.HasInjected = true;
+                            OnPropertyChanged(nameof(CanOperateOnSelectedProcess));
+                            InjectGameCommand.NotifyCanExecuteChanged();
+                        }
+                    );
 
                     if (isAutoInjection)
                         return;
@@ -305,7 +312,7 @@ public sealed partial class InjectPageViewModel : ObservableObject
                                 return;
 
                             var process = FFXIVProcesses.FirstOrDefault(p => p.ProcessID == candidate.ProcessID);
-                            if (process == null || process.HasInjected)
+                            if (process is not { HasInjected: false })
                                 return;
 
                             autoInjectAttemptedProcessIds.Add(process.ProcessID);
@@ -375,6 +382,8 @@ public sealed partial class InjectPageViewModel : ObservableObject
                                                               : SelectedProcess;
 
                                 SelectedProcess = nextSelectedProcess ?? FFXIVProcesses.FirstOrDefault();
+                                OnPropertyChanged(nameof(CanOperateOnSelectedProcess));
+                                InjectGameCommand.NotifyCanExecuteChanged();
                                 CleanupAutoInjectAttemptedProcesses();
                                 SyncAutoInjectState();
                             }

@@ -61,9 +61,8 @@ internal sealed class GameLaunchFlowHandler
         );
 
         var dalamudOk = false;
-        EnsureDalamudCompatibility();
 
-        if (App.Settings.DalamudEnabled && !forceNoDalamud)
+        if (App.Settings.DalamudEnabled && !forceNoDalamud && EnsureDalamudCompatibility())
         {
             if (EnsureDalamudUpdate
                 (
@@ -606,13 +605,14 @@ internal sealed class GameLaunchFlowHandler
 
     #region Dalamud 与补丁
 
-    private void EnsureDalamudCompatibility()
+    private bool EnsureDalamudCompatibility()
     {
         var dalamudCompatCheck = new DalamudCompatibilityCheck();
 
         try
         {
             dalamudCompatCheck.EnsureCompatibility();
+            return true;
         }
         catch (IDalamudCompatibilityCheck.NoRedistsException ex)
         {
@@ -626,6 +626,7 @@ internal sealed class GameLaunchFlowHandler
                 MessageBoxImage.Exclamation,
                 parentWindow: vm.Window
             );
+            return false;
         }
         catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
         {
@@ -639,6 +640,7 @@ internal sealed class GameLaunchFlowHandler
                 MessageBoxImage.Exclamation,
                 parentWindow: vm.Window
             );
+            return false;
         }
     }
 

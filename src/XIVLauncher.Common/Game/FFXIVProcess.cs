@@ -1,20 +1,25 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Game;
 
-public sealed class FFXIVProcess
-(
-    Process p
-) : IDisposable, INotifyPropertyChanged
+public sealed class FFXIVProcess : IDisposable, INotifyPropertyChanged
 {
-    public Process UnderlyingProcess { get; } = p;
+    public FFXIVProcess(Process process)
+    {
+        UnderlyingProcess = process;
+        ProcessID         = process.Id;
+        ProcessName       = process.ProcessName;
+        HasInjected       = TryIsDalamudInjected(process);
+        DisplayName       = $"{process.Id} ({process.StartTime})";
+    }
 
-    public int    ProcessID   => UnderlyingProcess.Id;
-    public string ProcessName => UnderlyingProcess.ProcessName;
+    public Process UnderlyingProcess { get; }
+
+    public int    ProcessID   { get; }
+    public string ProcessName { get; }
     public int    ExitCode    => UnderlyingProcess.ExitCode;
-    public string DisplayName { get; init; } = $"{p.Id} ({p.StartTime})";
+    public string DisplayName { get; }
 
     public bool HasInjected
     {
@@ -27,29 +32,93 @@ public sealed class FFXIVProcess
             field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasInjected)));
         }
-    } = IsDalamudInjected(p);
+    }
 
     public void Dispose() =>
         UnderlyingProcess.Dispose();
 
-    public static bool IsDalamudInjected(Process p) =>
-        p.Modules.Cast<ProcessModule>().Any(m => m.ModuleName.Contains("Dalamud.dll"));
+    public static bool IsDalamudInjected(Process process) =>
+        process.Modules.Cast<ProcessModule>().Any(module => string.Equals(module.ModuleName, "Dalamud.dll", StringComparison.OrdinalIgnoreCase));
 
-    public static List<int> GetGameProcessIDs() =>
-        GetGameProcesses().Select(p => p.Id).ToList();
-
-    public static List<FFXIVProcess> GetGameProcess() =>
-        GetGameProcesses().Select(p => new FFXIVProcess(p)).ToList();
-
-    private static IEnumerable<Process> GetGameProcesses()
+    public static List<int> GetGameProcessIDs()
     {
-        var processes = Process.GetProcesses()
-                               .Where(p => p.ProcessName == "ffxiv_dx11")
-                               .Where(p => !p.MainWindowTitle.Contains("FINAL FANTASY XIV"));
-        if (PlatformHelpers.IsElevated())
-            processes = processes.Where(p => !p.HasExited);
+        var processes = GetGameProcesses();
 
-        return processes;
+        try
+        {
+            return processes.Select(process => process.Id).ToList();
+        }
+        finally
+        {
+            foreach (var process in processes)
+                process.Dispose();
+        }
+    }
+
+    public static List<FFXIVProcess> GetGameProcess()
+    {
+        var processes    = GetGameProcesses();
+        var gameProcesses = new List<FFXIVProcess>(processes.Count);
+
+        foreach (var process in processes)
+        {
+            try
+            {
+                gameProcesses.Add(new FFXIVProcess(process));
+            }
+            catch (InvalidOperationException)
+            {
+                process.Dispose();
+            }
+        }
+
+        return gameProcesses;
+    }
+
+    private static List<Process> GetGameProcesses()
+    {
+        var gameProcesses = new List<Process>();
+
+        foreach (var process in Process.GetProcesses())
+        {
+            try
+            {
+                if (string.Equals(process.ProcessName, "ffxiv_dx11", StringComparison.OrdinalIgnoreCase) && !process.HasExited)
+                {
+                    gameProcesses.Add(process);
+                    continue;
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                process.Dispose();
+                continue;
+            }
+
+            process.Dispose();
+        }
+
+        return gameProcesses;
+    }
+
+    private static bool TryIsDalamudInjected(Process process)
+    {
+        try
+        {
+            return IsDalamudInjected(process);
+        }
+        catch (Win32Exception)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

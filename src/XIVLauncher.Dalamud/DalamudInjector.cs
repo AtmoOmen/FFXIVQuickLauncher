@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -7,6 +8,7 @@ using Newtonsoft.Json;
 using PInvoke;
 using Serilog;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Dalamud;
 
@@ -19,7 +21,8 @@ public class DalamudInjector : IDalamudRunner
         IDictionary<string, string> environment,
         DalamudStartInfo            startInfo,
         bool                        safeMode       = false,
-        bool                        noThirdPlugins = false
+        bool                        noThirdPlugins = false,
+        bool                        elevate        = false
     )
     {
         var launchArguments = new List<string>
@@ -40,37 +43,94 @@ public class DalamudInjector : IDalamudRunner
         if (safeMode) launchArguments.Add("--no-plugin");
         if (noThirdPlugins) launchArguments.Add(DalamudInjectorArgs.NO_THIRD_PARTY);
 
-        // 始终启用托管重启: DllInject 模式下崩溃处理器随此次注入启动, 须一并传入
         launchArguments.Add(DalamudInjectorArgs.MANAGED_RESTART);
 
+        var shouldElevate = elevate && !PlatformHelpers.IsElevated();
         var psi = new ProcessStartInfo(runner.FullName)
         {
-            Arguments              = string.Join(" ", launchArguments),
-            WorkingDirectory       = runner.DirectoryName ?? Environment.CurrentDirectory,
-            RedirectStandardOutput = true,
-            UseShellExecute        = false,
-            CreateNoWindow         = true
+            Arguments        = string.Join(" ", launchArguments),
+            WorkingDirectory = runner.DirectoryName ?? Environment.CurrentDirectory,
+            UseShellExecute  = shouldElevate,
+            CreateNoWindow   = !shouldElevate,
+            WindowStyle      = ProcessWindowStyle.Hidden
         };
 
-        foreach (var keyValuePair in environment)
-            psi.EnvironmentVariables[keyValuePair.Key] = keyValuePair.Value;
-
-        using var dalamudProcess = Process.Start(psi) ?? throw new DalamudRunnerException("无法启动 Dalamud 注入器");
-        dalamudProcess.OutputDataReceived += (_, args) =>
+        if (shouldElevate)
+            psi.Verb = "runas";
+        else
         {
-            if (args.Data != null)
-                Log.Information(args.Data);
-        };
-        dalamudProcess.BeginOutputReadLine();
+            psi.RedirectStandardOutput = true;
+            psi.RedirectStandardError  = true;
 
-        const int WAIT_INJECTOR_TIMEOUT_MS = 60 * 1000;
-        if (!dalamudProcess.WaitForExit(WAIT_INJECTOR_TIMEOUT_MS))
-            throw new DalamudRunnerException("Injector did not exit in the expected timeout period");
+            foreach (var keyValuePair in environment)
+                psi.EnvironmentVariables[keyValuePair.Key] = keyValuePair.Value;
+        }
 
-        dalamudProcess.WaitForExit();
+        var previousEnvironment = new Dictionary<string, string?>();
 
-        if (dalamudProcess.ExitCode != 0)
-            throw new DalamudRunnerException($"Injector exit code was {dalamudProcess.ExitCode}");
+        try
+        {
+            if (shouldElevate)
+            {
+                foreach (var keyValuePair in environment)
+                {
+                    previousEnvironment[keyValuePair.Key] = Environment.GetEnvironmentVariable(keyValuePair.Key);
+                    Environment.SetEnvironmentVariable(keyValuePair.Key, keyValuePair.Value);
+                }
+            }
+
+            using var dalamudProcess = Process.Start(psi) ?? throw new DalamudRunnerException("无法启动 Dalamud 注入器");
+            var output = new ConcurrentQueue<string>();
+
+            if (!shouldElevate)
+            {
+                dalamudProcess.OutputDataReceived += (_, args) => CaptureOutput(args.Data);
+                dalamudProcess.ErrorDataReceived  += (_, args) => CaptureOutput(args.Data);
+                dalamudProcess.BeginOutputReadLine();
+                dalamudProcess.BeginErrorReadLine();
+            }
+
+            const int WAIT_INJECTOR_TIMEOUT_MS = 60 * 1000;
+            if (!dalamudProcess.WaitForExit(WAIT_INJECTOR_TIMEOUT_MS))
+            {
+                dalamudProcess.Kill(true);
+                throw new DalamudRunnerException("Dalamud 注入器运行超时");
+            }
+
+            dalamudProcess.WaitForExit();
+
+            if (dalamudProcess.ExitCode != 0)
+            {
+                var exitCode = unchecked((uint)dalamudProcess.ExitCode);
+                var details  = string.Join(Environment.NewLine, output);
+                var message  = $"Dalamud 注入器失败, 退出码 0x{exitCode:X8}";
+
+                if (!string.IsNullOrWhiteSpace(details))
+                    message = $"{message}{Environment.NewLine}{details}";
+
+                throw new DalamudRunnerException(message);
+            }
+
+            return;
+
+            void CaptureOutput(string? line)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    return;
+
+                output.Enqueue(line);
+                Log.Information("{InjectorOutput}", line);
+            }
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (PlatformHelpers.IsWindowsErrorCancelled(ex))
+        {
+            throw new DalamudRunnerException("已取消 Dalamud 注入器权限请求", ex);
+        }
+        finally
+        {
+            foreach (var keyValuePair in previousEnvironment)
+                Environment.SetEnvironmentVariable(keyValuePair.Key, keyValuePair.Value);
+        }
     }
 
     public unsafe Process? Run
@@ -117,9 +177,6 @@ public class DalamudInjector : IDalamudRunner
             launchArguments.Add(DalamudInjectorArgs.HandleOwner(inheritableCurrentProcess.Handle));
 
         if (loadMethod == DalamudLoadMethod.ACLonly)
-            launchArguments.Add(DalamudInjectorArgs.WITHOUT_DALAMUD);
-
-        if (loadMethod == DalamudLoadMethod.DllInject)
             launchArguments.Add(DalamudInjectorArgs.WITHOUT_DALAMUD);
 
         if (fakeLogin)
@@ -203,11 +260,16 @@ public class DalamudInjector : IDalamudRunner
             if (kernelProcessInfo.hThread != IntPtr.Zero && kernelProcessInfo.hThread != new IntPtr(-1))
                 Kernel32.CloseHandle(kernelProcessInfo.hThread);
 
+            childOutputPipeHandle.Dispose();
+            tempOutputHandle.Dispose();
+
             var       stdoutEncoding = new UTF8Encoding(false);
-            using var stdoutStream   = new StreamReader(new FileStream(new SafeFileHandle(parentOutputPipeHandle, false), FileAccess.Read, 4096, false), stdoutEncoding, true, 4096);
+            using var injectorProcessHandle = new SafeProcessHandle(kernelProcessInfo.hProcess, true);
+            using var stdoutStream   = new StreamReader(new FileStream(new SafeFileHandle(parentOutputPipeHandle, true), FileAccess.Read, 4096, false), stdoutEncoding, true, 4096);
+            var       outputTask     = stdoutStream.ReadToEndAsync();
 
             const int WAIT_INJECTOR_TIMEOUT_MS = 60 * 1000;
-            var       res                      = Kernel32.WaitForSingleObject(new SafeProcessHandle(kernelProcessInfo.hProcess, false), WAIT_INJECTOR_TIMEOUT_MS);
+            var       res                      = Kernel32.WaitForSingleObject(injectorProcessHandle, WAIT_INJECTOR_TIMEOUT_MS);
 
             if (res != Kernel32.WaitForSingleObjectResult.WAIT_OBJECT_0)
             {
@@ -219,16 +281,17 @@ public class DalamudInjector : IDalamudRunner
 
             Log.Verbose("=> WaitForSingleObject() complete");
 
-            if (!Kernel32.GetExitCodeProcess(kernelProcessInfo.hProcess, out var exitCode))
+            if (!Kernel32.GetExitCodeProcess(injectorProcessHandle.DangerousGetHandle(), out var exitCode))
                 throw new System.ComponentModel.Win32Exception();
 
             if (exitCode != 0)
                 throw new DalamudRunnerException($"Injector exit code was {exitCode}");
 
-            if (stdoutStream.EndOfStream)
+            var outputs = outputTask.GetAwaiter().GetResult();
+            if (string.IsNullOrWhiteSpace(outputs))
                 throw new DalamudRunnerException("Injector output stream was empty");
 
-            var output = stdoutStream.ReadLine();
+            var output = outputs.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
             if (string.IsNullOrEmpty(output))
                 throw new DalamudRunnerException("No injector output");
 
@@ -274,47 +337,6 @@ public class DalamudInjector : IDalamudRunner
 
             Log.Verbose("=> Closing handles");
 
-            Kernel32.CloseHandle(parentOutputPipeHandle);
-            Kernel32.CloseHandle(kernelProcessInfo.hProcess);
-
-            if (loadMethod == DalamudLoadMethod.DllInject)
-            {
-                var deadline = Environment.TickCount64 + 60 * 1000;
-
-                while (Environment.TickCount64 < deadline)
-                {
-                    if (gameProcess.HasExited)
-                        throw new DalamudRunnerException("游戏进程在 Dalamud 注入前已退出");
-
-                    try
-                    {
-                        var hwnd = IntPtr.Zero;
-
-                        while (IntPtr.Zero != (hwnd = FindWindowEx(IntPtr.Zero, hwnd, "FFXIVGAME", IntPtr.Zero)))
-                        {
-                            GetWindowThreadProcessId(hwnd, out var pid);
-
-                            if (pid == gameProcess.Id && IsWindowVisible(hwnd))
-                                break;
-                        }
-
-                        if (hwnd != IntPtr.Zero && gameProcess.WaitForInputIdle(50))
-                            break;
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        throw new DalamudRunnerException("无法读取游戏进程状态", ex);
-                    }
-
-                    Thread.Sleep(50);
-                }
-
-                if (Environment.TickCount64 >= deadline)
-                    throw new DalamudRunnerException("等待游戏窗口准备完成超时");
-
-                Inject(runner, gameProcess.Id, environment, dalamudStartInfo, noPlugins, noThirdPlugins);
-            }
-
             return gameProcess;
         }
         catch (Exception ex)
@@ -335,16 +357,6 @@ public class DalamudInjector : IDalamudRunner
         [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle,
         DuplicateOptions                     dwOptions
     );
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern IntPtr FindWindowEx(IntPtr parentHandle, IntPtr hWndChildAfter, string className, IntPtr windowTitle);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsWindowVisible(IntPtr hWnd);
 
     private static Process? GetInheritableCurrentProcessHandle()
     {

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Text;
 using Serilog;
 
 namespace XIVLauncher.Dalamud;
@@ -27,16 +26,16 @@ public class DalamudSession
         if (updater.State != DalamudUpdater.DownloadState.Done)
             updater.ShowLoading();
 
-        while (updater.State != DalamudUpdater.DownloadState.Done)
-        {
-            if (updater.State == DalamudUpdater.DownloadState.NoIntegrity)
-            {
-                updater.HideLoading();
-                throw new DalamudRunnerException("Dalamud 完整性检测或更新反复失败, 请检查你的本地网络环境", updater.EnsurementException?.InnerException);
-            }
+        updater.WaitForCompletion();
 
-            Thread.Yield();
+        if (updater.State == DalamudUpdater.DownloadState.NoIntegrity)
+        {
+            updater.HideLoading();
+            throw new DalamudRunnerException("Dalamud 完整性检测或更新反复失败, 请检查你的本地网络环境", updater.EnsurementException);
         }
+
+        if (updater.State != DalamudUpdater.DownloadState.Done)
+            throw new DalamudRunnerException("Dalamud 更新器未能进入就绪状态");
 
         if (updater.Runner == null || !updater.Runner.Exists)
             throw new DalamudRunnerException("Dalamud 本地注入文件不存在, 请重新启动 XIVLauncher 以开始完整性检测与下载流程");
@@ -50,46 +49,14 @@ public class DalamudSession
 
         var startInfo = CreateStartInfo();
 
-        var launchArguments = new List<string>
+        var environment = new Dictionary<string, string>
         {
-            "inject -v",
-            $"{gamePid}",
-            DalamudInjectorArgs.WorkingDirectory(startInfo.WorkingDirectory),
-            DalamudInjectorArgs.ConfigurationPath(startInfo.ConfigurationPath),
-            DalamudInjectorArgs.LoggingPath(startInfo.LoggingPath),
-            DalamudInjectorArgs.PluginDirectory(startInfo.PluginDirectory),
-            DalamudInjectorArgs.AssetDirectory(startInfo.AssetDirectory),
-            DalamudInjectorArgs.ClientLanguage(4),
-            DalamudInjectorArgs.DelayInitialize(startInfo.DelayInitializeMs),
-            DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData))),
-            DalamudInjectorArgs.LauncherDirectory(startInfo.LauncherDirectory)
+            ["DALAMUD_RUNTIME"]          = updater.Runtime.FullName,
+            ["DOTNET_ROOT"]              = updater.Runtime.FullName,
+            ["DOTNET_MULTILEVEL_LOOKUP"] = "0"
         };
 
-        if (safeMode) 
-            launchArguments.Add("--no-plugin");
-
-        var psi = new ProcessStartInfo(updater.Runner!.FullName)
-        {
-            Arguments              = string.Join(" ", launchArguments),
-            RedirectStandardOutput = true,
-            UseShellExecute        = false,
-            CreateNoWindow         = true,
-            Environment =
-            {
-                ["DALAMUD_RUNTIME"]          = updater.Runtime.FullName,
-                ["DOTNET_ROOT"]              = updater.Runtime.FullName,
-                ["DOTNET_MULTILEVEL_LOOKUP"] = "0"
-            }
-        };
-
-        var dalamudProcess = Process.Start(psi);
-
-        while (dalamudProcess != null && !dalamudProcess.StandardOutput.EndOfStream)
-        {
-            var line = dalamudProcess.StandardOutput.ReadLine();
-            if (line != null)
-                Log.Information(line);
-        }
+        DalamudInjector.Inject(updater.Runner!, gamePid, environment, startInfo, safeMode, noThirdPlugin, true);
     }
 
     public Process LaunchGame(FileInfo gameExe, string gameArgs, IDictionary<string, string> environment)
@@ -105,10 +72,6 @@ public class DalamudSession
         {
             case DalamudLoadMethod.EntryPoint:
                 Log.Verbose("[HOOKS] Now running OEP rewrite");
-                break;
-
-            case DalamudLoadMethod.DllInject:
-                Log.Verbose("[HOOKS] Now running DLL inject");
                 break;
 
             case DalamudLoadMethod.ACLonly:

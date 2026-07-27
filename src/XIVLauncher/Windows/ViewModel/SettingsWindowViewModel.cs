@@ -108,21 +108,6 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    public partial bool UseEntryPointLoadMethod { get; set; } = true;
-
-    public bool UseDllInjectLoadMethod
-    {
-        get => !UseEntryPointLoadMethod;
-        set
-        {
-            if (value == UseDllInjectLoadMethod)
-                return;
-
-            UseEntryPointLoadMethod = !value;
-        }
-    }
-
-    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(EditSelectedCompanionAppCommand))]
     [NotifyCanExecuteChangedFor(nameof(RemoveSelectedCompanionAppCommand))]
     public partial CompanionAppEntry? SelectedCompanionAppEntry { get; set; }
@@ -254,8 +239,6 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
         RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewLogin;
         DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMS;
         ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
-        UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod == DalamudLoadMethod.EntryPoint;
-        UseDllInjectLoadMethod                      = App.Settings.DalamudLoadMethod == DalamudLoadMethod.DllInject;
         EnableHooks                                 = App.Settings.DalamudEnabled;
         EnableDcTravel                              = true;
         LaunchArgs                                  = App.Settings.AdditionalLaunchArgs ?? string.Empty;
@@ -287,7 +270,6 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
         var gamePath            = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
         var patchPath           = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
         var companionAppEntries = CompanionAppEntries.ToList();
-        var dalamudLoadMethod   = App.Settings.DalamudLoadMethod;
         var dpiAwareness        = (DPIAwareness)DpiAwarenessIndex;
         var speedLimitBytes     = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
 
@@ -323,7 +305,7 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
                 settings.DalamudEnabled                       = EnableHooks;
                 settings.DalamudInjectionDelayMS              = DalamudInjectionDelayMs ?? 0;
                 settings.ManualInjectDelayMs                  = ManualInjectDelayMs     ?? 0;
-                settings.DalamudLoadMethod                    = dalamudLoadMethod;
+                settings.DalamudLoadMethod                    = DalamudLoadMethod.EntryPoint;
                 settings.AdditionalLaunchArgs                 = LaunchArgs;
                 settings.DPIAwareness                         = dpiAwareness;
                 settings.SpeedLimitBytes                      = speedLimitBytes;
