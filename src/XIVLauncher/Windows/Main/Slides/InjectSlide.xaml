@@ -99,20 +99,6 @@
                         Command="{Binding InjectPage.InjectGameCommand}"
                         IsEnabled="{Binding InjectPage.CanOperateOnSelectedProcess}" />
             </Grid>
-
-            <Button Style="{StaticResource MaterialDesignFlatButton}"
-                    Command="{Binding InjectPage.ReturnToLoginPageCommand}"
-                    Margin="0,0,0,0" Height="24" Padding="8,0"
-                    HorizontalAlignment="Center"
-                    Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="ArrowLeft" Width="12"
-                                             Height="12" Margin="0,0,4,0"
-                                             VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding InjectPage.ReturnButtonText}" FontSize="11"
-                               VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
         </StackPanel>
     </Grid>
 </UserControl>

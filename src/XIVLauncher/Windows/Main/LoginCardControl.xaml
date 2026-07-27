@@ -143,6 +143,30 @@
                 </StackPanel>
             </Grid>
 
+            <!-- 手动注入顶栏 (仅 InjectMode 显示) -->
+            <Grid Grid.Row="0" Margin="8,8,8,0">
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger
+                                Binding="{Binding ElementName=LoginCardTransitioner, Path=SelectedIndex}"
+                                Value="3">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+
+                <Button Style="{StaticResource HeaderUtilityButtonStyle}"
+                        ToolTip="{Binding InjectPage.ReturnButtonText}"
+                        Command="{Binding InjectPage.ReturnToLoginPageCommand}"
+                        HorizontalAlignment="Left">
+                    <materialDesign:PackIcon Kind="ArrowLeft" Width="20" Height="20"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Button>
+            </Grid>
+
             <!-- DCTravel 顶栏 (仅 DCTravel 显示) -->
             <Grid Grid.Row="0" Margin="8,8,8,0">
                 <Grid.Style>
