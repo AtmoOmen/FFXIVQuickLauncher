@@ -258,7 +258,7 @@ internal partial class MainWindowViewModel : ObservableObject
         LoginFlow.CancelLogin();
 
     [RelayCommand]
-    private void ExecuteAccountSwitcherButton(object parameter) =>
+    private void AccountSwitcherButton() =>
         SwitchCard(LoginCardType.AccountSwitcher);
 
     #endregion

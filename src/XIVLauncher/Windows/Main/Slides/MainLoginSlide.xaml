@@ -231,8 +231,7 @@
                         materialDesign:ButtonAssist.CornerRadius="18"
                         Width="32" Height="32" Padding="0"
                         ToolTip="账号"
-                        Command="{Binding AccountSwitcherButtonCommand}"
-                        CommandParameter="{Binding RelativeSource={RelativeSource Self}}">
+                        Command="{Binding AccountSwitcherButtonCommand}">
                     <materialDesign:PackIcon Kind="AccountGroup" Width="18"
                                              Height="18" />
                 </Button>
