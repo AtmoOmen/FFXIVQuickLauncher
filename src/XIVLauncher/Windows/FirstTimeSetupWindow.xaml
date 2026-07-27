@@ -4,18 +4,18 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
-    Title="首次设置"
-    Width="500"
+    Title="欢迎使用 XIVLauncherCN"
+    Width="780"
+    Height="650"
     Background="{DynamicResource MaterialDesign.Brush.Background}"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
-    SizeToContent="Height"
-    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-    TextElement.FontWeight="Regular"
     TextElement.FontSize="14"
+    TextElement.FontWeight="Regular"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance viewModel:FirstTimeSetupViewModel}">
@@ -25,6 +25,29 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="PrimaryActionButton" BasedOn="{StaticResource MaterialDesignRaisedButton}" TargetType="Button">
+                <Setter Property="Height" Value="42" />
+                <Setter Property="MinWidth" Value="112" />
+                <Setter Property="Padding" Value="20,0" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="6" />
+            </Style>
+
+            <Style x:Key="SecondaryActionButton" BasedOn="{StaticResource MaterialDesignOutlinedButton}" TargetType="Button">
+                <Setter Property="Height" Value="42" />
+                <Setter Property="MinWidth" Value="104" />
+                <Setter Property="Padding" Value="18,0" />
+                <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="6" />
+            </Style>
+
+            <Style x:Key="SetupPanel" TargetType="Border">
+                <Setter Property="Padding" Value="22" />
+                <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Surface}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="8" />
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -39,72 +62,347 @@
             <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
         </Grid.RenderTransform>
 
-        <Border Padding="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="228" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border
+            Background="{DynamicResource MaterialDesign.Brush.Surface}"
+            BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}"
+            BorderThickness="0,0,1,0">
+            <Grid Margin="28,30,24,26">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <Image
+                        Width="72"
+                        Height="64"
+                        HorizontalAlignment="Left"
+                        RenderOptions.BitmapScalingMode="HighQuality"
+                        Source="pack://application:,,,/Resources/logo.png"
+                        Stretch="Uniform" />
+                    <TextBlock
+                        Margin="0,16,0,0"
+                        FontSize="18"
+                        FontWeight="SemiBold"
+                        Text="XIVLauncherCN" />
+                    <TextBlock
+                        Margin="0,3,0,0"
+                        Opacity="0.62"
+                        Text="首次设置" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                    <TextBlock
+                        Margin="0,0,0,16"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Opacity="0.56"
+                        Text="设置进度" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="36" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" Background="{DynamicResource MaterialDesign.Brush.Primary}" CornerRadius="16">
+                            <Grid>
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    FontWeight="SemiBold"
+                                    Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}"
+                                    Text="1">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CurrentStepIndex}" Value="1">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <materialDesign:PackIcon
+                                    Width="18"
+                                    Height="18"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}"
+                                    Kind="Check">
+                                    <materialDesign:PackIcon.Style>
+                                        <Style TargetType="materialDesign:PackIcon">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CurrentStepIndex}" Value="1">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </materialDesign:PackIcon.Style>
+                                </materialDesign:PackIcon>
+                            </Grid>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock FontWeight="SemiBold" Text="安装与存储" />
+                            <TextBlock Margin="0,2,0,0" FontSize="12" Opacity="0.58" Text="配置游戏与补丁目录" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Width="1" Height="28" Margin="15,4,0,4" HorizontalAlignment="Left" Background="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="36" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" BorderThickness="1" CornerRadius="16">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentStepIndex}" Value="1">
+                                            <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold" Text="2">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Opacity" Value="0.54" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentStepIndex}" Value="1">
+                                                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary.Foreground}" />
+                                                <Setter Property="Opacity" Value="1" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="插件框架">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="Regular" />
+                                        <Setter Property="Opacity" Value="0.58" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentStepIndex}" Value="1">
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                <Setter Property="Opacity" Value="1" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Margin="0,2,0,0" FontSize="12" Opacity="0.58" Text="配置 Dalamud" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2">
+                    <TextBlock FontSize="12" Opacity="0.56" Text="2 个步骤, 约 1 分钟" />
+                    <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+                        <materialDesign:PackIcon Width="15" Height="15" VerticalAlignment="Center" Kind="ShieldCheckOutline" Opacity="0.6" />
+                        <TextBlock Margin="7,0,0,0" FontSize="12" Opacity="0.56" Text="设置仅保存在本机" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
             <TabControl
                 x:Name="SetupTabControl"
+                Margin="40,26,40,16"
+                Padding="0"
                 Background="Transparent"
                 BorderThickness="0"
-                Padding="0"
-                IsEnabled="True"
+                Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                 SelectedIndex="{Binding CurrentStepIndex}">
                 <TabControl.ItemContainerStyle>
-                    <Style TargetType="{x:Type TabItem}">
+                    <Style TargetType="TabItem">
                         <Setter Property="Visibility" Value="Collapsed" />
                     </Style>
                 </TabControl.ItemContainerStyle>
 
-                <TabItem Header="路径">
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
-                            <materialDesign:PackIcon Kind="FolderSearchOutline" Width="32" Height="32"
-                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                                     VerticalAlignment="Center" Margin="0,0,16,0" />
-                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                       Style="{StaticResource MaterialDesignHeadline5TextBlock}"
-                                       Text="请选择游戏目录"
-                                       VerticalAlignment="Center"
-                                       FontWeight="SemiBold" />
+                <TabItem Header="路径" Foreground="{DynamicResource MaterialDesign.Brush.Foreground}">
+                        <StackPanel>
+                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" Text="步骤 1 / 2" />
+                            <TextBlock Margin="0,7,0,0" FontSize="28" FontWeight="SemiBold"
+                                       Text="配置安装与存储" />
+                            <TextBlock
+                                Margin="0,6,0,16"
+                                MaxWidth="460"
+                                HorizontalAlignment="Left"
+                                LineHeight="20"
+                                Opacity="0.66"
+                                Text="盛趣与 WeGame 至少需要配置一个, 若未安装游戏请配置盛趣安装目录为任一空文件夹"
+                                TextWrapping="Wrap" />
+
+                            <Border Padding="18,16" Style="{StaticResource SetupPanel}">
+                                <StackPanel>
+                                    <TextBlock FontSize="15" FontWeight="SemiBold" Text="游戏目录" />
+                                    <TextBlock Margin="0,3,0,10" FontSize="12" Opacity="0.58" Text="盛趣目录包含 boot 与 game; WeGame 目录包含 rail_files" />
+                                    <components:FolderEntry
+                                        Description="盛趣 (可选)"
+                                        Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <components:FolderEntry
+                                        Margin="0,10,0,0"
+                                        Description="WeGame (可选)"
+                                        Text="{Binding WeGamePath, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <Separator Margin="0,30,0,30" Background="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+
+                                    <TextBlock FontSize="15" FontWeight="SemiBold" Text="下载目录" />
+                                    <TextBlock Margin="0,3,0,10" FontSize="12" Opacity="0.58" Text="用于暂存游戏下载与更新补丁, 请预留足够空间" />
+                                    <components:FolderEntry
+                                        Description="更新补丁存储"
+                                        Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
-
-                        <components:FolderEntry
-                            Margin="0,0,0,32"
-                            Description="选择文件夹"
-                            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                            Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
-
-                        <Button Width="100" HorizontalAlignment="Right" Command="{Binding MoveNextCommand}" Content="下一步" />
-                    </StackPanel>
                 </TabItem>
 
-                <TabItem Header="Dalamud">
+                <TabItem Header="Dalamud" Foreground="{DynamicResource MaterialDesign.Brush.Foreground}">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
-                            <materialDesign:PackIcon Kind="PuzzleOutline" Width="32" Height="32"
-                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                                     VerticalAlignment="Center" Margin="0,0,16,0" />
-                            <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                       Style="{StaticResource MaterialDesignHeadline5TextBlock}"
-                                       Text="配置 Dalamud"
-                                       VerticalAlignment="Center"
-                                       FontWeight="SemiBold" />
-                        </StackPanel>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" Text="步骤 2 / 2" />
+                        <TextBlock Margin="0,9,0,0" FontSize="28" FontWeight="SemiBold" Text="配置游戏内插件" />
+                        <TextBlock
+                            Margin="0,8,0,26"
+                            MaxWidth="460"
+                            HorizontalAlignment="Left"
+                            LineHeight="21"
+                            Opacity="0.66"
+                            Text="Dalamud 为游戏提供插件运行环境, 从而支持各类强大的游戏内修改"
+                            TextWrapping="Wrap" />
 
-                        <materialDesign:Card UniformCornerRadius="8" Margin="0,0,0,32">
-                            <StackPanel Margin="16">
-                                <TextBlock Text="Dalamud 是游戏内插件框架, 配合插件可以为游戏提供各种便利化功能"
-                                           TextWrapping="Wrap"
-                                           Margin="0,0,0,16"
-                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
-                                <CheckBox Content="启用 Dalamud"
-                                          Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                          IsChecked="{Binding EnableDalamud}" />
+                        <Border Style="{StaticResource SetupPanel}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="40" Height="40" HorizontalAlignment="Left" Background="{DynamicResource MaterialDesign.Brush.Background}" CornerRadius="6">
+                                    <materialDesign:PackIcon Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" Kind="PuzzleOutline" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="4,0,20,0" VerticalAlignment="Center">
+                                    <TextBlock FontSize="15" FontWeight="SemiBold" Text="启用 Dalamud" />
+                                    <TextBlock Margin="0,4,0,0" 
+                                               FontSize="12" 
+                                               LineHeight="18" 
+                                               Opacity="0.6"
+                                               Text="启动游戏"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ToggleButton
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    IsChecked="{Binding EnableDalamud}"
+                                    Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                            </Grid>
+                        </Border>
+
+                        <Grid Margin="4,22,4,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <materialDesign:PackIcon Width="17" Height="17" VerticalAlignment="Top" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" Kind="LightbulbOutline" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock FontWeight="SemiBold" Text="推荐保持启用" />
+                                <TextBlock
+                                    Margin="0,4,0,0"
+                                    FontSize="12"
+                                    LineHeight="18"
+                                    Opacity="0.62"
+                                    Text="所有插件均可自行选择安装。可以随时在软件设置中启用或关闭，关闭后不会影响启动器更新和登录游戏"
+                                    TextWrapping="Wrap" />
                             </StackPanel>
-                        </materialDesign:Card>
-
-                        <Button Width="100" HorizontalAlignment="Right" Command="{Binding MoveNextCommand}" Content="完成" />
+                        </Grid>
                     </StackPanel>
                 </TabItem>
             </TabControl>
-        </Border>
+
+            <Border
+                Grid.Row="1"
+                Padding="40,12,40,16"
+                BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}"
+                BorderThickness="0,1,0,0">
+                <Grid>
+                    <Button
+                        HorizontalAlignment="Left"
+                        Command="{Binding MoveBackCommand}">
+                        <Button.Style>
+                            <Style BasedOn="{StaticResource SecondaryActionButton}" TargetType="Button">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStepIndex}" Value="1">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Width="18" Height="18" Margin="0,0,8,0" VerticalAlignment="Center" Kind="ArrowLeft" />
+                            <TextBlock VerticalAlignment="Center" Text="上一步" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button
+                        HorizontalAlignment="Right"
+                        Command="{Binding MoveNextCommand}">
+                        <Button.Style>
+                            <Style BasedOn="{StaticResource PrimaryActionButton}" TargetType="Button">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStepIndex}" Value="1">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock VerticalAlignment="Center" Text="继续" />
+                            <materialDesign:PackIcon Width="18" Height="18" Margin="8,0,0,0" VerticalAlignment="Center" Kind="ArrowRight" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button
+                        HorizontalAlignment="Right"
+                        Command="{Binding MoveNextCommand}">
+                        <Button.Style>
+                            <Style BasedOn="{StaticResource PrimaryActionButton}" TargetType="Button">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStepIndex}" Value="1">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Width="18" Height="18" Margin="0,0,8,0" VerticalAlignment="Center" Kind="Check" />
+                            <TextBlock VerticalAlignment="Center" Text="完成设置" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

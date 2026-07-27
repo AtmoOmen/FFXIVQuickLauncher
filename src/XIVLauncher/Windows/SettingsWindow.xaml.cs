@@ -76,6 +76,20 @@ public partial class SettingsWindow
     private void SharedDeviceProfileButton_Click(object sender, RoutedEventArgs e) =>
         ViewModel.OpenSharedDeviceProfile();
 
+    private void FirstTimeSetupButton_Click(object sender, RoutedEventArgs e)
+    {
+        var setupWindow = new FirstTimeSetup
+        {
+            Owner                 = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+
+        setupWindow.ShowDialog();
+
+        if (setupWindow.WasCompleted)
+            ViewModel.ReloadFromSettings();
+    }
+
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
     {
         do

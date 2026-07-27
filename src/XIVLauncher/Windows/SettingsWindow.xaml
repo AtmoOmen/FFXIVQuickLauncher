@@ -165,7 +165,7 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Text="盛趣 / 官网" FontWeight="Medium" FontSize="15"
+                                    <TextBlock Text="盛趣" FontWeight="Medium" FontSize="15"
                                                Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
                                     <components:FolderEntry Grid.Row="1" Margin="0,8,0,0" Description="选择文件夹"
                                                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
@@ -631,6 +631,17 @@
                                                 <TextBlock
                                                     Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                     Margin="8,0,0,0" VerticalAlignment="Center" Text="官方启动器" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Click="FirstTimeSetupButton_Click"
+                                                Style="{DynamicResource MaterialDesignOutlinedButton}"
+                                                Margin="0,0,12,12" Height="40">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Restart" VerticalAlignment="Center" />
+                                                <TextBlock
+                                                    Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                    Margin="8,0,0,0" VerticalAlignment="Center"
+                                                    Text="首次设置" />
                                             </StackPanel>
                                         </Button>
                                         <Button Command="{Binding OpenBackupToolCommand}"

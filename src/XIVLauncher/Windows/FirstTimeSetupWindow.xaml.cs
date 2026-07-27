@@ -1,3 +1,5 @@
+using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Util;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel;
 
@@ -17,13 +19,23 @@ public partial class FirstTimeSetup
     {
         InitializeComponent();
 
-        DataContext = new FirstTimeSetupViewModel(new DialogService(this), _shortcutService);
+        var detectedGamePath = Paths.GetGamePath();
+        var initialGamePath  = App.Settings.GamePath?.FullName
+                               ?? (GameHelpers.IsValidGamePath(detectedGamePath) ? detectedGamePath : string.Empty);
+
+        DataContext = new FirstTimeSetupViewModel
+        (
+            new DialogService(this),
+            _shortcutService,
+            initialGamePath,
+            App.Settings.WeGameLauncherPath,
+            Paths.ResolvePatchPath(App.Settings.PatchPath, Paths.RoamingPath).FullName
+        );
         ViewModel.CloseRequested += (_, _) =>
         {
             WasCompleted = ViewModel.WasCompleted;
             Close();
         };
-        ViewModel.EnsureDesktopShortcut();
     }
 
     public static void CreateShortcut

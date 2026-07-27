@@ -2,7 +2,7 @@ using Newtonsoft.Json.Linq;
 
 namespace XIVLauncher.Login.WeGame;
 
-internal static class WeGamePathValidator
+public static class WeGamePathValidator
 {
     public const int FFXIV_WE_GAME_GAME_ID = 2000340;
 

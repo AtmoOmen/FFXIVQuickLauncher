@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
+using XIVLauncher.Login.WeGame;
 using XIVLauncher.Windows.Services;
 
 namespace XIVLauncher.Windows.ViewModel;
@@ -12,6 +13,12 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
 {
     [ObservableProperty]
     public partial string GamePath { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string WeGamePath { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial string PatchPath { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial bool EnableDalamud { get; set; } = true;
@@ -24,12 +31,23 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
     private readonly IDialogService   _dialogService;
     private readonly IShortcutService _shortcutService;
 
-    public FirstTimeSetupViewModel(IDialogService? dialogService = null, IShortcutService? shortcutService = null)
+    public FirstTimeSetupViewModel
+    (
+        IDialogService?   dialogService      = null,
+        IShortcutService? shortcutService    = null,
+        string?           initialGamePath    = null,
+        string?           initialWeGamePath  = null,
+        string?           initialPatchPath   = null
+    )
     {
         _dialogService   = dialogService   ?? new DialogService();
         _shortcutService = shortcutService ?? new ShortcutService();
 
-        GamePath = Paths.GetGamePath() ?? string.Empty;
+        GamePath   = initialGamePath ?? string.Empty;
+        WeGamePath = WeGamePathValidator.IsValidSdologinDir(initialWeGamePath)
+                         ? Path.GetFullPath(Path.Combine(initialWeGamePath!, "..", ".."))
+                         : initialWeGamePath ?? string.Empty;
+        PatchPath  = initialPatchPath ?? Paths.ResolvePatchPath(null, Paths.RoamingPath).FullName;
     }
 
     [RelayCommand]
@@ -38,7 +56,7 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
         switch (CurrentStepIndex)
         {
             case 0:
-                if (!ValidateGamePath())
+                if (!ValidatePaths())
                     return;
 
                 CurrentStepIndex++;
@@ -48,12 +66,18 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
                 App.Settings.Update
                 (settings =>
                     {
-                        settings.GamePath         = new DirectoryInfo(GamePath);
-                        settings.DalamudEnabled   = EnableDalamud;
-                        settings.CompanionAppList = [];
+                        settings.GamePath = string.IsNullOrWhiteSpace(GamePath)
+                                                ? null!
+                                                : new DirectoryInfo(GamePath);
+                        settings.WeGameLauncherPath = string.IsNullOrWhiteSpace(WeGamePath)
+                                                          ? string.Empty
+                                                          : WeGamePathValidator.DeriveSdologinDir(WeGamePath);
+                        settings.PatchPath      = new DirectoryInfo(PatchPath);
+                        settings.DalamudEnabled = EnableDalamud;
                     }
                 );
 
+                EnsureDesktopShortcut();
                 WasCompleted = true;
                 CloseRequested?.Invoke(this, EventArgs.Empty);
                 return;
@@ -61,6 +85,13 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
             default:
                 return;
         }
+    }
+
+    [RelayCommand]
+    public void MoveBack()
+    {
+        if (CurrentStepIndex > 0)
+            CurrentStepIndex--;
     }
 
     public void EnsureDesktopShortcut()
@@ -84,13 +115,13 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
         }
     }
 
-    private bool ValidateGamePath()
+    private bool ValidatePaths()
     {
-        if (string.IsNullOrWhiteSpace(GamePath))
+        if (string.IsNullOrWhiteSpace(GamePath) && string.IsNullOrWhiteSpace(WeGamePath))
         {
             _dialogService.ShowMessage
             (
-                "请选择游戏所在目录。",
+                "请至少选择一个游戏目录。",
                 "错误",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -100,6 +131,88 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
             return false;
         }
 
+        if (!string.IsNullOrWhiteSpace(GamePath) && !ValidateGamePath())
+            return false;
+
+        if (!string.IsNullOrWhiteSpace(WeGamePath)
+            && (!WeGamePathValidator.IsValidGameRoot(WeGamePath)
+                || !WeGamePathValidator.IsValidSdologinDir(WeGamePathValidator.DeriveSdologinDir(WeGamePath))))
+        {
+            _dialogService.ShowMessage
+            (
+                "未找到 WeGame 游戏标记或 sdologin.exe, 请重新选择游戏根目录。",
+                "错误",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error,
+                false,
+                false
+            );
+            return false;
+        }
+
+        return ValidatePatchPath();
+    }
+
+    private bool ValidatePatchPath()
+    {
+        if (string.IsNullOrWhiteSpace(PatchPath))
+        {
+            _dialogService.ShowMessage
+            (
+                "请选择补丁存储目录。",
+                "错误",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error,
+                false,
+                false
+            );
+            return false;
+        }
+
+        DirectoryInfo patchDirectory;
+
+        try
+        {
+            patchDirectory = new DirectoryInfo(PatchPath);
+        }
+        catch (Exception)
+        {
+            _dialogService.ShowMessage
+            (
+                "补丁存储目录格式无效, 请重新选择。",
+                "错误",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error,
+                false,
+                false
+            );
+            return false;
+        }
+
+        var normalizedPatchPath = Path.TrimEndingDirectorySeparator(patchDirectory.FullName);
+        var normalizedGamePath  = string.IsNullOrWhiteSpace(GamePath)
+                                      ? string.Empty
+                                      : Path.TrimEndingDirectorySeparator(new DirectoryInfo(GamePath).FullName);
+
+        if (string.Equals(normalizedGamePath, normalizedPatchPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _dialogService.ShowMessage
+            (
+                "游戏目录和补丁目录不能相同, 请重新选择。",
+                "错误",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error,
+                false,
+                false
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool ValidateGamePath()
+    {
         if (!GameHelpers.LetChoosePath(GamePath))
         {
             _dialogService.ShowMessage

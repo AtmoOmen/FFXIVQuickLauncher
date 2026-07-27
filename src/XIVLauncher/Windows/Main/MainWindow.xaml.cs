@@ -12,6 +12,7 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Login;
 using XIVLauncher.Login.Models;
+using XIVLauncher.Login.WeGame;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel.Main;
 using XIVLauncher.Windows.ViewModel.Main.Models;
@@ -108,7 +109,8 @@ public partial class MainWindow
 
         Model.LoginPage.IsFastLogin = App.Settings.FastLogin;
 
-        if (App.Settings.GamePath?.Exists != true)
+        if (App.Settings.GamePath?.Exists != true
+            && !WeGamePathValidator.IsValidSdologinDir(App.Settings.WeGameLauncherPath))
         {
             var setup = new FirstTimeSetup();
             setup.ShowDialog();

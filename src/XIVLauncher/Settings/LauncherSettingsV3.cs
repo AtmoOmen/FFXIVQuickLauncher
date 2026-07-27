@@ -357,6 +357,9 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
                 Log.Warning("已隔离损坏配置文件: {BrokenPath}", brokenPath);
         }
 
+        if (configException == null)
+            return CreateDetachedSettings(configPath);
+
         var backupPath = GetBackupPath(configPath);
 
         if (TryLoadSettings(backupPath, configPath, out settings, out var backupException))
