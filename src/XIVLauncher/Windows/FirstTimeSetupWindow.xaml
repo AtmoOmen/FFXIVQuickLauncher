@@ -72,7 +72,7 @@
                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                             Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
 
-                        <Button Width="100" HorizontalAlignment="Right" Command="{Binding NextCommand}" Content="下一步" />
+                        <Button Width="100" HorizontalAlignment="Right" Command="{Binding MoveNextCommand}" Content="下一步" />
                     </StackPanel>
                 </TabItem>
 
@@ -101,7 +101,7 @@
                             </StackPanel>
                         </materialDesign:Card>
 
-                        <Button Width="100" HorizontalAlignment="Right" Command="{Binding NextCommand}" Content="完成" />
+                        <Button Width="100" HorizontalAlignment="Right" Command="{Binding MoveNextCommand}" Content="完成" />
                     </StackPanel>
                 </TabItem>
             </TabControl>

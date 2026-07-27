@@ -68,6 +68,15 @@ public partial class LoginCardControl
     private void SettingsButton_OnClick(object sender, RoutedEventArgs e) =>
         SettingsRequested?.Invoke(this, e);
 
+    private void GameMaintenanceButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { ContextMenu: { } contextMenu } button)
+            return;
+
+        contextMenu.PlacementTarget = button;
+        contextMenu.IsOpen         = true;
+    }
+
     // ── 卡片快捷键 ──
 
     private void Card_KeyDown(object sender, KeyEventArgs e)

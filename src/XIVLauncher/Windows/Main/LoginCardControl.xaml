@@ -94,30 +94,42 @@
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Left">
                     <Button Style="{StaticResource HeaderUtilityButtonStyle}"
-                            ToolTip="修复"
-                            Command="{Binding LoginPage.LoginRepairCommand}">
+                            Width="Auto"
+                            MinWidth="0"
+                            Padding="6,4"
+                            Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                            Click="GameMaintenanceButton_OnClick">
+                        <Button.ContextMenu>
+                            <ContextMenu Placement="Bottom"
+                                         DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                         Style="{StaticResource LoginActionContextMenuStyle}">
+                                <MenuItem Header="修复游戏"
+                                          Style="{StaticResource LoginActionMenuItemStyle}"
+                                          Command="{Binding LoginPage.LoginRepairCommand}">
+                                    <MenuItem.Icon>
+                                        <materialDesign:PackIcon Kind="Wrench" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="检查游戏完整性"
+                                          Style="{StaticResource LoginActionMenuItemStyle}"
+                                          Command="{Binding LoginPage.RunIntegrityCheckCommand}">
+                                    <MenuItem.Icon>
+                                        <materialDesign:PackIcon Kind="ShieldCheck" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="更新游戏"
+                                          Style="{StaticResource LoginActionMenuItemStyle}"
+                                          Command="{Binding LoginPage.LoginNoStartCommand}">
+                                    <MenuItem.Icon>
+                                        <materialDesign:PackIcon Kind="Update" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                         <materialDesign:PackIcon Kind="Wrench"
                                                  Width="20"
                                                  Height="20"
-                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                    </Button>
-
-                    <Button Style="{StaticResource HeaderUtilityButtonStyle}"
-                            ToolTip="完整性检查"
-                            Command="{Binding LoginPage.RunIntegrityCheckCommand}">
-                        <materialDesign:PackIcon Kind="ShieldCheck"
-                                                 Width="20"
-                                                 Height="20"
-                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                    </Button>
-
-                    <Button Style="{StaticResource HeaderUtilityButtonStyle}"
-                            ToolTip="更新"
-                            Command="{Binding LoginPage.LoginNoStartCommand}">
-                        <materialDesign:PackIcon Kind="Update"
-                                                 Width="20"
-                                                 Height="20"
-                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                 VerticalAlignment="Center" />
                     </Button>
                 </StackPanel>
 
