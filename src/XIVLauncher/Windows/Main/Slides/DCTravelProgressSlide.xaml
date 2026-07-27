@@ -17,7 +17,11 @@
 
     <Grid Margin="24,0,24,0" VerticalAlignment="Center">
         <StackPanel>
-            <Grid Margin="0,0,0,20" Width="80" Height="80" HorizontalAlignment="Center">
+            <Grid Margin="0,0,0,20"
+                  Width="80"
+                  Height="80"
+                  HorizontalAlignment="Center"
+                  Visibility="{Binding DCTravelPage.IsTravelInProgress, Converter={StaticResource BoolToVis}}">
                 <Ellipse Fill="{DynamicResource MaterialDesign.Brush.Primary}"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center" Width="48" Height="48">
@@ -44,6 +48,28 @@
                                          VerticalAlignment="Center"
                                          Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
             </Grid>
+
+            <materialDesign:PackIcon Width="48"
+                                     Height="48"
+                                     Margin="0,0,0,20"
+                                     HorizontalAlignment="Center">
+                <materialDesign:PackIcon.Style>
+                    <Style TargetType="materialDesign:PackIcon">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Setter Property="Kind" Value="AlertCircle" />
+                        <Setter Property="Foreground" Value="IndianRed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DCTravelPage.IsTravelInProgress}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding DCTravelPage.IsTravelSuccessful}" Value="True">
+                                <Setter Property="Kind" Value="CheckCircle" />
+                                <Setter Property="Foreground" Value="MediumSeaGreen" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </materialDesign:PackIcon.Style>
+            </materialDesign:PackIcon>
 
             <TextBlock Text="{Binding DCTravelPage.TravelProgressText}"
                        FontSize="14"

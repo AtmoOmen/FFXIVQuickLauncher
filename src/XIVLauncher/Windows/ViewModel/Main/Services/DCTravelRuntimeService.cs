@@ -13,6 +13,7 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
 
     private CancellationTokenSource? recoveryCts;
     private Task?                    recoveryTask;
+    private int                      sessionVersion;
 
     public DCTravelClient    Client   { get; }
     public DCTravelListener? Listener { get; private set; }
@@ -39,8 +40,11 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
 
         Client.MaintenanceDetected += () =>
         {
+            if (Listener == null)
+                return;
+
             Log.Warning("[DCTravelListener] 运行时检测到超域旅行服务维护, 启动恢复定时器");
-            StartMaintenanceRecovery();
+            StartMaintenanceRecovery(Volatile.Read(ref sessionVersion));
             MaintenanceStateChanged?.Invoke(DCTravelMaintenanceState.UnderMaintenance);
         };
     }
@@ -55,6 +59,8 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
         if (!enableDalamud || skipDcTravel)
             return 0;
 
+        Client.BeginSession();
+        var version = Volatile.Read(ref sessionVersion);
         DcTravelPort = APIHelper.GetAvailablePort();
 
         // 无论初始化是否成功, 始终启动监听器 —— 游戏内插件可通过 RPC 错误区分维护状态
@@ -70,7 +76,7 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
             if (Client.MaintenanceState == DCTravelMaintenanceState.UnderMaintenance)
             {
                 Log.Warning("[DCTravelListener] 超域旅行服务维护中, 启动后台恢复定时器");
-                StartMaintenanceRecovery();
+                StartMaintenanceRecovery(version);
             }
         }
         catch (Exception ex)
@@ -79,7 +85,7 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
             Log.Warning(ex, "[DCTravelListener] 超域旅行初始化失败, 监听器仍在运行");
 
             if (Client.MaintenanceState == DCTravelMaintenanceState.UnderMaintenance)
-                StartMaintenanceRecovery();
+                StartMaintenanceRecovery(version);
         }
 
         MaintenanceStateChanged?.Invoke(Client.MaintenanceState);
@@ -94,32 +100,32 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
 
     public void Stop()
     {
+        Interlocked.Increment(ref sessionVersion);
         StopMaintenanceRecovery();
+
+        var listener = Listener;
+        Listener     = null;
+        DcTravelPort = 0;
 
         try
         {
-            Listener?.Stop();
+            listener?.Dispose();
         }
         catch (Exception ex)
         {
             Log.Error(ex, "无法关闭 DCTravelListener");
         }
-        finally
-        {
-            Listener     = null;
-            DcTravelPort = 0;
-        }
     }
 
     public void Dispose()
     {
-        StopMaintenanceRecovery();
-        recoveryCts?.Dispose();
+        Stop();
+        Client.Dispose();
     }
 
     #region 维护自动恢复
 
-    private void StartMaintenanceRecovery()
+    private void StartMaintenanceRecovery(int version)
     {
         if (recoveryTask is { IsCompleted: false })
             return;
@@ -127,7 +133,7 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
         StopMaintenanceRecovery();
 
         recoveryCts  = new CancellationTokenSource();
-        recoveryTask = RunMaintenanceRecoveryLoopAsync(recoveryCts.Token);
+        recoveryTask = RunMaintenanceRecoveryLoopAsync(version, recoveryCts.Token);
     }
 
     private void StopMaintenanceRecovery()
@@ -138,11 +144,11 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
         recoveryTask = null;
     }
 
-    private async Task RunMaintenanceRecoveryLoopAsync(CancellationToken ct)
+    private async Task RunMaintenanceRecoveryLoopAsync(int version, CancellationToken ct)
     {
         Log.Information("[DCTravelListener] 维护恢复定时器已启动, 间隔 {Interval} 分钟", MAINTENANCE_RECOVERY_INTERVAL_MINUTES);
 
-        while (!ct.IsCancellationRequested)
+        while (!ct.IsCancellationRequested && version == Volatile.Read(ref sessionVersion))
         {
             try
             {
@@ -157,7 +163,7 @@ public sealed class DCTravelRuntimeService : ILoginSessionRefreshSink, IDisposab
             {
                 var state = await Client.TryRecoverFromMaintenanceAsync().ConfigureAwait(false);
 
-                if (state == DCTravelMaintenanceState.Normal)
+                if (state == DCTravelMaintenanceState.Normal && version == Volatile.Read(ref sessionVersion))
                 {
                     Log.Information("[DCTravelListener] 超域旅行服务已恢复, 重新启动保活");
                     // 旧 Listener 无需重启 —— 它引用同一 Client, 恢复后 RPC 控制器直接可用

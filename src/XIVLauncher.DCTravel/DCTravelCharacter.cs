@@ -16,6 +16,4 @@ public class DCTravelCharacter
     [JsonIgnore]
     public string ServerName { get; set; } = string.Empty;
 
-    public string ToQueryString() =>
-        $$"""{"roleId":"{{ContentID}}","roleName":"{{Name}}","key":0}""";
 }

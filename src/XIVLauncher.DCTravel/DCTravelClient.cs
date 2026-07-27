@@ -7,11 +7,10 @@ using XIVLauncher.Login;
 
 namespace XIVLauncher.DCTravel;
 
-public partial class DCTravelClient
+public partial class DCTravelClient : IDisposable
 {
     public Func<Task<string>>?         RefreshGameSessionIDByQuickLoginFunc { get; set; }
     public Action<string>?             SetSdoAreaFunc                      { get; set; }
-    public CancellationTokenSource     KeepAliveCancelSource               { get; private set; }
     public LoginSessionRefreshContext? LoginSessionRefreshContext          { get; private set; }
 
     /// <summary>
@@ -60,12 +59,12 @@ public partial class DCTravelClient
     private int    initializedState;
     private int    maintenanceState = (int)DCTravelMaintenanceState.Normal;
     private int    keepAliveRunning;
+    private int    disposeState;
     private Task?  sessionRecoveryTask;
+    private CancellationTokenSource lifetimeCts = new();
 
     public DCTravelClient(string nSessionID)
     {
-        KeepAliveCancelSource = new();
-
         cookieContainer = new();
         if (!string.IsNullOrEmpty(nSessionID))
             cookieContainer.Add(new Cookie("nsessionid", nSessionID, "/", DOMAIN));
@@ -93,6 +92,32 @@ public partial class DCTravelClient
     {
         ArgumentNullException.ThrowIfNull(context);
         LoginSessionRefreshContext = context;
+    }
+
+    public void BeginSession()
+    {
+        var current = Volatile.Read(ref lifetimeCts);
+        if (!current.IsCancellationRequested)
+            return;
+
+        var replacement = new CancellationTokenSource();
+        var previous    = Interlocked.Exchange(ref lifetimeCts, replacement);
+        previous.Dispose();
+    }
+
+    public void EndSession()
+    {
+        Volatile.Read(ref lifetimeCts).Cancel();
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposeState, 1) != 0)
+            return;
+
+        lifetimeCts.Cancel();
+        lifetimeCts.Dispose();
+        httpClient.Dispose();
     }
 
     #region 查询超域旅行页面
@@ -168,6 +193,7 @@ public partial class DCTravelClient
 
         var requestUri       = BuildRequestUri(api, parameters);
         var sessionRecovered = false;
+        var cancellationToken = Volatile.Read(ref lifetimeCts).Token;
 
         for (var attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)
         {
@@ -175,8 +201,8 @@ public partial class DCTravelClient
             {
                 using var request = CreateRequest(requestUri, type);
                 Log.Debug("[DCTravelClient] 请求: {RequestUri}", requestUri);
-                using var response = await httpClient.SendAsync(request).ConfigureAwait(false);
-                var       content  = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                var       content  = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 Log.Debug("[DCTravelClient] 响应: {ResponseContent}", content);
 
                 if (!response.IsSuccessStatusCode)
@@ -196,7 +222,7 @@ public partial class DCTravelClient
                       && !ex.IsServiceMaintenance
                       && !ignoreInitialized
                       && !sessionRecovered
-                      && !KeepAliveCancelSource.Token.IsCancellationRequested)
+                      && !cancellationToken.IsCancellationRequested)
             {
                 sessionRecovered = true;
                 Log.Warning(ex, "[DCTravelClient] 会话被服务端拒绝, 尝试重建会话后重试");
@@ -214,19 +240,19 @@ public partial class DCTravelClient
             {
                 var delay = TimeSpan.FromMilliseconds(200 * attempt);
                 Log.Warning(ex, "[DCTravelClient] 请求超时, 将在 {DelayMilliseconds}ms 后重试, 尝试次数: {Attempt}", delay.TotalMilliseconds, attempt);
-                await Task.Delay(delay, KeepAliveCancelSource.Token).ConfigureAwait(false);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
             catch (HttpRequestException ex) when (attempt < MAX_ATTEMPTS)
             {
                 var delay = TimeSpan.FromMilliseconds(200 * attempt);
                 Log.Warning(ex, "[DCTravelClient] HTTP 传输错误, 将在 {DelayMilliseconds}ms 后重试, 尝试次数: {Attempt}", delay.TotalMilliseconds, attempt);
-                await Task.Delay(delay, KeepAliveCancelSource.Token).ConfigureAwait(false);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
-            catch (TaskCanceledException ex) when (!KeepAliveCancelSource.Token.IsCancellationRequested && attempt < MAX_ATTEMPTS)
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested && attempt < MAX_ATTEMPTS)
             {
                 var delay = TimeSpan.FromMilliseconds(200 * attempt);
                 Log.Warning(ex, "[DCTravelClient] HTTP 请求因超时取消, 将在 {DelayMilliseconds}ms 后重试, 尝试次数: {Attempt}", delay.TotalMilliseconds, attempt);
-                await Task.Delay(delay, KeepAliveCancelSource.Token).ConfigureAwait(false);
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -236,7 +262,7 @@ public partial class DCTravelClient
     private HttpRequestMessage CreateRequest(Uri requestUri, DCTravelAPIType type)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
-        request.Headers.TryAddWithoutValidation("Refer", ResolveReferer(type));
+        request.Headers.Referrer = new Uri(ResolveReferer(type));
         return request;
     }
 
@@ -357,7 +383,7 @@ public partial class DCTravelClient
             return;
         }
 
-        var cancellationToken = KeepAliveCancelSource.Token;
+        var cancellationToken = Volatile.Read(ref lifetimeCts).Token;
 
         try
         {
@@ -395,6 +421,10 @@ public partial class DCTravelClient
         finally
         {
             Interlocked.Exchange(ref keepAliveRunning, 0);
+
+            var currentLifetime = Volatile.Read(ref lifetimeCts);
+            if (cancellationToken.IsCancellationRequested && !currentLifetime.IsCancellationRequested)
+                _ = KeepCookieAlive();
         }
     }
 

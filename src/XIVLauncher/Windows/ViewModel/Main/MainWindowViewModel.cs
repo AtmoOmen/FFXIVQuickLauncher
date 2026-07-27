@@ -71,23 +71,25 @@ internal partial class MainWindowViewModel : ObservableObject
         DCTravelRuntimeService = new
         (name =>
             {
-                App.AccountManager.CurrentAccount!.AreaName = name;
-                App.AccountManager.Save();
-
-                if (CurrentGameLaunchContext?.Areas is { } areas)
+                var matched = CurrentGameLaunchContext?.Areas.FirstOrDefault
+                    (area => string.Equals(area.AreaName, name, StringComparison.Ordinal));
+                if (matched == null)
                 {
-                    var matched = areas.FirstOrDefault
-                    (a =>
-                         string.Equals(a.AreaName, name, StringComparison.Ordinal)
-                    );
-
-                    if (matched != null)
-                    {
-                        CurrentGameLaunchContext.Area = matched;
-                        Log.Information("[DCTravel] 已同步启动上下文大区为 {AreaName} (ID={AreaID})", name, matched.AreaID);
-                    }
-                    else Log.Warning("[DCTravel] 无法从大区列表中找到 \"{AreaName}\"，AreaID/Lobby 等参数未更新", name);
+                    Log.Warning("[DCTravel] 当前登录上下文中不存在大区 {AreaName}, 忽略同步请求", name);
+                    return;
                 }
+
+                var account = App.AccountManager.CurrentAccount;
+                if (account == null)
+                {
+                    Log.Warning("[DCTravel] 当前账号不存在, 忽略大区同步请求: {AreaName}", name);
+                    return;
+                }
+
+                account.AreaName = name;
+                App.AccountManager.Save();
+                CurrentGameLaunchContext!.Area = matched;
+                Log.Information("[DCTravel] 已同步启动上下文大区为 {AreaName} (ID={AreaID})", name, matched.AreaID);
 
                 Window.Dispatcher.Invoke
                 (() =>

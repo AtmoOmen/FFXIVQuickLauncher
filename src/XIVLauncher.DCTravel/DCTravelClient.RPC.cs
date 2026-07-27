@@ -137,7 +137,18 @@ public partial class DCTravelClient
                            ["targetGroupId"]    = targetGroup.GroupID.ToString(),
                            ["targetGroupCode"]  = targetGroup.GroupCode,
                            ["targetGroupName"]  = targetGroup.GroupName,
-                           ["roleList"]         = $"[{character.ToQueryString()}]"
+                            ["roleList"] = JsonSerializer.Serialize
+                            (
+                                new[]
+                                {
+                                    new
+                                    {
+                                        roleId   = character.ContentID,
+                                        roleName = character.Name,
+                                        key      = 0
+                                    }
+                                }
+                            )
                        }
                    );
         EnsureResultCode(data, "TravelOrder");
@@ -160,7 +171,7 @@ public partial class DCTravelClient
         string? checkMessage     = null;
         string? migrationMessage = null;
 
-        if (!string.IsNullOrWhiteSpace(messageStr) && JsonNode.Parse(messageStr) is JsonArray { Count: > 0 } parsed && parsed[0] is JsonObject messageItem)
+        if (TryParseOrderMessage(messageStr) is { } messageItem)
         {
             checkMessage     = messageItem["checkMsg"]?.GetValue<string>();
             migrationMessage = messageItem["migrationMsg"]?.GetValue<string>();
@@ -309,6 +320,24 @@ public partial class DCTravelClient
     {
         var valueNode = data[propertyName] ?? throw new DCTravelAPIException($"{actionName}: missing field '{propertyName}'.");
         return valueNode.GetValue<int>();
+    }
+
+    private static JsonObject? TryParseOrderMessage(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return null;
+
+        try
+        {
+            return JsonNode.Parse(message) is JsonArray { Count: > 0 } parsed
+                       ? parsed[0] as JsonObject
+                       : null;
+        }
+        catch (JsonException ex)
+        {
+            Log.Warning(ex, "[DCTravelClient] 订单状态消息不是有效的 JSON: {Message}", message);
+            return null;
+        }
     }
 
     private static string GetRequiredString(JsonNode data, string propertyName, string actionName)

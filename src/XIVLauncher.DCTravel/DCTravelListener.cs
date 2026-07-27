@@ -72,7 +72,6 @@ public sealed class DCTravelListener : IDisposable, IAsyncDisposable
             return;
 
         listenerCts.Cancel();
-        DCTravelClient.KeepAliveCancelSource.Cancel();
 
         try
         {
@@ -83,6 +82,7 @@ public sealed class DCTravelListener : IDisposable, IAsyncDisposable
             Log.Warning(ex, "[DCTravelListener] 登出失败");
         }
 
+        DCTravelClient.EndSession();
         Interlocked.Exchange(ref webServer, null)?.Dispose();
     }
 

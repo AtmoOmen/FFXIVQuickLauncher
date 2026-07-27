@@ -74,11 +74,17 @@ public sealed partial class DCTravelViewModel : ObservableObject
         charactersLoadCts?.Cancel();
         charactersLoadCts = new CancellationTokenSource();
 
+        SelectedCharacter   = null;
+        SelectedTargetArea  = null;
+        SelectedTargetGroup = null;
         TargetAreas.Clear();
         TargetGroups.Clear();
         Characters.Clear();
-        SelectedCharacter = null;
-        _                 = LoadCharactersAsync(charactersLoadCts.Token);
+
+        if (value != null)
+            _ = LoadCharactersAsync(value, charactersLoadCts.Token);
+        else
+            IsLoading = false;
     }
 
     public ObservableCollection<DCTravelCharacter> Characters { get; }
@@ -92,8 +98,13 @@ public sealed partial class DCTravelViewModel : ObservableObject
 
     partial void OnSelectedCharacterChanged(DCTravelCharacter? value)
     {
+        SelectedTargetArea  = null;
+        SelectedTargetGroup = null;
+        TargetAreas.Clear();
+        TargetGroups.Clear();
+
         if (value != null && SelectedSourceArea != null)
-            _ = LoadTargetAreasAsync();
+            _ = LoadTargetAreasAsync(SelectedSourceArea, value);
 
         TravelOrderCommand.NotifyCanExecuteChanged();
     }
@@ -107,9 +118,13 @@ public sealed partial class DCTravelViewModel : ObservableObject
 
     partial void OnSelectedTargetAreaChanged(DCTravelArea? value)
     {
+        SelectedTargetGroup = null;
         TargetGroups.Clear();
         if (value != null)
-            _ = LoadTargetGroupsAsync();
+        {
+            foreach (var group in value.GroupList)
+                TargetGroups.Add(group);
+        }
     }
 
     public ObservableCollection<DCTravelGroup> TargetGroups { get; }
@@ -174,9 +189,20 @@ public sealed partial class DCTravelViewModel : ObservableObject
 
     partial void OnReturnSelectedSourceAreaChanged(DCTravelArea? value)
     {
+        ReturnSelectedCurrentGroup = null;
         ReturnCurrentGroups.Clear();
-        if (value != null)
-            _ = LoadReturnCurrentGroupsAsync();
+        if (value == null)
+            return;
+
+        foreach (var group in value.GroupList)
+            ReturnCurrentGroups.Add(group);
+
+        if (!string.IsNullOrWhiteSpace(pendingTargetGroupName))
+        {
+            ReturnSelectedCurrentGroup = ReturnCurrentGroups.FirstOrDefault
+                (group => string.Equals(group.GroupName, pendingTargetGroupName, StringComparison.Ordinal));
+            pendingTargetGroupName = null;
+        }
     }
 
     public ObservableCollection<DCTravelGroup> ReturnCurrentGroups { get; } = [];
@@ -198,6 +224,9 @@ public sealed partial class DCTravelViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsTravelInProgress { get; set; } = true;
 
+    [ObservableProperty]
+    public partial bool IsTravelSuccessful { get; set; }
+
     [RelayCommand(CanExecute = nameof(CanTravelOrderExecute))]
     private async Task TravelOrder() =>
         await StartTravelAsync();
@@ -209,8 +238,8 @@ public sealed partial class DCTravelViewModel : ObservableObject
         !IsUnderMaintenance;
 
     [RelayCommand(CanExecute = nameof(CanTravelBack))]
-    private async Task TravelBack() =>
-        await OpenReturnPageAsync();
+    private void TravelBack() =>
+        OpenReturnPage();
 
     private bool CanTravelBack() =>
         SelectedOrder != null && !IsLoading && !IsUnderMaintenance;
@@ -248,6 +277,11 @@ public sealed partial class DCTravelViewModel : ObservableObject
 
     public async Task InitializeAsync(string? currentAreaName = null)
     {
+        SelectedSourceArea = null;
+        SourceAreas.Clear();
+        MigrationOrders.Clear();
+        SelectedOrder = null;
+
         await RefreshTravelDataAsync();
 
         // 首次打开时预填充当前账号所在大区，触发后续角色与目标列表加载
@@ -266,6 +300,7 @@ public sealed partial class DCTravelViewModel : ObservableObject
         pollCts = new CancellationTokenSource();
 
         IsTravelInProgress = true;
+        IsTravelSuccessful = false;
         TravelProgressText = "正在提交传送请求…";
         requestShowProgressAction();
 
@@ -295,7 +330,9 @@ public sealed partial class DCTravelViewModel : ObservableObject
             var targetGroup = SelectedTargetGroup;
             var orderId     = await client.TravelOrder(targetGroup, sourceGroup, SelectedCharacter);
 
-            await PollOrderStatusAsync(orderId, pollCts.Token);
+            var completed = await PollOrderStatusAsync(orderId, pollCts.Token);
+            if (!completed)
+                return;
 
             if (SelectedTargetArea != null)
                 UpdateCurrentArea(SelectedTargetArea.AreaName);
@@ -313,15 +350,21 @@ public sealed partial class DCTravelViewModel : ObservableObject
         }
     }
 
-    private async Task PollOrderStatusAsync(string orderId, CancellationToken ct)
+    private async Task<bool> PollOrderStatusAsync(string orderId, CancellationToken ct)
     {
-        var client = getDcTravelClientFunc();
+        var client              = getDcTravelClientFunc();
+        var confirmationSent    = false;
+        var consecutiveFailures = 0;
+        var deadline            = DateTimeOffset.UtcNow.AddMinutes(30);
 
-        while (!ct.IsCancellationRequested)
+        while (DateTimeOffset.UtcNow < deadline)
         {
+            ct.ThrowIfCancellationRequested();
+
             try
             {
                 var status = await client.QueryOrderStatus(orderId);
+                consecutiveFailures = 0;
 
                 TravelProgressText = status.Status switch
                 {
@@ -337,31 +380,43 @@ public sealed partial class DCTravelViewModel : ObservableObject
                 if (status.Status is DCTravelStatusType.TravelFailed or DCTravelStatusType.PreCheckFailed)
                 {
                     IsTravelInProgress = false;
-                    return;
+                    return false;
                 }
 
                 if (status.Status == DCTravelStatusType.Success)
                 {
                     IsTravelInProgress = false;
+                    IsTravelSuccessful = true;
                     await RefreshOrdersAsync();
-                    return;
+                    return true;
+                }
+
+                if (status.Status == DCTravelStatusType.NeedConfirmation && !confirmationSent)
+                {
+                    TravelProgressText = "正在确认传送…";
+                    await client.MigrationConfirmOrder(orderId, true);
+                    confirmationSent = true;
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                consecutiveFailures++;
                 Log.Warning(ex, "[DCTravelVM] 查询订单状态失败");
                 TravelProgressText = $"状态查询异常: {ex.Message}";
+
+                if (consecutiveFailures >= 3)
+                {
+                    IsTravelInProgress = false;
+                    return false;
+                }
             }
 
-            try
-            {
-                await Task.Delay(1000, ct);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
+            await Task.Delay(1000, ct);
         }
+
+        TravelProgressText = "等待传送结果超时, 可稍后在历史记录中确认状态";
+        IsTravelInProgress = false;
+        return false;
     }
 
     private void UpdateCurrentArea(string areaName) =>
@@ -397,9 +452,8 @@ public sealed partial class DCTravelViewModel : ObservableObject
         }
     }
 
-    private async Task LoadCharactersAsync(CancellationToken ct)
+    private async Task LoadCharactersAsync(DCTravelArea sourceArea, CancellationToken ct)
     {
-        if (SelectedSourceArea == null) return;
         IsLoading = true;
 
         try
@@ -407,13 +461,13 @@ public sealed partial class DCTravelViewModel : ObservableObject
             var client = getDcTravelClientFunc();
             Characters.Clear();
 
-            foreach (var g in SelectedSourceArea.GroupList)
+            foreach (var g in sourceArea.GroupList)
             {
                 ct.ThrowIfCancellationRequested();
 
                 try
                 {
-                    var chars = await client.QueryRoleList(SelectedSourceArea.AreaID, g.GroupID);
+                    var chars = await client.QueryRoleList(sourceArea.AreaID, g.GroupID);
 
                     ct.ThrowIfCancellationRequested();
 
@@ -427,14 +481,20 @@ public sealed partial class DCTravelViewModel : ObservableObject
                 {
                     throw;
                 }
+                catch (DCTravelAPIException ex) when (ex.IsServiceMaintenance)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
-                    Log.Warning(ex, "[DCTravelVM] 加载角色失败 A={AreaID} G={GroupID}", SelectedSourceArea.AreaID, g.GroupID);
+                    Log.Warning(ex, "[DCTravelVM] 加载角色失败 A={AreaID} G={GroupID}", sourceArea.AreaID, g.GroupID);
                 }
             }
         }
         catch (OperationCanceledException)
         {
+            if (ReferenceEquals(SelectedSourceArea, sourceArea))
+                IsLoading = false;
         }
         catch (Exception ex)
         {
@@ -442,14 +502,15 @@ public sealed partial class DCTravelViewModel : ObservableObject
         }
         finally
         {
-            if (!ct.IsCancellationRequested)
+            if (!ct.IsCancellationRequested && ReferenceEquals(SelectedSourceArea, sourceArea))
                 IsLoading = false;
         }
     }
 
-    private async Task LoadTargetAreasAsync()
+    private async Task LoadTargetAreasAsync(DCTravelArea sourceArea, DCTravelCharacter character)
     {
-        if (SelectedSourceArea == null || SelectedCharacter == null || IsLoading) return;
+        if (IsLoading)
+            return;
         IsLoading = true;
 
         try
@@ -457,15 +518,23 @@ public sealed partial class DCTravelViewModel : ObservableObject
             var client = getDcTravelClientFunc();
             TargetAreas.Clear();
 
-            foreach (var g in SelectedSourceArea.GroupList)
+            foreach (var g in sourceArea.GroupList)
             {
-                if (g.AreaID != SelectedCharacter.AreaID || g.GroupID != SelectedCharacter.GroupID)
+                if (g.AreaID != character.AreaID || g.GroupID != character.GroupID)
                     continue;
 
                 try
                 {
-                    var targets = await client.QueryGroupListTravelTarget(SelectedSourceArea.AreaID, g.GroupID);
-                    foreach (var a in targets) TargetAreas.Add(a);
+                    var targets = await client.QueryGroupListTravelTarget(sourceArea.AreaID, g.GroupID);
+                    if (!ReferenceEquals(SelectedSourceArea, sourceArea) || !ReferenceEquals(SelectedCharacter, character))
+                        return;
+
+                    foreach (var area in targets)
+                        TargetAreas.Add(area);
+                }
+                catch (DCTravelAPIException ex) when (ex.IsServiceMaintenance)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -485,40 +554,15 @@ public sealed partial class DCTravelViewModel : ObservableObject
         }
     }
 
-    private async Task LoadTargetGroupsAsync()
+    private void OpenReturnPage()
     {
-        if (SelectedTargetArea == null || IsLoading) return;
-        IsLoading = true;
-
-        try
-        {
-            await Task.Delay(1);
-
-            TargetGroups.Clear();
-
-            foreach (var g in SelectedTargetArea.GroupList)
-                TargetGroups.Add(g);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[DCTravelVM] 加载目标服务器失败");
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private async Task OpenReturnPageAsync()
-    {
-        if (SelectedOrder == null || IsLoading) return;
-
-        await Task.Delay(1);
+        if (SelectedOrder == null || IsLoading)
+            return;
 
         pendingReturnOrder     = SelectedOrder;
         pendingTargetGroupName = pendingReturnOrder.TargetGroupName;
 
-        ReturnOrderInfo = $"{pendingReturnOrder.GroupName}  |  {pendingReturnOrder.CreateTime}";
+        ReturnOrderInfo = $"{pendingReturnOrder.RoleName}  |  {pendingReturnOrder.TargetAreaName} - {pendingReturnOrder.TargetGroupName}";
 
         ReturnSourceAreas.Clear();
         foreach (var a in SourceAreas)
@@ -540,6 +584,7 @@ public sealed partial class DCTravelViewModel : ObservableObject
         pollCts = new CancellationTokenSource();
 
         IsTravelInProgress = true;
+        IsTravelSuccessful = false;
         TravelProgressText = "正在提交超域返回请求…";
         requestShowProgressAction();
 
@@ -548,9 +593,9 @@ public sealed partial class DCTravelViewModel : ObservableObject
             var client  = getDcTravelClientFunc();
             var orderId = await client.TravelBack(pendingReturnOrder.OrderID, group.GroupID, group.GroupCode, group.GroupName);
 
-            await PollOrderStatusAsync(orderId, pollCts.Token);
-
-            await RefreshOrdersAsync();
+            var completed = await PollOrderStatusAsync(orderId, pollCts.Token);
+            if (!completed)
+                return;
 
             if (pendingReturnOrder != null && !string.IsNullOrWhiteSpace(pendingReturnOrder.SourceAreaName))
                 UpdateCurrentArea(pendingReturnOrder.SourceAreaName);
@@ -568,59 +613,29 @@ public sealed partial class DCTravelViewModel : ObservableObject
         }
     }
 
-    private async Task LoadReturnCurrentGroupsAsync()
-    {
-        if (ReturnSelectedSourceArea == null || IsLoading) return;
-        IsLoading = true;
-
-        try
-        {
-            await Task.Delay(1);
-
-            ReturnCurrentGroups.Clear();
-
-            foreach (var g in ReturnSelectedSourceArea.GroupList)
-                ReturnCurrentGroups.Add(g);
-
-            if (!string.IsNullOrEmpty(pendingTargetGroupName))
-            {
-                var targetGroupName = pendingTargetGroupName;
-                pendingTargetGroupName = null;
-
-                // 延迟 50ms 释放 UI 线程，以确保 ComboBox 已经在 UI 上认领并刷新了 ItemsSource 数据源，避免选中项被强行重设为 null
-                await Task.Delay(50);
-
-                var targetGroup = ReturnCurrentGroups.FirstOrDefault(g => g.GroupName == targetGroupName);
-                if (targetGroup != null)
-                    ReturnSelectedCurrentGroup = targetGroup;
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[DCTravelVM] 加载返回服务器列表失败");
-        }
-        finally
-        {
-            IsLoading = false;
-            ConfirmTravelBackCommand.NotifyCanExecuteChanged();
-        }
-    }
-
     private async Task RefreshOrdersAsync()
     {
         try
         {
             var client = getDcTravelClientFunc();
-            var result = await client.QueryMigrationOrders();
 
             MigrationOrders.Clear();
             var addedRoles = new HashSet<string>();
+            var pageIndex  = 1;
+            var totalPages = 1;
 
-            foreach (var o in result.Orders)
+            while (pageIndex <= totalPages)
             {
-                // 源大区与服务器直接采用订单响应自带字段，与目标侧保持一致，避免按 groupId 反查命中错误服务器
-                if (!string.IsNullOrEmpty(o.ContentID) && addedRoles.Add(o.ContentID))
-                    MigrationOrders.Add(o);
+                var result = await client.QueryMigrationOrders(pageIndex);
+                totalPages = Math.Max(1, result.TotalPageNum);
+
+                foreach (var order in result.Orders)
+                {
+                    if (!string.IsNullOrEmpty(order.ContentID) && addedRoles.Add(order.ContentID))
+                        MigrationOrders.Add(order);
+                }
+
+                pageIndex++;
             }
         }
         catch (Exception ex)
