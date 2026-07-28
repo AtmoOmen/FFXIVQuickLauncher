@@ -52,6 +52,12 @@ public sealed partial class DashboardViewModel : ObservableObject
     public partial string GameVersion { get; set; } = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StartGameButtonText))]
+    public partial bool IsGameUpdateAvailable { get; set; }
+
+    public string StartGameButtonText => IsGameUpdateAvailable ? "更新游戏" : "启动游戏";
+
+    [ObservableProperty]
     public partial string AreaName { get; set; } = string.Empty;
 
     [ObservableProperty]

@@ -179,7 +179,6 @@ public sealed partial class LoginPageViewModel : ObservableObject
     public void RefreshCommandStates()
     {
         StartLoginCommand.NotifyCanExecuteChanged();
-        LoginNoStartCommand.NotifyCanExecuteChanged();
         LoginNoDalamudCommand.NotifyCanExecuteChanged();
         LoginNoPluginsCommand.NotifyCanExecuteChanged();
         LoginNoThirdCommand.NotifyCanExecuteChanged();
@@ -210,10 +209,6 @@ public sealed partial class LoginPageViewModel : ObservableObject
         requestLoginAction(this, LoginAfterAction.Start);
 
     private bool CanStartLoginExecute() => CanStartLogin;
-
-    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
-    private Task LoginNoStart() =>
-        requestGameClientFileTaskAction(GameClientFileTaskKind.Update);
 
     [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
     private void LoginNoDalamud() =>

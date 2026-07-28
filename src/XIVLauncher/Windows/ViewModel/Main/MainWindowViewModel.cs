@@ -53,6 +53,7 @@ internal partial class MainWindowViewModel : ObservableObject
     internal DCTravelRuntimeService    DCTravelRuntimeService    { get; }
     internal GameLaunchService         GameLaunchService         { get; }
     internal GameClientFileTaskService GameClientFileTaskService { get; }
+    internal GameUpdateMonitorService  GameUpdateMonitor         { get; }
 
     internal LoginFlowHandler      LoginFlow      { get; }
     internal GameLaunchFlowHandler GameLaunchFlow { get; }
@@ -166,6 +167,7 @@ internal partial class MainWindowViewModel : ObservableObject
             DashboardFlow.HandleOpenAuthenticatedSiteAsync,
             DashboardFlow.HandleSetAreaFromDashboard
         );
+        GameUpdateMonitor = new GameUpdateMonitorService(this);
 
         DCTravelPage = new DCTravelViewModel
         (
@@ -331,6 +333,7 @@ internal partial class MainWindowViewModel : ObservableObject
     public void OnWindowClosed(object? sender, object args)
     {
         App.Dalamud.StatusChanged -= DalamudUpdaterStatusChanged;
+        GameUpdateMonitor.Stop();
         InjectPage.StopRefreshing(true);
         CancelLogin();
         Application.Current.Shutdown();

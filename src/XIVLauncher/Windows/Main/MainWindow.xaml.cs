@@ -55,10 +55,10 @@ public partial class MainWindow
 
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
-
         Model.Activate += () => Dispatcher.Invoke
         (() =>
             {
+                Model.GameUpdateMonitor.QueueCheck();
                 Show();
                 Activate();
                 Focus();
@@ -125,6 +125,8 @@ public partial class MainWindow
             Model.Settings.ReloadFromSettings();
         }
 
+        Model.GameUpdateMonitor.Start();
+
         Task.Run
         (async () =>
             {
@@ -150,6 +152,7 @@ public partial class MainWindow
         ShowCredTypeRecoveryMessage();
 
         everShown = true;
+        Activated += (_, _) => Model.GameUpdateMonitor.QueueCheck();
     }
 
     private void OnSettingsRequested(object? sender, EventArgs e)

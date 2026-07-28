@@ -341,7 +341,7 @@ internal sealed class GameLaunchFlowHandler
                 if (!ConfirmGamePatchInstall())
                     return false;
 
-                if (!await InstallGamePatchAsync().ConfigureAwait(false))
+                if (!await InstallGamePatchAsync(false).ConfigureAwait(false))
                 {
                     Log.Error("patchSuccess != true");
                     return false;
@@ -697,14 +697,28 @@ internal sealed class GameLaunchFlowHandler
         return selfPatchAsk != MessageBoxResult.No;
     }
 
-    private async Task<bool> InstallGamePatchAsync()
+    public async Task<bool> InstallGamePatchAsync(bool confirmInstallation)
     {
-        var result = await gameClientFileTaskService.RunAsync(GameClientFileTaskKind.Update).ConfigureAwait(false);
-        if (result.Status != GameClientFileTaskResultStatus.Success)
+        if (confirmInstallation && !ConfirmGamePatchInstall())
             return false;
 
-        vm.Window.Dispatcher.Invoke(vm.DashboardFlow.RefreshGameVersion);
-        return true;
+        await vm.GameUpdateMonitor.BeginUpdateAsync().ConfigureAwait(false);
+        var succeeded = false;
+
+        try
+        {
+            var result = await gameClientFileTaskService.RunAsync(GameClientFileTaskKind.Update).ConfigureAwait(false);
+            succeeded = result.Status == GameClientFileTaskResultStatus.Success;
+
+            if (succeeded)
+                vm.Window.Dispatcher.Invoke(vm.DashboardFlow.RefreshGameVersion);
+
+            return succeeded;
+        }
+        finally
+        {
+            vm.GameUpdateMonitor.CompleteUpdate(succeeded);
+        }
     }
 
     #endregion

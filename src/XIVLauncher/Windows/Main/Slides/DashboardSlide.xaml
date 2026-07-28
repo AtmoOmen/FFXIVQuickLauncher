@@ -135,9 +135,20 @@
                     Margin="0,0,0,8">
                 <StackPanel Orientation="Vertical" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <materialDesign:PackIcon Kind="Play" Width="20" Height="20" Margin="0,0,8,0"
-                                                 VerticalAlignment="Center" />
-                        <TextBlock Text="启动游戏" VerticalAlignment="Center" />
+                        <materialDesign:PackIcon Width="20" Height="20" Margin="0,0,8,0"
+                                                 VerticalAlignment="Center">
+                            <materialDesign:PackIcon.Style>
+                                <Style TargetType="materialDesign:PackIcon">
+                                    <Setter Property="Kind" Value="Play" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DashboardPage.IsGameUpdateAvailable}" Value="True">
+                                            <Setter Property="Kind" Value="Update" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </materialDesign:PackIcon.Style>
+                        </materialDesign:PackIcon>
+                        <TextBlock Text="{Binding DashboardPage.StartGameButtonText}" VerticalAlignment="Center" />
                         <materialDesign:PackIcon Kind="MenuDown" Width="18" Height="18" Margin="4,0,0,0"
                                                  VerticalAlignment="Center" Opacity="0.8" />
                     </StackPanel>

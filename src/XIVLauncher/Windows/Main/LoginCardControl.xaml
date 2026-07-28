@@ -117,13 +117,6 @@
                                         <materialDesign:PackIcon Kind="ShieldCheck" />
                                     </MenuItem.Icon>
                                 </MenuItem>
-                                <MenuItem Header="更新游戏"
-                                          Style="{StaticResource LoginActionMenuItemStyle}"
-                                          Command="{Binding LoginPage.LoginNoStartCommand}">
-                                    <MenuItem.Icon>
-                                        <materialDesign:PackIcon Kind="Update" />
-                                    </MenuItem.Icon>
-                                </MenuItem>
                             </ContextMenu>
                         </Button.ContextMenu>
                         <materialDesign:PackIcon Kind="Wrench"

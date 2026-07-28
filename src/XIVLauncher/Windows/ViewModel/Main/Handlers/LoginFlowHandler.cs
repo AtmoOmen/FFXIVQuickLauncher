@@ -456,11 +456,6 @@ internal sealed class LoginFlowHandler
 
         switch (kind)
         {
-            case GameClientFileTaskKind.Update:
-                message = "即将检查游戏更新, 并下载安装可能存在的更新文件, 是否要开始?";
-                title   = "更新游戏文件";
-                break;
-
             case GameClientFileTaskKind.Repair:
                 message = "即将扫描游戏文件完整性, 并下载安装存在异常的文件、归档多余的文件, 是否要开始?";
                 title   = "修复游戏文件";

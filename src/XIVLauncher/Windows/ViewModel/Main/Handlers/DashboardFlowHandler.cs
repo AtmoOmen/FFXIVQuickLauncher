@@ -22,6 +22,38 @@ internal sealed class DashboardFlowHandler
 
         vm.IsEnabled = false;
 
+        if (action == LoginAfterAction.Start && vm.DashboardPage.IsGameUpdateAvailable)
+        {
+            _ = Task.Run
+            (async () =>
+                {
+                    try
+                    {
+                        await vm.GameLaunchFlow.InstallGamePatchAsync(true).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        CustomMessageBox.Builder
+                                        .NewFromUnexpectedException(ex, "Dashboard/UpdateGame")
+                                        .WithParentWindow(vm.Window)
+                                        .Show();
+                    }
+                    finally
+                    {
+                        vm.Window.Dispatcher.Invoke
+                        (() =>
+                            {
+                                vm.IsEnabled = true;
+                                vm.Activate();
+                                vm.SwitchCard(LoginCardType.Dashboard, false);
+                            }
+                        );
+                    }
+                }
+            );
+            return;
+        }
+
         _ = Task.Run
         (async () =>
             {
