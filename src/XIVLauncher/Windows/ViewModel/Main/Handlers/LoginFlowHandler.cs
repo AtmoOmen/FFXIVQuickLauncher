@@ -87,16 +87,19 @@ internal sealed class LoginFlowHandler
         loginCardAfterCompletion = null;
         vm.SwitchCard(loginType == LoginType.QRCode ? LoginCardType.ScanQRCode : LoginCardType.Logining, false);
 
-        _ = RunLoginAsync
-        (
-            loginType,
-            username,
-            password,
-            quickLoginEnabled,
-            readWeGameInfo,
-            action,
-            currentCard,
-            cancellationSource
+        _ = Task.Run
+        (() =>
+            RunLoginAsync
+            (
+                loginType,
+                username,
+                password,
+                quickLoginEnabled,
+                readWeGameInfo,
+                action,
+                currentCard,
+                cancellationSource
+            )
         );
     }
 

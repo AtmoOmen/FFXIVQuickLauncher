@@ -700,7 +700,11 @@ internal sealed class GameLaunchFlowHandler
     private async Task<bool> InstallGamePatchAsync()
     {
         var result = await gameClientFileTaskService.RunAsync(GameClientFileTaskKind.Update).ConfigureAwait(false);
-        return result.Status == GameClientFileTaskResultStatus.Success;
+        if (result.Status != GameClientFileTaskResultStatus.Success)
+            return false;
+
+        vm.Window.Dispatcher.Invoke(vm.DashboardFlow.RefreshGameVersion);
+        return true;
     }
 
     #endregion

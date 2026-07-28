@@ -60,7 +60,7 @@ public sealed class MainWindowLoginInteraction
         };
 
     public bool ConfigureTemporaryAccountDeviceProfile(XIVAccount account, AccountManager accountManager) =>
-        dialogProvider.ShowTemporaryAccountDeviceProfileSettings(account, accountManager);
+        window.Dispatcher.Invoke(() => dialogProvider.ShowTemporaryAccountDeviceProfileSettings(account, accountManager));
 
     public void ShowError(string message) =>
         CustomMessageBox.Show
