@@ -28,6 +28,7 @@
             Margin="8,0,0,0"
             Padding="0"
             Click="BrowseFolder"
+            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
             Style="{StaticResource MaterialDesignOutlinedButton}"
             ToolTip="浏览文件夹"
             materialDesign:ButtonAssist.CornerRadius="6">

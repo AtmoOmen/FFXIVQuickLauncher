@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using Serilog;
@@ -52,7 +53,8 @@ public partial class SettingsWindow
 
     private void CompanionAppListView_OnMouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left)
+        if (e.ChangedButton != MouseButton.Left ||
+            FindAncestor<ButtonBase>((DependencyObject)e.OriginalSource) is not null)
             return;
 
         ViewModel.EditSelectedCompanionAppCommand.Execute(null);
