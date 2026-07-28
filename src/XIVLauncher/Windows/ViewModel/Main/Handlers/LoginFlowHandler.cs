@@ -183,9 +183,7 @@ internal sealed class LoginFlowHandler
     {
         if (isLoginCanceledByUser)
             return;
-
-        ProblemCheck.RunCheck(vm.Window);
-
+        
         if (!TryResolvePatchPath())
             return;
 
