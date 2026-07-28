@@ -375,7 +375,8 @@ internal sealed class LoginFlowHandler
 
             case UnsupportedGameVersionException:
             {
-                if (Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
+                var accountType = loginType.ToAccountType(vm.AccountManager.CurrentAccount?.AccountType ?? XIVAccountType.Sdo);
+                if (Repository.Ffxiv.IsBaseVer(App.Settings.GetGamePath(accountType)))
                 {
                     vm.IsLoggingIn = false;
                     _              = HandleGameClientFileTask(GameClientFileTaskKind.FreshInstall);
@@ -388,7 +389,8 @@ internal sealed class LoginFlowHandler
 
             case InvalidDataException invalidDataException when invalidDataException.Message.Contains("当前游戏数据版本", StringComparison.Ordinal):
             {
-                if (Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
+                var accountType = loginType.ToAccountType(vm.AccountManager.CurrentAccount?.AccountType ?? XIVAccountType.Sdo);
+                if (Repository.Ffxiv.IsBaseVer(App.Settings.GetGamePath(accountType)))
                 {
                     vm.IsLoggingIn = false;
                     _              = HandleGameClientFileTask(GameClientFileTaskKind.FreshInstall);
@@ -613,7 +615,9 @@ internal sealed class LoginFlowHandler
 
         try
         {
-            result = await gameClientFileTaskService.RunAsync(kind).ConfigureAwait(false);
+            var accountType = vm.CurrentGameLaunchContext?.AccountType
+                              ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(vm.AccountManager.CurrentAccount?.AccountType ?? XIVAccountType.Sdo);
+            result = await gameClientFileTaskService.RunAsync(kind, accountType).ConfigureAwait(false);
         }
         finally
         {

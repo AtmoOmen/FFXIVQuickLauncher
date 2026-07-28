@@ -623,7 +623,8 @@ public partial class CustomMessageBox
             if (App.Settings != null)
             {
                 WithAppendDescription("\n启用 Dalamud: " + App.Settings.DalamudEnabled)
-                    .WithAppendDescription("\n游戏路径: "  + App.Settings.GamePath);
+                    .WithAppendDescription("\n盛趣游戏路径: " + App.Settings.GamePath)
+                    .WithAppendDescription("\nWeGame 游戏路径: " + App.Settings.WeGamePath);
             }
 
 #if DEBUG

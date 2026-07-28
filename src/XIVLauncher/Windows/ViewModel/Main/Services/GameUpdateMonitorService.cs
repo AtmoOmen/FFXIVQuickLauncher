@@ -1,5 +1,7 @@
 using Serilog;
+using XIVLauncher.Common.Game;
 using XIVLauncher.GamePatchV3.Update;
+using XIVLauncher.Login.Models;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Services;
 
@@ -101,7 +103,10 @@ internal sealed class GameUpdateMonitorService
                 if (Interlocked.Exchange(ref pendingCheck, 0) == 0)
                     continue;
 
-                var gamePath = App.Settings.GamePath;
+                var accountType = vm.CurrentGameLaunchContext?.AccountType
+                                  ?? vm.AccountManager.CurrentAccount?.AccountType
+                                  ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(XIVAccountType.Sdo);
+                var gamePath = App.Settings.GetGamePath(accountType);
                 if (gamePath?.Exists != true)
                     continue;
 

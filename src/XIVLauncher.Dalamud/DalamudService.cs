@@ -51,7 +51,7 @@ public sealed class DalamudService : IDalamudService
             options.FakeLogin,
             options.NoPlugins,
             options.NoThirdPlugins,
-            troubleshootingProvider.GetTroubleshootingJson(),
+            troubleshootingProvider.GetTroubleshootingJson(gamePath),
             gameVersionProvider
         );
 

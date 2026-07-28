@@ -4,6 +4,7 @@ using System.Windows;
 using Serilog;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Runtime;
 using XIVLauncher.Common.Util;
 using XIVLauncher.GamePatchV3;
@@ -23,15 +24,16 @@ public sealed class GameClientFileTaskService
     Window window
 )
 {
-    public async Task<GameClientFileTaskResult> RunAsync(GameClientFileTaskKind kind)
+    public async Task<GameClientFileTaskResult> RunAsync(GameClientFileTaskKind kind, XIVAccountType accountType)
     {
         var viewModel = new GameClientFileTaskWindowViewModel();
         var dialog    = CreateWindow(viewModel);
+        var gamePath  = App.Settings.GetGamePath(accountType);
 
         try
         {
             ShowWindow(dialog);
-            return await RunCoreAsync(viewModel, kind).ConfigureAwait(false);
+            return await RunCoreAsync(viewModel, kind, gamePath).ConfigureAwait(false);
         }
         finally
         {
@@ -39,27 +41,27 @@ public sealed class GameClientFileTaskService
         }
     }
 
-    private async Task<GameClientFileTaskResult> RunCoreAsync(GameClientFileTaskWindowViewModel viewModel, GameClientFileTaskKind kind) =>
+    private async Task<GameClientFileTaskResult> RunCoreAsync(GameClientFileTaskWindowViewModel viewModel, GameClientFileTaskKind kind, DirectoryInfo? gamePath) =>
         kind switch
         {
-            GameClientFileTaskKind.Update         => await RunUpdateAsync(viewModel).ConfigureAwait(false),
-            GameClientFileTaskKind.Repair         => await RunRepairAsync(viewModel).ConfigureAwait(false),
-            GameClientFileTaskKind.IntegrityCheck => await RunIntegrityCheckAsync(viewModel).ConfigureAwait(false),
-            GameClientFileTaskKind.FreshInstall   => await RunFreshInstallAsync(viewModel).ConfigureAwait(false),
+            GameClientFileTaskKind.Update         => await RunUpdateAsync(viewModel, gamePath).ConfigureAwait(false),
+            GameClientFileTaskKind.Repair         => await RunRepairAsync(viewModel, gamePath).ConfigureAwait(false),
+            GameClientFileTaskKind.IntegrityCheck => await RunIntegrityCheckAsync(viewModel, gamePath).ConfigureAwait(false),
+            GameClientFileTaskKind.FreshInstall   => await RunFreshInstallAsync(viewModel, gamePath).ConfigureAwait(false),
             _                                     => throw new ArgumentOutOfRangeException(nameof(kind), kind, "未知客户端文件任务类型")
         };
 
-    private async Task<GameClientFileTaskResult> RunUpdateAsync(GameClientFileTaskWindowViewModel viewModel)
+    private async Task<GameClientFileTaskResult> RunUpdateAsync(GameClientFileTaskWindowViewModel viewModel, DirectoryInfo? selectedGamePath)
     {
         const string TITLE = "更新游戏文件";
 
         Log.Information("[GameClientFileTask] 开始更新流程");
 
-        if (!TryGetValidGamePath(out var gamePath, out var gamePathError))
+        if (!TryGetValidGamePath(selectedGamePath, out var gamePath, out var gamePathError))
         {
-            if (App.Settings.GamePath != null && !string.IsNullOrWhiteSpace(App.Settings.GamePath.FullName))
+            if (selectedGamePath != null && !string.IsNullOrWhiteSpace(selectedGamePath.FullName))
             {
-                Log.Warning("[GameClientFileTask] 游戏路径不存在, 提示是否安装游戏: {GamePath}", App.Settings.GamePath.FullName);
+                Log.Warning("[GameClientFileTask] 游戏路径不存在, 提示是否安装游戏: {GamePath}", selectedGamePath.FullName);
                 var action = await WaitForChoiceAsync
                              (
                                  viewModel,
@@ -67,7 +69,7 @@ public sealed class GameClientFileTaskService
                              ).ConfigureAwait(false);
 
                 if (action == GameClientFileTaskWindowAction.Primary)
-                    return await RunFreshInstallAsync(viewModel).ConfigureAwait(false);
+                    return await RunFreshInstallAsync(viewModel, selectedGamePath).ConfigureAwait(false);
             }
 
             Log.Warning("[GameClientFileTask] 游戏路径无效: {Message}", gamePathError);
@@ -84,7 +86,7 @@ public sealed class GameClientFileTaskService
                          ).ConfigureAwait(false);
 
             if (action == GameClientFileTaskWindowAction.Primary)
-                return await RunFreshInstallAsync(viewModel).ConfigureAwait(false);
+                return await RunFreshInstallAsync(viewModel, selectedGamePath).ConfigureAwait(false);
 
             return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
         }
@@ -119,7 +121,7 @@ public sealed class GameClientFileTaskService
                              CreateChoiceSnapshot(TITLE, "当前游戏版本无法直接增量更新", ex.Message, "开始修复", "关闭")
                          ).ConfigureAwait(false);
             return action == GameClientFileTaskWindowAction.Primary
-                       ? await RunRepairAsync(viewModel).ConfigureAwait(false)
+                       ? await RunRepairAsync(viewModel, selectedGamePath).ConfigureAwait(false)
                        : new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
         }
         catch (OperationCanceledException)
@@ -142,10 +144,10 @@ public sealed class GameClientFileTaskService
         if (checkResult.UpdatePlan == null)
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "获取游戏更新计划失败"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
-        return await RunGamePatchUpdateAsync(viewModel, checkResult.UpdatePlan).ConfigureAwait(false);
+        return await RunGamePatchUpdateAsync(viewModel, checkResult.UpdatePlan, gamePath).ConfigureAwait(false);
     }
 
-    private async Task<GameClientFileTaskResult> RunGamePatchUpdateAsync(GameClientFileTaskWindowViewModel viewModel, GameUpdatePlan updatePlan)
+    private async Task<GameClientFileTaskResult> RunGamePatchUpdateAsync(GameClientFileTaskWindowViewModel viewModel, GameUpdatePlan updatePlan, DirectoryInfo gamePath)
     {
         const string TITLE = "更新游戏文件";
 
@@ -159,7 +161,7 @@ public sealed class GameClientFileTaskService
                        (false);
         }
 
-        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以更新游戏"))
+        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, gamePath, _ => "关闭以下进程以更新游戏"))
         {
             Log.Warning("[GameClientFileTask] 检测到游戏文件被占用, 更新已取消");
             return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消更新"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
@@ -175,7 +177,7 @@ public sealed class GameClientFileTaskService
         {
             var assemblyLocation    = AppContext.BaseDirectory;
             var shimExecutablePath  = Path.Combine(assemblyLocation, "VcdiffShim", "XIVLauncher.VcdiffShim.exe");
-            var adminAccessRequired = GameRepairer.AdminAccessRequired(App.Settings.GamePath.FullName);
+            var adminAccessRequired = GameRepairer.AdminAccessRequired(gamePath.FullName);
             var shimRuntimePath     = DotNetRuntimeManager.GetRuntimeDirectory("win-x64");
 
             ApplySnapshot(viewModel, CreateRunningSnapshot(TITLE, "正在准备运行时"));
@@ -209,7 +211,7 @@ public sealed class GameClientFileTaskService
             await patchInstaller.InstallAsync
                                 (
                                     updatePlan,
-                                    App.Settings.GamePath,
+                                    gamePath,
                                     App.Settings.PatchPath,
                                     vcdiffClient,
                                     App.Settings.KeepPatches,
@@ -236,20 +238,20 @@ public sealed class GameClientFileTaskService
                              CreateChoiceSnapshot(TITLE, "游戏更新失败", $"{ex.Message}\n可尝试修复游戏文件以恢复", "开始修复", "关闭")
                          ).ConfigureAwait(false);
             return action == GameClientFileTaskWindowAction.Primary
-                       ? await RunRepairAsync(viewModel).ConfigureAwait(false)
+                       ? await RunRepairAsync(viewModel, gamePath).ConfigureAwait(false)
                        : new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
         }
     }
 
-    private async Task<GameClientFileTaskResult> RunRepairAsync(GameClientFileTaskWindowViewModel viewModel)
+    private async Task<GameClientFileTaskResult> RunRepairAsync(GameClientFileTaskWindowViewModel viewModel, DirectoryInfo? selectedGamePath)
     {
         const string TITLE = "修复游戏文件";
 
-        if (!TryGetValidGamePath(out var gamePath, out var gamePathError))
+        if (!TryGetValidGamePath(selectedGamePath, out var gamePath, out var gamePathError))
         {
-            if (App.Settings.GamePath != null && !string.IsNullOrWhiteSpace(App.Settings.GamePath.FullName))
+            if (selectedGamePath != null && !string.IsNullOrWhiteSpace(selectedGamePath.FullName))
             {
-                Log.Warning("[GameClientFileTask] 游戏路径不存在, 提示是否安装游戏: {GamePath}", App.Settings.GamePath.FullName);
+                Log.Warning("[GameClientFileTask] 游戏路径不存在, 提示是否安装游戏: {GamePath}", selectedGamePath.FullName);
                 var action = await WaitForChoiceAsync
                              (
                                  viewModel,
@@ -257,7 +259,7 @@ public sealed class GameClientFileTaskService
                              ).ConfigureAwait(false);
 
                 if (action == GameClientFileTaskWindowAction.Primary)
-                    return await RunFreshInstallAsync(viewModel).ConfigureAwait(false);
+                    return await RunFreshInstallAsync(viewModel, selectedGamePath).ConfigureAwait(false);
             }
 
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, gamePathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
@@ -273,7 +275,7 @@ public sealed class GameClientFileTaskService
                          ).ConfigureAwait(false);
 
             if (action == GameClientFileTaskWindowAction.Primary)
-                return await RunFreshInstallAsync(viewModel).ConfigureAwait(false);
+                return await RunFreshInstallAsync(viewModel, selectedGamePath).ConfigureAwait(false);
 
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, "已取消"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
         }
@@ -287,14 +289,14 @@ public sealed class GameClientFileTaskService
                        (viewModel, CreateFailureSnapshot(TITLE, "官方启动器或游戏正在运行", "请关闭相关进程后重试"), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
         }
 
-        return await RunRepairerAsync(viewModel).ConfigureAwait(false);
+        return await RunRepairerAsync(viewModel, gamePath).ConfigureAwait(false);
     }
 
-    private async Task<GameClientFileTaskResult> RunFreshInstallAsync(GameClientFileTaskWindowViewModel viewModel)
+    private async Task<GameClientFileTaskResult> RunFreshInstallAsync(GameClientFileTaskWindowViewModel viewModel, DirectoryInfo? selectedGamePath)
     {
         const string TITLE = "安装游戏文件";
 
-        if (!TryGetGamePath(out var gamePath, out var gamePathError))
+        if (!TryGetGamePath(selectedGamePath, out var gamePath, out var gamePathError))
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, gamePathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
         if (!TryResolvePatchPath(out var patchPathError))
@@ -306,14 +308,14 @@ public sealed class GameClientFileTaskService
         gamePath.CreateSubdirectory("game");
         gamePath.CreateSubdirectory("boot");
 
-        return await RunInstallerAsync(viewModel).ConfigureAwait(false);
+        return await RunInstallerAsync(viewModel, gamePath).ConfigureAwait(false);
     }
 
-    private async Task<GameClientFileTaskResult> RunIntegrityCheckAsync(GameClientFileTaskWindowViewModel viewModel)
+    private async Task<GameClientFileTaskResult> RunIntegrityCheckAsync(GameClientFileTaskWindowViewModel viewModel, DirectoryInfo? selectedGamePath)
     {
         const string TITLE = "检查游戏完整性";
 
-        if (!TryGetValidGamePath(out var gamePath, out var gamePathError))
+        if (!TryGetValidGamePath(selectedGamePath, out var gamePath, out var gamePathError))
             return await WaitForCloseAsync(viewModel, CreateFailureSnapshot(TITLE, gamePathError), GameClientFileTaskResultStatus.Failed).ConfigureAwait(false);
 
         using var cancellationTokenSource = new CancellationTokenSource();
@@ -357,7 +359,7 @@ public sealed class GameClientFileTaskService
                              ).ConfigureAwait(false);
 
                 if (action == GameClientFileTaskWindowAction.Primary)
-                    return await RunRepairAsync(viewModel).ConfigureAwait(false);
+                    return await RunRepairAsync(viewModel, selectedGamePath).ConfigureAwait(false);
 
                 return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.Failed };
             }
@@ -392,7 +394,7 @@ public sealed class GameClientFileTaskService
                              ).ConfigureAwait(false);
 
                 if (action == GameClientFileTaskWindowAction.Primary)
-                    return await RunRepairAsync(viewModel).ConfigureAwait(false);
+                    return await RunRepairAsync(viewModel, selectedGamePath).ConfigureAwait(false);
 
                 return new GameClientFileTaskResult { Status = GameClientFileTaskResultStatus.IntegrityInvalid };
             }
@@ -402,7 +404,7 @@ public sealed class GameClientFileTaskService
         }
     }
 
-    private async Task<GameClientFileTaskResult> RunRepairerAsync(GameClientFileTaskWindowViewModel viewModel)
+    private async Task<GameClientFileTaskResult> RunRepairerAsync(GameClientFileTaskWindowViewModel viewModel, DirectoryInfo gamePath)
     {
         const string TITLE = "修复游戏文件";
 
@@ -415,12 +417,12 @@ public sealed class GameClientFileTaskService
                        (false);
         }
 
-        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以修复游戏"))
+        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, gamePath, _ => "关闭以下进程以修复游戏"))
             return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消修复"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
 
         while (true)
         {
-            var repairer              = new GameRepairer(App.Settings.GamePath.FullName, TimeSpan.FromMilliseconds(100));
+            var repairer              = new GameRepairer(gamePath.FullName, TimeSpan.FromMilliseconds(100));
             var repairerBox           = new StrongBox<GameRepairer?>(repairer);
             var cancellationRequested = false;
 
@@ -489,7 +491,7 @@ public sealed class GameClientFileTaskService
         }
     }
 
-    private async Task<GameClientFileTaskResult> RunInstallerAsync(GameClientFileTaskWindowViewModel viewModel)
+    private async Task<GameClientFileTaskResult> RunInstallerAsync(GameClientFileTaskWindowViewModel viewModel, DirectoryInfo gamePath)
     {
         const string TITLE = "安装游戏文件";
 
@@ -502,12 +504,12 @@ public sealed class GameClientFileTaskService
                        (false);
         }
 
-        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, _ => "关闭以下进程以安装游戏"))
+        if (!AppUtil.TryYellOnGameFilesBeingOpen(window, gamePath, _ => "关闭以下进程以安装游戏"))
             return await WaitForCloseAsync(viewModel, CreateCancelledSnapshot(TITLE, "已取消安装"), GameClientFileTaskResultStatus.Cancelled).ConfigureAwait(false);
 
         while (true)
         {
-            var installer             = new GameInstaller(App.Settings.GamePath.FullName, TimeSpan.FromMilliseconds(100));
+            var installer             = new GameInstaller(gamePath.FullName, TimeSpan.FromMilliseconds(100));
             var installerBox          = new StrongBox<GameInstaller?>(installer);
             var cancellationRequested = false;
 
@@ -996,30 +998,30 @@ public sealed class GameClientFileTaskService
         }
     }
 
-    private static bool TryGetValidGamePath(out DirectoryInfo gamePath, out string errorMessage)
+    private static bool TryGetValidGamePath(DirectoryInfo? selectedGamePath, out DirectoryInfo gamePath, out string errorMessage)
     {
-        if (App.Settings.GamePath == null || !App.Settings.GamePath.Exists)
+        if (selectedGamePath == null || !selectedGamePath.Exists)
         {
             gamePath     = null!;
             errorMessage = "请先选择游戏目录";
             return false;
         }
 
-        gamePath     = App.Settings.GamePath;
+        gamePath     = selectedGamePath;
         errorMessage = string.Empty;
         return true;
     }
 
-    private static bool TryGetGamePath(out DirectoryInfo gamePath, out string errorMessage)
+    private static bool TryGetGamePath(DirectoryInfo? selectedGamePath, out DirectoryInfo gamePath, out string errorMessage)
     {
-        if (App.Settings.GamePath == null || string.IsNullOrWhiteSpace(App.Settings.GamePath.FullName))
+        if (selectedGamePath == null || string.IsNullOrWhiteSpace(selectedGamePath.FullName))
         {
             gamePath     = null!;
             errorMessage = "请先选择游戏目录";
             return false;
         }
 
-        gamePath     = App.Settings.GamePath;
+        gamePath     = selectedGamePath;
         errorMessage = string.Empty;
         return true;
     }

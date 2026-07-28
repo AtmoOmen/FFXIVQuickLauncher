@@ -110,7 +110,8 @@ public partial class MainWindow
         Model.LoginPage.IsFastLogin = App.Settings.FastLogin;
 
         if (App.Settings.GamePath?.Exists != true
-            && !WeGamePathValidator.IsValidSdologinDir(App.Settings.WeGameLauncherPath))
+            && (!WeGamePathValidator.IsValidGameRoot(App.Settings.WeGamePath?.FullName)
+                || !WeGamePathValidator.IsValidSdologinDir(WeGamePathValidator.DeriveSdologinDir(App.Settings.WeGamePath!.FullName))))
         {
             var setup = new FirstTimeSetup();
             setup.ShowDialog();
@@ -140,7 +141,9 @@ public partial class MainWindow
                 );
 
                 await RequestHeadlinesRefreshAsync().ConfigureAwait(false);
-                Troubleshooting.LogTroubleshooting();
+                var accountType = App.AccountManager.CurrentAccount?.AccountType
+                                  ?? App.Settings.SelectedLoginType.ToAccountType(XIVAccountType.Sdo);
+                Troubleshooting.LogTroubleshooting(App.Settings.GetGamePath(accountType));
             }
         );
 

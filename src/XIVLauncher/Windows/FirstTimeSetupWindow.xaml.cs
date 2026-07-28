@@ -28,7 +28,7 @@ public partial class FirstTimeSetup
             new DialogService(this),
             _shortcutService,
             initialGamePath,
-            App.Settings.WeGameLauncherPath,
+            App.Settings.WeGamePath?.FullName,
             Paths.ResolvePatchPath(App.Settings.PatchPath, Paths.RoamingPath).FullName
         );
         ViewModel.CloseRequested += (_, _) =>

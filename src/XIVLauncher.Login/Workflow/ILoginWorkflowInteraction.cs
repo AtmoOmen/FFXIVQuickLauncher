@@ -21,9 +21,9 @@ public interface ILoginWorkflowInteraction
 
     void ShowError(string message);
 
-    string? GetSavedWeGameLauncherPath();
+    string? GetSavedWeGamePath();
 
-    void SaveWeGameLauncherPath(string path);
+    void SaveWeGamePath(string path);
 
     string? PromptWeGameInstallDirectory(string? currentPath);
 

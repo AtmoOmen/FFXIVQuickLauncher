@@ -310,7 +310,7 @@
                                 <TextBlock Style="{StaticResource SettingDescriptionStyle}"
                                            Text="应该包含 rail_files 文件夹" />
                                 <components:FolderEntry Margin="0,12,0,0" Description="WeGame 版本游戏目录"
-                                                        Text="{Binding WeGameLauncherPath, UpdateSourceTrigger=PropertyChanged}" />
+                                                        Text="{Binding WeGamePath, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </materialDesign:Card>
 

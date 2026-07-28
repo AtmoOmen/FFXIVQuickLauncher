@@ -3,9 +3,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Serilog;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Http;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Support;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Services;
@@ -108,7 +110,15 @@ public sealed class GameLaunchService
             return false;
         }
 
-        var gamePath = App.Settings.GamePath;
+        var accountType = App.AccountManager.CurrentAccount?.AccountType
+                          ?? App.Settings.SelectedLoginType.ToAccountType(XIVAccountType.Sdo);
+        var gamePath = App.Settings.GetGamePath(accountType);
+
+        if (gamePath?.Exists != true)
+        {
+            CustomMessageBox.Show("当前账号渠道的游戏目录无效, 请在设置中重新选择", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: window);
+            return false;
+        }
 
         if (!EnsureDalamudCompatibility())
             return false;
@@ -125,9 +135,9 @@ public sealed class GameLaunchService
                 noThird
             )
         );
-        var dalamudOk = EnsureDalamudUpdate(dalamudSession, App.Settings.GamePath, true);
+        var dalamudOk = EnsureDalamudUpdate(dalamudSession, gamePath, true);
 
-        Troubleshooting.LogTroubleshooting();
+        Troubleshooting.LogTroubleshooting(gamePath);
 
         if (!dalamudOk)
         {

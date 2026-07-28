@@ -1,13 +1,14 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Game;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
-using XIVLauncher.Login;
 using XIVLauncher.Login.Models;
 using XIVLauncher.Settings.Converters;
 using XIVLauncher.Xaml;
@@ -30,13 +31,22 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     #region 游戏路径配置
 
     /// <summary>
-    ///     游戏安装路径
+    ///     盛趣游戏安装路径
     /// </summary>
-    public DirectoryInfo GamePath
+    public DirectoryInfo? GamePath
     {
         get;
         set => Set(ref field, value);
-    } = null!;
+    }
+    
+    /// <summary>
+    ///     WeGame 游戏安装路径
+    /// </summary>
+    public DirectoryInfo? WeGamePath
+    {
+        get;
+        set => Set(ref field, value);
+    }
 
     /// <summary>
     ///     补丁文件存储路径
@@ -87,14 +97,13 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         set => Set(ref field, value);
     } = true;
 
-    /// <summary>
-    ///     WeGame 登录器目录缓存
-    /// </summary>
-    public string WeGameLauncherPath
-    {
-        get;
-        set => Set(ref field, value);
-    } = string.Empty;
+    public DirectoryInfo? GetGamePath(XIVAccountType accountType) =>
+        accountType switch
+        {
+            XIVAccountType.Sdo    => GamePath,
+            XIVAccountType.WeGame => WeGamePath,
+            _                     => throw new ArgumentOutOfRangeException(nameof(accountType), accountType, "未知账号类型")
+        };
 
     /// <summary>
     ///     是否加密启动参数 V2
@@ -462,7 +471,10 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         {
             var json = File.ReadAllText(sourcePath, Encoding.UTF8);
             settings = JsonSerializer.Deserialize<LauncherSettingsV3>(json, JsonOptions) ?? new LauncherSettingsV3();
+            var migrated = settings.MigrateWeGamePath();
             settings.Attach(attachPath);
+            if (migrated)
+                settings.Save();
             return true;
         }
         catch (Exception ex)
@@ -470,6 +482,17 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
             exception = ex;
             return false;
         }
+    }
+
+    private bool MigrateWeGamePath()
+    {
+        if (WeGamePath?.Parent is not { Parent: { } gameRoot } parent ||
+            !string.Equals(parent.Name, "sdo", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(WeGamePath.Name, "sdologin", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        WeGamePath = gameRoot;
+        return true;
     }
 
     private static string? MoveBrokenConfig(string configPath)

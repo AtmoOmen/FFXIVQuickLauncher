@@ -66,11 +66,11 @@ public static class AppUtil
         return reader.ReadToEnd();
     }
 
-    public static bool TryYellOnGameFilesBeingOpen(Window parentWindow, Func<int, string> messageGenerator)
+    public static bool TryYellOnGameFilesBeingOpen(Window parentWindow, DirectoryInfo gameRootPath, Func<int, string> messageGenerator)
     {
         try
         {
-            var gamePath = Path.Combine(App.Settings.GamePath.FullName, "game");
+            var gamePath = Path.Combine(gameRootPath.FullName, "game");
 
             while (true)
             {

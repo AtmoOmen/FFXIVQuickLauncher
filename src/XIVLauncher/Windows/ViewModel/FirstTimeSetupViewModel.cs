@@ -44,9 +44,7 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
         _shortcutService = shortcutService ?? new ShortcutService();
 
         GamePath   = initialGamePath ?? string.Empty;
-        WeGamePath = WeGamePathValidator.IsValidSdologinDir(initialWeGamePath)
-                         ? Path.GetFullPath(Path.Combine(initialWeGamePath!, "..", ".."))
-                         : initialWeGamePath ?? string.Empty;
+        WeGamePath = initialWeGamePath ?? string.Empty;
         PatchPath  = initialPatchPath ?? Paths.ResolvePatchPath(null, Paths.RoamingPath).FullName;
     }
 
@@ -69,9 +67,9 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
                         settings.GamePath = string.IsNullOrWhiteSpace(GamePath)
                                                 ? null!
                                                 : new DirectoryInfo(GamePath);
-                        settings.WeGameLauncherPath = string.IsNullOrWhiteSpace(WeGamePath)
-                                                          ? string.Empty
-                                                          : WeGamePathValidator.DeriveSdologinDir(WeGamePath);
+                        settings.WeGamePath = string.IsNullOrWhiteSpace(WeGamePath)
+                                                  ? null
+                                                  : new DirectoryInfo(WeGamePath);
                         settings.PatchPath      = new DirectoryInfo(PatchPath);
                         settings.DalamudEnabled = EnableDalamud;
                     }
@@ -193,8 +191,12 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
         var normalizedGamePath  = string.IsNullOrWhiteSpace(GamePath)
                                       ? string.Empty
                                       : Path.TrimEndingDirectorySeparator(new DirectoryInfo(GamePath).FullName);
+        var normalizedWeGamePath = string.IsNullOrWhiteSpace(WeGamePath)
+                                       ? string.Empty
+                                       : Path.TrimEndingDirectorySeparator(new DirectoryInfo(WeGamePath).FullName);
 
-        if (string.Equals(normalizedGamePath, normalizedPatchPath, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(normalizedGamePath, normalizedPatchPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedWeGamePath, normalizedPatchPath, StringComparison.OrdinalIgnoreCase))
         {
             _dialogService.ShowMessage
             (

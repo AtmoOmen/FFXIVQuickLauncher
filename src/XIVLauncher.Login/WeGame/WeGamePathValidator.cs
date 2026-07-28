@@ -33,6 +33,9 @@ public static class WeGamePathValidator
         if (string.IsNullOrWhiteSpace(root))
             return false;
 
+        if (!File.Exists(Path.Combine(root, "game", "ffxiv_dx11.exe")))
+            return false;
+
         var marker = Path.Combine(root, "rail_files", "rail_game_identify.json");
         if (!File.Exists(marker))
             return false;

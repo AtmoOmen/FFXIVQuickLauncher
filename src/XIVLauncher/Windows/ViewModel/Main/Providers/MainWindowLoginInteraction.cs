@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using XIVLauncher.Account;
 using XIVLauncher.Login;
@@ -72,11 +73,11 @@ public sealed class MainWindowLoginInteraction
             parentWindow: window
         );
 
-    public string? GetSavedWeGameLauncherPath() =>
-        App.Settings.WeGameLauncherPath;
+    public string? GetSavedWeGamePath() =>
+        App.Settings.WeGamePath?.FullName;
 
-    public void SaveWeGameLauncherPath(string path) =>
-        App.Settings.WeGameLauncherPath = path;
+    public void SaveWeGamePath(string path) =>
+        App.Settings.WeGamePath = new DirectoryInfo(path);
 
     public string? PromptWeGameInstallDirectory(string? currentPath) =>
         window.Dispatcher.Invoke(MainWindowDialogProvider.PromptWeGameInstallDirectory);

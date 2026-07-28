@@ -4,7 +4,9 @@ using System.IO.Compression;
 using System.Text;
 using System.Windows;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Util;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Windows;
 using ZipArchive = System.IO.Compression.ZipArchive;
 
@@ -93,7 +95,9 @@ public static class PackGenerator
 
         using (var troubleEntry = archive.CreateEntry("trouble.json").Open())
         {
-            var troubleBytes = Encoding.UTF8.GetBytes(Troubleshooting.GetTroubleshootingJson());
+            var accountType  = App.AccountManager.CurrentAccount?.AccountType
+                               ?? App.Settings.SelectedLoginType.ToAccountType(XIVAccountType.Sdo);
+            var troubleBytes = Encoding.UTF8.GetBytes(Troubleshooting.GetTroubleshootingJson(App.Settings.GetGamePath(accountType)));
             troubleEntry.Write(troubleBytes, 0, troubleBytes.Length);
         }
 

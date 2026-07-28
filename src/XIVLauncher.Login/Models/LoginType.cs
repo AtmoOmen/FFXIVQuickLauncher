@@ -39,4 +39,7 @@ public static class LoginTypeExtensions
             LoginType.Static or LoginType.Slide or LoginType.QRCode => XIVAccountType.Sdo,
             _                                                       => throw new ArgumentOutOfRangeException(nameof(loginType), loginType, "未知登录类型")
         };
+
+    public static XIVAccountType ToAccountType(this LoginType loginType, XIVAccountType quickLoginAccountType) =>
+        loginType == LoginType.QuickLogin ? quickLoginAccountType : loginType.ToAccountType();
 }

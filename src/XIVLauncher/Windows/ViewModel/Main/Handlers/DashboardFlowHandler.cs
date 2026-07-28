@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Serilog;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Login;
 using XIVLauncher.Login.Channels;
 using XIVLauncher.Login.Client;
@@ -224,8 +225,12 @@ internal sealed class DashboardFlowHandler
         }
     }
 
-    public void RefreshGameVersion() =>
-        vm.DashboardPage.GameVersion = App.Settings.GamePath != null
-                                           ? Repository.Ffxiv.GetVer(App.Settings.GamePath)
-                                           : string.Empty;
+    public void RefreshGameVersion()
+    {
+        var accountType = vm.CurrentGameLaunchContext?.AccountType
+                          ?? vm.AccountManager.CurrentAccount?.AccountType
+                          ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(XIVAccountType.Sdo);
+        var gamePath = App.Settings.GetGamePath(accountType);
+        vm.DashboardPage.GameVersion = gamePath != null ? Repository.Ffxiv.GetVer(gamePath) : string.Empty;
+    }
 }

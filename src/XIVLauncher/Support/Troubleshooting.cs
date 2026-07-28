@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 using Serilog;
@@ -47,15 +48,15 @@ public static class Troubleshooting
         }
     }
 
-    internal static string GetTroubleshootingJson()
+    internal static string GetTroubleshootingJson(DirectoryInfo? gamePath)
     {
-        var gamePath = App.Settings.GamePath;
-
-        var integrity = TroubleshootingPayload.IndexIntegrityResult.Success;
+        var integrity = gamePath == null
+                            ? TroubleshootingPayload.IndexIntegrityResult.NoGame
+                            : TroubleshootingPayload.IndexIntegrityResult.Success;
 
         try
         {
-            if (!gamePath.Exists || gamePath.GetDirectories().All(x => x.Name != "game"))
+            if (gamePath == null || !gamePath.Exists || gamePath.GetDirectories().All(x => x.Name != "game"))
                 integrity = TroubleshootingPayload.IndexIntegrityResult.NoGame;
             else
             {
@@ -75,18 +76,21 @@ public static class Troubleshooting
             integrity = TroubleshootingPayload.IndexIntegrityResult.Exception;
         }
 
-        var ffxivVer    = Repository.Ffxiv.GetVer(gamePath);
-        var ffxivVerBck = Repository.Ffxiv.GetVer(gamePath, true);
-        var ex1Ver      = Repository.Ex1.GetVer(gamePath);
-        var ex1VerBck   = Repository.Ex1.GetVer(gamePath, true);
-        var ex2Ver      = Repository.Ex2.GetVer(gamePath);
-        var ex2VerBck   = Repository.Ex2.GetVer(gamePath, true);
-        var ex3Ver      = Repository.Ex3.GetVer(gamePath);
-        var ex3VerBck   = Repository.Ex3.GetVer(gamePath, true);
-        var ex4Ver      = Repository.Ex4.GetVer(gamePath);
-        var ex4VerBck   = Repository.Ex4.GetVer(gamePath, true);
-        var ex5Ver      = Repository.Ex5.GetVer(gamePath);
-        var ex5VerBck   = Repository.Ex5.GetVer(gamePath, true);
+        string GetVersion(Repository repository, bool isBackup = false) =>
+            gamePath == null ? string.Empty : repository.GetVer(gamePath, isBackup);
+
+        var ffxivVer    = GetVersion(Repository.Ffxiv);
+        var ffxivVerBck = GetVersion(Repository.Ffxiv, true);
+        var ex1Ver      = GetVersion(Repository.Ex1);
+        var ex1VerBck   = GetVersion(Repository.Ex1, true);
+        var ex2Ver      = GetVersion(Repository.Ex2);
+        var ex2VerBck   = GetVersion(Repository.Ex2, true);
+        var ex3Ver      = GetVersion(Repository.Ex3);
+        var ex3VerBck   = GetVersion(Repository.Ex3, true);
+        var ex4Ver      = GetVersion(Repository.Ex4);
+        var ex4VerBck   = GetVersion(Repository.Ex4, true);
+        var ex5Ver      = GetVersion(Repository.Ex5);
+        var ex5VerBck   = GetVersion(Repository.Ex5, true);
 
         var payload = new TroubleshootingPayload
         {
@@ -118,11 +122,11 @@ public static class Troubleshooting
     /// <summary>
     ///     Log troubleshooting information in a parseable format to Serilog.
     /// </summary>
-    internal static void LogTroubleshooting()
+    internal static void LogTroubleshooting(DirectoryInfo? gamePath)
     {
         try
         {
-            var encodedPayload = Convert.ToBase64String(Encoding.UTF8.GetBytes(GetTroubleshootingJson()));
+            var encodedPayload = Convert.ToBase64String(Encoding.UTF8.GetBytes(GetTroubleshootingJson(gamePath)));
             Log.Information($"TROUBLESHXLTING:{encodedPayload}");
         }
         catch (Exception ex)

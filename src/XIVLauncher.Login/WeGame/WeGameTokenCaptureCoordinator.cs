@@ -11,7 +11,7 @@ public sealed class WeGameTokenCaptureCoordinator : IWeGameTokenCaptureCoordinat
         CancellationTokenSource   loginCancellationTokenSource
     )
     {
-        var sdologinDir = await EnsureWeGameLauncherPathAsync(interaction).ConfigureAwait(false);
+        var sdologinDir = await EnsureWeGamePathAsync(interaction).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(sdologinDir))
             return null;
 
@@ -43,11 +43,15 @@ public sealed class WeGameTokenCaptureCoordinator : IWeGameTokenCaptureCoordinat
         }
     }
 
-    private static Task<string?> EnsureWeGameLauncherPathAsync(ILoginWorkflowInteraction interaction)
+    private static Task<string?> EnsureWeGamePathAsync(ILoginWorkflowInteraction interaction)
     {
-        var currentPath = interaction.GetSavedWeGameLauncherPath();
-        if (WeGamePathValidator.IsValidSdologinDir(currentPath))
-            return Task.FromResult(currentPath);
+        var currentPath = interaction.GetSavedWeGamePath();
+        if (WeGamePathValidator.IsValidGameRoot(currentPath))
+        {
+            var currentSdologinDir = WeGamePathValidator.DeriveSdologinDir(currentPath!);
+            if (WeGamePathValidator.IsValidSdologinDir(currentSdologinDir))
+                return Task.FromResult<string?>(currentSdologinDir);
+        }
 
         var selectedRoot = interaction.PromptWeGameInstallDirectory(currentPath);
         if (string.IsNullOrWhiteSpace(selectedRoot))
@@ -66,7 +70,7 @@ public sealed class WeGameTokenCaptureCoordinator : IWeGameTokenCaptureCoordinat
             return Task.FromResult<string?>(null);
         }
 
-        interaction.SaveWeGameLauncherPath(sdologinDir);
+        interaction.SaveWeGamePath(selectedRoot);
         return Task.FromResult<string?>(sdologinDir);
     }
 }

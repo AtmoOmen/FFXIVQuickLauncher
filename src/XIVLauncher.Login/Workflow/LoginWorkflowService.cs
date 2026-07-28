@@ -154,7 +154,7 @@ public sealed class LoginWorkflowService
 
         return new LoginWorkflowResult
         {
-            GameLaunchContext                    = new GameLaunchContext(loginResult, resolvedLoginState.Area, request.LoginAreas),
+            GameLaunchContext                    = new GameLaunchContext(loginResult, resolvedLoginState.Area, request.LoginAreas, resolvedLoginState.AccountType),
             IsAccountPersisted                   = isAccountPersisted,
             IsNewAccount                         = isNewAccount,
             RefreshGameSessionIdByQuickLoginFunc = refreshGameSessionIdByQuickLoginFunc
