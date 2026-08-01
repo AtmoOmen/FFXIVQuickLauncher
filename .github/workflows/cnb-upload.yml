@@ -1,259 +1,36 @@
-name: Upload XIVLauncher to CNB
+name: Backfill XIVLauncher to CNB
+
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag included in the backfill set'
+        type: string
+        required: false
   workflow_call:
     inputs:
       tag:
-        description: 'Release tag (leave empty to auto-detect latest)'
+        description: 'Release tag included in the backfill set'
         type: string
         required: false
 
+concurrency:
+  group: cnb-backfill
+  cancel-in-progress: false
+
 jobs:
-  upload:
-    name: Upload to CNB
+  backfill:
+    name: Backfill last 10 releases to CNB
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Determine release tag
-        id: tag
+      - uses: actions/checkout@v4
+
+      - name: Backfill CNB releases and feeds
         env:
           GH_TOKEN: ${{ github.token }}
-          INPUT_TAG: ${{ inputs.tag }}
-        run: |
-          if [ -n "$INPUT_TAG" ]; then
-            TAG="$INPUT_TAG"
-          else
-            TAG=$(gh release list --repo "${{ github.repository }}" --limit 1 --json tagName --jq '.[0].tagName')
-          fi
-
-          if ! [[ "$TAG" =~ ^[0-9]+([.][0-9]+){2}([-+][0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::Invalid release tag: $TAG"
-            exit 1
-          fi
-
-          echo "Release tag: $TAG"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Download release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
-          R2_BASE_URL: https://xl-dis.atmoomen.top
-          CNB_RELEASE_BASE_URL: https://cnb.cool/atmoomen/xivlauncher-distribute/-/releases/download
-        run: |
-          mkdir -p ./assets
-          gh release download "$RELEASE_TAG" \
-            --repo "${{ github.repository }}" \
-            --pattern 'releases.win.json' \
-            --pattern 'RELEASES' \
-            --pattern '*.nupkg' \
-            --dir ./assets
-
-          if [ ! -s ./assets/releases.win.json ] || [ ! -s ./assets/RELEASES ]; then
-            echo "::error::Release feed assets are incomplete"
-            exit 1
-          fi
-
-          if ! jq -e '.Assets | type == "array" and length > 0' ./assets/releases.win.json > /dev/null; then
-            echo "::error::Release feed does not contain any assets"
-            exit 1
-          fi
-
-          while IFS= read -r file; do
-            if [ "$file" != "$(basename -- "$file")" ] || ! [[ "$file" =~ ^[A-Za-z0-9._-]+$ ]] || [[ "$file" == *..* ]]; then
-              echo "::error::Release feed contains an invalid asset name: $file"
-              exit 1
-            fi
-
-            if [ ! -s "./assets/$file" ]; then
-              echo "Downloading feed dependency from R2: $file"
-              curl -fL --retry 3 --retry-delay 2 \
-                --output "./assets/$file" \
-                "$R2_BASE_URL/$file"
-            fi
-          done < <(jq -r '.Assets[].FileName' ./assets/releases.win.json)
-
-          NUPKG_COUNT=$(find ./assets -maxdepth 1 -type f -name '*.nupkg' | wc -l)
-          if [ "$NUPKG_COUNT" -eq 0 ]; then
-            echo "::error::Release does not contain any nupkg assets"
-            exit 1
-          fi
-
-          RELEASE_BASE_URL="$CNB_RELEASE_BASE_URL/$RELEASE_TAG"
-          jq --arg base "$RELEASE_BASE_URL" \
-            '.Assets |= map(.FileName = ($base + "/" + .FileName))' \
-            ./assets/releases.win.json > ./assets/releases.win.cnb.json
-          mv ./assets/releases.win.cnb.json ./assets/releases.win.json
-
-          jq -r '.Assets[] | "\(.SHA1) \(.FileName) \(.Size)"' \
-            ./assets/releases.win.json > ./assets/RELEASES
-
-          echo "Found $NUPKG_COUNT nupkg assets"
-          ls -la ./assets
-
-      - name: Publish CNB Release with assets
-        env:
           CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
-          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
-        run: |
-          set -e
-
-          API="https://api.cnb.cool"
-          REPO="atmoomen/xivlauncher-distribute"
-          AUTH="Authorization: Bearer $CNB_TOKEN"
-          ACCEPT="Accept: application/vnd.cnb.api+json"
-          HEADERS=(-H "$AUTH" -H "$ACCEPT" -H "Content-Type: application/json")
-
-          echo "::group::Check existing release"
-          EXISTING=$(curl -sf "${HEADERS[@]}" "$API/$REPO/-/releases/tags/$RELEASE_TAG" || true)
-          if [ -n "$EXISTING" ]; then
-            OLD_ID=$(echo "$EXISTING" | jq -r '.id')
-            echo "Found existing release id=$OLD_ID, deleting..."
-            curl -sf -X DELETE "${HEADERS[@]}" "$API/$REPO/-/releases/$OLD_ID"
-            echo "Old release deleted."
-          else
-            echo "No existing release with tag $RELEASE_TAG."
-          fi
-          echo "::endgroup::"
-
-          echo "::group::Create CNB Release"
-          RELEASE_PAYLOAD=$(jq -nc --arg tag "$RELEASE_TAG" '{tag_name: $tag, name: $tag, body: ("Release " + $tag), target_commitish: "master", prerelease: false, make_latest: "true"}')
-          HTTP_RESP=$(mktemp)
-          HTTP_CODE=$(curl -s -o "$HTTP_RESP" -w "%{http_code}" -X POST "${HEADERS[@]}" \
-            -d "$RELEASE_PAYLOAD" \
-            "$API/$REPO/-/releases")
-          RELEASE_RESP=$(<"$HTTP_RESP")
-          rm -f "$HTTP_RESP"
-          echo "HTTP status: $HTTP_CODE"
-          echo "Response: $RELEASE_RESP"
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "::error::Failed to create CNB Release (HTTP $HTTP_CODE)"
-            exit 1
-          fi
-          RELEASE_ID=$(echo "$RELEASE_RESP" | jq -r '.id')
-          echo "Release created: id=$RELEASE_ID, tag=$RELEASE_TAG"
-          echo "::endgroup::"
-
-          upload_asset() {
-            local ASSET_FILE="$1"
-            local ASSET_NAME="$2"
-            local FILE_SIZE
-            FILE_SIZE=$(stat -c%s "$ASSET_FILE")
-
-            echo "::group::Upload $ASSET_NAME ($FILE_SIZE bytes)"
-
-            local UPLOAD_PAYLOAD
-            UPLOAD_PAYLOAD=$(jq -nc --arg name "$ASSET_NAME" --argjson size "$FILE_SIZE" '{asset_name: $name, size: $size, overwrite: true}')
-            local UPLOAD_RESP_TMP
-            UPLOAD_RESP_TMP=$(mktemp)
-            local UPLOAD_HTTP
-            UPLOAD_HTTP=$(curl -s -o "$UPLOAD_RESP_TMP" -w "%{http_code}" \
-              -X POST "${HEADERS[@]}" \
-              -d "$UPLOAD_PAYLOAD" \
-              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-url")
-            local UPLOAD_RESP
-            UPLOAD_RESP=$(<"$UPLOAD_RESP_TMP")
-            rm -f "$UPLOAD_RESP_TMP"
-
-            if [ "$UPLOAD_HTTP" -ge 400 ]; then
-              echo "::error::Failed to get upload URL (HTTP $UPLOAD_HTTP)"
-              echo "Response: $UPLOAD_RESP"
-              exit 1
-            fi
-
-            local UPLOAD_URL
-            UPLOAD_URL=$(echo "$UPLOAD_RESP" | jq -r '.upload_url')
-            local VERIFY_URL
-            VERIFY_URL=$(echo "$UPLOAD_RESP" | jq -r '.verify_url')
-            local UPLOAD_TOKEN
-            UPLOAD_TOKEN=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/([^/]+)/.*|\1|')
-            local ASSET_PATH
-            ASSET_PATH=$(echo "$VERIFY_URL" | sed -E 's|.*/asset-upload-confirmation/[^/]+/(.*)|\1|')
-
-            local PUT_CODE
-            PUT_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT -T "$ASSET_FILE" -H "$AUTH" "$UPLOAD_URL")
-            if [ "$PUT_CODE" -ge 400 ]; then
-              echo "::error::File upload failed: HTTP $PUT_CODE for $ASSET_NAME"
-              exit 1
-            fi
-            echo "PUT upload: HTTP $PUT_CODE"
-
-            local CONF_RESP_TMP
-            CONF_RESP_TMP=$(mktemp)
-            local CONF_HTTP
-            CONF_HTTP=$(curl -s -o "$CONF_RESP_TMP" -w "%{http_code}" \
-              -X POST "${HEADERS[@]}" \
-              "$API/$REPO/-/releases/$RELEASE_ID/asset-upload-confirmation/$UPLOAD_TOKEN/$ASSET_PATH")
-            local CONF_RESP
-            CONF_RESP=$(<"$CONF_RESP_TMP")
-            rm -f "$CONF_RESP_TMP"
-
-            if [ "$CONF_HTTP" -ge 400 ]; then
-              echo "::error::Upload confirmation failed: HTTP $CONF_HTTP"
-              echo "Response: $CONF_RESP"
-              exit 1
-            fi
-
-            echo "::endgroup::"
-            echo "$ASSET_NAME uploaded successfully."
-          }
-
-          for asset in ./assets/*; do
-            upload_asset "$asset" "$(basename "$asset")"
-          done
-
-      - name: Sync release metadata to CNB repo
-        env:
-          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
-          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
-        run: |
-          CNB_REPO="https://cnb.cool/atmoomen/xivlauncher-distribute.git"
-          CNB_PUSH="https://cnb:$CNB_TOKEN@cnb.cool/atmoomen/xivlauncher-distribute.git"
-
-          git clone --depth 1 "$CNB_REPO" cnb-repo
-          cp ./assets/releases.win.json ./assets/RELEASES cnb-repo/
-          printf '%s' "$RELEASE_TAG" > cnb-repo/RELEASE
-          cd cnb-repo
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add RELEASE releases.win.json RELEASES
-          git commit -m "release: $RELEASE_TAG" || echo "Nothing to commit"
-          git push "$CNB_PUSH" HEAD:master
-
-      - name: Cleanup old releases
-        env:
-          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
-        run: |
-          API="https://api.cnb.cool"
-          REPO="atmoomen/xivlauncher-distribute"
-          AUTH="Authorization: Bearer $CNB_TOKEN"
-          ACCEPT="Accept: application/vnd.cnb.api+json"
-          HEADERS=(-H "$AUTH" -H "$ACCEPT")
-
-          mapfile -t RELEASES < <(curl -sf "${HEADERS[@]}" "$API/$REPO/-/releases?page_size=100" | \
-            jq -r '.[] | select(.tag_name | test("^[0-9]+[.][0-9]+[.][0-9]+([-+][0-9A-Za-z.-]+)?$")) | .tag_name' | sort -V)
-
-          KEEP=10
-          TOTAL=${#RELEASES[@]}
-          if [ "$TOTAL" -le "$KEEP" ]; then
-            echo "Only $TOTAL releases, nothing to clean. (keep=$KEEP)"
-            exit 0
-          fi
-
-          DELETE_COUNT=$((TOTAL - KEEP))
-          echo "Keep latest $KEEP releases:"
-          printf '%s\n' "${RELEASES[@]:DELETE_COUNT}"
-
-          for tag in "${RELEASES[@]:0:DELETE_COUNT}"; do
-            echo "::group::Deleting release: $tag"
-            REL=$(curl -sf "${HEADERS[@]}" "$API/$REPO/-/releases/tags/$tag" || true)
-            if [ -n "$REL" ]; then
-              REL_ID=$(echo "$REL" | jq -r '.id')
-              curl -sf -X DELETE "${HEADERS[@]}" "$API/$REPO/-/releases/$REL_ID"
-              echo "Deleted release $tag (id=$REL_ID)"
-            fi
-            echo "::endgroup::"
-          done
+          RELEASE_TAG: ${{ inputs.tag }}
+          MAX_VERSIONS: '10'
+        run: bash ./scripts/cnb-backfill.sh
