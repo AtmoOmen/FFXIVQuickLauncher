@@ -165,7 +165,8 @@ public class HttpClientDownloadWithProgress : IDisposable
 
     private async Task DownloadSegmented(int index, long downloadSize, bool isNuGet, EntityTagHeaderValue? entityTag, DateTimeOffset? lastModified)
     {
-        var parallelParts = Math.Clamp((int)(downloadSize / BYTES_PER_SEGMENTED_CONNECTION), MIN_SEGMENTED_PARTS, MAX_SEGMENTED_PARTS);
+        var chunks        = BuildChunks(downloadSize);
+        var parallelParts = Math.Clamp(chunks.Count, MIN_SEGMENTED_PARTS, MAX_SEGMENTED_PARTS);
         Log.Information("[DUPDATE] 下载线程数: {0}, 单片大小: {1} MiB", parallelParts, SEGMENT_SIZE >> 20);
 
         PrepareDestinationDirectory(downloads[index].Path);
@@ -176,9 +177,8 @@ public class HttpClientDownloadWithProgress : IDisposable
             await prealloc.FlushAsync().ConfigureAwait(false);
         }
 
-        var chunks = BuildChunks(downloadSize);
-        var queue  = new ConcurrentQueue<(long Start, long End)>(chunks);
-        var tasks  = new List<Task>(parallelParts);
+        var queue = new ConcurrentQueue<(long Start, long End)>(chunks);
+        var tasks = new List<Task>(parallelParts);
 
         for (var i = 0; i < parallelParts; i++)
             tasks.Add(DownloadSegments(index, downloadSize, isNuGet, entityTag, lastModified, queue));
@@ -399,9 +399,7 @@ public class HttpClientDownloadWithProgress : IDisposable
 
     private const int PROGRESS_INTERVAL_MILLISECONDS = 500;
 
-    private const long BYTES_PER_SEGMENTED_CONNECTION = 32L << 20;
-
-    private const long MIN_SEGMENTED_DOWNLOAD_SIZE = 64L << 20;
+    private const long MIN_SEGMENTED_DOWNLOAD_SIZE = 16L << 20;
 
     private const long SEGMENT_SIZE = 4L << 20;
 

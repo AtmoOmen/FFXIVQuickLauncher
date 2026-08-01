@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
+using XIVLauncher.Common.Network;
 using XIVLauncher.Common.Runtime;
 using XIVLauncher.Common.Util;
 
@@ -57,20 +58,28 @@ public class DalamudUpdater
     private readonly DirectoryInfo addonDirectory;
     private readonly DirectoryInfo assetDirectory;
 
-    private readonly HttpClient httpClient;
+    private readonly HttpClient                 httpClient;
+    private readonly INetworkEnvironmentService networkEnvironmentService;
+
+    private string releaseBaseURL = Links.DALAMUD_DISTRIBUTE_R2_BASE_URL;
 
     public DalamudUpdater
     (
-        DirectoryInfo addonDirectory,
-        DirectoryInfo runtimeDirectory,
-        DirectoryInfo assetDirectory
+        DirectoryInfo              addonDirectory,
+        DirectoryInfo              runtimeDirectory,
+        DirectoryInfo              assetDirectory,
+        INetworkEnvironmentService? networkEnvironmentService = null,
+        HttpClient?                 httpClient                 = null
     )
     {
-        this.addonDirectory = addonDirectory;
-        Runtime             = runtimeDirectory;
-        this.assetDirectory = assetDirectory;
-        httpClient          = XLHttpClientFactory.Create(TimeSpan.FromSeconds(10), 50, DecompressionMethods.All);
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
+        this.addonDirectory            = addonDirectory;
+        Runtime                        = runtimeDirectory;
+        this.assetDirectory            = assetDirectory;
+        this.networkEnvironmentService = networkEnvironmentService ?? NetworkEnvironmentService.Shared;
+        this.httpClient                = httpClient ?? XLHttpClientFactory.Create(TimeSpan.FromSeconds(10), 50, DecompressionMethods.All);
+
+        if (httpClient == null)
+            this.httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
     }
 
     public void Run() =>
@@ -185,7 +194,7 @@ public class DalamudUpdater
             return;
         }
 
-        Log.Information("[DUPDATE] 正在从 Github 获取最新版本信息");
+        Log.Information("[DUPDATE] 正在获取最新版本信息");
         await GetDalamudVersionInfoAsync();
         Log.Information("[DUPDATE] 获取到版本: {Version} ({Hash})", Version, OnlineHash);
     }
@@ -335,24 +344,37 @@ public class DalamudUpdater
 
     public async Task GetDalamudVersionInfoAsync()
     {
+        var networkEnvironmentTask = networkEnvironmentService.GetCurrentAsync();
         runtimeVersion = await DotNetRuntimeManager.GetLatestVersionAsync(httpClient).ConfigureAwait(false);
 
         Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
-        var releaseText = await httpClient.GetStringAsync(Links.DALAMUD_DISTRIBUTE_R2_VERSION_URL).ConfigureAwait(false);
+        var networkEnvironment = await networkEnvironmentTask.ConfigureAwait(false);
+        var useCNB             = networkEnvironment.Region != NetworkRegion.OutsideMainlandChina;
+        var versionURL         = useCNB ? Links.DALAMUD_DISTRIBUTE_CNB_VERSION_URL : Links.DALAMUD_DISTRIBUTE_R2_VERSION_URL;
+        releaseBaseURL = useCNB ? Links.DALAMUD_DISTRIBUTE_CNB_RELEASE_BASE_URL : Links.DALAMUD_DISTRIBUTE_R2_BASE_URL;
+
+        Log.Information
+        (
+            "[DUPDATE] 网络区域 {Region}, 使用 Dalamud 发行源 {ReleaseBaseURL}",
+            networkEnvironment.Region,
+            releaseBaseURL
+        );
+
+        var releaseText = await httpClient.GetStringAsync(versionURL).ConfigureAwait(false);
         var version     = releaseText.Trim();
 
         if (string.IsNullOrWhiteSpace(version))
-            throw new NullReferenceException("[DUPDATE] 未能从 R2 获取版本信息");
+            throw new InvalidDataException($"[DUPDATE] 发行源返回空版本信息: {versionURL}");
         Version = version;
-        Log.Information("[DUPDATE] 获取到 R2 版本: {Version}", Version);
+        Log.Information("[DUPDATE] 获取到发行版本: {Version}", Version);
 
-        var hashesUrl    = $"{Links.DALAMUD_DISTRIBUTE_R2_BASE_URL}/{Version}/hashes.json";
+        var hashesURL    = GetReleaseAssetURL("hashes.json");
         var downloadPath = PlatformHelpers.GetTempFileName();
 
         try
         {
-            using (var fileResponse = await httpClient.GetAsync(hashesUrl, HttpCompletionOption.ResponseHeadersRead))
+            using (var fileResponse = await httpClient.GetAsync(hashesURL, HttpCompletionOption.ResponseHeadersRead))
             {
                 await fileResponse.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
                 await using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -380,9 +402,9 @@ public class DalamudUpdater
             if (!addonPath.Exists)
                 addonPath.Create();
 
-            var downloadUrl = $"{Links.DALAMUD_DISTRIBUTE_R2_BASE_URL}/{Version}/latest.7z";
-            Log.Information("[DUPDATE] 从 R2 下载完整包: {Url}", downloadUrl);
-            await DownloadDalamudPackage(addonPath, downloadUrl).ConfigureAwait(false);
+            var downloadURL = GetReleaseAssetURL("latest.7z");
+            Log.Information("[DUPDATE] 下载完整包: {URL}", downloadURL);
+            await DownloadDalamudPackage(addonPath, downloadURL).ConfigureAwait(false);
 
             CachedFileHashes.Clear();
             RefreshDalamudDevCache(addonPath, devPath);
@@ -398,7 +420,10 @@ public class DalamudUpdater
 
     #region Utility
 
-    private async Task DownloadDalamudPackage(DirectoryInfo addonPath, string downloadUrl)
+    private string GetReleaseAssetURL(string fileName) =>
+        $"{releaseBaseURL}/{Version}/{fileName}";
+
+    private async Task DownloadDalamudPackage(DirectoryInfo addonPath, string downloadURL)
     {
         if (addonPath.Exists) addonPath.Delete(true);
         addonPath.Create();
@@ -407,7 +432,7 @@ public class DalamudUpdater
 
         try
         {
-            await DownloadFiles([(downloadUrl, downloadPath)]).ConfigureAwait(false);
+            await DownloadFiles([(downloadURL, downloadPath)]).ConfigureAwait(false);
             PlatformHelpers.Unzip7ZAsset(downloadPath, addonPath.FullName);
         }
         finally
