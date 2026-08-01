@@ -16,6 +16,8 @@ public static class Links
     
     public const string DALAMUD_DISTRIBUTE_BASE_URL = "https://dalamud-dis.atmoomen.top";
 
+    public const string DALAMUD_DISTRIBUTE_VERSION_URL = $"{DALAMUD_DISTRIBUTE_BASE_URL}/RELEASE";
+    
     public const string DALAMUD_ASSET_DISTRIBUTE_URL = $"{DALAMUD_DISTRIBUTE_BASE_URL}/assets";
 
     public const string NUGET_V3_FLAT_CONTAINER_URL = "https://api.nuget.org/v3-flatcontainer";

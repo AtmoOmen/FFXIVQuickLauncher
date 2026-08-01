@@ -339,7 +339,7 @@ public class DalamudUpdater
 
         Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
-        var releaseText = await httpClient.GetStringAsync($"{Links.DALAMUD_DISTRIBUTE_BASE_URL}/RELEASE").ConfigureAwait(false);
+        var releaseText = await httpClient.GetStringAsync(Links.DALAMUD_DISTRIBUTE_VERSION_URL).ConfigureAwait(false);
         var version     = releaseText.Trim();
 
         if (string.IsNullOrWhiteSpace(version))
