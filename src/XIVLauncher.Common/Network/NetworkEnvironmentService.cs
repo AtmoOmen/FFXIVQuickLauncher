@@ -12,6 +12,7 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
 
     private readonly HttpClient            httpClient;
     private readonly IReadOnlyList<string> detectionURLs;
+    private readonly TimeProvider          timeProvider;
 
     private Task<NetworkEnvironmentInfo>? detectionTask;
 
@@ -19,47 +20,78 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
         : this
         (
             CreateHttpClient(),
-            [Links.IPIP_LOCATION_URL, Links.CLOUDFLARE_TRACE_URL]
+            [Links.IPIP_LOCATION_URL, Links.CLOUDFLARE_TRACE_URL],
+            TimeProvider.System
         )
     {
     }
 
-    public NetworkEnvironmentService(HttpClient httpClient, IReadOnlyList<string> detectionURLs)
+    public NetworkEnvironmentService
+    (
+        HttpClient            httpClient,
+        IReadOnlyList<string> detectionURLs,
+        TimeProvider          timeProvider
+    )
     {
         ArgumentNullException.ThrowIfNull(httpClient);
         ArgumentNullException.ThrowIfNull(detectionURLs);
+        ArgumentNullException.ThrowIfNull(timeProvider);
 
         if (detectionURLs.Count == 0)
             throw new ArgumentException("至少需要一个网络环境探测地址", nameof(detectionURLs));
 
         this.httpClient    = httpClient;
         this.detectionURLs = [.. detectionURLs];
+        this.timeProvider  = timeProvider;
     }
 
-    public Task<NetworkEnvironmentInfo> GetCurrentAsync(CancellationToken cancellationToken = default)
+    public Task<NetworkEnvironmentInfo> GetCurrentAsync
+    (
+        CancellationToken cancellationToken = default
+    )
     {
-        var currentTask = Volatile.Read(ref detectionTask);
-        if (currentTask == null)
+        while (true)
         {
+            var currentTask = Volatile.Read(ref detectionTask);
+            if (currentTask != null && IsDetectionCurrent(currentTask))
+                return currentTask.WaitAsync(cancellationToken);
+
             var completion = new TaskCompletionSource<NetworkEnvironmentInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
-            currentTask = Interlocked.CompareExchange(ref detectionTask, completion.Task, null);
+            if (Interlocked.CompareExchange(ref detectionTask, completion.Task, currentTask) != currentTask)
+                continue;
 
-            if (currentTask == null)
-            {
-                currentTask = completion.Task;
-                _ = DetectAndCompleteAsync(completion);
-            }
+            _ = DetectAndCompleteAsync(completion);
+            return completion.Task.WaitAsync(cancellationToken);
         }
-
-        return currentTask.WaitAsync(cancellationToken);
     }
 
-    public Task<NetworkEnvironmentInfo> RefreshAsync(CancellationToken cancellationToken = default)
+    public Task<NetworkEnvironmentInfo> RefreshAsync
+    (
+        CancellationToken cancellationToken = default
+    )
     {
         var completion = new TaskCompletionSource<NetworkEnvironmentInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
         Interlocked.Exchange(ref detectionTask, completion.Task);
         _ = DetectAndCompleteAsync(completion);
         return completion.Task.WaitAsync(cancellationToken);
+    }
+
+    private bool IsDetectionCurrent
+    (
+        Task<NetworkEnvironmentInfo> task
+    )
+    {
+        if (!task.IsCompleted)
+            return true;
+
+        if (!task.IsCompletedSuccessfully)
+            return false;
+
+        var result = task.Result;
+        var cacheDuration = result.Region == NetworkRegion.Unknown ?
+                                TimeSpan.FromSeconds(30) :
+                                TimeSpan.FromMinutes(5);
+        return timeProvider.GetUtcNow() - result.DetectedAtUTC < cacheDuration;
     }
 
     private static HttpClient CreateHttpClient()
@@ -70,7 +102,10 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
         return client;
     }
 
-    private async Task DetectAndCompleteAsync(TaskCompletionSource<NetworkEnvironmentInfo> completion)
+    private async Task DetectAndCompleteAsync
+    (
+        TaskCompletionSource<NetworkEnvironmentInfo> completion
+    )
     {
         try
         {
@@ -95,6 +130,7 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
 
                 var content   = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var detection = ParseDetectionResult(content);
+
                 if (detection == null)
                 {
                     Log.Warning("网络环境探测响应缺少有效地域信息: {URL}", detectionURL);
@@ -102,7 +138,7 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
                 }
 
                 var (region, countryCode) = detection.Value;
-                var result = new NetworkEnvironmentInfo(region, countryCode, DateTimeOffset.UtcNow);
+                var result = new NetworkEnvironmentInfo(region, countryCode, timeProvider.GetUtcNow());
                 Log.Information("网络环境检测完成: {Region}, 国家/地区代码: {CountryCode}", result.Region, result.CountryCode);
                 return result;
             }
@@ -116,26 +152,30 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
         return CreateUnknownResult();
     }
 
-    private static (NetworkRegion Region, string? CountryCode)? ParseDetectionResult(string content)
+    private static (NetworkRegion Region, string? CountryCode)? ParseDetectionResult
+    (
+        string content
+    )
     {
         var countryCode = ParseCountryCode(content);
+
         if (countryCode != null)
         {
-            var region = string.Equals(countryCode, "CN", StringComparison.OrdinalIgnoreCase)
-                             ? NetworkRegion.ChineseMainland
-                             : NetworkRegion.NotChineseMainland;
+            var region = string.Equals(countryCode, "CN", StringComparison.OrdinalIgnoreCase) ?
+                             NetworkRegion.ChineseMainland :
+                             NetworkRegion.NotChineseMainland;
             return (region, countryCode);
         }
 
         try
         {
             using var document = JsonDocument.Parse(content);
-            var root = document.RootElement;
-            if (!root.TryGetProperty("ret", out var status) ||
+            var       root     = document.RootElement;
+            if (!root.TryGetProperty("ret", out var status)                                  ||
                 !string.Equals(status.GetString(), "ok", StringComparison.OrdinalIgnoreCase) ||
-                !root.TryGetProperty("data", out var data) ||
-                !data.TryGetProperty("location", out var location) ||
-                location.ValueKind != JsonValueKind.Array ||
+                !root.TryGetProperty("data", out var data)                                   ||
+                !data.TryGetProperty("location", out var location)                           ||
+                location.ValueKind        != JsonValueKind.Array                             ||
                 location.GetArrayLength() == 0)
                 return null;
 
@@ -143,9 +183,9 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
             if (string.IsNullOrWhiteSpace(country))
                 return null;
 
-            return string.Equals(country, "中国", StringComparison.Ordinal)
-                       ? (MainlandChina: NetworkRegion.ChineseMainland, "CN")
-                       : (OutsideMainlandChina: NetworkRegion.NotChineseMainland, null);
+            return string.Equals(country, "中国", StringComparison.Ordinal) ?
+                       (MainlandChina: NetworkRegion.ChineseMainland, "CN") :
+                       (NetworkRegion.NotChineseMainland, null);
         }
         catch (JsonException)
         {
@@ -153,7 +193,10 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
         }
     }
 
-    private static string? ParseCountryCode(string trace)
+    private static string? ParseCountryCode
+    (
+        string trace
+    )
     {
         foreach (var line in trace.AsSpan().EnumerateLines())
         {
@@ -165,12 +208,14 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
                 return null;
 
             var countryCode = value.ToString().ToUpperInvariant();
-            return countryCode == "XX" ? null : countryCode;
+            return countryCode == "XX" ?
+                       null :
+                       countryCode;
         }
 
         return null;
     }
 
-    private static NetworkEnvironmentInfo CreateUnknownResult() =>
-        new(NetworkRegion.Unknown, null, DateTimeOffset.UtcNow);
+    private NetworkEnvironmentInfo CreateUnknownResult() =>
+        new(NetworkRegion.Unknown, null, timeProvider.GetUtcNow());
 }
