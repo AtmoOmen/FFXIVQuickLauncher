@@ -39,6 +39,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+          R2_BASE_URL: https://xl-dis.atmoomen.top
         run: |
           mkdir -p ./assets
           gh release download "$RELEASE_TAG" \
@@ -59,9 +60,16 @@ jobs:
           fi
 
           while IFS= read -r file; do
-            if [ "$file" != "$(basename -- "$file")" ] || [ ! -s "./assets/$file" ]; then
-              echo "::error::Release feed references an unavailable asset: $file"
+            if [ "$file" != "$(basename -- "$file")" ] || ! [[ "$file" =~ ^[A-Za-z0-9._-]+$ ]] || [[ "$file" == *..* ]]; then
+              echo "::error::Release feed contains an invalid asset name: $file"
               exit 1
+            fi
+
+            if [ ! -s "./assets/$file" ]; then
+              echo "Downloading feed dependency from R2: $file"
+              curl -fL --retry 3 --retry-delay 2 \
+                --output "./assets/$file" \
+                "$R2_BASE_URL/$file"
             fi
           done < <(jq -r '.Assets[].FileName' ./assets/releases.win.json)
 
