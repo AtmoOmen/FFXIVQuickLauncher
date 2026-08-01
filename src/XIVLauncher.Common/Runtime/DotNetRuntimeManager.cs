@@ -1,9 +1,9 @@
-using System.Diagnostics;
 using System.IO.Compression;
 using System.Net;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
+using XIVLauncher.Common.Network;
 using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Runtime;
@@ -161,46 +161,18 @@ public static class DotNetRuntimeManager
 
     private static async Task<string> GetPackageBaseAddressAsync(CancellationToken cancellationToken)
     {
-        using var testHttpClient = XLHttpClientFactory.Create(TimeSpan.FromSeconds(3), 8, DecompressionMethods.All);
-        testHttpClient.Timeout = TimeSpan.FromSeconds(3);
+        var networkEnvironment = await NetworkEnvironmentService.Shared.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
+        var packageBaseAddress = networkEnvironment.Region == NetworkRegion.OutsideMainlandChina
+                                     ? Links.NUGET_V3_FLAT_CONTAINER_URL
+                                     : Links.HUAWEI_NUGET_V3_REMOTE_URL;
 
-        var googleTask = GetConnectionTimeAsync(testHttpClient, Links.GOOGLE_URL,       cancellationToken);
-        var huaweiTask = GetConnectionTimeAsync(testHttpClient, Links.HUAWEI_CLOUD_URL, cancellationToken);
-
-        await Task.WhenAll(googleTask, huaweiTask).ConfigureAwait(false);
-
-        var googleResult = await googleTask.ConfigureAwait(false);
-        var huaweiResult = await huaweiTask.ConfigureAwait(false);
-
-        Log.Information("谷歌连接耗时: {GoogleTime:F2} ms, 状态: {GoogleStatus}",  googleResult.Elapsed.TotalMilliseconds, googleResult.IsSuccess ? "成功" : "失败");
-        Log.Information("华为云连接耗时: {HuaweiTime:F2} ms, 状态: {HuaweiStatus}", huaweiResult.Elapsed.TotalMilliseconds, huaweiResult.IsSuccess ? "成功" : "失败");
-
-        if (!googleResult.IsSuccess || huaweiResult.IsSuccess && huaweiResult.Elapsed < googleResult.Elapsed)
-            return Links.HUAWEI_NUGET_V3_REMOTE_URL;
-
-        return Links.NUGET_V3_FLAT_CONTAINER_URL;
-    }
-
-    private static async Task<(bool IsSuccess, TimeSpan Elapsed)> GetConnectionTimeAsync(HttpClient httpClient, string url, CancellationToken cancellationToken)
-    {
-        var stopwatch = new Stopwatch();
-
-        try
-        {
-            stopwatch.Start();
-            using var request  = new HttpRequestMessage(HttpMethod.Get, url);
-            using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-            stopwatch.Stop();
-
-            return (response.IsSuccessStatusCode, stopwatch.Elapsed);
-        }
-        catch
-        {
-            if (stopwatch.IsRunning)
-                stopwatch.Stop();
-
-            return (false, stopwatch.Elapsed);
-        }
+        Log.Information
+        (
+            "[Runtime] 网络区域 {Region}, 使用 NuGet 源 {PackageBaseAddress}",
+            networkEnvironment.Region,
+            packageBaseAddress
+        );
+        return packageBaseAddress;
     }
 
     #region Constants
