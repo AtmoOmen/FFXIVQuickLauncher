@@ -40,6 +40,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.tag.outputs.tag }}
           R2_BASE_URL: https://xl-dis.atmoomen.top
+          CNB_RELEASE_BASE_URL: https://cnb.cool/atmoomen/xivlauncher-distribute/-/releases/download
         run: |
           mkdir -p ./assets
           gh release download "$RELEASE_TAG" \
@@ -79,27 +80,17 @@ jobs:
             exit 1
           fi
 
+          RELEASE_BASE_URL="$CNB_RELEASE_BASE_URL/$RELEASE_TAG"
+          jq --arg base "$RELEASE_BASE_URL" \
+            '.Assets |= map(.FileName = ($base + "/" + .FileName))' \
+            ./assets/releases.win.json > ./assets/releases.win.cnb.json
+          mv ./assets/releases.win.cnb.json ./assets/releases.win.json
+
+          jq -r '.Assets[] | "\(.SHA1) \(.FileName) \(.Size)"' \
+            ./assets/releases.win.json > ./assets/RELEASES
+
           echo "Found $NUPKG_COUNT nupkg assets"
           ls -la ./assets
-
-      - name: Sync RELEASE file to CNB repo
-        env:
-          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
-          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
-        run: |
-          CNB_REPO="https://cnb.cool/atmoomen/xivlauncher-distribute.git"
-          CNB_PUSH="https://cnb:$CNB_TOKEN@cnb.cool/atmoomen/xivlauncher-distribute.git"
-
-          git clone --depth 1 "$CNB_REPO" cnb-repo
-          cd cnb-repo
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          printf '%s' "$RELEASE_TAG" > RELEASE
-          git add RELEASE
-          git commit -m "release: $RELEASE_TAG" || echo "Nothing to commit"
-          git push "$CNB_PUSH" HEAD:master
 
       - name: Publish CNB Release with assets
         env:
@@ -211,6 +202,26 @@ jobs:
           for asset in ./assets/*; do
             upload_asset "$asset" "$(basename "$asset")"
           done
+
+      - name: Sync release metadata to CNB repo
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          CNB_REPO="https://cnb.cool/atmoomen/xivlauncher-distribute.git"
+          CNB_PUSH="https://cnb:$CNB_TOKEN@cnb.cool/atmoomen/xivlauncher-distribute.git"
+
+          git clone --depth 1 "$CNB_REPO" cnb-repo
+          cp ./assets/releases.win.json ./assets/RELEASES cnb-repo/
+          printf '%s' "$RELEASE_TAG" > cnb-repo/RELEASE
+          cd cnb-repo
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add RELEASE releases.win.json RELEASES
+          git commit -m "release: $RELEASE_TAG" || echo "Nothing to commit"
+          git push "$CNB_PUSH" HEAD:master
 
       - name: Cleanup old releases
         env:

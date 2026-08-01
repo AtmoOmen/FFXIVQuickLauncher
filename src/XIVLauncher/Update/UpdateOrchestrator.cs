@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using Serilog;
 using Velopack;
@@ -41,16 +40,7 @@ internal class UpdateOrchestrator
             var downloader         = new XLHttpClientFileDownloader();
             var networkEnvironment = await networkEnvironmentTask;
             var useCNB             = networkEnvironment.Region != NetworkRegion.OutsideMainlandChina;
-            var updateBaseURL      = Links.LAUNCHER_DISTRIBUTE_BASE_URL;
-
-            if (useCNB)
-            {
-                var releaseVersion = (await downloader.DownloadString(Links.LAUNCHER_DISTRIBUTE_CNB_VERSION_URL)).Trim();
-                if (string.IsNullOrWhiteSpace(releaseVersion))
-                    throw new InvalidDataException($"启动器发行源返回空版本信息: {Links.LAUNCHER_DISTRIBUTE_CNB_VERSION_URL}");
-
-                updateBaseURL = $"{Links.LAUNCHER_DISTRIBUTE_CNB_RELEASE_BASE_URL}/{Uri.EscapeDataString(releaseVersion)}";
-            }
+            var updateBaseURL      = useCNB ? Links.LAUNCHER_DISTRIBUTE_CNB_BASE_URL : Links.LAUNCHER_DISTRIBUTE_BASE_URL;
 
             Log.Information
             (
