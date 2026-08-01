@@ -266,7 +266,7 @@ public class DalamudUpdater
 
         try
         {
-            var assetResult = await DalamudAssetManager.EnsureAssets(this, assetDirectory).ConfigureAwait(true);
+            var assetResult = await DalamudAssetManager.EnsureAssets(this, assetDirectory, networkEnvironmentService).ConfigureAwait(true);
             AssetDirectory = assetResult.AssetDir;
             Log.Information("[DUPDATE] 资源文件验证完成: {Path}", AssetDirectory.FullName);
         }

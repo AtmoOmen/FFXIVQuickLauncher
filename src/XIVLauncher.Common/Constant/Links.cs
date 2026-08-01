@@ -31,7 +31,11 @@ public static class Links
     // 腾讯 CNB (国内)
     public const string DALAMUD_DISTRIBUTE_CNB_VERSION_URL = "https://cnb.cool/atmoomen/dalamud-distribute/-/git/raw/master/RELEASE";
 
-    public const string DALAMUD_ASSET_DISTRIBUTE_URL = $"{DALAMUD_DISTRIBUTE_R2_BASE_URL}/assets";
+    public const string DALAMUD_ASSET_DISTRIBUTE_R2_BASE_URL = $"{DALAMUD_DISTRIBUTE_R2_BASE_URL}/assets";
+
+    public const string DALAMUD_ASSET_DISTRIBUTE_CNB_RELEASE_BASE_URL = "https://cnb.cool/atmoomen/dalamud-asset-distribute/-/releases/download";
+
+    public const string DALAMUD_ASSET_DISTRIBUTE_CNB_VERSION_URL = "https://cnb.cool/atmoomen/dalamud-asset-distribute/-/git/raw/master/RELEASE";
 
     public const string NUGET_V3_FLAT_CONTAINER_URL = "https://api.nuget.org/v3-flatcontainer";
 
