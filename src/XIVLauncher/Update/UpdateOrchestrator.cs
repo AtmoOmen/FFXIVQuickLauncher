@@ -39,7 +39,7 @@ internal class UpdateOrchestrator
 
             var downloader         = new XLHttpClientFileDownloader();
             var networkEnvironment = await networkEnvironmentTask;
-            var useCNB             = networkEnvironment.Region != NetworkRegion.OutsideMainlandChina;
+            var useCNB             = networkEnvironment.Region != NetworkRegion.NotChineseMainland;
             var updateBaseURL      = useCNB ? Links.LAUNCHER_DISTRIBUTE_CNB_BASE_URL : Links.LAUNCHER_DISTRIBUTE_BASE_URL;
 
             Log.Information

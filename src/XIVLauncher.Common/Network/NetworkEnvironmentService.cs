@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
@@ -10,7 +11,7 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
     public static INetworkEnvironmentService Shared { get; } = new NetworkEnvironmentService();
 
     private readonly HttpClient            httpClient;
-    private readonly IReadOnlyList<string> traceURLs;
+    private readonly IReadOnlyList<string> detectionURLs;
 
     private Task<NetworkEnvironmentInfo>? detectionTask;
 
@@ -18,21 +19,21 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
         : this
         (
             CreateHttpClient(),
-            [Links.NETWORK_ENVIRONMENT_TRACE_URL, Links.CLOUDFLARE_TRACE_URL]
+            [Links.IPIP_LOCATION_URL, Links.CLOUDFLARE_TRACE_URL]
         )
     {
     }
 
-    public NetworkEnvironmentService(HttpClient httpClient, IReadOnlyList<string> traceURLs)
+    public NetworkEnvironmentService(HttpClient httpClient, IReadOnlyList<string> detectionURLs)
     {
         ArgumentNullException.ThrowIfNull(httpClient);
-        ArgumentNullException.ThrowIfNull(traceURLs);
+        ArgumentNullException.ThrowIfNull(detectionURLs);
 
-        if (traceURLs.Count == 0)
-            throw new ArgumentException("至少需要一个网络环境探测地址", nameof(traceURLs));
+        if (detectionURLs.Count == 0)
+            throw new ArgumentException("至少需要一个网络环境探测地址", nameof(detectionURLs));
 
-        this.httpClient = httpClient;
-        this.traceURLs  = traceURLs.ToArray();
+        this.httpClient    = httpClient;
+        this.detectionURLs = [.. detectionURLs];
     }
 
     public Task<NetworkEnvironmentInfo> GetCurrentAsync(CancellationToken cancellationToken = default)
@@ -84,37 +85,72 @@ public sealed class NetworkEnvironmentService : INetworkEnvironmentService
 
     private async Task<NetworkEnvironmentInfo> DetectAsync()
     {
-        foreach (var traceURL in traceURLs)
+        foreach (var detectionURL in detectionURLs)
         {
             try
             {
-                using var request  = new HttpRequestMessage(HttpMethod.Get, traceURL);
+                using var request  = new HttpRequestMessage(HttpMethod.Get, detectionURL);
                 using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseContentRead).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var trace       = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var countryCode = ParseCountryCode(trace);
-                if (countryCode == null)
+                var content   = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var detection = ParseDetectionResult(content);
+                if (detection == null)
                 {
-                    Log.Warning("网络环境探测响应缺少有效国家代码: {URL}", traceURL);
+                    Log.Warning("网络环境探测响应缺少有效地域信息: {URL}", detectionURL);
                     continue;
                 }
 
-                var region = string.Equals(countryCode, "CN", StringComparison.OrdinalIgnoreCase)
-                                 ? NetworkRegion.MainlandChina
-                                 : NetworkRegion.OutsideMainlandChina;
+                var (region, countryCode) = detection.Value;
                 var result = new NetworkEnvironmentInfo(region, countryCode, DateTimeOffset.UtcNow);
                 Log.Information("网络环境检测完成: {Region}, 国家/地区代码: {CountryCode}", result.Region, result.CountryCode);
                 return result;
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "网络环境探测地址访问失败: {URL}", traceURL);
+                Log.Warning(ex, "网络环境探测地址访问失败: {URL}", detectionURL);
             }
         }
 
         Log.Warning("网络环境检测未获得有效结果");
         return CreateUnknownResult();
+    }
+
+    private static (NetworkRegion Region, string? CountryCode)? ParseDetectionResult(string content)
+    {
+        var countryCode = ParseCountryCode(content);
+        if (countryCode != null)
+        {
+            var region = string.Equals(countryCode, "CN", StringComparison.OrdinalIgnoreCase)
+                             ? NetworkRegion.ChineseMainland
+                             : NetworkRegion.NotChineseMainland;
+            return (region, countryCode);
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(content);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("ret", out var status) ||
+                !string.Equals(status.GetString(), "ok", StringComparison.OrdinalIgnoreCase) ||
+                !root.TryGetProperty("data", out var data) ||
+                !data.TryGetProperty("location", out var location) ||
+                location.ValueKind != JsonValueKind.Array ||
+                location.GetArrayLength() == 0)
+                return null;
+
+            var country = location[0].GetString();
+            if (string.IsNullOrWhiteSpace(country))
+                return null;
+
+            return string.Equals(country, "中国", StringComparison.Ordinal)
+                       ? (MainlandChina: NetworkRegion.ChineseMainland, "CN")
+                       : (OutsideMainlandChina: NetworkRegion.NotChineseMainland, null);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string? ParseCountryCode(string trace)

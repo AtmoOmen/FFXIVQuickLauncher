@@ -28,7 +28,7 @@ internal static class DalamudAssetManager
 
         // 1. 根据网络区域获取远端版本号与清单
         var networkEnvironment = await networkEnvironmentTask.ConfigureAwait(false);
-        var useCNB             = networkEnvironment.Region != NetworkRegion.OutsideMainlandChina;
+        var useCNB             = networkEnvironment.Region != NetworkRegion.NotChineseMainland;
         var versionURL         = useCNB
                                      ? Links.DALAMUD_ASSET_DISTRIBUTE_CNB_VERSION_URL
                                      : Links.DALAMUD_ASSET_DISTRIBUTE_R2_VERSION_URL;

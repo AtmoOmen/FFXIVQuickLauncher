@@ -7,11 +7,11 @@ public static class Links
     /// <remarks>GitHub 反代</remarks>
     public const string GITHUB_PROXY_BASE_URL = "https://gh.atmoomen.top/";
     
-    /// <remarks>判断网络出口 (Cloudflare 官网)</remarks>
+    /// <remarks>判断网络出口 (Cloudflare)</remarks>
     public const string CLOUDFLARE_TRACE_URL = "https://www.cloudflare.com/cdn-cgi/trace";
     
-    /// <remarks>判断网络出口 (项目域名)</remarks>
-    public const string NETWORK_ENVIRONMENT_TRACE_URL = $"{LAUNCHER_DISTRIBUTE_BASE_URL}/cdn-cgi/trace";
+    /// <remarks>判断网络出口 (IPIP)</remarks>
+    public const string IPIP_LOCATION_URL = "https://myip.ipip.net/json";
 
     #endregion
 

@@ -350,7 +350,7 @@ public class DalamudUpdater
         Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
         var networkEnvironment = await networkEnvironmentTask.ConfigureAwait(false);
-        var useCNB             = networkEnvironment.Region != NetworkRegion.OutsideMainlandChina;
+        var useCNB             = networkEnvironment.Region != NetworkRegion.NotChineseMainland;
         var versionURL         = useCNB ? Links.DALAMUD_DISTRIBUTE_CNB_VERSION_URL : Links.DALAMUD_DISTRIBUTE_R2_VERSION_URL;
         releaseBaseURL = useCNB ? Links.DALAMUD_DISTRIBUTE_CNB_RELEASE_BASE_URL : Links.DALAMUD_DISTRIBUTE_R2_BASE_URL;
 

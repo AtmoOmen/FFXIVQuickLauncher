@@ -162,7 +162,7 @@ public static class DotNetRuntimeManager
     private static async Task<string> GetPackageBaseAddressAsync(CancellationToken cancellationToken)
     {
         var networkEnvironment = await NetworkEnvironmentService.Shared.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
-        var packageBaseAddress = networkEnvironment.Region == NetworkRegion.OutsideMainlandChina
+        var packageBaseAddress = networkEnvironment.Region == NetworkRegion.NotChineseMainland
                                      ? Links.NUGET_V3_FLAT_CONTAINER_URL
                                      : Links.HUAWEI_NUGET_V3_REMOTE_URL;
 
