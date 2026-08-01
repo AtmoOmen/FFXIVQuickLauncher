@@ -14,6 +14,10 @@ public static class Links
 
     public const string LAUNCHER_DISTRIBUTE_BASE_URL = "https://xl-dis.atmoomen.top";
 
+    public const string LAUNCHER_DISTRIBUTE_CNB_RELEASE_BASE_URL = "https://cnb.cool/atmoomen/xivlauncher-distribute/-/releases/download";
+
+    public const string LAUNCHER_DISTRIBUTE_CNB_VERSION_URL = "https://cnb.cool/atmoomen/xivlauncher-distribute/-/git/raw/master/RELEASE";
+
     public const string NETWORK_ENVIRONMENT_TRACE_URL = $"{LAUNCHER_DISTRIBUTE_BASE_URL}/cdn-cgi/trace";
 
     public const string CLOUDFLARE_TRACE_URL = "https://www.cloudflare.com/cdn-cgi/trace";

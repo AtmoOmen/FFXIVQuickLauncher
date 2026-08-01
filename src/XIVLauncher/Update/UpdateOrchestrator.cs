@@ -1,9 +1,11 @@
+using System.IO;
 using System.Windows;
 using Serilog;
 using Velopack;
 using Velopack.Sources;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
+using XIVLauncher.Common.Network;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
 using XIVLauncher.Windows;
@@ -12,7 +14,8 @@ namespace XIVLauncher.Update;
 
 internal class UpdateOrchestrator
 (
-    LauncherSettingsV3 settings
+    LauncherSettingsV3          settings,
+    INetworkEnvironmentService? networkEnvironmentService = null
 )
 {
     public async Task<bool> Run
@@ -27,16 +30,39 @@ internal class UpdateOrchestrator
 
         try
         {
+            var networkEnvironmentTask =
+                (networkEnvironmentService ?? NetworkEnvironmentService.Shared).GetCurrentAsync();
             var updateOptions = new UpdateOptions
             {
                 ExplicitChannel       = "win",
                 AllowVersionDowngrade = false
             };
 
+            var downloader         = new XLHttpClientFileDownloader();
+            var networkEnvironment = await networkEnvironmentTask;
+            var useCNB             = networkEnvironment.Region != NetworkRegion.OutsideMainlandChina;
+            var updateBaseURL      = Links.LAUNCHER_DISTRIBUTE_BASE_URL;
+
+            if (useCNB)
+            {
+                var releaseVersion = (await downloader.DownloadString(Links.LAUNCHER_DISTRIBUTE_CNB_VERSION_URL)).Trim();
+                if (string.IsNullOrWhiteSpace(releaseVersion))
+                    throw new InvalidDataException($"启动器发行源返回空版本信息: {Links.LAUNCHER_DISTRIBUTE_CNB_VERSION_URL}");
+
+                updateBaseURL = $"{Links.LAUNCHER_DISTRIBUTE_CNB_RELEASE_BASE_URL}/{Uri.EscapeDataString(releaseVersion)}";
+            }
+
+            Log.Information
+            (
+                "网络区域 {Region}, 使用 XIVLauncher 发行源 {UpdateBaseURL}",
+                networkEnvironment.Region,
+                updateBaseURL
+            );
+
             var updateSource = new SimpleWebSource
             (
-                Links.LAUNCHER_DISTRIBUTE_BASE_URL,
-                new XLHttpClientFileDownloader()
+                updateBaseURL,
+                downloader
             );
 
             var updateManager = new UpdateManager(updateSource, updateOptions);

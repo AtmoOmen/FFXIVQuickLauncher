@@ -83,6 +83,15 @@ jobs:
             -Body $body
           Write-Host "Purged: /releases.win.json, /RELEASES"
 
+  upload-cnb:
+    name: Upload to CNB
+    needs: build-release
+    if: "startsWith(github.ref, 'refs/tags/')"
+    uses: ./.github/workflows/cnb-upload.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
+
   build:
     name: Build on Windows
     runs-on: windows-latest
