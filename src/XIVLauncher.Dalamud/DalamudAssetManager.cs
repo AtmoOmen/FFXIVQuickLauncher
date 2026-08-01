@@ -10,7 +10,7 @@ using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Dalamud;
 
-internal class DalamudAssetManager
+internal static class DalamudAssetManager
 {
     public static async Task<(DirectoryInfo AssetDir, int Version)> EnsureAssets
     (
@@ -31,7 +31,7 @@ internal class DalamudAssetManager
         var useCNB             = networkEnvironment.Region != NetworkRegion.OutsideMainlandChina;
         var versionURL         = useCNB
                                      ? Links.DALAMUD_ASSET_DISTRIBUTE_CNB_VERSION_URL
-                                     : $"{Links.DALAMUD_ASSET_DISTRIBUTE_R2_BASE_URL}/RELEASE";
+                                     : Links.DALAMUD_ASSET_DISTRIBUTE_R2_VERSION_URL;
         var assetBaseURL = useCNB
                                ? Links.DALAMUD_ASSET_DISTRIBUTE_CNB_RELEASE_BASE_URL
                                : Links.DALAMUD_ASSET_DISTRIBUTE_R2_BASE_URL;
@@ -90,7 +90,7 @@ internal class DalamudAssetManager
             {
                 try
                 {
-                    using var file     = File.OpenRead(filePath);
+                    await using var file     = File.OpenRead(filePath);
                     var       fileHash = Convert.ToHexString(sha1.ComputeHash(file));
                     if (string.Equals(fileHash, entry.Hash, StringComparison.OrdinalIgnoreCase))
                         continue;
@@ -107,7 +107,7 @@ internal class DalamudAssetManager
             {
                 try
                 {
-                    using var devFile = File.OpenRead(devPath);
+                    await using var devFile = File.OpenRead(devPath);
                     var       devHash = Convert.ToHexString(sha1.ComputeHash(devFile));
                     if (string.Equals(devHash, entry.Hash, StringComparison.OrdinalIgnoreCase))
                     {
