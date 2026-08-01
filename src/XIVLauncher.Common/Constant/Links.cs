@@ -14,11 +14,20 @@ public static class Links
 
     public const string LAUNCHER_DISTRIBUTE_BASE_URL = "https://xl-dis.atmoomen.top";
     
-    public const string DALAMUD_DISTRIBUTE_BASE_URL = "https://dalamud-dis.atmoomen.top";
+    // Cloudflare R2 (国际)
+    public const string DALAMUD_DISTRIBUTE_R2_BASE_URL = "https://dalamud-dis.atmoomen.top";
 
-    public const string DALAMUD_DISTRIBUTE_VERSION_URL = $"{DALAMUD_DISTRIBUTE_BASE_URL}/RELEASE";
+    // Cloudflare R2 (国际)
+    public const string DALAMUD_DISTRIBUTE_R2_VERSION_URL = $"{DALAMUD_DISTRIBUTE_R2_BASE_URL}/RELEASE";
     
-    public const string DALAMUD_ASSET_DISTRIBUTE_URL = $"{DALAMUD_DISTRIBUTE_BASE_URL}/assets";
+    // 腾讯 CNB (国内)
+    // 形似 https://cnb.cool/atmoomen/dalamud-distribute/-/releases/download/26-07-29-01/latest.7z
+    public const string DALAMUD_DISTRIBUTE_CNB_RELEASE_BASE_URL = "https://cnb.cool/atmoomen/dalamud-distribute/-/releases/download";
+
+    // 腾讯 CNB (国内)
+    public const string DALAMUD_DISTRIBUTE_CNB_VERSION_URL = "https://cnb.cool/atmoomen/dalamud-distribute/-/git/raw/master/RELEASE";
+    
+    public const string DALAMUD_ASSET_DISTRIBUTE_URL = $"{DALAMUD_DISTRIBUTE_R2_BASE_URL}/assets";
 
     public const string NUGET_V3_FLAT_CONTAINER_URL = "https://api.nuget.org/v3-flatcontainer";
 

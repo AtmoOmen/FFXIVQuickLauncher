@@ -339,7 +339,7 @@ public class DalamudUpdater
 
         Log.Information("[DUPDATE] 获取到远端 Dalamud 运行时版本: {0}", runtimeVersion);
 
-        var releaseText = await httpClient.GetStringAsync(Links.DALAMUD_DISTRIBUTE_VERSION_URL).ConfigureAwait(false);
+        var releaseText = await httpClient.GetStringAsync(Links.DALAMUD_DISTRIBUTE_R2_VERSION_URL).ConfigureAwait(false);
         var version     = releaseText.Trim();
 
         if (string.IsNullOrWhiteSpace(version))
@@ -347,7 +347,7 @@ public class DalamudUpdater
         Version = version;
         Log.Information("[DUPDATE] 获取到 R2 版本: {Version}", Version);
 
-        var hashesUrl    = $"{Links.DALAMUD_DISTRIBUTE_BASE_URL}/{Version}/hashes.json";
+        var hashesUrl    = $"{Links.DALAMUD_DISTRIBUTE_R2_BASE_URL}/{Version}/hashes.json";
         var downloadPath = PlatformHelpers.GetTempFileName();
 
         try
@@ -355,7 +355,7 @@ public class DalamudUpdater
             using (var fileResponse = await httpClient.GetAsync(hashesUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 await fileResponse.EnsureSuccessWithDiagnosticsAsync().ConfigureAwait(false);
-                using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                await using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
                     await fileResponse.Content.CopyToAsync(fileStream);
             }
 
@@ -380,7 +380,7 @@ public class DalamudUpdater
             if (!addonPath.Exists)
                 addonPath.Create();
 
-            var downloadUrl = $"{Links.DALAMUD_DISTRIBUTE_BASE_URL}/{Version}/latest.7z";
+            var downloadUrl = $"{Links.DALAMUD_DISTRIBUTE_R2_BASE_URL}/{Version}/latest.7z";
             Log.Information("[DUPDATE] 从 R2 下载完整包: {Url}", downloadUrl);
             await DownloadDalamudPackage(addonPath, downloadUrl).ConfigureAwait(false);
 
