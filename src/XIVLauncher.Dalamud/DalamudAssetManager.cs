@@ -28,13 +28,8 @@ internal static class DalamudAssetManager
 
         // 1. 根据网络区域获取远端版本号与清单
         var networkEnvironment = await networkEnvironmentTask.ConfigureAwait(false);
-        var useCNB             = networkEnvironment.Region != NetworkRegion.NotChineseMainland;
-        var versionURL         = useCNB
-                                     ? Links.DALAMUD_ASSET_DISTRIBUTE_CNB_VERSION_URL
-                                     : Links.DALAMUD_ASSET_DISTRIBUTE_R2_VERSION_URL;
-        var assetBaseURL = useCNB
-                               ? Links.DALAMUD_ASSET_DISTRIBUTE_CNB_RELEASE_BASE_URL
-                               : Links.DALAMUD_ASSET_DISTRIBUTE_R2_BASE_URL;
+        var versionURL         = Links.DALAMUD_ASSET_DISTRIBUTE_R2_VERSION_URL;
+        var assetBaseURL       = Links.DALAMUD_ASSET_DISTRIBUTE_R2_BASE_URL;
 
         Log.Information
         (
@@ -124,11 +119,7 @@ internal static class DalamudAssetManager
             }
 
             // 入列并行下载
-            var encodedFileName = Convert.ToBase64String(Encoding.UTF8.GetBytes(entry.FileName))
-                                         .TrimEnd('=')
-                                         .Replace('+', '-')
-                                         .Replace('/', '_');
-            var assetName  = useCNB ? $"asset-{encodedFileName}" : $"files/{entry.FileName}";
+            var assetName   = $"files/{entry.FileName}";
             var downloadURL = $"{assetBaseURL}/{version}/{assetName}";
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
             downloadTasks.Add(DownloadAsset(updater, downloadURL, filePath, entry.FileName));

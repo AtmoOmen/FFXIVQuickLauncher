@@ -39,8 +39,7 @@ internal class UpdateOrchestrator
 
             var downloader         = new XLHttpClientFileDownloader();
             var networkEnvironment = await networkEnvironmentTask;
-            var useCNB             = networkEnvironment.Region != NetworkRegion.NotChineseMainland;
-            var updateBaseURL      = useCNB ? Links.LAUNCHER_DISTRIBUTE_CNB_BASE_URL : Links.LAUNCHER_DISTRIBUTE_BASE_URL;
+            var updateBaseURL      = Links.LAUNCHER_DISTRIBUTE_BASE_URL;
 
             Log.Information
             (
@@ -149,7 +148,7 @@ internal class UpdateOrchestrator
         exception switch
         {
             TimeoutException timeoutException => timeoutException.Message,
-            Exception when exception.FindHttpRequestException() is { StatusCode: not null } httpRequestException => (int)httpRequestException.StatusCode switch
+            not null when exception.FindHttpRequestException() is { StatusCode: not null } httpRequestException => (int)httpRequestException.StatusCode switch
             {
                 403 or 444 or 522 => $"更新源返回错误状态码 {(int)httpRequestException.StatusCode}{Environment.NewLine}{httpRequestException.Message}",
                 _                 => $"更新请求失败, 状态码 {(int)httpRequestException.StatusCode}{Environment.NewLine}{httpRequestException.Message}"

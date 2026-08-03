@@ -31,9 +31,6 @@ public static class Links
 
     /// <remarks>启动器 (Cloudflare R2)</remarks>
     public const string LAUNCHER_DISTRIBUTE_BASE_URL = "https://xl-dis.atmoomen.top";
-
-    /// <remarks>启动器 (腾讯云 CNB)</remarks>
-    public const string LAUNCHER_DISTRIBUTE_CNB_BASE_URL = "https://cnb.cool/atmoomen/xivlauncher-distribute/-/git/raw/master";
     
     #endregion
 
@@ -46,12 +43,6 @@ public static class Links
     /// <remarks>Dalamud 版本 (Cloudflare R2)</remarks>
     public const string DALAMUD_DISTRIBUTE_R2_VERSION_URL = $"{DALAMUD_DISTRIBUTE_R2_BASE_URL}/RELEASE";
 
-    /// <remarks>Dalamud 下载 (腾讯 CNB)</remarks>
-    public const string DALAMUD_DISTRIBUTE_CNB_RELEASE_BASE_URL = "https://cnb.cool/atmoomen/dalamud-distribute/-/releases/download";
-
-    /// <remarks>Dalamud 版本 (腾讯 CNB)</remarks>
-    public const string DALAMUD_DISTRIBUTE_CNB_VERSION_URL = "https://cnb.cool/atmoomen/dalamud-distribute/-/git/raw/master/RELEASE";
-
     #endregion
 
     
@@ -62,12 +53,6 @@ public static class Links
     
     /// <remarks>资源版本 (Cloudflare R2)</remarks>
     public const string DALAMUD_ASSET_DISTRIBUTE_R2_VERSION_URL = $"{DALAMUD_ASSET_DISTRIBUTE_R2_BASE_URL}/RELEASE";
-
-    /// <remarks>资源下载 (腾讯 CNB)</remarks>
-    public const string DALAMUD_ASSET_DISTRIBUTE_CNB_RELEASE_BASE_URL = "https://cnb.cool/atmoomen/dalamud-asset-distribute/-/releases/download";
-
-    /// <remarks>资源版本 (腾讯 CNB)</remarks>
-    public const string DALAMUD_ASSET_DISTRIBUTE_CNB_VERSION_URL = "https://cnb.cool/atmoomen/dalamud-asset-distribute/-/git/raw/master/RELEASE";
 
     #endregion
     
