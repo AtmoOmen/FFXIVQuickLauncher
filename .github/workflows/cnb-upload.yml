@@ -1,0 +1,36 @@
+name: Backfill XIVLauncher to CNB
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag included in the backfill set'
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Release tag included in the backfill set'
+        type: string
+        required: false
+
+concurrency:
+  group: cnb-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    name: Backfill last 10 releases to CNB
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Backfill CNB releases and feeds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          MAX_VERSIONS: '2'
+        run: bash ./scripts/cnb-backfill.sh

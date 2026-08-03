@@ -239,6 +239,9 @@ upload_asset() {
   echo "Uploaded $asset_name"
 }
 
+# --------------------------------------------
+# 修改部分：Publish CNB release 循环
+# --------------------------------------------
 for tag in "${release_tags[@]}"; do
   tag_dir="$WORK_DIR/$tag"
   shopt -s nullglob
@@ -255,15 +258,14 @@ for tag in "${release_tags[@]}"; do
     -H "$ACCEPT_HEADER" \
     "$API_BASE/$CNB_REPOSITORY/-/releases/tags/$tag" || true)"
 
+  # MODIFIED: 如果 CNB 上已存在同名 release，则跳过（不删除，不重建）
   if [ -n "$existing_release" ]; then
-    existing_release_id="$(jq -er '.id' <<< "$existing_release")"
-    curl -fsS \
-      -X DELETE \
-      -H "$AUTH_HEADER" \
-      -H "$ACCEPT_HEADER" \
-      "$API_BASE/$CNB_REPOSITORY/-/releases/$existing_release_id"
+    echo "CNB release $tag already exists, skipping upload"
+    echo "::endgroup::"
+    continue
   fi
 
+  # 如果不存在，才创建新 release 并上传 assets
   if [ "$tag" = "$latest_tag" ]; then
     make_latest=true
   else
@@ -305,6 +307,9 @@ for tag in "${release_tags[@]}"; do
   echo "::endgroup::"
 done
 
+# --------------------------------------------
+# 以下部分保持不变：更新 CNB 仓库元数据文件
+# --------------------------------------------
 readonly CNB_GIT_URL="https://cnb.cool/$CNB_REPOSITORY.git"
 readonly CNB_PUSH_URL="https://cnb:$CNB_TOKEN@cnb.cool/$CNB_REPOSITORY.git"
 readonly CNB_REPO_DIR="$WORK_DIR/cnb-repo"
@@ -322,6 +327,9 @@ if ! git -C "$CNB_REPO_DIR" diff --cached --quiet; then
   git -C "$CNB_REPO_DIR" push "$CNB_PUSH_URL" HEAD:master
 fi
 
+# --------------------------------------------
+# 清理过时 CNB release（保持不变）
+# --------------------------------------------
 declare -A keep_tags=()
 for tag in "${release_tags[@]}"; do
   keep_tags["$tag"]=true
