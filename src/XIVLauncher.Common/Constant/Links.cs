@@ -5,7 +5,7 @@ public static class Links
     #region 杂项
 
     /// <remarks>GitHub 反代</remarks>
-    public const string GITHUB_PROXY_BASE_URL = "https://gh.atmoomen.top/";
+    public const string GITHUB_PROXY_BASE_URL = "https://gh.atmoomen.top";
     
     /// <remarks>判断网络出口 (Cloudflare)</remarks>
     public const string CLOUDFLARE_TRACE_URL = "https://www.cloudflare.com/cdn-cgi/trace";
@@ -59,8 +59,11 @@ public static class Links
     
     #region 运行时环境
 
-    /// <remarks>硬编码的运行时版本</remarks>
-    public const string DALAMUD_RUNTIME_INFO_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
+    /// <remarks>运行时版本</remarks>
+    public const string DALAMUD_RUNTIME_INFO_URL = $"{GITHUB_PROXY_BASE_URL}/{DALAMUD_RUNTIME_INFO_RAW_URL}";
+
+    /// <remarks>原始运行时版本</remarks>
+    public const string DALAMUD_RUNTIME_INFO_RAW_URL = "https://raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
     
     /// <remarks>微软的 NuGet 源</remarks>
     public const string NUGET_V3_FLAT_CONTAINER_URL = "https://api.nuget.org/v3-flatcontainer";
