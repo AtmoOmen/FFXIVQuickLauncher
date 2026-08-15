@@ -5,13 +5,14 @@ using System.Windows;
 using Newtonsoft.Json;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.ViewModel;
+using XIVLauncher.Xaml.Components;
 
 namespace XIVLauncher.Windows;
 
 /// <summary>
 ///     更新日志窗口。
 /// </summary>
-public partial class ChangelogWindow : Window
+public partial class ChangelogWindow : ChromeWindow
 {
     private ChangeLogWindowViewModel Model => (ChangeLogWindowViewModel)DataContext;
 

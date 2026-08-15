@@ -1,9 +1,10 @@
-<Window x:Class="XIVLauncher.Windows.AdvancedSettingsWindow"
+<components:ChromeWindow x:Class="XIVLauncher.Windows.AdvancedSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
         xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
         mc:Ignorable="d"
         Title="高级设置" SizeToContent="Height" Width="450"
@@ -15,26 +16,34 @@
         TextElement.FontSize="14"
         d:DataContext="{d:DesignInstance viewModel:AdvancedSettingsViewModel}">
 
-    <Window.Resources>
+    <components:ChromeWindow.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
-    </Window.Resources>
+    </components:ChromeWindow.Resources>
 
-    <Window.Triggers>
+    <components:ChromeWindow.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
         </EventTrigger>
-    </Window.Triggers>
+    </components:ChromeWindow.Triggers>
 
-    <Grid x:Name="WindowAnimationLayer" Opacity="0">
-        <Grid.RenderTransform>
-            <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
-        </Grid.RenderTransform>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-        <Border Padding="24">
+        <components:TitleBar Grid.Row="0" />
+
+        <Grid Grid.Row="1" x:Name="WindowAnimationLayer" Opacity="0">
+            <Grid.RenderTransform>
+                <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
+            </Grid.RenderTransform>
+
+            <Border Padding="24">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
                     <materialDesign:PackIcon Kind="CogOutline" Width="32" Height="32"
@@ -71,6 +80,7 @@
                         HorizontalAlignment="Right"
                         Click="CloseButton_OnClick" />
             </StackPanel>
-        </Border>
+            </Border>
+        </Grid>
     </Grid>
-</Window>
+</components:ChromeWindow>

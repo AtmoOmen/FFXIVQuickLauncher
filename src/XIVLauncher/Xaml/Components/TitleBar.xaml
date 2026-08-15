@@ -1,0 +1,116 @@
+<UserControl x:Class="XIVLauncher.Xaml.Components.TitleBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+             Height="32">
+    <UserControl.Resources>
+        <Style x:Key="CaptionButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#33FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CloseButtonStyle" TargetType="Button" BasedOn="{StaticResource CaptionButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E81123" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#F1707A" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid x:Name="Root" Background="Transparent">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <Image Grid.Column="0"
+               Width="18"
+               Height="18"
+               Margin="12,0,0,0"
+               VerticalAlignment="Center"
+               RenderOptions.BitmapScalingMode="HighQuality"
+               Source="pack://application:,,,/Resources/logo.png"
+               Stretch="Uniform" />
+
+        <TextBlock Grid.Column="1"
+                   Margin="8,0,0,0"
+                   VerticalAlignment="Center"
+                   FontSize="13"
+                   FontWeight="Medium"
+                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                   Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                   TextTrimming="CharacterEllipsis" />
+
+        <StackPanel Grid.Column="3"
+                    Orientation="Horizontal"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True">
+            <Button x:Name="MinimizeButton"
+                    Style="{StaticResource CaptionButtonStyle}"
+                    ToolTip="最小化"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                    Click="MinimizeButton_OnClick">
+                <materialDesign:PackIcon Kind="WindowMinimize" Width="12" Height="12" />
+            </Button>
+            <Button x:Name="MaximizeButton"
+                    Style="{StaticResource CaptionButtonStyle}"
+                    ToolTip="最大化"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                    Click="MaximizeButton_OnClick">
+                <materialDesign:PackIcon x:Name="MaximizeIcon" Kind="WindowMaximize" Width="12" Height="12" />
+            </Button>
+            <Button x:Name="CloseButton"
+                    Style="{StaticResource CloseButtonStyle}"
+                    ToolTip="关闭"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                    Click="CloseButton_OnClick">
+                <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
+            </Button>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -1,10 +1,11 @@
-<Window
+<components:ChromeWindow
     x:Class="XIVLauncher.Windows.AccountDeviceProfileWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
     Title="{Binding WindowTitle}"
@@ -20,25 +21,33 @@
     mc:Ignorable="d"
     d:DataContext="{d:DesignInstance viewModel:AccountDeviceProfileWindowViewModel}">
 
-    <Window.Resources>
+    <components:ChromeWindow.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
-    </Window.Resources>
+    </components:ChromeWindow.Resources>
 
-    <Window.Triggers>
+    <components:ChromeWindow.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
             <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
         </EventTrigger>
-    </Window.Triggers>
+    </components:ChromeWindow.Triggers>
 
-    <Grid x:Name="WindowAnimationLayer" Opacity="0">
-        <Grid.RenderTransform>
-            <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
-        </Grid.RenderTransform>
-        <Grid>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <components:TitleBar Grid.Row="0" />
+
+        <Grid Grid.Row="1" x:Name="WindowAnimationLayer" Opacity="0">
+            <Grid.RenderTransform>
+                <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
+            </Grid.RenderTransform>
+            <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
@@ -294,6 +303,7 @@
                     </Button>
                 </Grid>
             </Border>
+            </Grid>
         </Grid>
     </Grid>
-</Window>
+</components:ChromeWindow>

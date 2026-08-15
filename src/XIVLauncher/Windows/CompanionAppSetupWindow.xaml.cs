@@ -1,10 +1,11 @@
 using System.Windows;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Windows.ViewModel;
+using XIVLauncher.Xaml.Components;
 
 namespace XIVLauncher.Windows;
 
-public partial class CompanionAppSetupWindow : Window
+public partial class CompanionAppSetupWindow : ChromeWindow
 {
     public CompanionAppConfiguration? Result { get; private set; }
 

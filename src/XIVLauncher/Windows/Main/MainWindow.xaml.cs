@@ -170,12 +170,14 @@ public partial class MainWindow
 
     protected override void OnSourceInitialized(EventArgs e)
     {
+        base.OnSourceInitialized(e);
+
         try
         {
             PreserveWindowPosition.RestorePosition(this);
 
             Width  = 780;
-            Height = 540;
+            Height = 580;
         }
         catch (Exception ex)
         {
