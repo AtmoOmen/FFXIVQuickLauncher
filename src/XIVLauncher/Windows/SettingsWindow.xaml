@@ -20,10 +20,6 @@
     TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
     mc:Ignorable="d">
 
-    <components:ChromeWindow.RenderTransform>
-        <TranslateTransform Y="0" />
-    </components:ChromeWindow.RenderTransform>
-
     <components:ChromeWindow.Resources>
         <Style x:Key="SidebarListBox" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent" />

@@ -29,12 +29,6 @@
         </ResourceDictionary>
     </components:ChromeWindow.Resources>
 
-    <components:ChromeWindow.Triggers>
-        <EventTrigger RoutedEvent="Window.Loaded">
-            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
-        </EventTrigger>
-    </components:ChromeWindow.Triggers>
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -43,10 +37,7 @@
 
         <components:TitleBar Grid.Row="0" />
 
-        <Grid Grid.Row="1" x:Name="WindowAnimationLayer" Opacity="0">
-            <Grid.RenderTransform>
-                <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
-            </Grid.RenderTransform>
+        <Grid Grid.Row="1">
             <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
