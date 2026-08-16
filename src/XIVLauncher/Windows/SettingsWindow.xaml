@@ -297,7 +297,7 @@
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SettingTitleStyle}" Text="盛趣" />
                                 <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                           Text="应该包含 game 与 boot 文件夹, 也可以选择空文件夹稍后下载完整游戏" />
+                                           Text="应该包含 game 与 boot 文件夹。如果希望从零下载完整游戏，请仅配置该目录，并指定为任一空文件夹即可。" />
                                 <components:FolderEntry Margin="0,12,0,0" Description="盛趣版本游戏目录"
                                                         Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
                                 <Border Margin="0,10,0,0" Padding="10,8" Background="#14D32F2F" CornerRadius="4"
