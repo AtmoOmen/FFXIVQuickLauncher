@@ -26,16 +26,97 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
         </Style>
         <Style x:Key="SidebarListBoxItem" TargetType="ListBoxItem">
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0,0,0,14" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Margin" Value="0,0,0,6" />
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" />
+                        <Grid>
+                            <!-- 整行可点击区域: 悬停/选中背景铺满整行, 圆角与视觉一致 -->
+                            <Border x:Name="HoverBg"
+                                    Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                                    CornerRadius="10"
+                                    Opacity="0" />
+                            <Border x:Name="SelectedBg"
+                                    Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                                    CornerRadius="10"
+                                    Opacity="0" />
+                            <ContentPresenter
+                                Margin="{TemplateBinding Padding}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetName="HoverBg"
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0.08" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetName="HoverBg"
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetName="SelectedBg"
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0.14" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetName="SelectedBg"
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -47,6 +128,8 @@
             <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
                              Value="True">
@@ -793,7 +876,7 @@
                             Style="{StaticResource ThemeRaisedButtonStyle}">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Width="18" Height="18" VerticalAlignment="Center" Kind="ContentSaveOutline" />
-                            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="保存设置" />
+                            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="保存" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
