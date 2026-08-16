@@ -1,7 +1,10 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
 using System.Windows;
+using System.Windows.Documents;
+using MdXaml;
 using Newtonsoft.Json;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.ViewModel;
@@ -23,6 +26,8 @@ public partial class ChangelogWindow : ChromeWindow
         DiscordButton.Click += (_, _) => Process.Start(new ProcessStartInfo(Links.DISCORD_URL) { UseShellExecute = true });
         DataContext         =  new ChangeLogWindowViewModel();
         Model.ChangeLogText =  File.ReadAllText(Path.Combine(Paths.ResourcesPath, "CHANGELOG.txt"));
+        DependencyPropertyDescriptor.FromProperty(MarkdownScrollViewer.MarkdownProperty, typeof(MarkdownScrollViewer))
+                                    ?.AddValueChanged(ChangeLogText, (_, _) => RestyleListMarkers());
 
         Activate();
         Topmost = true;
@@ -30,8 +35,55 @@ public partial class ChangelogWindow : ChromeWindow
         Focus();
     }
 
-    public void UpdateVersion(string version) =>
-        Model.UpdateNotice = $"XIVLauncherCN (Soil) 已更新至 {version}";
+    private void RestyleListMarkers()
+    {
+        Dispatcher.BeginInvoke
+        (
+            () =>
+            {
+                var lists      = new List<List>();
+                var paragraphs = new List<Paragraph>();
+                CollectListsAndParagraphs(ChangeLogText.Document.Blocks, lists, paragraphs);
+
+                foreach (var list in lists)
+                    list.MarkerStyle = TextMarkerStyle.None;
+
+                foreach (var paragraph in paragraphs)
+                {
+                    if (paragraph.Inlines.FirstInline is Run { Text: { } text } run && !text.StartsWith("•", StringComparison.Ordinal))
+                    {
+                        paragraph.Inlines.InsertBefore(run, new Run("•\u2002"));
+                        paragraph.Padding    = new Thickness(21, 0, 0, 0);
+                        paragraph.TextIndent = -21;
+                    }
+                }
+            }
+        );
+    }
+
+    private static void CollectListsAndParagraphs(BlockCollection blocks, List<List> lists, List<Paragraph> paragraphs)
+    {
+        foreach (var block in blocks)
+        {
+            switch (block)
+            {
+                case List list:
+                    lists.Add(list);
+                    foreach (var item in list.ListItems)
+                        CollectListsAndParagraphs(item.Blocks, lists, paragraphs);
+                    break;
+                case Paragraph paragraph:
+                    paragraphs.Add(paragraph);
+                    break;
+            }
+        }
+    }
+
+    public void UpdateVersion(string version)
+    {
+        Model.UpdateNotice = "XIVLauncherCN (Soil) 已更新至新版本";
+        Model.VersionText  = $"v{version}";
+    }
 
     public new void Show()
     {

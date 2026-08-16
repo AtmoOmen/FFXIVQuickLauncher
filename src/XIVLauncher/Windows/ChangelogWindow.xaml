@@ -11,7 +11,7 @@
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     mc:Ignorable="d"
     Title="更新日志"
-    Width="620"
+    Width="640"
     WindowStartupLocation="CenterScreen"
     Icon="pack://application:,,,/Resources/dalamud_icon.ico"
     ResizeMode="NoResize"
@@ -38,55 +38,87 @@
 
         <components:TitleBar Grid.Row="0" />
 
-        <Grid Grid.Row="1">
-            <Border Padding="24">
-            <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
-                    <materialDesign:PackIcon Kind="Globe" Width="32" Height="32"
-                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                             VerticalAlignment="Center" Margin="0,0,16,0" />
-                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                               Style="{StaticResource MaterialDesignHeadline5TextBlock}"
-                               Text="更新日志"
-                               VerticalAlignment="Center"
-                               FontWeight="SemiBold" />
+        <Grid Grid.Row="1" Margin="28,28,28,28">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- 头部：图标 + 标题/副标题 + 版本徽标 -->
+            <Grid Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border Width="48" Height="48" CornerRadius="12" VerticalAlignment="Center"
+                        Background="{DynamicResource MaterialDesign.Brush.Surface}"
+                        BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="1">
+                    <Image Source="pack://application:,,,/Resources/logo.png" Width="28" Height="28"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
+                </Border>
+
+                <StackPanel Grid.Column="1" Margin="16,0,20,0" VerticalAlignment="Center">
+                    <TextBlock Text="更新日志" FontSize="20" FontWeight="Bold" />
+                    <TextBlock Text="{Binding UpdateNotice}" FontSize="12.5" Opacity="0.65"
+                               Margin="0,8,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
 
-                <Grid MaxHeight="400" Margin="0,0,0,24">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock x:Name="UpdateNotice" TextWrapping="Wrap"
-                               Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                               Text="{Binding UpdateNotice}" Margin="0,0,0,16" />
-                    <mdxaml:MarkdownScrollViewer Grid.Row="1"
-                                                 x:Name="ChangeLogText"
+                <!-- 版本徽标：圆角矩形，右对齐，占两行高度 -->
+                <Border Grid.Column="2" VerticalAlignment="Stretch" Margin="0,6,0,6"
+                        CornerRadius="8" Padding="14,0"
+                        Background="{DynamicResource MaterialDesign.Brush.Primary}">
+                    <TextBlock Text="{Binding VersionText}" FontSize="12.5" FontWeight="SemiBold"
+                               Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}"
+                               VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+
+            <!-- 日志内容卡片 -->
+            <Grid Grid.Row="1">
+                <materialDesign:Card UniformCornerRadius="12" ClipContent="True"
+                                     Background="{DynamicResource MaterialDesign.Brush.Surface}"
+                                     materialDesign:ElevationAssist.Elevation="Dp2">
+                    <mdxaml:MarkdownScrollViewer x:Name="ChangeLogText"
+                                                 MaxHeight="420"
+                                                 Padding="24,20"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
                                                  Markdown="{Binding ChangeLogText}"
                                                  MarkdownStyle="{StaticResource ChangeLogMarkdownStyle}"
                                                  ClickAction="SafetyOpenBrowser"
-                                                 VerticalScrollBarVisibility="Hidden" />
-                </Grid>
+                                                 VerticalScrollBarVisibility="Auto" />
+                </materialDesign:Card>
+                <Border IsHitTestVisible="False" CornerRadius="12" Opacity="0.5"
+                        BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="1" />
+            </Grid>
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+            <!-- 底部操作区 -->
+            <Grid Grid.Row="2" Margin="0,24,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-                    <Button Grid.Column="0" Style="{StaticResource MaterialDesignOutlinedButton}"
-                            x:Name="DiscordButton">
-                        <StackPanel Orientation="Horizontal">
-                            <mahIcon:PackIconSimpleIcons Kind="Discord" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <TextBlock Text="Discord" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
+                <Button Grid.Column="0" x:Name="DiscordButton"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="6"
+                        Height="36" Padding="16,0">
+                    <StackPanel Orientation="Horizontal">
+                        <mahIcon:PackIconSimpleIcons Kind="Discord" Width="16" Height="16"
+                                                     VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="Discord" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
 
-                    <Button Grid.Column="2" Click="CloseButton_Click" Content="确定" Width="100" />
-                </Grid>
-            </StackPanel>
-            </Border>
+                <Button Grid.Column="2" Click="CloseButton_Click" Content="确定"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        materialDesign:ButtonAssist.CornerRadius="6"
+                        Width="112" Height="36" IsDefault="True" />
+            </Grid>
         </Grid>
     </Grid>
 </components:ChromeWindow>

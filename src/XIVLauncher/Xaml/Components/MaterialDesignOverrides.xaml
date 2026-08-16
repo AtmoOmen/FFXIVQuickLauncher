@@ -48,6 +48,130 @@
     <Style x:Key="ChangeLogMarkdownStyle" TargetType="{x:Type FlowDocument}">
         <Setter Property="FontFamily" Value="{StaticResource AppFontFamily}" />
         <Setter Property="TextElement.FontFamily" Value="{StaticResource AppFontFamily}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="LineHeight" Value="24" />
+        <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+        <Setter Property="PagePadding" Value="0" />
+        <Style.Resources>
+            <ResourceDictionary>
+                <Style TargetType="{x:Type Paragraph}">
+                    <Setter Property="Margin" Value="0,0,0,10" />
+                    <Style.Triggers>
+                        <Trigger Property="FrameworkContentElement.Tag" Value="Heading1">
+                            <Setter Property="FontSize" Value="20" />
+                            <Setter Property="FontWeight" Value="Bold" />
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            <Setter Property="Margin" Value="0,18,0,10" />
+                        </Trigger>
+                        <Trigger Property="FrameworkContentElement.Tag" Value="Heading2">
+                            <Setter Property="FontSize" Value="17" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            <Setter Property="Margin" Value="0,16,0,8" />
+                        </Trigger>
+                        <Trigger Property="FrameworkContentElement.Tag" Value="Heading3">
+                            <Setter Property="FontSize" Value="15" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                            <Setter Property="Margin" Value="0,14,0,6" />
+                        </Trigger>
+                        <Trigger Property="FrameworkContentElement.Tag" Value="Heading4">
+                            <Setter Property="FontSize" Value="14" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                            <Setter Property="Margin" Value="0,12,0,6" />
+                        </Trigger>
+                        <Trigger Property="FrameworkContentElement.Tag" Value="CodeBlock">
+                            <Setter Property="FontFamily" Value="Consolas, Courier New, monospace" />
+                            <Setter Property="FontSize" Value="13" />
+                            <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                            <Setter Property="Padding" Value="12,10" />
+                            <Setter Property="Margin" Value="0,0,0,12" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+
+                <Style TargetType="{x:Type Section}">
+                    <Style.Triggers>
+                        <Trigger Property="FrameworkContentElement.Tag" Value="Blockquote">
+                            <Setter Property="Padding" Value="14,10" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            <Setter Property="BorderThickness" Value="3,0,0,0" />
+                            <Setter Property="Margin" Value="0,0,0,12" />
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                            <Setter Property="Background" Value="#0DFFFFFF" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+
+                <Style TargetType="{x:Type Run}">
+                    <Style.Triggers>
+                        <Trigger Property="FrameworkContentElement.Tag" Value="CodeSpan">
+                            <Setter Property="FontFamily" Value="Consolas, Courier New, monospace" />
+                            <Setter Property="FontSize" Value="13" />
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+
+                <Style TargetType="{x:Type Span}">
+                    <Style.Triggers>
+                        <Trigger Property="FrameworkContentElement.Tag" Value="CodeSpan">
+                            <Setter Property="FontFamily" Value="Consolas, Courier New, monospace" />
+                            <Setter Property="FontSize" Value="13" />
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+
+                <Style TargetType="{x:Type Hyperlink}">
+                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                    <Setter Property="TextDecorations" Value="None" />
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="TextDecorations" Value="Underline" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+
+                <Style TargetType="{x:Type List}">
+                    <Setter Property="Padding" Value="16,0,0,0" />
+                    <Setter Property="Margin" Value="0,0,0,10" />
+                </Style>
+
+                <Style TargetType="{x:Type ListItem}">
+                    <Setter Property="Margin" Value="0,0,0,10" />
+                </Style>
+
+                <Style TargetType="{x:Type Table}">
+                    <Setter Property="CellSpacing" Value="0" />
+                    <Setter Property="BorderThickness" Value="0.5" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                    <Setter Property="Margin" Value="0,0,0,12" />
+                </Style>
+
+                <Style TargetType="{x:Type TableRowGroup}">
+                    <Style.Triggers>
+                        <Trigger Property="FrameworkContentElement.Tag" Value="TableHeader">
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+
+                <Style TargetType="{x:Type TableCell}">
+                    <Setter Property="BorderThickness" Value="0.5" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                    <Setter Property="Padding" Value="8,6" />
+                    <Style.Triggers>
+                        <DataTrigger Value="EvenTableRow"
+                                     Binding="{Binding Path=Tag, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type TableRow}}}">
+                            <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ResourceDictionary>
+        </Style.Resources>
     </Style>
 
 </ResourceDictionary>
