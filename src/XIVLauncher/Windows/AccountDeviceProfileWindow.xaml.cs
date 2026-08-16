@@ -119,6 +119,50 @@ public partial class AccountDeviceProfileWindow
     private void RefreshHostNameButton_OnClick(object sender, RoutedEventArgs e) =>
         ExecuteWithErrorHandling(ViewModel.RefreshHostName, "刷新主机名失败。");
 
+    private void CopyMacHashButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(ViewModel.MacHash))
+        {
+            dialogService.ShowMessage
+            (
+                "当前没有有效的 MAC 地址，无法生成 MAC 哈希。",
+                "设备信息设置",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                false,
+                false,
+                false,
+                false,
+                this
+            );
+            return;
+        }
+
+        Clipboard.SetText(ViewModel.MacHash);
+    }
+
+    private void CopyCasCidButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(ViewModel.CasCid))
+        {
+            dialogService.ShowMessage
+            (
+                "当前没有有效的 MAC 地址，无法生成 CASCID。",
+                "设备信息设置",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning,
+                false,
+                false,
+                false,
+                false,
+                this
+            );
+            return;
+        }
+
+        Clipboard.SetText(ViewModel.CasCid);
+    }
+
     private void ImportButton_OnClick(object sender, RoutedEventArgs e) =>
         ExecuteWithErrorHandling(ImportDeviceProfile, "导入设备信息失败。");
 

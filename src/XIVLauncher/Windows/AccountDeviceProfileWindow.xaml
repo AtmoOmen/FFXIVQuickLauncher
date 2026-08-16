@@ -12,6 +12,7 @@
     Width="860"
     ResizeMode="NoResize"
     SizeToContent="Height"
+    MaxHeight="720"
     WindowStartupLocation="CenterOwner"
     Background="{DynamicResource MaterialDesign.Brush.Background}"
     TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
@@ -26,6 +27,88 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="CardButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="6" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="14,0" />
+            </Style>
+
+            <Style x:Key="ToolButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="6" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="14,0" />
+                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+            </Style>
+
+            <Style x:Key="RefreshButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+                <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="6" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="12,0" />
+                <Setter Property="MinWidth" Value="72" />
+            </Style>
+
+            <Style x:Key="CardHeaderIconStyle" TargetType="materialDesign:PackIcon">
+                <Setter Property="Width" Value="18" />
+                <Setter Property="Height" Value="18" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Margin" Value="0,0,8,0" />
+                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+            </Style>
+
+            <Style x:Key="SlimScrollBarStyle" TargetType="ScrollBar"
+                   BasedOn="{StaticResource MaterialDesignScrollBarMinimal}">
+                <Setter Property="Width" Value="8" />
+                <Setter Property="MinWidth" Value="8" />
+                <Setter Property="Margin" Value="0,4,2,4" />
+                <Setter Property="Opacity" Value="0.55" />
+                <Setter Property="materialDesign:ScrollBarAssist.ThumbWidth" Value="4" />
+                <Setter Property="materialDesign:ScrollBarAssist.ThumbCornerRadius" Value="2" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Opacity" Value="0.9" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="DeviceScrollViewerStyle" TargetType="ScrollViewer">
+                <Style.Resources>
+                    <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBarStyle}" />
+                </Style.Resources>
+                <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+                <Setter Property="Padding" Value="0,0,12,0" />
+            </Style>
+
+            <Style x:Key="ReadOnlyTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource MaterialDesignOutlinedTextBox}">
+                <Setter Property="IsReadOnly" Value="True" />
+                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+            </Style>
+
+            <Style x:Key="DarkIntegerUpDownStyle" TargetType="xctk:IntegerUpDown">
+                <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Background}" />
+                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Padding" Value="10,0" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="RotationCaptionTextStyle" TargetType="TextBlock">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
         </ResourceDictionary>
     </components:ChromeWindow.Resources>
 
@@ -37,264 +120,325 @@
 
         <components:TitleBar Grid.Row="0" />
 
-        <Grid Grid.Row="1">
-            <Grid>
+        <Grid Grid.Row="1" Margin="28,24,28,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <StackPanel Grid.Row="0" Margin="24,24,24,16">
-                <!-- Header -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,24" VerticalAlignment="Center">
-                    <materialDesign:PackIcon Kind="MonitorDashboard" Width="36" Height="36" VerticalAlignment="Center"
-                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                             Margin="0,0,16,0" />
-                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                               Text="{Binding AccountDisplayName}" VerticalAlignment="Center" FontWeight="SemiBold" />
-                </StackPanel>
+            <ScrollViewer Grid.Row="0" Style="{StaticResource DeviceScrollViewerStyle}">
+                <StackPanel Margin="0,0,0,24">
 
-                <!-- Card 1: Account Mode -->
-                <materialDesign:Card Margin="0,0,0,16" UniformCornerRadius="8"
-                                     Visibility="{Binding AccountModeSectionVisibility}">
-                    <StackPanel Margin="20">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                            <materialDesign:PackIcon Kind="AccountCog" VerticalAlignment="Center" Margin="0,0,8,0"
+                <!-- 标题 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,24">
+                        <Border Width="40" Height="40" CornerRadius="10" VerticalAlignment="Center"
+                                Background="{DynamicResource MaterialDesign.Brush.Surface}"
+                                BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="1">
+                            <materialDesign:PackIcon Kind="MonitorDashboard" Width="20" Height="20"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                                      Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                            <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold"
-                                       Text="账号独立设置" />
-                        </StackPanel>
-
-                        <CheckBox Visibility="{Binding AccountModeOptionsVisibility}"
-                                  Content="启用账号独立设备信息"
-                                  IsChecked="{Binding DynamicEnabled}"
-                                  ToolTip="启用后，可为当前账号单独配置一套设备信息；禁用时，则使用启动器内部统一共享的设备信息。" />
-
-                        <StackPanel Margin="0,16,0,0" Visibility="{Binding AccountModeOptionsVisibility}">
-                            <CheckBox Content="定期自动更换"
-                                      IsChecked="{Binding PeriodicRefreshEnabled}"
-                                      IsEnabled="{Binding DynamicEnabled}" />
-
-                            <StackPanel Margin="32,12,0,0" Orientation="Horizontal"
-                                        IsEnabled="{Binding DynamicEnabled}">
-                                <TextBlock VerticalAlignment="Center" Text="每隔"
-                                           Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
-                                <xctk:IntegerUpDown Width="100" Margin="12,0" Minimum="1"
-                                                    IsEnabled="{Binding CanEditRotationDays}"
-                                                    Value="{Binding RotationDays}"
-                                                    Padding="4" />
-                                <TextBlock VerticalAlignment="Center" Text="天自动更换一次"
-                                           Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
-                            </StackPanel>
+                        </Border>
+                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding AccountDisplayName}" FontSize="20" FontWeight="Bold"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding DescriptionText}" FontSize="12.5" Opacity="0.65" Margin="0,4,0,0" />
                         </StackPanel>
                     </StackPanel>
-                </materialDesign:Card>
 
-                <!-- Card 2: Preset -->
-                <materialDesign:Card Margin="0,0,0,16" UniformCornerRadius="8">
-                    <StackPanel Margin="20">
-                        <Grid Margin="0,0,0,24">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <materialDesign:PackIcon Kind="FormatListBulleted" VerticalAlignment="Center"
-                                                         Margin="0,0,8,0"
-                                                         Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
-                                           FontWeight="SemiBold" Text="设备信息预设" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,12,0"
-                                        Click="CreatePresetButton_OnClick" IsEnabled="{Binding CanSelectPreset}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="Plus" Margin="0,0,6,0"
-                                                                 VerticalAlignment="Center" />
-                                        <TextBlock Text="新增" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                                        Click="DeletePresetButton_OnClick" IsEnabled="{Binding CanSelectPreset}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="DeleteOutline" Margin="0,0,6,0"
-                                                                 VerticalAlignment="Center" />
-                                        <TextBlock Text="删除" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <ComboBox Grid.Column="0" Margin="0,0,8,0"
-                                      materialDesign:HintAssist.Hint="选择预设"
-                                      Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                      DisplayMemberPath="DisplayName"
-                                      IsEnabled="{Binding CanSelectPreset}"
-                                      ItemsSource="{Binding Presets}"
-                                      SelectedValue="{Binding SelectedPresetId, UpdateSourceTrigger=PropertyChanged}"
-                                      SelectedValuePath="Id" />
-
-                            <TextBox Grid.Column="1" Margin="8,0,0,0"
-                                     materialDesign:HintAssist.Hint="显示名称"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     IsEnabled="{Binding CanSelectPreset}"
-                                     Text="{Binding PresetRemark, UpdateSourceTrigger=LostFocus}" />
-                        </Grid>
-                    </StackPanel>
-                </materialDesign:Card>
-
-                <!-- Card 3: Details -->
-                <materialDesign:Card Margin="0,0,0,0" UniformCornerRadius="8">
-                    <StackPanel Margin="20" IsEnabled="{Binding CanEditDeviceDetails}">
-                        <Grid Margin="0,0,0,24">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <materialDesign:PackIcon Kind="Laptop" VerticalAlignment="Center" Margin="0,0,8,0"
-                                                         Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
-                                           FontWeight="SemiBold" Text="设备信息详情" VerticalAlignment="Center" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,12,0"
-                                        Click="RefreshAllButton_OnClick">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="Refresh" Margin="0,0,6,0"
-                                                                 VerticalAlignment="Center" />
-                                        <TextBlock Text="全部刷新" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                                        Click="UseLocalMachineInfoButton_OnClick">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="MonitorArrowDown" Margin="0,0,6,0"
-                                                                 VerticalAlignment="Center" />
-                                        <TextBlock Text="使用本机信息" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="设备 ID (Device ID)"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Text="{Binding DeviceId, UpdateSourceTrigger=LostFocus}" />
-                            <Button Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Height="42"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    Click="RefreshDeviceIdButton_OnClick" ToolTip="刷新设备 ID">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Refresh" Margin="0,0,4,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="刷新" VerticalAlignment="Center" />
+                    <!-- 卡片 1：账号独立设置 -->
+                    <Grid Margin="0,0,0,16" Visibility="{Binding AccountModeSectionVisibility}">
+                        <materialDesign:Card UniformCornerRadius="12" ClipContent="True"
+                                             Background="{DynamicResource MaterialDesign.Brush.Surface}"
+                                             materialDesign:ElevationAssist.Elevation="Dp2">
+                            <StackPanel Margin="24,20">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                    <materialDesign:PackIcon Kind="AccountCogOutline" Style="{StaticResource CardHeaderIconStyle}" />
+                                    <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}" FontWeight="SemiBold"
+                                               Text="账号独立设置" />
                                 </StackPanel>
-                            </Button>
-                        </Grid>
 
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="MAC 地址 (MAC Address)"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Text="{Binding MacAddress, UpdateSourceTrigger=LostFocus}" />
-                            <Button Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Height="42"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    Click="RefreshMacAddressButton_OnClick" ToolTip="刷新 MAC 地址">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Refresh" Margin="0,0,4,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="刷新" VerticalAlignment="Center" />
+                                <CheckBox Visibility="{Binding AccountModeOptionsVisibility}"
+                                          Content="启用账号独立设备信息"
+                                          IsChecked="{Binding DynamicEnabled}"
+                                          ToolTip="启用后，可为当前账号单独配置一套设备信息；禁用时，则使用启动器内部统一共享的设备信息。" />
+
+                                <StackPanel Margin="24,14,0,0" Visibility="{Binding AccountModeOptionsVisibility}">
+                                    <CheckBox Content="定期自动更换"
+                                              IsChecked="{Binding PeriodicRefreshEnabled}"
+                                              IsEnabled="{Binding DynamicEnabled}" />
+
+                                    <StackPanel Margin="24,12,0,0" Orientation="Horizontal"
+                                                IsEnabled="{Binding DynamicEnabled}">
+                                        <TextBlock Style="{StaticResource RotationCaptionTextStyle}" Text="每隔" />
+                                        <xctk:IntegerUpDown Width="130" Margin="12,0"
+                                                            Style="{StaticResource DarkIntegerUpDownStyle}"
+                                                            Minimum="1"
+                                                            IsEnabled="{Binding CanEditRotationDays}"
+                                                            Value="{Binding RotationDays}" />
+                                        <TextBlock Style="{StaticResource RotationCaptionTextStyle}" Text="天自动更换一次" />
+                                    </StackPanel>
                                 </StackPanel>
-                            </Button>
-                        </Grid>
+                            </StackPanel>
+                        </materialDesign:Card>
+                        <Border IsHitTestVisible="False" CornerRadius="12" Opacity="0.5"
+                                BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="1" />
+                    </Grid>
 
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="16" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="MAC 哈希 (MAC Hash)"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}" IsReadOnly="True"
-                                     Text="{Binding MacHash, Mode=OneWay}" />
-                            <TextBox Grid.Column="2" materialDesign:HintAssist.Hint="CASCID"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}" IsReadOnly="True"
-                                     Text="{Binding CasCid, Mode=OneWay}" />
-                        </Grid>
+                    <!-- 卡片 2：设备信息预设 -->
+                    <Grid Margin="0,0,0,16">
+                        <materialDesign:Card UniformCornerRadius="12" ClipContent="True"
+                                             Background="{DynamicResource MaterialDesign.Brush.Surface}"
+                                             materialDesign:ElevationAssist.Elevation="Dp2">
+                            <StackPanel Margin="24,20">
+                                <Grid Margin="0,0,0,20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
 
-                        <Grid Margin="0,0,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="主机名 (Host Name)"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Text="{Binding HostName, UpdateSourceTrigger=LostFocus}" />
-                            <Button Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Height="42"
-                                    Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    Click="RefreshHostNameButton_OnClick" ToolTip="刷新主机名">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Refresh" Margin="0,0,4,0" VerticalAlignment="Center" />
-                                    <TextBlock Text="刷新" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="FormatListBulleted" Style="{StaticResource CardHeaderIconStyle}" />
+                                        <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
+                                                   FontWeight="SemiBold" Text="设备信息预设" VerticalAlignment="Center" />
+                                    </StackPanel>
 
-                    </StackPanel>
-                </materialDesign:Card>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Style="{StaticResource CardButtonStyle}" Margin="0,0,12,0"
+                                                Click="CreatePresetButton_OnClick" IsEnabled="{Binding CanSelectPreset}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Plus" Width="16" Height="16"
+                                                                         VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                <TextBlock Text="新增" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource CardButtonStyle}"
+                                                Click="DeletePresetButton_OnClick" IsEnabled="{Binding CanSelectPreset}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16"
+                                                                         VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                <TextBlock Text="删除" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
 
-            </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-            <!-- Bottom Actions -->
+                                    <ComboBox Grid.Column="0"
+                                              materialDesign:HintAssist.Hint="选择预设"
+                                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                              DisplayMemberPath="DisplayName"
+                                              IsEnabled="{Binding CanSelectPreset}"
+                                              ItemsSource="{Binding Presets}"
+                                              SelectedValue="{Binding SelectedPresetId, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedValuePath="Id" />
+
+                                    <TextBox Grid.Column="2"
+                                             materialDesign:HintAssist.Hint="显示名称"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             IsEnabled="{Binding CanSelectPreset}"
+                                             Text="{Binding PresetRemark, UpdateSourceTrigger=LostFocus}" />
+                                </Grid>
+                            </StackPanel>
+                        </materialDesign:Card>
+                        <Border IsHitTestVisible="False" CornerRadius="12" Opacity="0.5"
+                                BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="1" />
+                    </Grid>
+
+                    <!-- 卡片 3：设备信息详情 -->
+                    <Grid Margin="0,0,0,0">
+                        <materialDesign:Card UniformCornerRadius="12" ClipContent="True"
+                                             Background="{DynamicResource MaterialDesign.Brush.Surface}"
+                                             materialDesign:ElevationAssist.Elevation="Dp2">
+                            <StackPanel Margin="24,20" IsEnabled="{Binding CanEditDeviceDetails}">
+                                <Grid Margin="0,0,0,20">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="LaptopAccount" Style="{StaticResource CardHeaderIconStyle}" />
+                                        <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
+                                                   FontWeight="SemiBold" Text="设备信息详情" VerticalAlignment="Center" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Style="{StaticResource CardButtonStyle}" Margin="0,0,12,0"
+                                                Click="RefreshAllButton_OnClick">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16"
+                                                                         VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                <TextBlock Text="全部刷新" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource CardButtonStyle}"
+                                                Click="UseLocalMachineInfoButton_OnClick">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="MonitorArrowDown" Width="16" Height="16"
+                                                                         VerticalAlignment="Center" Margin="0,0,6,0" />
+                                                <TextBlock Text="使用本机信息" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="设备 ID (Device ID)"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding DeviceId, UpdateSourceTrigger=LostFocus}" />
+                                    <Button Grid.Column="2" Style="{StaticResource RefreshButtonStyle}"
+                                            Click="RefreshDeviceIdButton_OnClick" ToolTip="刷新设备 ID">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16"
+                                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="刷新" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="MAC 地址 (MAC Address)"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding MacAddress, UpdateSourceTrigger=LostFocus}" />
+                                    <Button Grid.Column="2" Style="{StaticResource RefreshButtonStyle}"
+                                            Click="RefreshMacAddressButton_OnClick" ToolTip="刷新 MAC 地址">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16"
+                                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="刷新" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="MAC 哈希 (MAC Hash)"
+                                             Style="{StaticResource ReadOnlyTextBoxStyle}"
+                                             Text="{Binding MacHash, Mode=OneWay}" />
+                                    <Button Grid.Column="2" Style="{StaticResource RefreshButtonStyle}"
+                                            Click="CopyMacHashButton_OnClick" ToolTip="复制 MAC 哈希">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16"
+                                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="复制" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="CASCID"
+                                             Style="{StaticResource ReadOnlyTextBoxStyle}"
+                                             Text="{Binding CasCid, Mode=OneWay}" />
+                                    <Button Grid.Column="2" Style="{StaticResource RefreshButtonStyle}"
+                                            Click="CopyCasCidButton_OnClick" ToolTip="复制 CASCID">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16"
+                                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="复制" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="主机名 (Host Name)"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             Text="{Binding HostName, UpdateSourceTrigger=LostFocus}" />
+                                    <Button Grid.Column="2" Style="{StaticResource RefreshButtonStyle}"
+                                            Click="RefreshHostNameButton_OnClick" ToolTip="刷新主机名">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16"
+                                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="刷新" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                            </StackPanel>
+                        </materialDesign:Card>
+                        <Border IsHitTestVisible="False" CornerRadius="12" Opacity="0.5"
+                                BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="1" />
+                    </Grid>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 底部操作栏 -->
             <Border Grid.Row="1" Background="{DynamicResource MaterialDesign.Brush.Surface}"
                     BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="0,1,0,0"
-                    Padding="24,16">
+                    Padding="28,16">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Button Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,12,0"
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource ToolButtonStyle}" Margin="0,0,12,0"
                                 Click="ImportButton_OnClick">
                             <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="FileImport" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <materialDesign:PackIcon Kind="FileImport" Width="16" Height="16"
+                                                         VerticalAlignment="Center" Margin="0,0,6,0" />
                                 <TextBlock Text="导入" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource MaterialDesignOutlinedButton}" Click="ExportButton_OnClick">
+                        <Button Style="{StaticResource ToolButtonStyle}" Click="ExportButton_OnClick">
                             <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="FileExport" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <materialDesign:PackIcon Kind="FileExport" Width="16" Height="16"
+                                                         VerticalAlignment="Center" Margin="0,0,6,0" />
                                 <TextBlock Text="导出" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
 
-                    <Button Grid.Column="1" Width="120" Click="ConfirmButton_OnClick">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Check" Margin="0,0,6,0" VerticalAlignment="Center" />
-                            <TextBlock Text="确定" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="取消"
+                                Style="{StaticResource MaterialDesignOutlinedButton}"
+                                materialDesign:ButtonAssist.CornerRadius="6"
+                                Width="96" Height="36" Margin="0,0,12,0"
+                                IsCancel="True" />
+                        <Button Click="ConfirmButton_OnClick"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                materialDesign:ButtonAssist.CornerRadius="6"
+                                Width="128" Height="36" IsDefault="True">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Check" Width="16" Height="16"
+                                                         VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock Text="确定" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
-            </Grid>
         </Grid>
     </Grid>
 </components:ChromeWindow>

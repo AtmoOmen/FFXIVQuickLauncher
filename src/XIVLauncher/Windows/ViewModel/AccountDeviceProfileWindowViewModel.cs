@@ -49,6 +49,9 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
     public string ProfileKindText =>
         IsSharedMode ? "共享设备信息" : "账号设备信息";
 
+    public string DescriptionText =>
+        IsSharedMode ? "配置所有账号共用的设备信息" : "配置该账号独立使用的设备信息";
+
     public Visibility AccountModeOptionsVisibility =>
         IsSharedMode ? Visibility.Collapsed : Visibility.Visible;
 
@@ -468,6 +471,7 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         OnPropertyChanged(nameof(IsAccountMode));
         OnPropertyChanged(nameof(WindowTitle));
         OnPropertyChanged(nameof(ProfileKindText));
+        OnPropertyChanged(nameof(DescriptionText));
         OnPropertyChanged(nameof(AccountModeOptionsVisibility));
         OnPropertyChanged(nameof(AccountModeSectionVisibility));
         OnPropertyChanged(nameof(CanEditDeviceDetails));
