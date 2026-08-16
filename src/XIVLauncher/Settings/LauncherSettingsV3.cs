@@ -295,6 +295,15 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     }
 
     /// <summary>
+    ///     扫码登录前是否需要指定设备信息
+    /// </summary>
+    public bool RequireDeviceProfileSetupForQRCodeLogin
+    {
+        get;
+        set => Set(ref field, value);
+    }
+
+    /// <summary>
     ///     凭据存储类型
     /// </summary>
     public CredType CredType

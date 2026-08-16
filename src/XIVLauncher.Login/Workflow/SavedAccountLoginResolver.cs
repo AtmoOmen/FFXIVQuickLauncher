@@ -121,6 +121,7 @@ internal sealed class SavedAccountLoginResolver
                 break;
 
             case LoginType.QRCode:
+                username = string.Empty;
                 break;
 
             default:

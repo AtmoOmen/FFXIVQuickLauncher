@@ -216,8 +216,9 @@ internal sealed class LoginFlowHandler
             LoginAreas                           = vm.LoginPage.LoginAreas,
             LoginCancellationTokenSource         = cancellationSource,
             LoginSessionRefreshSink              = dcTravelRuntimeService,
-            Interaction                          = new MainWindowLoginInteraction(vm.Window, vm.LoginPage, dialogProvider),
-            RequireDeviceProfileSetupForNewLogin = App.Settings.RequireDeviceProfileSetupForNewLogin
+            Interaction                              = new MainWindowLoginInteraction(vm.Window, vm.LoginPage, dialogProvider),
+            RequireDeviceProfileSetupForNewLogin     = App.Settings.RequireDeviceProfileSetupForNewLogin,
+            RequireDeviceProfileSetupForQRCodeLogin  = App.Settings.RequireDeviceProfileSetupForQRCodeLogin
         };
 
         LoginWorkflowResult? workflowResult = null;

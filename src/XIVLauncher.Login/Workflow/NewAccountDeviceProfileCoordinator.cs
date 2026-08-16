@@ -12,9 +12,12 @@ internal sealed class NewAccountDeviceProfileCoordinator
 {
     public DeviceProfilePreparation? Prepare(LoginWorkflowRequest request, ResolvedLoginState resolvedLoginState)
     {
-        var requiresNewAccountDeviceProfileSetup   = request.RequireDeviceProfileSetupForNewLogin && resolvedLoginState.SavedAccount       == null;
-        var shouldRequestTemporaryQuickLoginSession = requiresNewAccountDeviceProfileSetup          && resolvedLoginState.RequestedLoginType == LoginType.QRCode;
-        var loginQuickLoginEnabled                 = resolvedLoginState.QuickLoginEnabled || shouldRequestTemporaryQuickLoginSession;
+        var requiresNewAccountDeviceProfileSetup    = request.RequireDeviceProfileSetupForNewLogin && resolvedLoginState.SavedAccount == null;
+        var shouldRequestTemporaryQuickLoginSession = requiresNewAccountDeviceProfileSetup && resolvedLoginState.RequestedLoginType == LoginType.QRCode;
+        var loginQuickLoginEnabled                  = resolvedLoginState.QuickLoginEnabled || shouldRequestTemporaryQuickLoginSession;
+
+        if (resolvedLoginState.RequestedLoginType == LoginType.QRCode && request.RequireDeviceProfileSetupForQRCodeLogin)
+            return PrepareForQRCodeLogin(request, resolvedLoginState, loginQuickLoginEnabled);
 
         if (!requiresNewAccountDeviceProfileSetup || resolvedLoginState.RequestedLoginType == LoginType.QRCode)
         {
@@ -62,6 +65,48 @@ internal sealed class NewAccountDeviceProfileCoordinator
                     accountManager.ResolveDeviceProfile(configuredNewAccount),
                     configuredNewAccount,
                     true,
+                    loginQuickLoginEnabled
+                );
+            }
+
+            default:
+                return null;
+        }
+    }
+
+    private DeviceProfilePreparation? PrepareForQRCodeLogin(LoginWorkflowRequest request, ResolvedLoginState resolvedLoginState, bool loginQuickLoginEnabled)
+    {
+        var pendingNewAccount = CreatePendingNewAccount
+        (
+            resolvedLoginState.Username,
+            resolvedLoginState.Username,
+            resolvedLoginState.AccountType,
+            resolvedLoginState.Area
+        );
+
+        switch (request.Interaction.PromptQRCodeDeviceProfileChoice())
+        {
+            case NewAccountDeviceProfileChoice.UseShared:
+                return new DeviceProfilePreparation
+                (
+                    accountManager.ResolveDeviceProfile(pendingNewAccount),
+                    pendingNewAccount,
+                    false,
+                    loginQuickLoginEnabled
+                );
+
+            case NewAccountDeviceProfileChoice.ConfigurePerAccount:
+            {
+                var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
+
+                if (!request.Interaction.ConfigureTemporaryAccountDeviceProfile(configuredNewAccount, accountManager))
+                    return null;
+
+                return new DeviceProfilePreparation
+                (
+                    accountManager.ResolveDeviceProfile(configuredNewAccount),
+                    configuredNewAccount,
+                    false,
                     loginQuickLoginEnabled
                 );
             }

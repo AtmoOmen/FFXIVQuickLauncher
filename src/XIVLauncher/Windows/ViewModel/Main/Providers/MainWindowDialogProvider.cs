@@ -10,8 +10,14 @@ public sealed class MainWindowDialogProvider
 )
 {
     public MessageBoxResult PromptNewAccountDeviceProfileChoice() =>
+        PromptDeviceProfileChoice("检测到新账号首次登录，需先确认本次使用的设备信息");
+
+    public MessageBoxResult PromptQRCodeDeviceProfileChoice() =>
+        PromptDeviceProfileChoice("扫码登录前需先确认本次使用的设备信息");
+
+    private MessageBoxResult PromptDeviceProfileChoice(string message) =>
         CustomMessageBox.Builder
-                        .NewFrom("检测到新账号首次登录，需先确认本次使用的设备信息")
+                        .NewFrom(message)
                         .WithCaption("设备信息")
                         .WithButtons(MessageBoxButton.YesNo)
                         .WithYesButtonText("使用共享设备信息")

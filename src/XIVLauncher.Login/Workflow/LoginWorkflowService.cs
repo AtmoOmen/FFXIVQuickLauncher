@@ -93,7 +93,7 @@ public sealed class LoginWorkflowService
 
         if (loginResult.State == LoginState.Ok)
         {
-            var existedBefore = accountManager.FindAccount(resolvedLoginState.Username, resolvedLoginState.AccountType) != null;
+            var existedBefore = accountManager.FindAccount(loginResult.OAuthLogin?.InputUserID, resolvedLoginState.AccountType) != null;
 
             var accountToSave = await SaveAccountAsync(request, resolvedLoginState, resolvedDeviceProfile, pendingNewAccount, loginResult, deviceProfileSnapshot);
 
@@ -105,9 +105,10 @@ public sealed class LoginWorkflowService
                 switch (accountToSave.AccountType)
                 {
                     case XIVAccountType.Sdo
-                        when (accountToSave.QuickLoginEnabled && loginResult.OAuthLogin?.QuickLoginSecret is { Length: > 0 } autoLoginSessionKey):
+                        when (accountToSave.QuickLoginEnabled                                        &&
+                              loginResult.OAuthLogin?.InputUserID is { Length: > 0 } refreshUsername &&
+                              loginResult.OAuthLogin?.QuickLoginSecret is { Length: > 0 } autoLoginSessionKey):
                     {
-                        var refreshUsername     = resolvedLoginState.Username;
                         var cachedDeviceProfile = deviceProfileSnapshot;
                         refreshGameSessionIdByQuickLoginFunc = async () =>
                         {

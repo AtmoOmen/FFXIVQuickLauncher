@@ -555,12 +555,27 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="新账号设备信息" />
+                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="新账号登录要求设备信息" />
                                         <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="首次登录新账号前要求选择其使用的设备信息" />
+                                                   Text="首次登录新账号前要求指定其使用的设备信息" />
                                     </StackPanel>
                                     <ToggleButton Grid.Column="1" VerticalAlignment="Center"
                                                   IsChecked="{Binding RequireDeviceProfileSetupForNewAccountLogin}"
+                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                </Grid>
+                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="二维码扫描要求设备信息" />
+                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                   Text="扫码登录前要求指定本次使用的设备信息" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="1" VerticalAlignment="Center"
+                                                  IsChecked="{Binding RequireDeviceProfileSetupForQRCodeLogin}"
                                                   Style="{StaticResource MaterialDesignSwitchToggleButton}" />
                                 </Grid>
                                 <Separator Style="{StaticResource SettingSeparatorStyle}" />

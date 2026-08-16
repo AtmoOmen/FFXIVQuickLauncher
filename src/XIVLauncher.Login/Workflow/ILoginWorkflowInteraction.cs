@@ -17,6 +17,8 @@ public interface ILoginWorkflowInteraction
 
     NewAccountDeviceProfileChoice PromptNewAccountDeviceProfileChoice();
 
+    NewAccountDeviceProfileChoice PromptQRCodeDeviceProfileChoice();
+
     bool ConfigureTemporaryAccountDeviceProfile(XIVAccount account, AccountManager accountManager);
 
     void ShowError(string message);

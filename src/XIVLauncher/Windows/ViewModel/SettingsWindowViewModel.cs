@@ -51,6 +51,9 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
     [ObservableProperty]
     public partial bool RequireDeviceProfileSetupForNewAccountLogin { get; set; }
 
+    [ObservableProperty]
+    public partial bool RequireDeviceProfileSetupForQRCodeLogin { get; set; }
+
     public decimal? DalamudInjectionDelayMs
     {
         get;
@@ -238,6 +241,7 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
         ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherWhenGameExit;
         KeepPatches                                 = App.Settings.KeepPatches;
         RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewLogin;
+        RequireDeviceProfileSetupForQRCodeLogin     = App.Settings.RequireDeviceProfileSetupForQRCodeLogin;
         DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMS;
         ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
         EnableHooks                                 = App.Settings.DalamudEnabled;
@@ -311,19 +315,20 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
         App.Settings.Update
         (settings =>
             {
-                settings.GamePath                             = gamePath;
-                settings.PatchPath                            = patchPath;
-                settings.CompanionAppList                     = companionAppEntries;
-                settings.AskBeforePatchInstall                = AskBeforePatching;
-                settings.ExitLauncherWhenGameExit             = ExitLauncherAfterGameExit;
-                settings.KeepPatches                          = KeepPatches;
-                settings.RequireDeviceProfileSetupForNewLogin = RequireDeviceProfileSetupForNewAccountLogin;
-                settings.DalamudEnabled                       = EnableHooks;
-                settings.DalamudInjectionDelayMS              = DalamudInjectionDelayMs ?? 0;
-                settings.ManualInjectDelayMs                  = ManualInjectDelayMs     ?? 0;
-                settings.DalamudLoadMethod                    = DalamudLoadMethod.EntryPoint;
-                settings.AdditionalLaunchArgs                 = LaunchArgs;
-                settings.DPIAwareness                         = dpiAwareness;
+                settings.GamePath                                = gamePath;
+                settings.PatchPath                               = patchPath;
+                settings.CompanionAppList                        = companionAppEntries;
+                settings.AskBeforePatchInstall                   = AskBeforePatching;
+                settings.ExitLauncherWhenGameExit                = ExitLauncherAfterGameExit;
+                settings.KeepPatches                             = KeepPatches;
+                settings.RequireDeviceProfileSetupForNewLogin    = RequireDeviceProfileSetupForNewAccountLogin;
+                settings.RequireDeviceProfileSetupForQRCodeLogin = RequireDeviceProfileSetupForQRCodeLogin;
+                settings.DalamudEnabled                          = EnableHooks;
+                settings.DalamudInjectionDelayMS                 = DalamudInjectionDelayMs ?? 0;
+                settings.ManualInjectDelayMs                     = ManualInjectDelayMs     ?? 0;
+                settings.DalamudLoadMethod                       = DalamudLoadMethod.EntryPoint;
+                settings.AdditionalLaunchArgs                    = LaunchArgs;
+                settings.DPIAwareness                            = dpiAwareness;
                 settings.SpeedLimitBytes                      = speedLimitBytes;
                 settings.WeGamePath                           = string.IsNullOrWhiteSpace(WeGamePath) ? null : new DirectoryInfo(WeGamePath);
                 settings.CredType                             = credTypeApplyResult.AppliedCredType;

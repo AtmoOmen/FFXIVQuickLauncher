@@ -53,7 +53,13 @@ public sealed class MainWindowLoginInteraction
         );
 
     public NewAccountDeviceProfileChoice PromptNewAccountDeviceProfileChoice() =>
-        dialogProvider.PromptNewAccountDeviceProfileChoice() switch
+        ToDeviceProfileChoice(dialogProvider.PromptNewAccountDeviceProfileChoice());
+
+    public NewAccountDeviceProfileChoice PromptQRCodeDeviceProfileChoice() =>
+        ToDeviceProfileChoice(dialogProvider.PromptQRCodeDeviceProfileChoice());
+
+    private static NewAccountDeviceProfileChoice ToDeviceProfileChoice(MessageBoxResult result) =>
+        result switch
         {
             MessageBoxResult.Yes => NewAccountDeviceProfileChoice.UseShared,
             MessageBoxResult.No  => NewAccountDeviceProfileChoice.ConfigurePerAccount,
