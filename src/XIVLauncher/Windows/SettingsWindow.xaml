@@ -658,7 +658,7 @@
                                     <StackPanel Margin="0,0,24,0">
                                         <TextBlock Style="{StaticResource SettingTitleStyle}" Text="游戏内超域传送" />
                                         <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="配合 DCTravelerX 插件提供超域传送；WeGame 渠道和手动注入模式暂不适用" />
+                                                   Text="配合 DCTravelerX 插件提供游戏内超域传送功能，不适用于手动注入模式" />
                                     </StackPanel>
                                     <ToggleButton Grid.Column="1" VerticalAlignment="Center"
                                                   IsChecked="{Binding EnableDcTravel}"
