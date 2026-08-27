@@ -196,7 +196,7 @@ public sealed partial class InjectPageViewModel : ObservableObject
                         return;
                     }
 
-                    if (!gameLaunchService.InjectGameAndCompanionApp(targetProcess.ProcessID))
+                    if (!gameLaunchService.InjectGame(targetProcess.ProcessID))
                         return;
 
                     gameLaunchService.StartCompanionAppsUntilGameExit(targetProcess.ProcessID);

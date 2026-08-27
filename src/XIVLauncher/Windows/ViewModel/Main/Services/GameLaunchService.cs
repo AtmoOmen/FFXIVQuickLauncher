@@ -7,7 +7,6 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Http;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
-using XIVLauncher.Login.Models;
 using XIVLauncher.Support;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Services;
@@ -34,7 +33,7 @@ public sealed class GameLaunchService
             App.Settings.CompanionAppList ??= [];
 
             var companionApps = App.Settings.CompanionAppList
-                                   .Where(entry => entry.IsEnabled && entry.CompanionApp != null)
+                                   .Where(entry => entry is { IsEnabled: true, CompanionApp: not null })
                                    .Select(entry => entry.CompanionApp)
                                    .ToList();
 
@@ -94,7 +93,7 @@ public sealed class GameLaunchService
         );
     }
 
-    public bool InjectGameAndCompanionApp(int gamePid, bool noThird = false, bool noPlugins = false)
+    public bool InjectGame(int gamePid, bool noThird = false, bool noPlugins = false)
     {
         using var gameProcess = Process.GetProcessById(gamePid);
         if (gameProcess.HasExited)
@@ -110,13 +109,13 @@ public sealed class GameLaunchService
             return false;
         }
 
-        var accountType = App.AccountManager.CurrentAccount?.AccountType
-                          ?? App.Settings.SelectedLoginType.ToAccountType(XIVAccountType.Sdo);
-        var gamePath = App.Settings.GetGamePath(accountType);
+        var gameExePath = gameProcess.MainModule?.FileName;
+        var gameExeDir  = gameExePath == null ? null : Path.GetDirectoryName(gameExePath);
+        var gamePath    = gameExeDir == null ? null : new DirectoryInfo(gameExeDir).Parent;
 
         if (gamePath?.Exists != true)
         {
-            CustomMessageBox.Show("当前账号渠道的游戏目录无效, 请在设置中重新选择", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: window);
+            CustomMessageBox.Show("无法解析游戏目录, 注入失败", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: window);
             return false;
         }
 
