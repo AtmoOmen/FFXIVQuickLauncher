@@ -66,7 +66,10 @@ internal partial class CustomMessageBoxViewModel : ObservableObject
 
     public MessageBoxResult CancelResult { get; private set; }
 
-    public void ApplyBuilder(CustomMessageBox.Builder builder)
+    public void ApplyBuilder
+    (
+        CustomMessageBox.Builder builder
+    )
     {
         Buttons       = builder.Buttons;
         DefaultResult = builder.DefaultResult;
@@ -75,13 +78,27 @@ internal partial class CustomMessageBoxViewModel : ObservableObject
         Description   = builder.Description      ?? string.Empty;
         InputText     = builder.InputTextBoxText ?? string.Empty;
 
-        DescriptionVisibility         = string.IsNullOrWhiteSpace(builder.Description) ? Visibility.Collapsed : Visibility.Visible;
-        InputVisibility               = builder.ShowInputTextBox ? Visibility.Visible : Visibility.Collapsed;
-        OfficialLauncherVisibility    = builder.ShowOfficialLauncher ? Visibility.Visible : Visibility.Collapsed;
-        DiscordVisibility             = builder.ShowDiscordLink ? Visibility.Visible : Visibility.Collapsed;
-        IntegrityReportVisibility     = builder.ShowIntegrityReportLinks ? Visibility.Visible : Visibility.Collapsed;
-        NewGitHubIssueVisibility      = builder.ShowNewGitHubIssue ? Visibility.Visible : Visibility.Collapsed;
-        PackTroubleshootingVisibility = builder.ShowTroubleshootingPackButton ? Visibility.Visible : Visibility.Collapsed;
+        DescriptionVisibility = string.IsNullOrWhiteSpace(builder.Description) ?
+                                    Visibility.Collapsed :
+                                    Visibility.Visible;
+        InputVisibility = builder.ShowInputTextBox ?
+                              Visibility.Visible :
+                              Visibility.Collapsed;
+        OfficialLauncherVisibility = builder.ShowOfficialLauncher ?
+                                         Visibility.Visible :
+                                         Visibility.Collapsed;
+        DiscordVisibility = builder.ShowDiscordLink ?
+                                Visibility.Visible :
+                                Visibility.Collapsed;
+        IntegrityReportVisibility = builder.ShowIntegrityReportLinks ?
+                                        Visibility.Visible :
+                                        Visibility.Collapsed;
+        NewGitHubIssueVisibility = builder.ShowNewGitHubIssue ?
+                                       Visibility.Visible :
+                                       Visibility.Collapsed;
+        PackTroubleshootingVisibility = builder.ShowTroubleshootingPackButton ?
+                                            Visibility.Visible :
+                                            Visibility.Collapsed;
 
         switch (builder.Image)
         {

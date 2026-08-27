@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Util;
+using XIVLauncher.Windows.ViewModel.Main.Flows;
 using XIVLauncher.Windows.ViewModel.Main.Services;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
@@ -12,7 +13,8 @@ namespace XIVLauncher.Windows.ViewModel.Main;
 public sealed partial class InjectPageViewModel : ObservableObject
 {
     private readonly Window                  window;
-    private readonly GameLaunchService       gameLaunchService;
+    private readonly GameInjectionFlow       gameInjectionFlow;
+    private readonly CompanionAppService     companionAppService;
     private readonly SettingsWindowViewModel settings;
     private readonly Func<bool>              isLoggingInFunc;
     private readonly Action<string>          showLoadingDialogAction;
@@ -29,7 +31,8 @@ public sealed partial class InjectPageViewModel : ObservableObject
     public InjectPageViewModel
     (
         Window                  window,
-        GameLaunchService       gameLaunchService,
+        GameInjectionFlow       gameInjectionFlow,
+        CompanionAppService     companionAppService,
         SettingsWindowViewModel settings,
         Func<bool>              isLoggingInFunc,
         Action<string>          showLoadingDialogAction,
@@ -39,7 +42,8 @@ public sealed partial class InjectPageViewModel : ObservableObject
     )
     {
         this.window                         = window;
-        this.gameLaunchService              = gameLaunchService;
+        this.gameInjectionFlow              = gameInjectionFlow;
+        this.companionAppService            = companionAppService;
         this.settings                       = settings;
         this.isLoggingInFunc                = isLoggingInFunc;
         this.showLoadingDialogAction        = showLoadingDialogAction;
@@ -72,7 +76,10 @@ public sealed partial class InjectPageViewModel : ObservableObject
     [ObservableProperty]
     public partial bool AutoInjectEnabled { get; set; }
 
-    partial void OnAutoInjectEnabledChanged(bool value)
+    partial void OnAutoInjectEnabledChanged
+    (
+        bool value
+    )
     {
         App.Settings.ManualInjectAutoInjectEnabled = value;
 
@@ -88,7 +95,10 @@ public sealed partial class InjectPageViewModel : ObservableObject
     [ObservableProperty]
     public partial decimal? ManualInjectDelayMs { get; set; }
 
-    partial void OnManualInjectDelayMsChanged(decimal? value)
+    partial void OnManualInjectDelayMsChanged
+    (
+        decimal? value
+    )
     {
         App.Settings.ManualInjectDelayMs = value ?? 0;
         settings.ManualInjectDelayMs     = value;
@@ -99,13 +109,18 @@ public sealed partial class InjectPageViewModel : ObservableObject
 
     public bool CanOperateOnSelectedProcess => SelectedProcess is { HasInjected: false };
 
-    public string ProcessSelectionHint => HasAvailableProcesses ? "选择要注入的进程" : "未检测到游戏进程";
+    public string ProcessSelectionHint => HasAvailableProcesses ?
+                                              "选择要注入的进程" :
+                                              "未检测到游戏进程";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(InjectGameCommand))]
     public partial bool IsInjecting { get; private set; }
 
-    partial void OnIsInjectingChanged(bool value) =>
+    partial void OnIsInjectingChanged
+    (
+        bool value
+    ) =>
         SyncAutoInjectState();
 
     public void ReloadSettings()
@@ -114,7 +129,10 @@ public sealed partial class InjectPageViewModel : ObservableObject
         ManualInjectDelayMs = App.Settings.ManualInjectDelayMs;
     }
 
-    public void SetActive(bool isActive)
+    public void SetActive
+    (
+        bool isActive
+    )
     {
         if (isActive)
         {
@@ -125,7 +143,10 @@ public sealed partial class InjectPageViewModel : ObservableObject
         StopRefreshFFXIVProcess(true);
     }
 
-    public void StopRefreshing(bool clearCollection) =>
+    public void StopRefreshing
+    (
+        bool clearCollection
+    ) =>
         StopRefreshFFXIVProcess(clearCollection);
 
     public void RefreshCommandStates()
@@ -159,7 +180,11 @@ public sealed partial class InjectPageViewModel : ObservableObject
     private bool CanReturnToLoginPage() =>
         !isLoggingInFunc();
 
-    private void StartInject(FFXIVProcess? targetProcess, bool isAutoInjection)
+    private void StartInject
+    (
+        FFXIVProcess? targetProcess,
+        bool          isAutoInjection
+    )
     {
         if (!window.Dispatcher.CheckAccess())
         {
@@ -196,10 +221,10 @@ public sealed partial class InjectPageViewModel : ObservableObject
                         return;
                     }
 
-                    if (!gameLaunchService.InjectGame(targetProcess.ProcessID))
+                    if (!gameInjectionFlow.InjectGame(targetProcess.ProcessID))
                         return;
 
-                    gameLaunchService.StartCompanionAppsUntilGameExit(targetProcess.ProcessID);
+                    companionAppService.StartCompanionAppsUntilGameExit(targetProcess.ProcessID);
 
                     window.Dispatcher.Invoke
                     (() =>
@@ -377,9 +402,9 @@ public sealed partial class InjectPageViewModel : ObservableObject
                                 foreach (var process in incomingProcessMap.Values)
                                     FFXIVProcesses.Add(process);
 
-                                var nextSelectedProcess = selectedProcessId.HasValue
-                                                              ? FFXIVProcesses.FirstOrDefault(p => p.ProcessID == selectedProcessId.Value)
-                                                              : SelectedProcess;
+                                var nextSelectedProcess = selectedProcessId.HasValue ?
+                                                              FFXIVProcesses.FirstOrDefault(p => p.ProcessID == selectedProcessId.Value) :
+                                                              SelectedProcess;
 
                                 SelectedProcess = nextSelectedProcess ?? FFXIVProcesses.FirstOrDefault();
                                 OnPropertyChanged(nameof(CanOperateOnSelectedProcess));
@@ -401,7 +426,10 @@ public sealed partial class InjectPageViewModel : ObservableObject
         );
     }
 
-    private void StopRefreshFFXIVProcess(bool clearCollection)
+    private void StopRefreshFFXIVProcess
+    (
+        bool clearCollection
+    )
     {
         CancelPendingAutoInject();
 

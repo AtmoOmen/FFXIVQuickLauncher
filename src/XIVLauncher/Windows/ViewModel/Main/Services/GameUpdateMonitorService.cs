@@ -77,7 +77,10 @@ internal sealed class GameUpdateMonitorService
         }
     }
 
-    public void CompleteUpdate(bool succeeded)
+    public void CompleteUpdate
+    (
+        bool succeeded
+    )
     {
         Interlocked.Increment(ref generation);
         Interlocked.Exchange(ref isUpdateInProgress, 0);
@@ -91,7 +94,10 @@ internal sealed class GameUpdateMonitorService
         QueueCheck();
     }
 
-    private async Task ProcessChecksAsync(TaskCompletionSource completionSource)
+    private async Task ProcessChecksAsync
+    (
+        TaskCompletionSource completionSource
+    )
     {
         try
         {
@@ -103,9 +109,8 @@ internal sealed class GameUpdateMonitorService
                 if (Interlocked.Exchange(ref pendingCheck, 0) == 0)
                     continue;
 
-                var accountType = vm.CurrentGameLaunchContext?.AccountType
-                                  ?? vm.AccountManager.CurrentAccount?.AccountType
-                                  ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(XIVAccountType.Sdo);
+                var accountType = vm.CurrentGameLaunchContext?.AccountType ??
+                                  vm.AccountManager.CurrentAccount?.AccountType ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(XIVAccountType.Sdo);
                 var gamePath = App.Settings.GetGamePath(accountType);
                 if (gamePath?.Exists != true)
                     continue;
@@ -141,9 +146,9 @@ internal sealed class GameUpdateMonitorService
             Interlocked.Exchange(ref isChecking, 0);
             completionSource.TrySetResult();
 
-            if (Volatile.Read(ref pendingCheck) != 0 &&
+            if (Volatile.Read(ref pendingCheck)       != 0 &&
                 Volatile.Read(ref isUpdateInProgress) == 0 &&
-                Volatile.Read(ref isStarted) != 0)
+                Volatile.Read(ref isStarted)          != 0)
                 QueueCheck();
         }
     }
@@ -162,7 +167,7 @@ internal sealed class GameUpdateMonitorService
 
                 var shouldCheck = dispatcher.Invoke
                 (() =>
-                    vm.Window.IsVisible && vm.CurrentGameLaunchContext != null
+                     vm.Window.IsVisible && vm.CurrentGameLaunchContext != null
                 );
 
                 if (shouldCheck)
@@ -179,7 +184,10 @@ internal sealed class GameUpdateMonitorService
         }
     }
 
-    private void ApplyAvailability(bool needsUpdate)
+    private void ApplyAvailability
+    (
+        bool needsUpdate
+    )
     {
         var dispatcher = vm.Window.Dispatcher;
         if (dispatcher.HasShutdownStarted)

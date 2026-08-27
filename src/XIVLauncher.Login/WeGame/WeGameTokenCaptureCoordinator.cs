@@ -7,7 +7,7 @@ public sealed class WeGameTokenCaptureCoordinator : IWeGameTokenCaptureCoordinat
 {
     public async Task<WeGameCaptureResult?> CaptureAsync
     (
-        ILoginWorkflowInteraction interaction,
+        ILoginWorkflowUI interaction,
         CancellationTokenSource   loginCancellationTokenSource
     )
     {
@@ -43,7 +43,7 @@ public sealed class WeGameTokenCaptureCoordinator : IWeGameTokenCaptureCoordinat
         }
     }
 
-    private static Task<string?> EnsureWeGamePathAsync(ILoginWorkflowInteraction interaction)
+    private static Task<string?> EnsureWeGamePathAsync(ILoginWorkflowUI interaction)
     {
         var currentPath = interaction.GetSavedWeGamePath();
         if (WeGamePathValidator.IsValidGameRoot(currentPath))

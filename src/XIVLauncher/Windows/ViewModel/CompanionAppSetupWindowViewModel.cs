@@ -17,7 +17,10 @@ public sealed partial class CompanionAppSetupWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanStopWhenGameExits))]
     public partial bool RunAsAdmin { get; set; }
 
-    partial void OnRunAsAdminChanged(bool value)
+    partial void OnRunAsAdminChanged
+    (
+        bool value
+    )
     {
         if (value)
             StopWhenGameExits = false;
@@ -29,7 +32,10 @@ public sealed partial class CompanionAppSetupWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanStopWhenGameExits))]
     public partial CompanionAppLaunchTrigger LaunchTrigger { get; set; } = CompanionAppLaunchTrigger.GameLaunch;
 
-    partial void OnLaunchTriggerChanged(CompanionAppLaunchTrigger value)
+    partial void OnLaunchTriggerChanged
+    (
+        CompanionAppLaunchTrigger value
+    )
     {
         if (value != CompanionAppLaunchTrigger.GameLaunch)
             StopWhenGameExits = false;
@@ -58,7 +64,10 @@ public sealed partial class CompanionAppSetupWindowViewModel : ObservableObject
     [ObservableProperty]
     public partial bool StopWhenGameExits { get; set; }
 
-    public void Load(CompanionAppConfiguration? companionApp)
+    public void Load
+    (
+        CompanionAppConfiguration? companionApp
+    )
     {
         if (companionApp == null)
             return;

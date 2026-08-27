@@ -69,7 +69,10 @@ public sealed partial class DCTravelViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(TravelOrderCommand))]
     public partial DCTravelArea? SelectedSourceArea { get; set; }
 
-    partial void OnSelectedSourceAreaChanged(DCTravelArea? value)
+    partial void OnSelectedSourceAreaChanged
+    (
+        DCTravelArea? value
+    )
     {
         charactersLoadCts?.Cancel();
         charactersLoadCts = new CancellationTokenSource();
@@ -96,7 +99,10 @@ public sealed partial class DCTravelViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(TravelOrderCommand))]
     public partial DCTravelCharacter? SelectedCharacter { get; set; }
 
-    partial void OnSelectedCharacterChanged(DCTravelCharacter? value)
+    partial void OnSelectedCharacterChanged
+    (
+        DCTravelCharacter? value
+    )
     {
         SelectedTargetArea  = null;
         SelectedTargetGroup = null;
@@ -116,10 +122,14 @@ public sealed partial class DCTravelViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanTravelOrder))]
     public partial DCTravelArea? SelectedTargetArea { get; set; }
 
-    partial void OnSelectedTargetAreaChanged(DCTravelArea? value)
+    partial void OnSelectedTargetAreaChanged
+    (
+        DCTravelArea? value
+    )
     {
         SelectedTargetGroup = null;
         TargetGroups.Clear();
+
         if (value != null)
         {
             foreach (var group in value.GroupList)
@@ -173,7 +183,9 @@ public sealed partial class DCTravelViewModel : ObservableObject
     public bool IsTargetAreaVisible  => SelectedCharacter  != null;
     public bool IsTargetGroupVisible => SelectedTargetArea != null;
 
-    public string CharacterHint => IsLoading && SelectedSourceArea != null ? "(获取角色信息中)" : "选择角色";
+    public string CharacterHint => IsLoading && SelectedSourceArea != null ?
+                                       "(获取角色信息中)" :
+                                       "选择角色";
 
     public bool CanTravelOrder =>
         SelectedSourceArea != null && SelectedCharacter != null && SelectedTargetArea != null && SelectedTargetGroup != null && !IsLoading && !IsUnderMaintenance;
@@ -187,7 +199,10 @@ public sealed partial class DCTravelViewModel : ObservableObject
     [ObservableProperty]
     public partial DCTravelArea? ReturnSelectedSourceArea { get; set; }
 
-    partial void OnReturnSelectedSourceAreaChanged(DCTravelArea? value)
+    partial void OnReturnSelectedSourceAreaChanged
+    (
+        DCTravelArea? value
+    )
     {
         ReturnSelectedCurrentGroup = null;
         ReturnCurrentGroups.Clear();
@@ -275,7 +290,10 @@ public sealed partial class DCTravelViewModel : ObservableObject
     private void CancelReturn() =>
         requestOpenHistoryAction();
 
-    public async Task InitializeAsync(string? currentAreaName = null)
+    public async Task InitializeAsync
+    (
+        string? currentAreaName = null
+    )
     {
         SelectedSourceArea = null;
         SourceAreas.Clear();
@@ -350,7 +368,11 @@ public sealed partial class DCTravelViewModel : ObservableObject
         }
     }
 
-    private async Task<bool> PollOrderStatusAsync(string orderId, CancellationToken ct)
+    private async Task<bool> PollOrderStatusAsync
+    (
+        string            orderId,
+        CancellationToken ct
+    )
     {
         var client              = getDcTravelClientFunc();
         var confirmationSent    = false;
@@ -419,7 +441,10 @@ public sealed partial class DCTravelViewModel : ObservableObject
         return false;
     }
 
-    private void UpdateCurrentArea(string areaName) =>
+    private void UpdateCurrentArea
+    (
+        string areaName
+    ) =>
         setCurrentAreaAction(areaName);
 
     private void CancelPollAndReturn()
@@ -452,7 +477,11 @@ public sealed partial class DCTravelViewModel : ObservableObject
         }
     }
 
-    private async Task LoadCharactersAsync(DCTravelArea sourceArea, CancellationToken ct)
+    private async Task LoadCharactersAsync
+    (
+        DCTravelArea      sourceArea,
+        CancellationToken ct
+    )
     {
         IsLoading = true;
 
@@ -507,7 +536,11 @@ public sealed partial class DCTravelViewModel : ObservableObject
         }
     }
 
-    private async Task LoadTargetAreasAsync(DCTravelArea sourceArea, DCTravelCharacter character)
+    private async Task LoadTargetAreasAsync
+    (
+        DCTravelArea      sourceArea,
+        DCTravelCharacter character
+    )
     {
         if (IsLoading)
             return;

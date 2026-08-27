@@ -33,6 +33,8 @@ public partial class AdvancedSettingsViewModel : ObservableObject
             }
         );
 
-        LogInit.LevelSwitch.MinimumLevel = EnableVerboseLog ? LogEventLevel.Verbose : LogInit.GetDefaultLevel();
+        LogInit.LevelSwitch.MinimumLevel = EnableVerboseLog ?
+                                               LogEventLevel.Verbose :
+                                               LogInit.GetDefaultLevel();
     }
 }

@@ -26,14 +26,13 @@ public sealed class LoginRequest
         DeviceProfileSnapshot                  deviceProfile,
         ILoginSessionRefreshSink?              loginSessionRefreshSink,
         CancellationTokenSource?               loginCancellationTokenSource,
-        Action<byte[]>?                        showQrCode,
+        Action<byte[]>?                        showQRCode,
         Action<string>?                        showVerificationCode,
         Action<string>?                        showLoginMessage,
         Func<string, string, string, string?>? promptTextInput,
         Func<LoginCaptchaChallenge, string?>?  promptCaptchaInput
-    )
-    {
-        return new LoginRequest
+    ) =>
+        new()
         {
             Account                      = account,
             Secret                       = secret,
@@ -41,11 +40,10 @@ public sealed class LoginRequest
             DeviceProfile                = deviceProfile,
             LoginSessionRefreshSink      = loginSessionRefreshSink,
             LoginCancellationTokenSource = loginCancellationTokenSource,
-            ShowQRCode                   = showQrCode,
+            ShowQRCode                   = showQRCode,
             ShowVerificationCode         = showVerificationCode,
             ShowLoginMessage             = showLoginMessage,
             PromptTextInput              = promptTextInput,
             PromptCaptchaInput           = promptCaptchaInput
         };
-    }
 }

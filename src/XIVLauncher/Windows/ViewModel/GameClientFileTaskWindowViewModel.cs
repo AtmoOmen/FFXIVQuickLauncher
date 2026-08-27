@@ -87,7 +87,10 @@ public sealed partial class GameClientFileTaskWindowViewModel : ObservableObject
 
     private bool CanCloseButton() => IsCloseButtonEnabled;
 
-    public void ApplySnapshot(GameClientFileTaskSnapshot snapshot)
+    public void ApplySnapshot
+    (
+        GameClientFileTaskSnapshot snapshot
+    )
     {
         Title                    = snapshot.Title;
         PhaseText                = snapshot.PhaseText;

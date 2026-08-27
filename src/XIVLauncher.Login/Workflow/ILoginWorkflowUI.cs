@@ -3,9 +3,9 @@ using XIVLauncher.Login.Models;
 
 namespace XIVLauncher.Login.Workflow;
 
-public interface ILoginWorkflowInteraction
+public interface ILoginWorkflowUI
 {
-    void ShowQrCode(byte[] qrBytes);
+    void ShowQRCode(byte[] qrBytes);
 
     void ShowVerificationCode(string code);
 

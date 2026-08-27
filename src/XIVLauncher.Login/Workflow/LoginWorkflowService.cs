@@ -187,7 +187,7 @@ public sealed class LoginWorkflowService
                 qrBytes =>
                 {
                     if (requestLoginType == LoginType.QRCode)
-                        request.Interaction.ShowQrCode(qrBytes);
+                        request.Interaction.ShowQRCode(qrBytes);
                 },
                 code =>
                 {

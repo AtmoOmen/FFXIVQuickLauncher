@@ -30,33 +30,43 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
     public ObservableCollection<DeviceProfilePreset> Presets { get; } = [];
 
     public string MacHash =>
-        TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _)
-            ? FakeMachineInfo.GetMacHash(normalizedValue)
-            : string.Empty;
+        TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _) ?
+            FakeMachineInfo.GetMacHash(normalizedValue) :
+            string.Empty;
 
     public string CasCid =>
-        TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _)
-            ? FakeMachineInfo.GetCasCid(normalizedValue)
-            : string.Empty;
+        TryNormalizeMacAddress(MacAddress, out var normalizedValue, out _) ?
+            FakeMachineInfo.GetCasCid(normalizedValue) :
+            string.Empty;
 
     public bool IsSharedMode { get; private set; }
 
     public bool IsAccountMode => !IsSharedMode;
 
     public string WindowTitle =>
-        IsSharedMode ? "共享设备信息设置" : "账号设备信息设置";
+        IsSharedMode ?
+            "共享设备信息设置" :
+            "账号设备信息设置";
 
     public string ProfileKindText =>
-        IsSharedMode ? "共享设备信息" : "账号设备信息";
+        IsSharedMode ?
+            "共享设备信息" :
+            "账号设备信息";
 
     public string DescriptionText =>
-        IsSharedMode ? "配置所有账号共用的设备信息" : "配置该账号独立使用的设备信息";
+        IsSharedMode ?
+            "配置所有账号共用的设备信息" :
+            "配置该账号独立使用的设备信息";
 
     public Visibility AccountModeOptionsVisibility =>
-        IsSharedMode ? Visibility.Collapsed : Visibility.Visible;
+        IsSharedMode ?
+            Visibility.Collapsed :
+            Visibility.Visible;
 
     public Visibility AccountModeSectionVisibility =>
-        IsSharedMode ? Visibility.Collapsed : Visibility.Visible;
+        IsSharedMode ?
+            Visibility.Collapsed :
+            Visibility.Visible;
 
     public bool CanEditRotationDays => DynamicEnabled && PeriodicRefreshEnabled;
 
@@ -112,7 +122,10 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
     [ObservableProperty]
     public partial string DeviceId { get; set; } = string.Empty;
 
-    partial void OnDeviceIdChanged(string value) =>
+    partial void OnDeviceIdChanged
+    (
+        string value
+    ) =>
         OnSnapshotFieldsChanged();
 
     [ObservableProperty]
@@ -120,16 +133,25 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
     [NotifyPropertyChangedFor(nameof(CasCid))]
     public partial string MacAddress { get; set; } = string.Empty;
 
-    partial void OnMacAddressChanged(string value) =>
+    partial void OnMacAddressChanged
+    (
+        string value
+    ) =>
         OnSnapshotFieldsChanged();
 
     [ObservableProperty]
     public partial string HostName { get; set; } = string.Empty;
 
-    partial void OnHostNameChanged(string value) =>
+    partial void OnHostNameChanged
+    (
+        string value
+    ) =>
         OnSnapshotFieldsChanged();
 
-    public void Load(XIVAccount targetAccount)
+    public void Load
+    (
+        XIVAccount targetAccount
+    )
     {
         account                        = accountManager.Accounts.First(existing => existing.ID == targetAccount.ID);
         persistChangesToAccountManager = true;
@@ -140,15 +162,15 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         var sharedPreset = GetRequiredSharedPreset();
         savedIndependentPreset = accountManager.FindDeviceProfilePreset(account.DeviceProfilePresetId);
 
-        var currentPreset = account.DeviceProfileDynamicEnabled
-                                ? savedIndependentPreset ?? sharedPreset
-                                : sharedPreset;
+        var currentPreset = account.DeviceProfileDynamicEnabled ?
+                                savedIndependentPreset ?? sharedPreset :
+                                sharedPreset;
 
-        GeneratedUtcTicks = account.DeviceProfileDynamicEnabled
-                                ? account.DeviceProfileLastGeneratedUtcTicks > 0
-                                      ? account.DeviceProfileLastGeneratedUtcTicks
-                                      : currentPreset.GeneratedUtcTicks
-                                : sharedPreset.GeneratedUtcTicks;
+        GeneratedUtcTicks = account.DeviceProfileDynamicEnabled ?
+                                account.DeviceProfileLastGeneratedUtcTicks > 0 ?
+                                    account.DeviceProfileLastGeneratedUtcTicks :
+                                    currentPreset.GeneratedUtcTicks :
+                                sharedPreset.GeneratedUtcTicks;
         snapshotTouched = false;
 
         AccountDisplayName     = account.DisplayName;
@@ -159,7 +181,10 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         ApplyPreset(currentPreset);
     }
 
-    public void LoadTemporary(XIVAccount targetAccount)
+    public void LoadTemporary
+    (
+        XIVAccount targetAccount
+    )
     {
         account                        = targetAccount;
         persistChangesToAccountManager = false;
@@ -170,15 +195,15 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         var sharedPreset = GetRequiredSharedPreset();
         savedIndependentPreset = accountManager.FindDeviceProfilePreset(account.DeviceProfilePresetId);
 
-        var currentPreset = account.DeviceProfileDynamicEnabled
-                                ? savedIndependentPreset ?? sharedPreset
-                                : sharedPreset;
+        var currentPreset = account.DeviceProfileDynamicEnabled ?
+                                savedIndependentPreset ?? sharedPreset :
+                                sharedPreset;
 
-        GeneratedUtcTicks = account.DeviceProfileDynamicEnabled
-                                ? account.DeviceProfileLastGeneratedUtcTicks > 0
-                                      ? account.DeviceProfileLastGeneratedUtcTicks
-                                      : currentPreset.GeneratedUtcTicks
-                                : sharedPreset.GeneratedUtcTicks;
+        GeneratedUtcTicks = account.DeviceProfileDynamicEnabled ?
+                                account.DeviceProfileLastGeneratedUtcTicks > 0 ?
+                                    account.DeviceProfileLastGeneratedUtcTicks :
+                                    currentPreset.GeneratedUtcTicks :
+                                sharedPreset.GeneratedUtcTicks;
         snapshotTouched = false;
 
         AccountDisplayName     = account.DisplayName;
@@ -250,9 +275,9 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         {
             if (snapshotTouched)
             {
-                var preservedPreset = persistChangesToAccountManager
-                                          ? accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark)
-                                          : accountManager.ApplyDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
+                var preservedPreset = persistChangesToAccountManager ?
+                                          accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark) :
+                                          accountManager.ApplyDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
                 savedIndependentPreset = preservedPreset;
             }
 
@@ -260,17 +285,17 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
             return;
         }
 
-        var assignedPreset = shouldRestoreSavedPreset
-                                 ? SaveAccountDeviceProfileSelection
+        var assignedPreset = shouldRestoreSavedPreset ?
+                                 SaveAccountDeviceProfileSelection
                                  (
                                      targetAccount,
                                      savedIndependentPreset!.ToSnapshot(),
-                                     targetAccount.DeviceProfileLastGeneratedUtcTicks > 0
-                                         ? targetAccount.DeviceProfileLastGeneratedUtcTicks
-                                         : savedIndependentPreset.GeneratedUtcTicks,
+                                     targetAccount.DeviceProfileLastGeneratedUtcTicks > 0 ?
+                                         targetAccount.DeviceProfileLastGeneratedUtcTicks :
+                                         savedIndependentPreset.GeneratedUtcTicks,
                                      PresetRemark
-                                 )
-                                 : SaveAccountDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
+                                 ) :
+                                 SaveAccountDeviceProfileSelection(targetAccount, snapshot, GeneratedUtcTicks, PresetRemark);
 
         savedIndependentPreset = assignedPreset;
         GeneratedUtcTicks      = targetAccount.DeviceProfileLastGeneratedUtcTicks;
@@ -349,9 +374,11 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
             }
         );
 
-        GeneratedUtcTicks = generatedUtcTicks > 0 ? generatedUtcTicks : DateTimeOffset.UtcNow.UtcTicks;
-        PresetRemark      = presetRemark;
-        snapshotTouched   = true;
+        GeneratedUtcTicks = generatedUtcTicks > 0 ?
+                                generatedUtcTicks :
+                                DateTimeOffset.UtcNow.UtcTicks;
+        PresetRemark    = presetRemark;
+        snapshotTouched = true;
     }
 
     public void RefreshAll()
@@ -386,7 +413,12 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         TouchGeneratedTime();
     }
 
-    private static bool TryNormalizeDeviceId(string input, out string normalizedValue, out string errorMessage)
+    private static bool TryNormalizeDeviceId
+    (
+        string     input,
+        out string normalizedValue,
+        out string errorMessage
+    )
     {
         normalizedValue = input.Trim().ToUpperInvariant();
 
@@ -400,7 +432,12 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         return true;
     }
 
-    private static bool TryNormalizeMacAddress(string input, out string normalizedValue, out string errorMessage)
+    private static bool TryNormalizeMacAddress
+    (
+        string     input,
+        out string normalizedValue,
+        out string errorMessage
+    )
     {
         var rawValue = input.Trim().Replace(":", "-", StringComparison.Ordinal);
         var segments = rawValue.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -433,7 +470,12 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         return true;
     }
 
-    private static bool TryNormalizeHostName(string input, out string normalizedValue, out string errorMessage)
+    private static bool TryNormalizeHostName
+    (
+        string     input,
+        out string normalizedValue,
+        out string errorMessage
+    )
     {
         normalizedValue = input.Trim();
 
@@ -460,7 +502,10 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         return true;
     }
 
-    private void ApplyMode(bool sharedMode)
+    private void ApplyMode
+    (
+        bool sharedMode
+    )
     {
         if (IsSharedMode == sharedMode)
             return;
@@ -489,10 +534,16 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
     private DeviceProfilePreset GetRequiredSharedPreset() =>
         accountManager.GetSharedDeviceProfilePreset();
 
-    private DeviceProfilePreset? GetPreset(string presetId) =>
+    private DeviceProfilePreset? GetPreset
+    (
+        string presetId
+    ) =>
         Presets.FirstOrDefault(preset => string.Equals(preset.Id, presetId, StringComparison.Ordinal)) ?? accountManager.FindDeviceProfilePreset(presetId);
 
-    private void ApplyPreset(DeviceProfilePreset preset)
+    private void ApplyPreset
+    (
+        DeviceProfilePreset preset
+    )
     {
         selectedPresetSnapshot = preset.ToSnapshot();
         PresetRemark           = preset.Remark;
@@ -500,7 +551,10 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         ApplySnapshot(selectedPresetSnapshot);
     }
 
-    private void ApplySelectedPreset(string presetId)
+    private void ApplySelectedPreset
+    (
+        string presetId
+    )
     {
         var preset = GetPreset(presetId);
 
@@ -517,14 +571,20 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         ApplySnapshot(selectedPresetSnapshot);
     }
 
-    private void SetSelectedPresetId(string presetId)
+    private void SetSelectedPresetId
+    (
+        string presetId
+    )
     {
         isApplyingPresetSelection = true;
         SelectedPresetId          = presetId;
         isApplyingPresetSelection = false;
     }
 
-    private void ApplySnapshot(DeviceProfileSnapshot snapshot)
+    private void ApplySnapshot
+    (
+        DeviceProfileSnapshot snapshot
+    )
     {
         isApplyingSnapshot = true;
 
@@ -585,7 +645,10 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         SetSelectedPresetId(matchedPreset.Id);
     }
 
-    private bool TryCreateCurrentSnapshot(out DeviceProfileSnapshot snapshot)
+    private bool TryCreateCurrentSnapshot
+    (
+        out DeviceProfileSnapshot snapshot
+    )
     {
         if (!TryNormalizeDeviceId(DeviceId, out var normalizedDeviceId, out _)       ||
             !TryNormalizeMacAddress(MacAddress, out var normalizedMacAddress, out _) ||
@@ -616,10 +679,15 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
     }
 
     private DeviceProfilePreset SaveAccountDeviceProfileSelection
-        (XIVAccount targetAccount, DeviceProfileSnapshot snapshot, long generatedUtcTicks, string? presetRemark) =>
-        persistChangesToAccountManager
-            ? accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, generatedUtcTicks, presetRemark)
-            : accountManager.ApplyDeviceProfileSelection(targetAccount, snapshot, generatedUtcTicks, presetRemark);
+    (
+        XIVAccount            targetAccount,
+        DeviceProfileSnapshot snapshot,
+        long                  generatedUtcTicks,
+        string?               presetRemark
+    ) =>
+        persistChangesToAccountManager ?
+            accountManager.SaveDeviceProfileSelection(targetAccount, snapshot, generatedUtcTicks, presetRemark) :
+            accountManager.ApplyDeviceProfileSelection(targetAccount, snapshot, generatedUtcTicks, presetRemark);
 
     private DeviceProfileSnapshot CreateValidatedSnapshot()
     {
@@ -640,7 +708,10 @@ internal sealed partial class AccountDeviceProfileWindowViewModel
         };
     }
 
-    private bool HasSnapshotChanged(DeviceProfileSnapshot snapshot) =>
+    private bool HasSnapshotChanged
+    (
+        DeviceProfileSnapshot snapshot
+    ) =>
         selectedPresetSnapshot == null || !selectedPresetSnapshot.Equals(snapshot);
 
     private void TouchGeneratedTime()

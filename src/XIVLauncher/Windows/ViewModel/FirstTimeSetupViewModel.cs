@@ -33,19 +33,19 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
 
     public FirstTimeSetupViewModel
     (
-        IDialogService?   dialogService      = null,
-        IShortcutService? shortcutService    = null,
-        string?           initialGamePath    = null,
-        string?           initialWeGamePath  = null,
-        string?           initialPatchPath   = null
+        IDialogService?   dialogService     = null,
+        IShortcutService? shortcutService   = null,
+        string?           initialGamePath   = null,
+        string?           initialWeGamePath = null,
+        string?           initialPatchPath  = null
     )
     {
         _dialogService   = dialogService   ?? new DialogService();
         _shortcutService = shortcutService ?? new ShortcutService();
 
-        GamePath   = initialGamePath ?? string.Empty;
+        GamePath   = initialGamePath   ?? string.Empty;
         WeGamePath = initialWeGamePath ?? string.Empty;
-        PatchPath  = initialPatchPath ?? Paths.ResolvePatchPath(null, Paths.RoamingPath).FullName;
+        PatchPath  = initialPatchPath  ?? Paths.ResolvePatchPath(null, Paths.RoamingPath).FullName;
     }
 
     [RelayCommand]
@@ -64,12 +64,12 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
                 App.Settings.Update
                 (settings =>
                     {
-                        settings.GamePath = string.IsNullOrWhiteSpace(GamePath)
-                                                ? null!
-                                                : new DirectoryInfo(GamePath);
-                        settings.WeGamePath = string.IsNullOrWhiteSpace(WeGamePath)
-                                                  ? null
-                                                  : new DirectoryInfo(WeGamePath);
+                        settings.GamePath = string.IsNullOrWhiteSpace(GamePath) ?
+                                                null! :
+                                                new DirectoryInfo(GamePath);
+                        settings.WeGamePath = string.IsNullOrWhiteSpace(WeGamePath) ?
+                                                  null :
+                                                  new DirectoryInfo(WeGamePath);
                         settings.PatchPath      = new DirectoryInfo(PatchPath);
                         settings.DalamudEnabled = EnableDalamud;
                     }
@@ -132,9 +132,8 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(GamePath) && !ValidateGamePath())
             return false;
 
-        if (!string.IsNullOrWhiteSpace(WeGamePath)
-            && (!WeGamePathValidator.IsValidGameRoot(WeGamePath)
-                || !WeGamePathValidator.IsValidSdologinDir(WeGamePathValidator.DeriveSdologinDir(WeGamePath))))
+        if (!string.IsNullOrWhiteSpace(WeGamePath) &&
+            (!WeGamePathValidator.IsValidGameRoot(WeGamePath) || !WeGamePathValidator.IsValidSdologinDir(WeGamePathValidator.DeriveSdologinDir(WeGamePath))))
         {
             _dialogService.ShowMessage
             (
@@ -188,14 +187,14 @@ internal sealed partial class FirstTimeSetupViewModel : ObservableObject
         }
 
         var normalizedPatchPath = Path.TrimEndingDirectorySeparator(patchDirectory.FullName);
-        var normalizedGamePath  = string.IsNullOrWhiteSpace(GamePath)
-                                      ? string.Empty
-                                      : Path.TrimEndingDirectorySeparator(new DirectoryInfo(GamePath).FullName);
-        var normalizedWeGamePath = string.IsNullOrWhiteSpace(WeGamePath)
-                                       ? string.Empty
-                                       : Path.TrimEndingDirectorySeparator(new DirectoryInfo(WeGamePath).FullName);
+        var normalizedGamePath = string.IsNullOrWhiteSpace(GamePath) ?
+                                     string.Empty :
+                                     Path.TrimEndingDirectorySeparator(new DirectoryInfo(GamePath).FullName);
+        var normalizedWeGamePath = string.IsNullOrWhiteSpace(WeGamePath) ?
+                                       string.Empty :
+                                       Path.TrimEndingDirectorySeparator(new DirectoryInfo(WeGamePath).FullName);
 
-        if (string.Equals(normalizedGamePath, normalizedPatchPath, StringComparison.OrdinalIgnoreCase) ||
+        if (string.Equals(normalizedGamePath,   normalizedPatchPath, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(normalizedWeGamePath, normalizedPatchPath, StringComparison.OrdinalIgnoreCase))
         {
             _dialogService.ShowMessage

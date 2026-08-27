@@ -8,7 +8,7 @@ namespace XIVLauncher.Login.WeGame;
 
 internal sealed class WeGameLoginDataReader
 {
-    public async Task<GameArgumentInterop.LoginData?> ReadAsync(CancellationTokenSource loginCancellationTokenSource, ILoginWorkflowInteraction interaction)
+    public async Task<GameArgumentInterop.LoginData?> ReadAsync(CancellationTokenSource loginCancellationTokenSource, ILoginWorkflowUI interaction)
     {
         try
         {

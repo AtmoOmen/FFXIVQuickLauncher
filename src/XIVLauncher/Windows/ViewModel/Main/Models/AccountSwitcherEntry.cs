@@ -6,7 +6,7 @@ using System.Windows.Media.Imaging;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 
-namespace XIVLauncher.Windows.ViewModel.Main;
+namespace XIVLauncher.Windows.ViewModel.Main.Models;
 
 internal class AccountSwitcherEntry
 {
@@ -19,16 +19,28 @@ internal class AccountSwitcherEntry
     public void UpdateProfileImage() =>
         ProfileImage = GetProfileImage(Account);
 
-    public static ImageSource GetProfileImage(XIVAccount account) =>
-        TryGetCustomProfileImagePath(account, out var imagePath) ? LoadProfileImage(imagePath) : DefaultImage;
+    public static ImageSource GetProfileImage
+    (
+        XIVAccount account
+    ) =>
+        TryGetCustomProfileImagePath(account, out var imagePath) ?
+            LoadProfileImage(imagePath) :
+            DefaultImage;
 
     public static ImageSource GetDefaultProfileImage() =>
         DefaultImage;
 
-    public static ImageSource LoadProfileImageFromPath(string imagePath) =>
+    public static ImageSource LoadProfileImageFromPath
+    (
+        string imagePath
+    ) =>
         LoadProfileImage(imagePath);
 
-    public static void SaveCustomProfileImage(XIVAccount account, string sourcePath)
+    public static void SaveCustomProfileImage
+    (
+        XIVAccount account,
+        string     sourcePath
+    )
     {
         var extension = Path.GetExtension(sourcePath);
         if (string.IsNullOrWhiteSpace(extension))
@@ -43,13 +55,20 @@ internal class AccountSwitcherEntry
         File.WriteAllBytes(targetPath, imageBytes);
     }
 
-    public static void RemoveCustomProfileImage(XIVAccount account)
+    public static void RemoveCustomProfileImage
+    (
+        XIVAccount account
+    )
     {
         foreach (var imagePath in EnumerateCustomProfileImagePaths(account))
             File.Delete(imagePath);
     }
 
-    public static bool TryGetCustomProfileImagePath(XIVAccount account, out string imagePath)
+    public static bool TryGetCustomProfileImagePath
+    (
+        XIVAccount account,
+        out string imagePath
+    )
     {
         imagePath = EnumerateCustomProfileImagePaths(account).FirstOrDefault() ?? string.Empty;
         return !string.IsNullOrWhiteSpace(imagePath);
@@ -62,7 +81,10 @@ internal class AccountSwitcherEntry
         return defaultImage;
     }
 
-    private static ImageSource LoadProfileImage(string imagePath)
+    private static ImageSource LoadProfileImage
+    (
+        string imagePath
+    )
     {
         using var stream  = File.OpenRead(imagePath);
         var       decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
@@ -74,16 +96,24 @@ internal class AccountSwitcherEntry
         return frame;
     }
 
-    private static string[] EnumerateCustomProfileImagePaths(XIVAccount account)
+    private static string[] EnumerateCustomProfileImagePaths
+    (
+        XIVAccount account
+    )
     {
         var profileImageDirectory = GetProfileImageDirectory();
-        return !Directory.Exists(profileImageDirectory) ? [] : Directory.GetFiles(profileImageDirectory, $"{GetProfileImageFileKey(account)}.*");
+        return !Directory.Exists(profileImageDirectory) ?
+                   [] :
+                   Directory.GetFiles(profileImageDirectory, $"{GetProfileImageFileKey(account)}.*");
 
     }
 
     private static string GetProfileImageDirectory() =>
         Path.Combine(Paths.RoamingPath, "profilePictures", "custom");
 
-    private static string GetProfileImageFileKey(XIVAccount account) =>
+    private static string GetProfileImageFileKey
+    (
+        XIVAccount account
+    ) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(account.ID)));
 }

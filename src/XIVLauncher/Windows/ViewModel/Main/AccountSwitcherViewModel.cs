@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.Services;
+using XIVLauncher.Windows.ViewModel.Main.Models;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
 
@@ -24,7 +25,10 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsSearchMode { get; set; }
 
-    partial void OnIsSearchModeChanged(bool value)
+    partial void OnIsSearchModeChanged
+    (
+        bool value
+    )
     {
         if (!value)
             SearchText = string.Empty;
@@ -33,7 +37,10 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
     [ObservableProperty]
     public partial string SearchText { get; set; } = string.Empty;
 
-    partial void OnSearchTextChanged(string value) =>
+    partial void OnSearchTextChanged
+    (
+        string value
+    ) =>
         ApplySearchFilter();
 
     [ObservableProperty]
@@ -145,7 +152,12 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
         var selectedAccountId = SelectedEntry?.Account.ID;
         AccountSwitcherEntry.RemoveCustomProfileImage(activeEntry.Account);
         accountManager.RemoveAccount(activeEntry.Account);
-        RefreshEntries(selectedAccountId == activeEntry.Account.ID ? null : selectedAccountId);
+        RefreshEntries
+        (
+            selectedAccountId == activeEntry.Account.ID ?
+                null :
+                selectedAccountId
+        );
         AccountRemoved?.Invoke(removedUserName);
     }
 
@@ -189,7 +201,11 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
 
     private bool CanOperateActiveEntry() => ActiveEntry != null;
 
-    public void RefreshEntries(string? selectedAccountId = null, bool useCurrentAccountSelection = true)
+    public void RefreshEntries
+    (
+        string? selectedAccountId          = null,
+        bool    useCurrentAccountSelection = true
+    )
     {
         ContextEntry = null;
         if (useCurrentAccountSelection)
@@ -215,9 +231,9 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
             Entries.Add(entry);
         }
 
-        SelectedEntry = string.IsNullOrWhiteSpace(selectedAccountId)
-                            ? null
-                            : Entries.FirstOrDefault(entry => entry.Account.ID == selectedAccountId);
+        SelectedEntry = string.IsNullOrWhiteSpace(selectedAccountId) ?
+                            null :
+                            Entries.FirstOrDefault(entry => entry.Account.ID == selectedAccountId);
 
         ApplySearchFilter();
     }
@@ -243,7 +259,11 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
     public XIVAccount? SelectCurrentAccount() =>
         SelectedEntry?.Account;
 
-    public void MoveEntry(int fromIndex, int toIndex)
+    public void MoveEntry
+    (
+        int fromIndex,
+        int toIndex
+    )
     {
         if (fromIndex == toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= Entries.Count || toIndex >= Entries.Count)
             return;
@@ -253,13 +273,19 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
         SelectedEntry = Entries[toIndex];
     }
 
-    private static bool HasSavedSecret(XIVAccount account) =>
+    private static bool HasSavedSecret
+    (
+        XIVAccount account
+    ) =>
         account.QuickLoginEnabled                                  ||
         !string.IsNullOrWhiteSpace(account.SdoPassword)            ||
         !string.IsNullOrWhiteSpace(account.WeGameQuickLoginSecret) ||
         !string.IsNullOrWhiteSpace(account.SdoQuickLoginSecret);
 
-    private static Bitmap BitmapSourceToBitmap(BitmapSource bitmapSource)
+    private static Bitmap BitmapSourceToBitmap
+    (
+        BitmapSource bitmapSource
+    )
     {
         using var outputStream = new MemoryStream();
 
@@ -271,7 +297,11 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
         return new Bitmap(bitmap);
     }
 
-    private static void SaveAsIcon(Bitmap sourceBitmap, string filePath)
+    private static void SaveAsIcon
+    (
+        Bitmap sourceBitmap,
+        string filePath
+    )
     {
         using var stream = new FileStream(filePath, FileMode.Create);
 
@@ -309,7 +339,10 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
         stream.WriteByte((byte)(dataLength >> 8));
     }
 
-    private static string ResolveShortcutIconPath(AccountSwitcherEntry entry)
+    private static string ResolveShortcutIconPath
+    (
+        AccountSwitcherEntry entry
+    )
     {
         var launcherPath = Paths.ResolveExecutablePath();
 
@@ -331,6 +364,9 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
         return iconPath;
     }
 
-    private XIVAccount FindTrackedAccount(XIVAccount account) =>
+    private XIVAccount FindTrackedAccount
+    (
+        XIVAccount account
+    ) =>
         accountManager.Accounts.First(existing => existing.ID == account.ID);
 }

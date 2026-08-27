@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Login;
 using XIVLauncher.Login.Models;
 using XIVLauncher.Windows.GameClientFiles;
 
@@ -60,7 +59,10 @@ public sealed partial class LoginPageViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsReadWegameInfo { get; set; }
 
-    partial void OnIsReadWegameInfoChanged(bool value)
+    partial void OnIsReadWegameInfoChanged
+    (
+        bool value
+    )
     {
         if (isApplyingLoginType)
             return;
@@ -71,7 +73,10 @@ public sealed partial class LoginPageViewModel : ObservableObject
     [ObservableProperty]
     public partial string Username { get; set; } = string.Empty;
 
-    partial void OnUsernameChanged(string value)
+    partial void OnUsernameChanged
+    (
+        string value
+    )
     {
         RefreshAccountStatus();
 
@@ -82,7 +87,10 @@ public sealed partial class LoginPageViewModel : ObservableObject
     [ObservableProperty]
     public partial string Password { get; set; } = string.Empty;
 
-    partial void OnPasswordChanged(string value)
+    partial void OnPasswordChanged
+    (
+        string value
+    )
     {
         if (!isApplyingLoginType)
             RefreshStartLoginState();
@@ -114,7 +122,11 @@ public sealed partial class LoginPageViewModel : ObservableObject
     [ObservableProperty]
     public partial LoginArea? Area { get; set; }
 
-    partial void OnAreaChanged(LoginArea? oldValue, LoginArea? newValue) =>
+    partial void OnAreaChanged
+    (
+        LoginArea? oldValue,
+        LoginArea? newValue
+    ) =>
         Log.Information("大区变更 {OldArea} -> {NewArea}", oldValue, newValue);
 
     [ObservableProperty]
@@ -168,7 +180,10 @@ public sealed partial class LoginPageViewModel : ObservableObject
     [ObservableProperty]
     public partial string ReadWeGameInfoToolTip { get; private set; } = "勾选后启动 WeGame 并读取当前启动账号的 SndaID 和 SID";
 
-    public void SelectLoginType(LoginType loginType)
+    public void SelectLoginType
+    (
+        LoginType loginType
+    )
     {
         var option = LoginTypeOptions.FirstOrDefault(x => x.LoginType == loginType);
 
@@ -260,7 +275,10 @@ public sealed partial class LoginPageViewModel : ObservableObject
     private bool CanExecuteWhenNotBusy() =>
         !isBusyFunc();
 
-    private void ApplyLoginType(LoginType loginType)
+    private void ApplyLoginType
+    (
+        LoginType loginType
+    )
     {
         isApplyingLoginType = true;
 
@@ -322,9 +340,9 @@ public sealed partial class LoginPageViewModel : ObservableObject
     private void RefreshAccountStatus()
     {
         var loginType = loginTypeOption?.LoginType ?? LoginType.Slide;
-        var accountType = loginType == LoginType.WeGame
-                              ? XIVAccountType.WeGame
-                              : XIVAccountType.Sdo;
+        var accountType = loginType == LoginType.WeGame ?
+                              XIVAccountType.WeGame :
+                              XIVAccountType.Sdo;
 
         var exists = !string.IsNullOrWhiteSpace(Username) && App.AccountManager.FindAccount(Username, accountType) != null;
 

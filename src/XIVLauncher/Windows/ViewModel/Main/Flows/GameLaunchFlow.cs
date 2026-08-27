@@ -1,34 +1,34 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
 using Serilog;
-using XIVLauncher.Account;
 using XIVLauncher.Account.DeviceProfiles;
+using XIVLauncher.Common;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.GamePatchV3.Update;
-using XIVLauncher.Login;
 using XIVLauncher.Login.Channels;
 using XIVLauncher.Login.Client;
 using XIVLauncher.Login.Models;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.GameClientFiles;
+using XIVLauncher.Windows.ViewModel.Main.Models;
 using XIVLauncher.Windows.ViewModel.Main.Services;
 
-namespace XIVLauncher.Windows.ViewModel.Main.Handlers;
+namespace XIVLauncher.Windows.ViewModel.Main.Flows;
 
-internal sealed class GameLaunchFlowHandler
+internal sealed class GameLaunchFlow
 (
-    MainWindowViewModel       vm,
-    GameLaunchService         gameLaunchService,
-    GameClientFileTaskService gameClientFileTaskService
+    MainWindowViewModel  vm,
+    CompanionAppService  companionAppService,
+    GameClientFileFlow   gameClientFileFlow,
+    DalamudLaunchService dalamudLaunchService
 )
 {
     public async Task<FFXIVProcess?> StartGameAndCompanionApp
@@ -55,40 +55,39 @@ internal sealed class GameLaunchFlowHandler
 
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        var dalamudSession = App.Dalamud.CreateLauncher
+        var dalamudSession = dalamudLaunchService.CreateSession
         (
             gamePath,
-            new DalamudLaunchOptions
-            (
-                App.Settings.DalamudLoadMethod,
-                (int)App.Settings.DalamudInjectionDelayMS,
-                false,
-                noPlugins,
-                noThird
-            )
+            App.Settings.DalamudLoadMethod,
+            (int)App.Settings.DalamudInjectionDelayMS,
+            noPlugins,
+            noThird
         );
 
         var dalamudOk = false;
 
-        if (App.Settings.DalamudEnabled && !forceNoDalamud && EnsureDalamudCompatibility())
+        if (App.Settings.DalamudEnabled && !forceNoDalamud && dalamudLaunchService.EnsureCompatibility())
         {
-            if (EnsureDalamudUpdate
-                (
-                    dalamudSession,
-                    gamePath,
-                    false
-                ) is not { } dalamudUpdateResult)
-                return null;
+            var (dalamudUpdateResult, dalamudUpdateErrorMessage) = dalamudLaunchService.TryUpdate(dalamudSession, gamePath, true);
 
-            dalamudOk = dalamudUpdateResult;
+            if (dalamudUpdateResult == DalamudPrepareResult.Failed && dalamudUpdateErrorMessage != null)
+            {
+                var continuationChoice = CustomMessageBox.Builder
+                                                         .NewFrom($"{dalamudUpdateErrorMessage}\n点击确定将继续以不启用 Dalamud 的方式启动游戏")
+                                                         .WithImage(MessageBoxImage.Warning)
+                                                         .WithButtons(MessageBoxButton.OKCancel)
+                                                         .WithShowHelpLinks()
+                                                         .WithParentWindow(vm.Window)
+                                                         .Show();
+
+                if (continuationChoice != MessageBoxResult.OK)
+                    return null;
+            }
+
+            dalamudOk = dalamudUpdateResult == DalamudPrepareResult.OK;
         }
 
-        var gameRunner = new GameRunner
-        (
-            dalamudSession,
-            dalamudOk,
-            App.Dalamud.Updater.Runtime
-        );
+        var dotnetRuntimePath = App.Dalamud.Updater.Runtime;
         stopwatch.Stop();
 
         if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
@@ -97,10 +96,58 @@ internal sealed class GameLaunchFlowHandler
             return null;
         }
 
+        Process? StartGame
+        (
+            GameStartRequest request
+        )
+        {
+            Log.Information($"Game Exe:{request.ExePath}");
+
+            if (dalamudOk)
+            {
+                var compat = "RunAsInvoker ";
+                compat += request.DpiAwareness switch
+                {
+                    DPIAwareness.Aware   => "HighDPIAware",
+                    DPIAwareness.Unaware => "DPIUnaware",
+                    _                    => throw new ArgumentOutOfRangeException()
+                };
+                request.Environment.Add("__COMPAT_LAYER", compat);
+
+                var prevDalamudRuntime = Environment.GetEnvironmentVariable("DALAMUD_RUNTIME");
+                if (string.IsNullOrWhiteSpace(prevDalamudRuntime))
+                    request.Environment.Add("DALAMUD_RUNTIME", dotnetRuntimePath.FullName);
+
+                var prevDotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+                if (string.IsNullOrWhiteSpace(prevDotnetRoot))
+                    request.Environment.Add("DOTNET_ROOT", dotnetRuntimePath.FullName);
+
+                var prevDotnetLookup = Environment.GetEnvironmentVariable("DOTNET_MULTILEVEL_LOOKUP");
+                if (string.IsNullOrWhiteSpace(prevDotnetLookup))
+                    request.Environment.Add("DOTNET_MULTILEVEL_LOOKUP", "0");
+
+                return dalamudSession.LaunchGame(new FileInfo(request.ExePath), request.Arguments, request.Environment);
+            }
+
+            return NativeAclFix.LaunchGame
+            (
+                request.WorkingDirectory,
+                request.ExePath,
+                request.Arguments,
+                request.Environment,
+                request.DpiAwareness,
+                process =>
+                {
+                    var argFix = new GameArgumentInterop.Fixer(process);
+                    argFix.Fix();
+                }
+            );
+        }
+
         // We won't do any sanity checks here anymore, since that should be handled in StartLogin
         var launched = vm.Launcher.LaunchGame
         (
-            gameRunner,
+            StartGame,
             loginResult.OAuthLogin!.SessionID,
             loginResult.OAuthLogin!.SndaID,
             gameLaunchContext.DcTravelPort,
@@ -128,7 +175,7 @@ internal sealed class GameLaunchFlowHandler
 
         try
         {
-            companionAppManager = gameLaunchService.StartCompanionApps(launched.ProcessID);
+            companionAppManager = companionAppService.StartCompanionApps(launched.ProcessID);
         }
         catch (Exception ex)
         {
@@ -140,8 +187,6 @@ internal sealed class GameLaunchFlowHandler
                             .Show();
 
             vm.IsLoggingIn = false;
-
-            gameLaunchService.StopCompanionApps(launched.ProcessID, companionAppManager);
         }
 
         Log.Debug("等待游戏进程退出");
@@ -176,7 +221,7 @@ internal sealed class GameLaunchFlowHandler
         }
         finally
         {
-            gameLaunchService.StopCompanionApps(launched.ProcessID, companionAppManager);
+            companionAppService.StopCompanionApps(launched.ProcessID, companionAppManager);
         }
 
         Log.Verbose("游戏进程已退出");
@@ -189,7 +234,10 @@ internal sealed class GameLaunchFlowHandler
     ///     ticket 单次有效且与登录时所连大区绑定，游戏外跨大区或进程重启后旧 ticket 会失效，
     ///     因此每次启动都必须用持久 TGT 现取，而非复用上次启动缓存的值。
     /// </summary>
-    private async Task<bool> EnsureFreshSessionIdAsync(GameLaunchContext gameLaunchContext)
+    private async Task<bool> EnsureFreshSessionIdAsync
+    (
+        GameLaunchContext gameLaunchContext
+    )
     {
         var oauthLogin = gameLaunchContext.LoginResult.OAuthLogin;
         if (oauthLogin == null)
@@ -237,7 +285,10 @@ internal sealed class GameLaunchFlowHandler
         return true;
     }
 
-    private static void SyncGameLaunchContextAreaFromAccount(GameLaunchContext gameLaunchContext)
+    private static void SyncGameLaunchContextAreaFromAccount
+    (
+        GameLaunchContext gameLaunchContext
+    )
     {
         var account = App.AccountManager.CurrentAccount;
         if (account?.AreaName == null)
@@ -323,7 +374,11 @@ internal sealed class GameLaunchFlowHandler
     /// <summary>
     ///     从 Dashboard 启动游戏: 补丁前置检查 + while(true) 启动重启循环。
     /// </summary>
-    public async Task<bool> LaunchGameWithRetryLoop(GameLaunchContext gameLaunchContext, LoginAfterAction action)
+    public async Task<bool> LaunchGameWithRetryLoop
+    (
+        GameLaunchContext gameLaunchContext,
+        LoginAfterAction  action
+    )
     {
         var loginResult = gameLaunchContext.LoginResult;
         var gamePath    = App.Settings.GetGamePath(gameLaunchContext.AccountType);
@@ -547,7 +602,9 @@ internal sealed class GameLaunchFlowHandler
                 var summary     = summaries.ElementAtOrDefault(0) ?? "发生了未知错误";
                 var actionable  = actionables.ElementAtOrDefault(0);
                 var description = descriptions.ElementAtOrDefault(0) ?? string.Empty;
-                var text        = string.IsNullOrWhiteSpace(actionable) ? summary : $"{summary}\n\n{actionable}";
+                var text = string.IsNullOrWhiteSpace(actionable) ?
+                               summary :
+                               $"{summary}\n\n{actionable}";
 
                 builder.WithText(text)
                        .WithDescription(description);
@@ -619,83 +676,7 @@ internal sealed class GameLaunchFlowHandler
         }
     }
 
-    #region Dalamud 与补丁
-
-    private bool EnsureDalamudCompatibility()
-    {
-        var dalamudCompatCheck = new DalamudCompatibilityCheck();
-
-        try
-        {
-            dalamudCompatCheck.EnsureCompatibility();
-            return true;
-        }
-        catch (IDalamudCompatibilityCheck.NoRedistsException ex)
-        {
-            Log.Error(ex, "[MainWindow] 未找到 Dalamud 所需的 Redists");
-
-            CustomMessageBox.Show
-            (
-                "Dalamud 需要安装 Microsoft Visual C++ 2015-2019 Redistributable, 请前往微软官网下载并安装",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: vm.Window
-            );
-            return false;
-        }
-        catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
-        {
-            Log.Error(ex, "[MainWindow] 不受支持的本地环境架构");
-
-            CustomMessageBox.Show
-            (
-                "Dalamud 仅支持 64 位 Windows\n若本机为 ARM 架构, 请检查是否已为 XIVLauncher 启用 64 位模拟器",
-                "XIVLauncherCN (Soil)",
-                MessageBoxButton.OK,
-                MessageBoxImage.Exclamation,
-                parentWindow: vm.Window
-            );
-            return false;
-        }
-    }
-
-    private bool? EnsureDalamudUpdate
-    (
-        DalamudSession dalamudSession,
-        DirectoryInfo  gamePath,
-        bool           appendWafStatusCodeHint
-    )
-    {
-        try
-        {
-            App.Dalamud.RunUpdater();
-            var dalamudStatus = dalamudSession.EnsureReady(gamePath);
-            return dalamudStatus == DalamudSession.DalamudInstallState.Ok;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[MainWindow] 尝试更新 Dalamud 时发生错误");
-
-            var ensurementErrorMessage = "下载 Dalamud 相关文件异常\n请检查本地网络连接, 或关闭杀毒软件\n点击确定将继续以不启用 Dalamud 的方式启动游戏";
-
-            if (appendWafStatusCodeHint                                                  &&
-                ex is HttpRequestException { StatusCode: not null } httpRequestException &&
-                (int)httpRequestException.StatusCode is 403 or 444 or 522)
-                ensurementErrorMessage = $"服务器错误: {httpRequestException.StatusCode}\n{ensurementErrorMessage}";
-            else
-                ensurementErrorMessage = $"错误: {ex.Message}\n{ensurementErrorMessage}";
-
-            var result = CustomMessageBox.Builder
-                                         .NewFrom(ensurementErrorMessage)
-                                         .WithImage(MessageBoxImage.Warning)
-                                         .WithButtons(MessageBoxButton.OKCancel)
-                                         .WithShowHelpLinks()
-                                         .WithParentWindow(vm.Window)
-                                         .Show();
-            return result == MessageBoxResult.OK ? false : null;
-        }
-    }
+    #region 补丁
 
     private bool ConfirmGamePatchInstall()
     {
@@ -713,7 +694,10 @@ internal sealed class GameLaunchFlowHandler
         return selfPatchAsk != MessageBoxResult.No;
     }
 
-    public async Task<bool> InstallGamePatchAsync(bool confirmInstallation)
+    public async Task<bool> InstallGamePatchAsync
+    (
+        bool confirmInstallation
+    )
     {
         if (confirmInstallation && !ConfirmGamePatchInstall())
             return false;
@@ -723,10 +707,9 @@ internal sealed class GameLaunchFlowHandler
 
         try
         {
-            var accountType = vm.CurrentGameLaunchContext?.AccountType
-                              ?? vm.AccountManager.CurrentAccount?.AccountType
-                              ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(XIVAccountType.Sdo);
-            var result = await gameClientFileTaskService.RunAsync(GameClientFileTaskKind.Update, accountType).ConfigureAwait(false);
+            var accountType = vm.CurrentGameLaunchContext?.AccountType ??
+                              vm.AccountManager.CurrentAccount?.AccountType ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(XIVAccountType.Sdo);
+            var result = await gameClientFileFlow.RunAsync(GameClientFileTaskKind.Update, accountType).ConfigureAwait(false);
             succeeded = result.Status == GameClientFileTaskResultStatus.Success;
 
             if (succeeded)

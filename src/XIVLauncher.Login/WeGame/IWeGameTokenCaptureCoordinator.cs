@@ -6,7 +6,7 @@ public interface IWeGameTokenCaptureCoordinator
 {
     Task<WeGameCaptureResult?> CaptureAsync
     (
-        ILoginWorkflowInteraction interaction,
+        ILoginWorkflowUI interaction,
         CancellationTokenSource   loginCancellationTokenSource
     );
 }

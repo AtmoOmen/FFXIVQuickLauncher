@@ -2,7 +2,7 @@ using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Windows.ViewModel.Main;
+using XIVLauncher.Windows.ViewModel.Main.Models;
 
 namespace XIVLauncher.Windows.ViewModel;
 
@@ -32,7 +32,10 @@ internal sealed partial class AccountProfileWindowViewModel : ObservableObject
     public bool HasSelectedFile =>
         !string.IsNullOrWhiteSpace(SelectedFilePath);
 
-    public void Load(XIVAccount account)
+    public void Load
+    (
+        XIVAccount account
+    )
     {
         selectedAccount    = account;
         AccountDisplayName = account.DisplayName;
@@ -46,9 +49,9 @@ internal sealed partial class AccountProfileWindowViewModel : ObservableObject
             _                     => "未知渠道"
         };
 
-        SelectedFilePath = AccountSwitcherEntry.TryGetCustomProfileImagePath(account, out var imagePath)
-                               ? imagePath
-                               : string.Empty;
+        SelectedFilePath = AccountSwitcherEntry.TryGetCustomProfileImagePath(account, out var imagePath) ?
+                               imagePath :
+                               string.Empty;
 
         PreviewImage = AccountSwitcherEntry.GetProfileImage(account);
     }
@@ -56,10 +59,15 @@ internal sealed partial class AccountProfileWindowViewModel : ObservableObject
     public void ApplyChanges()
     {
         var note = UserDefinedName?.Trim();
-        selectedAccount.UserDefinedName = string.IsNullOrWhiteSpace(note) ? null! : note;
+        selectedAccount.UserDefinedName = string.IsNullOrWhiteSpace(note) ?
+                                              null! :
+                                              note;
     }
 
-    public void SetPreviewImage(string imagePath)
+    public void SetPreviewImage
+    (
+        string imagePath
+    )
     {
         SelectedFilePath = imagePath;
         PreviewImage     = AccountSwitcherEntry.LoadProfileImageFromPath(imagePath);
