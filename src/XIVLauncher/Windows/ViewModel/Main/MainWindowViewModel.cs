@@ -191,9 +191,11 @@ internal partial class MainWindowViewModel : ObservableObject
                 }
             ),
             () => DCTravelRuntimeService.Client
-        );
+        )
+        {
+            AutoStartGameOnComplete = App.Settings.DCTravelAutoStartGameOnComplete
+        };
 
-        DCTravelPage.AutoStartGameOnComplete = App.Settings.DCTravelAutoStartGameOnComplete;
         DCTravelPage.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(DCTravelPage.AutoStartGameOnComplete))
