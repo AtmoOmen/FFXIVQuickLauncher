@@ -189,12 +189,12 @@
                     HorizontalContentAlignment="Center"
                     Margin="0,8,0,0"
                     Style="{StaticResource DalamudStatusButtonStyle}"
-                    Command="{Binding RefreshDalamudInfoCommand}"
+                    Command="{Binding DalamudStatus.RefreshDalamudInfoCommand}"
                     Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BoolToVis}}">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                     <materialDesign:PackIcon Kind="Refresh" Width="12" Height="12" Margin="0,0,4,0"
                                              VerticalAlignment="Center" Opacity="0.7" />
-                    <TextBlock Text="{Binding DalamudStatusText}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding DalamudStatus.StatusText}" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
         </StackPanel>

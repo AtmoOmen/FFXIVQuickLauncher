@@ -99,7 +99,7 @@ internal sealed class DashboardFlow
         vm.CurrentGameLaunchContext = null;
         vm.SwitchCard(LoginCardType.MainPage);
         vm.AccountSwitcher.RefreshEntries(vm.AccountManager.CurrentAccountID, false);
-        vm.RequestSwitchToCurrentAccount?.Invoke();
+        vm.AccountFlow.RequestSwitchToCurrentAccount?.Invoke();
 
         Task.Run(() => { vm.DCTravelRuntimeService.Stop(); });
     }

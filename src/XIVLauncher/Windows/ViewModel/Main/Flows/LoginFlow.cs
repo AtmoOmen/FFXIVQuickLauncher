@@ -153,7 +153,7 @@ internal sealed class LoginFlow
                     vm.LoginPage.RefreshCommandStates();
                     vm.InjectPage.RefreshCommandStates();
 
-                    vm.ReloadHeadlines();
+                    vm.NewsFlow.RefreshNow();
                     vm.Activate();
                 }
             );
@@ -204,7 +204,7 @@ internal sealed class LoginFlow
         }
 
         App.Settings.FastLogin = vm.LoginPage.IsFastLogin;
-        inputPassword = inputPassword == MainWindowViewModel.PRESUDO_PASSWORD ?
+        inputPassword = inputPassword == AccountFlow.PRESUDO_PASSWORD ?
                             string.Empty :
                             inputPassword?.Trim() ?? string.Empty;
 

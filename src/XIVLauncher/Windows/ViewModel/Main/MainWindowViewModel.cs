@@ -1,13 +1,10 @@
 using System.ComponentModel;
-using System.Globalization;
 using System.Windows;
-using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Game;
-using XIVLauncher.Dalamud;
 using XIVLauncher.DCTravel;
 using XIVLauncher.Login.Models;
 using XIVLauncher.Login.WeGame;
@@ -37,12 +34,9 @@ internal partial class MainWindowViewModel : ObservableObject
     public AccountManager AccountManager { get; private set; } = App.AccountManager;
     public Window         Window         { get; private set; }
 
-    public Action         Activate        { get; set; } = null!;
-    public Action         Hide            { get; set; } = null!;
-    public Action         ReloadHeadlines { get; set; } = null!;
-    public Action<string> ShowSnackbar    { get; set; } = null!;
-
-    public Action? RequestSwitchToCurrentAccount { get; set; }
+    public Action         Activate     { get; set; } = null!;
+    public Action         Hide         { get; set; } = null!;
+    public Action<string> ShowSnackbar { get; set; } = null!;
 
     [ObservableProperty]
     public partial bool IsLoggingIn { get; set; }
@@ -52,6 +46,11 @@ internal partial class MainWindowViewModel : ObservableObject
     internal GameClientFileFlow       GameClientFileFlow     { get; }
     internal DCTravelRuntimeService   DCTravelRuntimeService { get; }
     internal GameUpdateMonitorService GameUpdateMonitor      { get; }
+
+    internal NewsFlow      NewsFlow          { get; }
+    internal AccountFlow   AccountFlow       { get; }
+    internal StartupFlow   StartupFlow       { get; }
+    public DalamudStatusViewModel DalamudStatus { get; }
 
     internal LoginFlow      LoginFlow      { get; }
     internal GameLaunchFlow GameLaunchFlow { get; }
@@ -125,6 +124,10 @@ internal partial class MainWindowViewModel : ObservableObject
         LoginFlow      = new(this, loginWorkflowService, DCTravelRuntimeService, GameClientFileFlow);
         GameLaunchFlow = new(this, CompanionAppService, GameClientFileFlow, dalamudLaunchService);
         DashboardFlow  = new(this);
+        NewsFlow       = new(this);
+        AccountFlow    = new(this);
+        StartupFlow    = new(this);
+        DalamudStatus  = new(window, Settings);
 
         AccountSwitcher = new AccountSwitcherViewModel
         (
@@ -202,7 +205,7 @@ internal partial class MainWindowViewModel : ObservableObject
                 App.Settings.DCTravelAutoStartGameOnComplete = DCTravelPage.AutoStartGameOnComplete;
         };
 
-        UpdateDalamudStatusText();
+        DalamudStatus.RefreshStatus();
 
         DCTravelRuntimeService.MaintenanceStateChanged += state =>
         {
@@ -219,12 +222,12 @@ internal partial class MainWindowViewModel : ObservableObject
             );
         };
 
-        App.Dalamud.StatusChanged += DalamudUpdaterStatusChanged;
         Settings.SettingsSaved += (_, _) =>
         {
             InjectPage.ReloadSettings();
-            RefreshDalamudInfoCommandState();
+            DalamudStatus.RefreshCommandState();
         };
+        Settings.SettingsSaved += (_, _) => NewsFlow.RefreshNow();
     }
 
     public void CloseAccountSwitcher() =>
@@ -299,64 +302,6 @@ internal partial class MainWindowViewModel : ObservableObject
 
     #endregion
 
-    #region Dalamud 状态
-
-    [RelayCommand(CanExecute = nameof(CanRefreshDalamudInfo))]
-    private void RefreshDalamudInfo() =>
-        App.Dalamud.RunUpdater(true);
-
-    private bool CanRefreshDalamudInfo() =>
-        Settings.EnableHooks && App.Dalamud.Updater.State != DalamudUpdater.DownloadState.Unknown;
-
-    private void DalamudUpdaterStatusChanged
-    (
-        DalamudStatusSnapshot _
-    )
-    {
-        if (Window.Dispatcher == Dispatcher.CurrentDispatcher)
-        {
-            UpdateDalamudStatusText();
-            return;
-        }
-
-        Window.Dispatcher.Invoke(UpdateDalamudStatusText);
-    }
-
-    private void UpdateDalamudStatusText()
-    {
-        var updater = App.Dalamud.GetStatusSnapshot();
-
-        DalamudStatusText = updater.State switch
-        {
-            DalamudUpdater.DownloadState.Done => string.IsNullOrWhiteSpace(DalamudUpdater.Version) ?
-                                                     "Dalamud 已就绪" :
-                                                     $"Dalamud {DalamudUpdater.Version}",
-            DalamudUpdater.DownloadState.NoIntegrity => "Dalamud 加载失败",
-            _                                        => GetDalamudLoadingText(updater)
-        };
-
-        RefreshDalamudInfoCommandState();
-    }
-
-    private void RefreshDalamudInfoCommandState() =>
-        RefreshDalamudInfoCommand.NotifyCanExecuteChanged();
-
-    private static string GetDalamudLoadingText
-    (
-        DalamudStatusSnapshot updater
-    )
-    {
-        if (updater.LoadingProgress is { } progress)
-            return $"Dalamud 正在加载 {progress.ToString("0.##", CultureInfo.InvariantCulture)}%";
-
-        if (!string.IsNullOrWhiteSpace(updater.LoadingDetail))
-            return $"Dalamud {updater.LoadingDetail.TrimEnd('.')}";
-
-        return "Dalamud 正在加载";
-    }
-
-    #endregion
-
     #region 事件
 
     public void OnWindowClosed
@@ -365,7 +310,7 @@ internal partial class MainWindowViewModel : ObservableObject
         object  args
     )
     {
-        App.Dalamud.StatusChanged -= DalamudUpdaterStatusChanged;
+        DalamudStatus.Detach();
         GameUpdateMonitor.Stop();
         InjectPage.StopRefreshing(true);
         CancelLogin();
@@ -400,15 +345,6 @@ internal partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     public partial string LoadingDialogMessage { get; set; } = string.Empty;
-
-    [ObservableProperty]
-    public partial string DalamudStatusText { get; set; } = string.Empty;
-
-    #endregion
-
-    #region 常量
-
-    public const string PRESUDO_PASSWORD = "********假的密码********";
 
     #endregion
 }
