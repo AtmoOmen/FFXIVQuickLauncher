@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Serilog;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game.Exceptions;
@@ -87,10 +88,17 @@ public partial class Launcher
         );
         request.Headers.AddWithoutValidation("Referer", Links.SDO_LAUNCHER_REFERER_URL);
 
-        var resp = await MockHttpClient.SendAsync(request).ConfigureAwait(false);
-        return await resp.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        using var cts  = new CancellationTokenSource(DOWNLOAD_TIMEOUT);
+        var       resp = await MockHttpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+        return await resp.Content.ReadAsByteArrayAsync(cts.Token).ConfigureAwait(false);
     }
 
     [GeneratedRegex(@"\s*(?<key>[^=]+)\s*=\s*(?<value>[^\s]+)\s*", RegexOptions.Compiled)]
     private static partial Regex AdditionalArgumentsRegex();
+
+    #region 常量
+
+    private static readonly TimeSpan DOWNLOAD_TIMEOUT = TimeSpan.FromSeconds(20);
+
+    #endregion
 }

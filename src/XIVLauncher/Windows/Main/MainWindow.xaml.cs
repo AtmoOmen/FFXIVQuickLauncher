@@ -25,7 +25,9 @@ namespace XIVLauncher.Windows.Main;
 /// </summary>
 public partial class MainWindow
 {
-    private static readonly TimeSpan HEADLINES_REFRESH_INTERVAL = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan HEADLINES_REFRESH_INTERVAL  = TimeSpan.FromMinutes(10);
+
+    private static readonly TimeSpan HEADLINES_ACTIVATE_COOLDOWN = TimeSpan.FromMinutes(5);
 
     internal MainWindowViewModel Model => (DataContext as MainWindowViewModel)!;
 
@@ -34,9 +36,10 @@ public partial class MainWindow
     private readonly AccountManager accountManager;
     private readonly Launcher       launcher;
 
-    private DispatcherTimer? headlinesRefreshTimer;
-    private Headlines?       headlines;
-    private Banner[]?        banners;
+    private DispatcherTimer?                       headlinesRefreshTimer;
+    private Headlines?                             headlines;
+    private Banner[]?                              banners;
+    private DateTimeOffset                         lastActivateHeadlinesRefresh;
 
     private int isRefreshingHeadlines;
     private int pendingHeadlinesRefresh;
@@ -53,12 +56,14 @@ public partial class MainWindow
         LoginCard.AccountListView.ContextMenu!.DataContext =  Model.AccountSwitcher;
         Model.Settings.SettingsSaved                       += (_, _) => _ = RequestHeadlinesRefreshAsync();
 
+        Closed  += MainWindow_OnClosed;
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
         Model.Activate += () => Dispatcher.Invoke
         (() =>
             {
                 Model.GameUpdateMonitor.QueueCheck();
+                RefreshHeadlinesOnActivate();
                 Show();
                 Activate();
                 Focus();
@@ -242,52 +247,99 @@ public partial class MainWindow
 
     private async Task SetupHeadlines()
     {
+        Headlines? refreshedHeadlines;
+
         try
         {
-            NewsCarousel.StopRotation();
-
-            headlines = await Headlines.GetHeadlinesAsync(launcher)
-                                       .ConfigureAwait(false);
-            banners = headlines.Banner;
-
-            var bannerBitmaps = new BitmapImage[banners.Length];
-
-            for (var i = 0; i < banners.Length; i++)
-            {
-                var imageBytes = await launcher.DownloadAsLauncher(banners[i].LsbBanner.ToString());
-
-                using var stream = new MemoryStream(imageBytes);
-
-                var bitmapImage = new BitmapImage();
-                bitmapImage.BeginInit();
-                bitmapImage.StreamSource = stream;
-                bitmapImage.CacheOption  = BitmapCacheOption.OnLoad;
-                bitmapImage.EndInit();
-                bitmapImage.Freeze();
-
-                bannerBitmaps[i] = bitmapImage;
-            }
-
-            _ = Dispatcher.BeginInvoke
-            (
-                new Action
-                (() =>
-                    {
-                        NewsCarousel.UpdateBanners(bannerBitmaps);
-                        NewsCarousel.StartRotation();
-                    }
-                )
-            );
-
-            _ = Dispatcher.BeginInvoke(new Action(() => { NewsList.SetNewsItems(headlines.News?.OrderByDescending(n => n.Date).ToList() ?? new List<News>()); }));
+            refreshedHeadlines = await Headlines.GetHeadlinesAsync(launcher)
+                                                .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Could not get news");
-            NewsCarousel.StopRotation();
-            _ = Dispatcher.BeginInvoke
-                (new Action(() => { NewsList.SetNewsItems(new List<News> { new() { Title = "无法获取公告信息", Tag = "DlError" } }); }));
+
+            if (headlines == null)
+            {
+                _ = Dispatcher.BeginInvoke
+                    (new Action(() => { NewsList.SetNewsItems(new List<News> { new() { Title = "无法获取公告信息", Tag = "DlError" } }); }));
+            }
+            else
+            {
+                Model.ShowSnackbar("新闻刷新失败, 稍后自动重试");
+            }
+
+            return;
         }
+
+        headlines = refreshedHeadlines;
+
+        var newsItems = refreshedHeadlines.News?.OrderByDescending(n => n.Date).ToList() ?? new List<News>();
+
+        _ = Dispatcher.BeginInvoke(new Action(() => { NewsList.SetNewsItems(newsItems); }));
+        Log.Information("新闻已刷新, 共 {NewsCount} 条", newsItems.Count);
+
+        await RefreshBannersAsync(refreshedHeadlines.Banner).ConfigureAwait(false);
+    }
+
+    private async Task RefreshBannersAsync(Banner[] bannerItems)
+    {
+        if (bannerItems.Length == 0)
+            return;
+
+        var bannerBitmaps = new BitmapImage[bannerItems.Length];
+
+        try
+        {
+            await Task.WhenAll
+            (
+                Enumerable.Range(0, bannerItems.Length)
+                          .Select
+                          (async bannerIndex =>
+                              {
+                                  var imageBytes = await launcher.DownloadAsLauncher(bannerItems[bannerIndex].LsbBanner.ToString()).ConfigureAwait(false);
+
+                                  using var stream = new MemoryStream(imageBytes);
+
+                                  var bitmapImage = new BitmapImage();
+                                  bitmapImage.BeginInit();
+                                  bitmapImage.StreamSource = stream;
+                                  bitmapImage.CacheOption  = BitmapCacheOption.OnLoad;
+                                  bitmapImage.EndInit();
+                                  bitmapImage.Freeze();
+
+                                  bannerBitmaps[bannerIndex] = bitmapImage;
+                              }
+                          )
+            ).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "轮播图下载失败, 保留当前轮播");
+            return;
+        }
+
+        _ = Dispatcher.BeginInvoke
+        (
+            new Action
+            (() =>
+                {
+                    banners = bannerItems;
+                    NewsCarousel.UpdateBanners(bannerBitmaps);
+                    NewsCarousel.StartRotation();
+                }
+            )
+        );
+
+        Log.Information("轮播已刷新, 共 {BannerCount} 张", bannerBitmaps.Length);
+    }
+
+    private void RefreshHeadlinesOnActivate()
+    {
+        if (DateTimeOffset.UtcNow - lastActivateHeadlinesRefresh < HEADLINES_ACTIVATE_COOLDOWN)
+            return;
+
+        lastActivateHeadlinesRefresh = DateTimeOffset.UtcNow;
+        _ = RequestHeadlinesRefreshAsync();
     }
 
     private static void SetDefaults()
@@ -562,20 +614,24 @@ public partial class MainWindow
 
         try
         {
-            if (headlinesRefreshTimer != null)
-            {
-                headlinesRefreshTimer.Stop();
-                headlinesRefreshTimer.Tick -= HeadlinesRefreshTimer_OnTick;
-                headlinesRefreshTimer      =  null;
-            }
-
-            NewsCarousel.StopRotation();
             PreserveWindowPosition.SaveWindowPosition(this);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Couldn't save window position");
         }
+    }
+
+    private void MainWindow_OnClosed(object? sender, EventArgs e)
+    {
+        if (headlinesRefreshTimer != null)
+        {
+            headlinesRefreshTimer.Stop();
+            headlinesRefreshTimer.Tick -= HeadlinesRefreshTimer_OnTick;
+            headlinesRefreshTimer      =  null;
+        }
+
+        NewsCarousel.StopRotation();
     }
 
     private void DCTravelPageButton_OnClick(object sender, RoutedEventArgs e) =>
