@@ -395,7 +395,7 @@
                                 <Separator Style="{StaticResource SettingSeparatorStyle}" />
                                 <TextBlock Style="{StaticResource SettingTitleStyle}" Text="WeGame" />
                                 <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                           Text="应该包含 rail_files 文件夹" />
+                                           Text="应该包含 rail_files 文件夹。" />
                                 <components:FolderEntry Margin="0,12,0,0" Description="WeGame 版本游戏目录"
                                                         Text="{Binding WeGamePath, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
@@ -542,7 +542,8 @@
                                               ItemsSource="{Binding CredTypeOptions}"
                                               SelectedItem="{Binding SelectedCredTypeOption}">
                                         <ComboBox.ItemContainerStyle>
-                                            <Style TargetType="ComboBoxItem">
+                                            <Style TargetType="ComboBoxItem"
+                                                   BasedOn="{StaticResource MaterialDesignComboBoxItemStyle}">
                                                 <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
                                             </Style>
                                         </ComboBox.ItemContainerStyle>
