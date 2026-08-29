@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using XIVLauncher.Common.Util;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel.Main.Models;
@@ -36,7 +37,7 @@ public sealed class GameInjectionFlow
             return false;
         }
 
-        var gameExePath = gameProcess.MainModule?.FileName;
+        var gameExePath = PlatformHelpers.GetProcessExecutablePath(gameProcess);
         var gameExeDir = gameExePath == null ?
                              null :
                              Path.GetDirectoryName(gameExePath);
