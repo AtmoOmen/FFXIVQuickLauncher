@@ -24,7 +24,7 @@ namespace XIVLauncher.Windows;
 /// </summary>
 public partial class CustomMessageBox
 {
-    public const string ERROR_EXPLANATION = "XIVLauncher 发生错误, 请查阅常见问题\n如果问题仍然存在, 请点击下方按钮在 GitHub 上报告此问题, 描述问题并复制文本框中的内容";
+    public const string ERROR_EXPLANATION = "XIVLauncher 发生错误，请稍后重试。若持续发生，请上报反馈。";
 
     private readonly Builder _builder;
 
@@ -445,11 +445,15 @@ public partial class CustomMessageBox
             return builder;
         }
 
-        public static Builder NewFromUnexpectedException(Exception exc, string context, ExitOnCloseModes exitOnCloseMode = ExitOnCloseModes.DontExitOnClose) =>
+        public static Builder NewFromUnexpectedException
+        (
+            Exception        exc,
+            string           context,
+            ExitOnCloseModes exitOnCloseMode = ExitOnCloseModes.DontExitOnClose
+        ) =>
             NewFrom(exc, context, exitOnCloseMode)
-                .WithAppendTextFormatted($"发生未知错误 ({exc.Message})")
                 .WithAppendText("\n")
-                .WithAppendText("请反馈此错误");
+                .WithAppendTextFormatted($"{exc.Message}");
 
         public Builder WithText(string text)
         {
