@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
              d:DesignHeight="400" d:DesignWidth="240">
@@ -22,27 +23,7 @@
                   Height="80"
                   HorizontalAlignment="Center"
                   Visibility="{Binding DCTravelPage.IsTravelInProgress, Converter={StaticResource BoolToVis}}">
-                <Ellipse Fill="{DynamicResource MaterialDesign.Brush.Primary}"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center" Width="48" Height="48">
-                    <Ellipse.Triggers>
-                        <EventTrigger RoutedEvent="Loaded">
-                            <BeginStoryboard>
-                                <Storyboard RepeatBehavior="Forever">
-                                    <DoubleAnimation Storyboard.TargetProperty="Width"
-                                                     From="48" To="80" Duration="0:0:1.5"
-                                                     AutoReverse="True" />
-                                    <DoubleAnimation Storyboard.TargetProperty="Height"
-                                                     From="48" To="80" Duration="0:0:1.5"
-                                                     AutoReverse="True" />
-                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                     From="1" To="0.35" Duration="0:0:1.5"
-                                                     AutoReverse="True" />
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-                    </Ellipse.Triggers>
-                </Ellipse>
+                <components:LoadingAnimation Width="80" Height="80" />
                 <materialDesign:PackIcon Kind="Rocket" Width="24" Height="24"
                                          HorizontalAlignment="Center"
                                          VerticalAlignment="Center"
