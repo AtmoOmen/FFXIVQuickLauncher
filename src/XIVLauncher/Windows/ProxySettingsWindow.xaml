@@ -151,7 +151,7 @@
                                    Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
                         <TextBlock Margin="0,8,0,0" Opacity="0.58" TextWrapping="Wrap"
                                    Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
-                                   Text="修改将在重启启动器后生效。启动器更新重装后若配置丢失，请重新填写。" />
+                                   Text="修改将在重启启动器后生效。配置保存在 Roaming 目录，更新重装不会丢失。" />
                     </StackPanel>
                 </materialDesign:Card>
 

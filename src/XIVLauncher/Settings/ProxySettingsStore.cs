@@ -2,11 +2,12 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using Serilog;
+using XIVLauncher.Common.Constant;
 
 namespace XIVLauncher.Settings;
 
 /// <summary>
-///     代理配置独立存储: 启动器目录下的 proxyConfigV3.json
+///     代理配置独立存储: Roaming 目录下的 proxyConfigV3.json
 /// </summary>
 public static class ProxySettingsStore
 {
@@ -18,6 +19,8 @@ public static class ProxySettingsStore
 
     public static ProxySettings Load(string path)
     {
+        MigrateLegacyLocation(path);
+
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             return new ProxySettings();
 
@@ -73,6 +76,43 @@ public static class ProxySettingsStore
         {
             TryDeleteTempFile(tempPath);
             throw;
+        }
+    }
+
+    /// <summary>
+    ///     旧版本把代理配置放在启动器安装目录, 现在统一迁移到 Roaming:
+    ///     复制成功后尽力删除旧文件 (安装目录可能只读, 删除失败不阻塞)
+    /// </summary>
+    private static void MigrateLegacyLocation(string currentPath)
+    {
+        var legacyPath = Paths.GetLegacyProxyConfigPath();
+
+        try
+        {
+            if (File.Exists(currentPath)
+                || !File.Exists(legacyPath)
+                || string.Equals(currentPath, legacyPath, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var directoryPath = Path.GetDirectoryName(currentPath);
+            if (!string.IsNullOrWhiteSpace(directoryPath))
+                Directory.CreateDirectory(directoryPath);
+
+            File.Copy(legacyPath, currentPath, overwrite: false);
+            Log.Information("[ProxySettingsStore] 已将旧版代理配置从安装目录迁移到: {Path}", currentPath);
+
+            try
+            {
+                File.Delete(legacyPath);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[ProxySettingsStore] 删除安装目录下的旧版代理配置失败 (可忽略): {LegacyPath}", legacyPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[ProxySettingsStore] 迁移旧版代理配置失败: {LegacyPath} -> {CurrentPath}", legacyPath, currentPath);
         }
     }
 

@@ -3,7 +3,7 @@ using XIVLauncher.Common.Http;
 namespace XIVLauncher.Settings;
 
 /// <summary>
-///     启动器网络代理配置 (独立存储于启动器目录下的 proxyConfigV3.json)
+///     启动器网络代理配置 (独立存储于 Roaming 目录下的 proxyConfigV3.json)
 /// </summary>
 public sealed class ProxySettings
 {

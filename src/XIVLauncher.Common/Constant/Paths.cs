@@ -44,6 +44,12 @@ public static class Paths
         Path.Join(RoamingPath, $"{prefix}ConfigV3.json");
 
     public static string GetProxyConfigPath() =>
+        Path.Join(RoamingPath, "proxyConfigV3.json");
+
+    /// <summary>
+    ///     旧版代理配置路径 (启动器安装目录), 用于首次迁移到 Roaming
+    /// </summary>
+    public static string GetLegacyProxyConfigPath() =>
         Path.Join(AppContext.BaseDirectory, "proxyConfigV3.json");
 
     public static string GetGamePath()
