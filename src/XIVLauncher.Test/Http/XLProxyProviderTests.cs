@@ -81,4 +81,44 @@ public sealed class XLProxyProviderTests
 
         Assert.Null(proxy);
     }
+
+    [Fact]
+    public void Apply_Current_OnlyProxiesSdoDomains()
+    {
+        XLProxyProvider.Apply(new ProxyConfigSnapshot("Http", "127.0.0.1", 8080));
+
+        try
+        {
+            var proxy = XLProxyProvider.Current;
+            Assert.NotNull(proxy);
+
+            var sdoUri = new Uri("https://ff.dorado.sdo.com/ff/area/serverlist_new.js");
+            Assert.False(proxy.IsBypassed(sdoUri));
+            Assert.Equal("http://127.0.0.1:8080/", proxy.GetProxy(sdoUri)!.ToString());
+
+            Assert.False(proxy.IsBypassed(new Uri("https://cas.sdo.com/authen/getGuid.json")));
+            Assert.False(proxy.IsBypassed(new Uri("https://n1.cas.sdo.com/authen/ssoLogin.json")));
+            Assert.False(proxy.IsBypassed(new Uri("https://ff14bjz.sdo.com/api/orderserivce/pageInit")));
+            Assert.False(proxy.IsBypassed(new Uri("https://v3launcher.jijiagames.com/v3launcher/build/ver2data/x")));
+
+            var githubUri = new Uri("https://github.com/AtmoOmen/FFXIVQuickLauncher");
+            Assert.True(proxy.IsBypassed(githubUri));
+            Assert.Equal(githubUri, proxy.GetProxy(githubUri));
+
+            Assert.True(proxy.IsBypassed(new Uri("https://dalamud-dis.atmoomen.top/RELEASE")));
+            Assert.True(proxy.IsBypassed(new Uri("https://api.nuget.org/v3-flatcontainer/x")));
+        }
+        finally
+        {
+            XLProxyProvider.Apply(null);
+        }
+    }
+
+    [Fact]
+    public void Apply_Null_ClearsCurrent()
+    {
+        XLProxyProvider.Apply(null);
+
+        Assert.Null(XLProxyProvider.Current);
+    }
 }

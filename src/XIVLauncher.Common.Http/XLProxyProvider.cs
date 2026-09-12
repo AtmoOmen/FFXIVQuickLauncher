@@ -33,14 +33,13 @@ public static class XLProxyProvider
 
     public static void Apply(ProxyConfigSnapshot? config)
     {
-        Current = BuildWebProxy(config);
+        var webProxy = BuildWebProxy(config);
+        Current      = webProxy is null ? null : new SdoScopedProxy(webProxy);
 
         Log.Information
         (
-            "[XLProxyProvider] 代理配置已应用: {Proxy}",
-            Current is WebProxy webProxy && webProxy.Address != null ?
-                webProxy.Address.ToString() :
-                "无"
+            "[XLProxyProvider] 代理配置已应用 (仅对盛趣域名 *.sdo.com / *.jijiagames.com 生效): {Proxy}",
+            webProxy is WebProxy { Address: not null } proxy ? proxy.Address.ToString() : "无"
         );
     }
 
@@ -77,5 +76,30 @@ public static class XLProxyProvider
             Log.Warning(ex, "[XLProxyProvider] 构建代理配置失败: {ProxyHost}:{ProxyPort} ({ProxyType})", config.Host, config.Port, config.Type);
             return null;
         }
+    }
+
+    /// <summary>
+    ///     仅对盛趣域名 (*.sdo.com / *.jijiagames.com) 生效的代理包装:
+    ///     其余目标一律直连, 避免 GitHub / Dalamud / NuGet 等流量被错误导入代理。
+    /// </summary>
+    private sealed class SdoScopedProxy(IWebProxy inner) : IWebProxy
+    {
+        public ICredentials? Credentials
+        {
+            get => inner.Credentials;
+            set => inner.Credentials = value;
+        }
+
+        public Uri? GetProxy(Uri destination) =>
+            IsSdoHost(destination.Host) ? inner.GetProxy(destination) : destination;
+
+        public bool IsBypassed(Uri host) =>
+            !IsSdoHost(host.Host);
+
+        private static bool IsSdoHost(string host) =>
+            string.Equals(host, "sdo.com", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".sdo.com", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(host, "jijiagames.com", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".jijiagames.com", StringComparison.OrdinalIgnoreCase);
     }
 }
