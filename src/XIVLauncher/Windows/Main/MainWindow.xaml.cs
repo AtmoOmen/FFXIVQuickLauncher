@@ -38,6 +38,7 @@ public partial class MainWindow
         Closed  += MainWindow_OnClosed;
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
+        StateChanged += (_, _) => UpdateBannerActivity();
 
         Model.Activate += () => Dispatcher.Invoke
         (() =>
@@ -182,6 +183,14 @@ public partial class MainWindow
 
     private void HideMainWindow() =>
         Hide();
+
+    private void UpdateBannerActivity()
+    {
+        if (IsVisible && WindowState != WindowState.Minimized)
+            NewsCarousel.StartRotation();
+        else
+            NewsCarousel.SuspendRotation();
+    }
 
     private void MainWindow_OnClosing(object sender, CancelEventArgs e)
     {

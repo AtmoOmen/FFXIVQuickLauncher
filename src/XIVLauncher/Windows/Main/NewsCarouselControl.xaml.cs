@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -25,22 +26,39 @@ public partial class NewsCarouselControl
     /// </summary>
     public event Action<int>? BannerClicked;
 
-    public NewsCarouselControl() =>
+    public NewsCarouselControl()
+    {
         InitializeComponent();
+
+        IsVisibleChanged += (_, _) =>
+        {
+            if (IsVisible)
+                StartRotation();
+            else
+                SuspendRotation();
+        };
+    }
 
     /// <summary>
     ///     更新横幅图片并初始化圆点指示器, 重置到第一张
     /// </summary>
-    public void UpdateBanners(BitmapImage[] bitmaps)
+    public void UpdateBanners
+    (
+        BitmapImage[] bitmaps
+    )
     {
+        StopRotation();
+        BannerBrush.BeginAnimation(Brush.OpacityProperty, null);
         bannerBitmaps = bitmaps;
         bannerDotList = [];
 
         for (var i = 0; i < bitmaps.Length; i++)
             bannerDotList.Add(new() { Index = i });
 
-        currentBannerIndex    = 0;
-        BannerImage.Source    = bitmaps.Length > 0 ? bitmaps[0] : null;
+        currentBannerIndex = 0;
+        BannerBrush.ImageSource = bitmaps.Length > 0 ?
+                                      bitmaps[0] :
+                                      null;
         BannerDot.ItemsSource = bannerDotList;
         SetBannerDotActiveState(0);
     }
@@ -51,15 +69,20 @@ public partial class NewsCarouselControl
     public void ClearBanners()
     {
         StopRotation();
-        bannerBitmaps         = null;
-        bannerDotList         = null;
-        BannerImage.Source    = null;
-        BannerDot.ItemsSource = null;
+        BannerBrush.BeginAnimation(Brush.OpacityProperty, null);
+        bannerBitmaps           = null;
+        bannerDotList           = null;
+        BannerBrush.ImageSource = null;
+        BannerDot.ItemsSource   = null;
     }
 
     public void StartRotation()
     {
-        if (bannerChangeTimer != null || bannerBitmaps is not { Length: > 0 })
+        if (bannerChangeTimer != null                                    ||
+            bannerBitmaps is not { Length: > 1 }                         ||
+            !IsVisible                                                   ||
+            Window.GetWindow(this)?.WindowState == WindowState.Minimized ||
+            BannerDot.IsMouseOver)
             return;
 
         bannerChangeTimer      =  new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromSeconds(5) };
@@ -79,7 +102,20 @@ public partial class NewsCarouselControl
         bannerChangeTimer = null;
     }
 
-    private void BannerCard_MouseUp(object sender, MouseButtonEventArgs e)
+    public void SuspendRotation()
+    {
+        StopRotation();
+        BannerBrush.BeginAnimation(Brush.OpacityProperty, null);
+
+        if (bannerBitmaps is { Length: > 0 })
+            BannerBrush.ImageSource = bannerBitmaps[currentBannerIndex];
+    }
+
+    private void BannerCard_MouseUp
+    (
+        object               sender,
+        MouseButtonEventArgs e
+    )
     {
         if (e.ChangedButton != MouseButton.Left)
             return;
@@ -88,7 +124,11 @@ public partial class NewsCarouselControl
             BannerClicked?.Invoke(currentBannerIndex);
     }
 
-    private void BannerDot_OnChecked(object sender, RoutedEventArgs e)
+    private void BannerDot_OnChecked
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         if (sender is not RadioButton { DataContext: BannerDotInfo bannerDotInfo })
             return;
@@ -99,7 +139,11 @@ public partial class NewsCarouselControl
         SwitchBanner(bannerDotInfo.Index);
     }
 
-    private void RadioButton_MouseEnter(object sender, MouseEventArgs e)
+    private void RadioButton_MouseEnter
+    (
+        object         sender,
+        MouseEventArgs e
+    )
     {
         StopRotation();
 
@@ -107,7 +151,11 @@ public partial class NewsCarouselControl
             SwitchBanner(bannerDotInfo.Index);
     }
 
-    private void RadioButton_MouseLeave(object sender, MouseEventArgs e) =>
+    private void RadioButton_MouseLeave
+    (
+        object         sender,
+        MouseEventArgs e
+    ) =>
         StartRotation();
 
     private void ShowNextBanner()
@@ -115,14 +163,17 @@ public partial class NewsCarouselControl
         if (bannerBitmaps is not { Length: > 0 })
             return;
 
-        var nextIndex = currentBannerIndex + 1 > bannerBitmaps.Length - 1
-                            ? 0
-                            : currentBannerIndex + 1;
+        var nextIndex = currentBannerIndex + 1 > bannerBitmaps.Length - 1 ?
+                            0 :
+                            currentBannerIndex + 1;
 
         SwitchBanner(nextIndex);
     }
 
-    private void SwitchBanner(int bannerIndex)
+    private void SwitchBanner
+    (
+        int bannerIndex
+    )
     {
         if (bannerBitmaps == null || bannerDotList == null)
             return;
@@ -130,25 +181,32 @@ public partial class NewsCarouselControl
         if (bannerIndex < 0 || bannerIndex >= bannerBitmaps.Length || bannerIndex >= bannerDotList.Count)
             return;
 
-        if (currentBannerIndex == bannerIndex && BannerImage.Source == bannerBitmaps[bannerIndex])
+        if (currentBannerIndex == bannerIndex)
             return;
 
         currentBannerIndex = bannerIndex;
         SetBannerDotActiveState(bannerIndex);
 
+        var bitmaps = bannerBitmaps;
         var fadeOut = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
-        var fadeIn  = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200));
+        var fadeIn  = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)) { FillBehavior = FillBehavior.Stop };
 
         fadeOut.Completed += (_, _) =>
         {
-            BannerImage.Source = bannerBitmaps[bannerIndex];
-            BannerImage.BeginAnimation(OpacityProperty, fadeIn);
+            if (bannerBitmaps != bitmaps || currentBannerIndex != bannerIndex || !IsVisible || Window.GetWindow(this)?.WindowState == WindowState.Minimized)
+                return;
+
+            BannerBrush.ImageSource = bitmaps[bannerIndex];
+            BannerBrush.BeginAnimation(Brush.OpacityProperty, fadeIn);
         };
 
-        BannerImage.BeginAnimation(OpacityProperty, fadeOut);
+        BannerBrush.BeginAnimation(Brush.OpacityProperty, fadeOut);
     }
 
-    private void SetBannerDotActiveState(int activeIndex)
+    private void SetBannerDotActiveState
+    (
+        int activeIndex
+    )
     {
         if (bannerDotList == null)
             return;

@@ -71,7 +71,9 @@
                 <materialDesign:DialogHost
                     Identifier="MaintenanceQueueDialogHost"
                     x:Name="MaintenanceQueueDialogHost"
-                    IsOpen="{Binding IsLoadingDialogOpen}">
+                    IsOpen="{Binding IsLoadingDialogOpen}"
+                    Grid.RowSpan="2"
+                    Grid.ColumnSpan="2">
                     <materialDesign:DialogHost.DialogContent>
                         <StackPanel Margin="16">
                             <StackPanel Orientation="Vertical"

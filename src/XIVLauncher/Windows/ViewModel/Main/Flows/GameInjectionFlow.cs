@@ -1,11 +1,8 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
-using Serilog;
-using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Util;
 using XIVLauncher.Dalamud;
-using XIVLauncher.Login.Models;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel.Main.Models;
 using XIVLauncher.Windows.ViewModel.Main.Services;
@@ -40,16 +37,13 @@ public sealed class GameInjectionFlow
             return false;
         }
 
-        var gameExePath = TryGetGameExePath(gameProcess);
-        var gameExeDir  = gameExePath == null ?
-                              null :
-                              Path.GetDirectoryName(gameExePath);
+        var gameExePath = PlatformHelpers.GetProcessExecutablePath(gameProcess);
+        var gameExeDir = gameExePath == null ?
+                             null :
+                             Path.GetDirectoryName(gameExePath);
         var gamePath = gameExeDir == null ?
                            null :
                            new DirectoryInfo(gameExeDir).Parent;
-
-        if (gamePath?.Exists != true)
-            gamePath = GetConfiguredGamePath();
 
         if (gamePath?.Exists != true)
         {
@@ -97,28 +91,5 @@ public sealed class GameInjectionFlow
 
         dalamudSession.InjectGame(gamePid, noPlugins);
         return true;
-    }
-
-    private static string? TryGetGameExePath
-    (
-        Process gameProcess
-    )
-    {
-        try
-        {
-            return gameProcess.MainModule?.FileName;
-        }
-        catch (Win32Exception ex)
-        {
-            Log.Error(ex, "无法读取游戏进程主模块, 回退到设置中的游戏目录");
-            return null;
-        }
-    }
-
-    private static DirectoryInfo? GetConfiguredGamePath()
-    {
-        var accountType = App.AccountManager.CurrentAccount?.AccountType
-                          ?? App.Settings.SelectedLoginType.ToAccountType(XIVAccountType.Sdo);
-        return App.Settings.GetGamePath(accountType);
     }
 }

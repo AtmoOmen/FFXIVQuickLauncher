@@ -14,14 +14,19 @@
             VerticalAlignment="Stretch"
             UniformCornerRadius="12"
             materialDesign:ElevationAssist.Elevation="Dp2"
-            Cursor="Hand"
-            MouseUp="BannerCard_MouseUp">
-            <Grid>
-                <Image x:Name="BannerImage"
-                       Stretch="Fill"
-                       Source="pack://application:,,,/Resources/placeholder-news.png" />
-            </Grid>
+            IsHitTestVisible="False">
+            <materialDesign:Card.CacheMode>
+                <BitmapCache />
+            </materialDesign:Card.CacheMode>
         </materialDesign:Card>
+        <Rectangle RadiusX="12" RadiusY="12"
+                   Cursor="Hand"
+                   MouseUp="BannerCard_MouseUp">
+            <Rectangle.Fill>
+                <ImageBrush x:Name="BannerBrush" Stretch="Fill"
+                            ImageSource="pack://application:,,,/Resources/placeholder-news.png" />
+            </Rectangle.Fill>
+        </Rectangle>
 
         <Border HorizontalAlignment="Right"
                 VerticalAlignment="Bottom"

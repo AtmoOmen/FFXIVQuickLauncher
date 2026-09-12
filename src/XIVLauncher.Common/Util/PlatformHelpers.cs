@@ -5,6 +5,8 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.Text;
+using Microsoft.Win32.SafeHandles;
 using Serilog;
 using SharpCompress.Archives;
 using SharpCompress.Common;
@@ -15,6 +17,8 @@ namespace XIVLauncher.Common.Util;
 public static class PlatformHelpers
 {
     private static readonly IPEndPoint DefaultLoopbackEndpoint = new(IPAddress.Loopback, 0);
+
+    private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
     public static void BringProcessForeground(int pid)
     {
@@ -48,6 +52,28 @@ public static class PlatformHelpers
         [DllImport("user32.dll")]
         static extern bool IsIconic(nint hWnd);
     }
+
+    public static string? GetProcessExecutablePath(Process process)
+    {
+        using var processHandle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process.Id);
+        if (processHandle.IsInvalid)
+            return null;
+
+        var imageName = new StringBuilder(1024);
+        var size      = (uint)imageName.Capacity;
+
+        if (!QueryFullProcessImageName(processHandle, 0, imageName, ref size))
+            return null;
+
+        return imageName.ToString();
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern SafeProcessHandle OpenProcess(uint access, bool inheritHandle, int processId);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool QueryFullProcessImageName(SafeProcessHandle process, uint flags, StringBuilder imageName, ref uint size);
 
     public static string GetTempFileName() =>
         Path.Combine(Path.GetTempPath(), "xivlauncher_" + Guid.NewGuid());

@@ -53,13 +53,14 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <materialDesign:Card
-        Margin="0"
-        HorizontalAlignment="Stretch"
-        VerticalAlignment="Stretch"
-        UniformCornerRadius="12"
-        materialDesign:ElevationAssist.Elevation="Dp4"
-        KeyDown="Card_KeyDown">
+    <Grid KeyDown="Card_KeyDown">
+        <materialDesign:Card
+            Margin="0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            UniformCornerRadius="12"
+            materialDesign:ElevationAssist.Elevation="Dp4"
+            IsHitTestVisible="False" />
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -571,5 +572,5 @@
                 </Grid>
             </StackPanel>
         </Grid>
-    </materialDesign:Card>
+    </Grid>
 </UserControl>
