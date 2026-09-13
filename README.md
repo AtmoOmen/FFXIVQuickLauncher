@@ -44,6 +44,9 @@
 > [!NOTE]
 > 当前分支聚焦 `Windows 10 2004+ / Windows 11` 的 `x64` 环境，不提供 Linux、macOS 与 Steam 相关支持。
 
+> [!IMPORTANT]
+> 请勿将启动器安装目录与数据目录 `%APPDATA%\XIVLauncherCN` 纳入 OneDrive、群晖 Drive 等云同步工具的实时同步或按需同步范围。这类工具会在自动更新与数据库读写期间占用或改写文件，可能造成启动报错。
+
 ### 自行构建
 
 前置要求：

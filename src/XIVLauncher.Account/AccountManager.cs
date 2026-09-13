@@ -42,10 +42,12 @@ public class AccountManager
 
     public ObservableCollection<XIVAccount> Accounts { get; } = [];
 
+    private SQLiteConnection? database;
+
     private SQLiteConnection Database
     {
-        get => field ?? throw new InvalidOperationException("数据库尚未初始化");
-        set;
+        get => database ?? throw new InvalidOperationException("数据库尚未初始化");
+        set => database = value;
     }
 
     public string CurrentAccountID =>
@@ -62,6 +64,7 @@ public class AccountManager
     private static readonly string DeviceProfilePresetStorePath  = Path.Combine(Paths.RoamingPath, "deviceProfilePresets.json");
     private static readonly string LegacySharedDeviceProfilePath = Path.Combine(Paths.RoamingPath, "sharedDeviceProfile.json");
     private static readonly string DatabasePath                  = Path.Combine(Paths.RoamingPath, "accounts.db");
+    private static readonly string DatabaseJournalPath           = $"{DatabasePath}-journal";
 
     private static readonly JsonSerializerOptions DeviceProfilePresetStoreJsonOptions = new() { WriteIndented = true };
 
@@ -138,7 +141,7 @@ public class AccountManager
     }
 
     /// <summary>
-    ///     从磁盘加载账号数据并修复旧数据
+    ///     从磁盘加载账号数据并修复旧数据，仅在数据库文件确实损坏时隔离备份后重建
     /// </summary>
     public void Load()
     {
@@ -146,24 +149,18 @@ public class AccountManager
         {
             SetupDb();
         }
+        catch (Exception ex) when (IsDatabaseFileDamaged(ex))
+        {
+            Log.Error(ex, "账号数据库文件已损坏，隔离备份后重建");
+
+            QuarantineDamagedDatabaseFile();
+            SetupDb();
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to load VFS database, starting fresh");
+            Log.Error(ex, "账号数据库无法打开，现有文件保持不变");
 
-            try
-            {
-                Database.Close();
-                Database.Dispose();
-            }
-            catch
-            {
-                // ignored
-            }
-
-            if (File.Exists(DatabasePath))
-                File.Delete(DatabasePath);
-
-            SetupDb();
+            throw new InvalidOperationException(BuildDatabaseUnavailableMessage(ex), ex);
         }
 
         var storedAccounts = Database.Table<XIVAccount>()
@@ -182,6 +179,96 @@ public class AccountManager
         }
 
         MigrateLegacyDeviceProfiles();
+    }
+
+    /// <summary>
+    ///     依次枚举异常及其内部异常
+    /// </summary>
+    private static IEnumerable<Exception> EnumerateExceptionChain(Exception exception)
+    {
+        for (Exception? current = exception; current != null; current = current.InnerException)
+            yield return current;
+    }
+
+    /// <summary>
+    ///     判断异常是否表明数据库文件本身已损坏
+    /// </summary>
+    private static bool IsDatabaseFileDamaged(Exception exception) =>
+        EnumerateExceptionChain(exception)
+            .Any(current => current is SQLiteException { Result: SQLite3.Result.NonDBFile or SQLite3.Result.Corrupt });
+
+    /// <summary>
+    ///     判断异常是否由 SQLite 运行库无法加载引起
+    /// </summary>
+    private static bool IsSqliteRuntimeUnavailable(Exception exception) =>
+        EnumerateExceptionChain(exception)
+            .Any(current => current is DllNotFoundException or BadImageFormatException or TypeInitializationException or FileLoadException);
+
+    /// <summary>
+    ///     构造数据库不可用时的用户提示，明确说明数据库文件未被改动
+    /// </summary>
+    private static string BuildDatabaseUnavailableMessage(Exception exception)
+    {
+        if (IsSqliteRuntimeUnavailable(exception))
+            return $"SQLite 运行库加载失败，账号数据库 {DatabasePath} 保持不变。{Environment.NewLine}"
+                   + "请检查安装目录中的 SQLite-net.dll、SQLitePCLRaw.batteries_v2.dll、SQLitePCLRaw.core.dll、"
+                   + "SQLitePCLRaw.provider.e_sqlite3.dll 与 e_sqlite3.dll 是否完整，"
+                   + "并确认安全软件或云同步软件未损坏或占用这些文件，之后修复或重新安装启动器。";
+
+        return $"账号数据库 {DatabasePath} 无法打开，该文件保持不变。{Environment.NewLine}"
+               + $"请关闭可能占用它的程序（例如云同步、备份工具或另一个启动器实例）后重试。{Environment.NewLine}"
+               + $"{exception.Message}";
+    }
+
+    /// <summary>
+    ///     关闭并释放当前数据库连接
+    /// </summary>
+    private void CloseDatabase()
+    {
+        var connection = database;
+
+        if (connection == null)
+            return;
+
+        database = null;
+
+        try
+        {
+            connection.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "释放账号数据库连接失败");
+        }
+    }
+
+    /// <summary>
+    ///     将损坏的数据库文件改名留存，不删除用户数据
+    /// </summary>
+    private void QuarantineDamagedDatabaseFile()
+    {
+        CloseDatabase();
+
+        if (!File.Exists(DatabasePath))
+            return;
+
+        var quarantinePath = $"{DatabasePath}.corrupt-{DateTime.Now:yyyyMMddHHmmssfff}";
+
+        try
+        {
+            File.Move(DatabasePath, quarantinePath);
+
+            if (File.Exists(DatabaseJournalPath))
+                File.Move(DatabaseJournalPath, $"{quarantinePath}-journal");
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"账号数据库已损坏，但无法将其改名备份。请关闭可能占用 {DatabasePath} 的程序后重试。",
+                ex);
+        }
+
+        Log.Warning("账号数据库已备份至 {QuarantinePath}", quarantinePath);
     }
 
     /// <summary>

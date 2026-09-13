@@ -6,10 +6,12 @@ namespace XIVLauncher.Xaml;
 
 public static class PreserveWindowPosition
 {
-    private const int SW_SHOWNORMAL    = 1;
-    private const int SW_SHOWMINIMIZED = 2;
+    private const int SW_SHOWNORMAL = 1;
 
-    public static void RestorePosition(Window window)
+    public static void RestorePosition
+    (
+        Window window
+    )
     {
         if (App.Settings.MainWindowPlacement == null)
             return;
@@ -17,24 +19,37 @@ public static class PreserveWindowPosition
         var placement = App.Settings.MainWindowPlacement.Value;
         placement.length  = Marshal.SizeOf<WindowPlacement>();
         placement.flags   = 0;
-        placement.showCmd = placement.showCmd == SW_SHOWMINIMIZED ? SW_SHOWNORMAL : placement.showCmd;
+        placement.showCmd = SW_SHOWNORMAL;
 
         var hwnd = new WindowInteropHelper(window).Handle;
         SetWindowPlacement(hwnd, ref placement);
     }
 
-    public static void SaveWindowPosition(Window window)
+    public static void SaveWindowPosition
+    (
+        Window window
+    )
     {
         var hwnd = new WindowInteropHelper(window).Handle;
         GetWindowPlacement(hwnd, out var wp);
+
+        wp.showCmd                       = SW_SHOWNORMAL;
         App.Settings.MainWindowPlacement = wp;
     }
 
     [DllImport("user32.dll")]
-    private static extern bool SetWindowPlacement(IntPtr hWnd, [In] ref WindowPlacement lpwndpl);
+    private static extern bool SetWindowPlacement
+    (
+        IntPtr                   hWnd,
+        [In] ref WindowPlacement lpwndpl
+    );
 
     [DllImport("user32.dll")]
-    private static extern bool GetWindowPlacement(IntPtr hWnd, out WindowPlacement lpwndpl);
+    private static extern bool GetWindowPlacement
+    (
+        IntPtr              hWnd,
+        out WindowPlacement lpwndpl
+    );
 
     [Serializable]
     [StructLayout(LayoutKind.Sequential)]
