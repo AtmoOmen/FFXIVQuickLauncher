@@ -116,6 +116,7 @@ public sealed partial class ProxySettingsWindowViewModel : ObservableObject
                 profile.SetPassword(passwordInput);
         }
 
+        settings.Profiles        = Profiles.ToList();
         settings.ActiveProfileId = profile?.Id;
 
         ProxySettingsStore.Save(Paths.GetProxyConfigPath(), settings);
