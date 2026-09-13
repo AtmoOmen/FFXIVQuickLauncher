@@ -22,8 +22,9 @@ public partial class MainWindow
     {
         InitializeComponent();
 
-        DataContext                                        =  new MainWindowViewModel(this);
-        LoginCard.AccountListView.ContextMenu!.DataContext =  Model.AccountSwitcher;
+        DataContext = new MainWindowViewModel(this);
+
+        LoginCard.AccountListView.ContextMenu!.DataContext = Model.AccountSwitcher;
 
         Model.NewsFlow.NewsItemsUpdated += items => Dispatcher.Invoke(() => NewsList.SetNewsItems(items));
         Model.NewsFlow.BannersUpdated   += bitmaps => Dispatcher.Invoke
@@ -45,8 +46,13 @@ public partial class MainWindow
             {
                 Model.GameUpdateMonitor.QueueCheck();
                 Model.NewsFlow.RefreshOnActivate();
+
                 Show();
                 Activate();
+
+                if (WindowState != WindowState.Normal)
+                    WindowState = WindowState.Normal;
+
                 Focus();
             }
         );
@@ -98,7 +104,6 @@ public partial class MainWindow
             var setup = new FirstTimeSetup();
             setup.ShowDialog();
 
-            // If the user didn't reach the end of the setup, we should quit
             if (!setup.WasCompleted)
             {
                 Environment.Exit(0);
@@ -131,9 +136,6 @@ public partial class MainWindow
     private void OnAccountSwitchRequested(object? sender, EventArgs e) =>
         SuppressAccountSelectionTracking(Model.AccountFlow.SwitchAccountFromSwitcher);
 
-    /// <summary>
-    ///     抑制账号选择跟踪, 防止程序化切换账号时误触发清除逻辑
-    /// </summary>
     private void SuppressAccountSelectionTracking(Action switchAction)
     {
         LoginCard.SuppressAccountSelectionTracking = true;
