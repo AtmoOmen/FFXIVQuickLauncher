@@ -133,11 +133,11 @@ public static class ProxySettingsStore
 
             var profile = new ProxyProfile
             {
-                Name                  = "旧代理配置",
-                ProxyType             = root.GetProperty("ProxyType").GetInt32() is var type && Enum.IsDefined(typeof(ProxyType), type) ? (ProxyType)type : ProxyType.None,
-                ProxyHost             = root.TryGetProperty("ProxyHost", out var host) ? host.GetString() ?? string.Empty : string.Empty,
-                ProxyPort             = root.TryGetProperty("ProxyPort", out var port) ? port.GetInt32() : 0,
-                ProxyUsername         = root.TryGetProperty("ProxyUsername", out var username) ? username.GetString() ?? string.Empty : string.Empty,
+                Name                   = "旧代理配置",
+                ProxyType              = ParseLegacyProxyType(root),
+                ProxyHost              = root.TryGetProperty("ProxyHost", out var host) ? host.GetString() ?? string.Empty : string.Empty,
+                ProxyPort              = root.TryGetProperty("ProxyPort", out var port) ? port.GetInt32() : 0,
+                ProxyUsername          = root.TryGetProperty("ProxyUsername", out var username) ? username.GetString() ?? string.Empty : string.Empty,
                 ProxyPasswordEncrypted = root.TryGetProperty("ProxyPasswordEncrypted", out var password) ? password.GetString() ?? string.Empty : string.Empty
             };
 
@@ -149,6 +149,12 @@ public static class ProxySettingsStore
         {
             Log.Warning(ex, "[ProxySettingsStore] 旧版扁平代理配置迁移失败");
         }
+    }
+
+    private static ProxyType ParseLegacyProxyType(JsonElement root)
+    {
+        var rawType = root.GetProperty("ProxyType").GetInt32();
+        return Enum.IsDefined(typeof(ProxyType), rawType) ? (ProxyType)rawType : ProxyType.None;
     }
 
     private static void IsolateBrokenFile(string path)

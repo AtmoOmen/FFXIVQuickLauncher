@@ -7,6 +7,8 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public sealed partial class ProxySettingsWindowViewModel : ObservableObject
 {
+    private readonly ProxySettings settings;
+
     public sealed record ProxyTypeOption(ProxyType Type, string Display);
 
     public sealed record ProxySelectItem(ProxyProfile? Profile)
@@ -43,8 +45,6 @@ public sealed partial class ProxySettingsWindowViewModel : ObservableObject
         && !string.IsNullOrWhiteSpace(SelectedProfile.ProxyPasswordEncrypted) ?
             "留空保持当前密码" :
             "未设置";
-
-    private readonly ProxySettings settings;
 
     public ProxySettingsWindowViewModel(ProxySettings settings)
     {
