@@ -10,6 +10,10 @@ public sealed class LoadingAnimation : FrameworkElement
     private const int    FRAME_COUNT   = 720;
     private const int    ATLAS_COLUMNS = 20;
     private const double LOOP_SECONDS  = 3;
+    
+    private const int ATLAS_DECODE_WIDTH = 1600;
+
+    private const int PLAYBACK_FRAME_RATE = 60;
 
     private static readonly BitmapSource Atlas = LoadAtlas();
 
@@ -121,7 +125,7 @@ public sealed class LoadingAnimation : FrameworkElement
             {
                 RepeatBehavior = RepeatBehavior.Forever
             };
-            Timeline.SetDesiredFrameRate(animation, (int)(FRAME_COUNT / LOOP_SECONDS));
+            Timeline.SetDesiredFrameRate(animation, PLAYBACK_FRAME_RATE);
             playbackClock = (AnimationClock)animation.CreateClock(true);
             ApplyAnimationClock(FrameIndexProperty, playbackClock);
             playbackClock.Controller!.SeekAlignedToLastTick(position, TimeSeekOrigin.BeginTime);
@@ -141,8 +145,9 @@ public sealed class LoadingAnimation : FrameworkElement
     {
         var atlas = new BitmapImage();
         atlas.BeginInit();
-        atlas.CacheOption = BitmapCacheOption.OnLoad;
-        atlas.UriSource   = new Uri("pack://application:,,,/XIVLauncherCN;component/Resources/loading-spinner.png");
+        atlas.CacheOption      = BitmapCacheOption.OnLoad;
+        atlas.DecodePixelWidth = ATLAS_DECODE_WIDTH;
+        atlas.UriSource        = new Uri("pack://application:,,,/XIVLauncherCN;component/Resources/loading-spinner.png");
         atlas.EndInit();
         atlas.Freeze();
 
