@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using Serilog;
 using XIVLauncher.Common.Constant;
@@ -16,7 +17,15 @@ public partial class ProxySettingsWindow
         InitializeComponent();
 
         var settings  = ProxySettingsStore.Load(Paths.GetProxyConfigPath());
-        DataContext   = new ProxySettingsWindowViewModel(settings);
+        var viewModel = new ProxySettingsWindowViewModel(settings);
+        DataContext   = viewModel;
+
+        // 切换预设时清空密码框, 防止给上一个预设输入的密码被写入新选中的预设
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ProxySettingsWindowViewModel.SelectedItem))
+                ProxyPasswordBox.Password = string.Empty;
+        };
     }
 
     private void CreateProfileButton_OnClick(object sender, RoutedEventArgs e) =>
