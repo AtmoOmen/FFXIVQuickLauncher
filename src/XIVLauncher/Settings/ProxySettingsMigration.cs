@@ -51,7 +51,7 @@ public static class ProxySettingsMigration
             settings.Save();
 
             Log.Information("[ProxySettingsMigration] 旧版代理配置已并入主配置: {Path}", sourcePath);
-            DeleteLegacyFiles();
+            DeleteLegacyFile(sourcePath);
         }
         catch (Exception ex)
         {
@@ -153,21 +153,18 @@ public static class ProxySettingsMigration
     }
 
     /// <summary>
-    ///     导入成功后尽力删除两处旧文件 (删除失败不阻塞, 保留文件也仅作历史遗留)
+    ///     导入成功后尽力删除导入源文件 (删除失败不阻塞, 残留文件仅作历史遗留)
     /// </summary>
-    private static void DeleteLegacyFiles()
+    private static void DeleteLegacyFile(string sourcePath)
     {
-        foreach (var legacyPath in new[] { Paths.GetProxyConfigPath(), Paths.GetLegacyProxyConfigPath() })
+        try
         {
-            try
-            {
-                if (File.Exists(legacyPath))
-                    File.Delete(legacyPath);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "[ProxySettingsMigration] 删除旧版代理配置文件失败 (可忽略): {LegacyPath}", legacyPath);
-            }
+            if (File.Exists(sourcePath))
+                File.Delete(sourcePath);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[ProxySettingsMigration] 删除旧版代理配置文件失败 (可忽略): {LegacyPath}", sourcePath);
         }
     }
 }

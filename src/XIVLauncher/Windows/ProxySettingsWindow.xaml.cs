@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Windows;
 using Serilog;
 using XIVLauncher.Common.Http;
-using XIVLauncher.Settings;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
