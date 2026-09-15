@@ -233,6 +233,10 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
     private void OpenAdvancedSettings() =>
         _dialogService.ShowAdvancedSettings();
 
+    [RelayCommand]
+    private void OpenProxySettings() =>
+        _dialogService.ShowProxySettings();
+
     public void OpenLicense() =>
         _externalLaunchService.OpenPath(Path.Combine(Paths.ResourcesPath, "LICENSE.txt"));
 

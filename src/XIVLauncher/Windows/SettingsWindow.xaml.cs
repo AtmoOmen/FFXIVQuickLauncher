@@ -78,17 +78,6 @@ public partial class SettingsWindow
     private void SharedDeviceProfileButton_Click(object sender, RoutedEventArgs e) =>
         ViewModel.OpenSharedDeviceProfile();
 
-    private void ProxySettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var proxyWindow = new ProxySettingsWindow
-        {
-            Owner                 = this,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
-        };
-
-        proxyWindow.ShowDialog();
-    }
-
     private void FirstTimeSetupButton_Click(object sender, RoutedEventArgs e)
     {
         var setupWindow = new FirstTimeSetup
