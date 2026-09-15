@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using Serilog;
-using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Settings;
 using XIVLauncher.Windows.ViewModel;
 
@@ -16,7 +16,8 @@ public partial class ProxySettingsWindow
     {
         InitializeComponent();
 
-        var settings  = ProxySettingsStore.Load(Paths.GetProxyConfigPath());
+        // 基于主配置的深拷贝进行编辑, 取消窗口时不影响已生效的代理配置
+        var settings  = App.Settings.ProxySettings.DeepClone();
         var viewModel = new ProxySettingsWindowViewModel(settings);
         DataContext   = viewModel;
 
@@ -55,6 +56,11 @@ public partial class ProxySettingsWindow
         try
         {
             ViewModel.Save(ProxyPasswordBox.Password);
+
+            // 提交到启动器主配置并立即应用
+            App.Settings.Update(settings => settings.ProxySettings = ViewModel.Settings);
+            XLProxyProvider.Apply(App.Settings.ProxySettings.ToSnapshot());
+
             DialogResult = true;
             Close();
         }

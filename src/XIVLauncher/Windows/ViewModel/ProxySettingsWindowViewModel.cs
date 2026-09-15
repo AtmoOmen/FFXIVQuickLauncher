@@ -7,7 +7,10 @@ namespace XIVLauncher.Windows.ViewModel;
 
 public sealed partial class ProxySettingsWindowViewModel : ObservableObject
 {
-    private readonly ProxySettings settings;
+    /// <summary>
+    ///     编辑会话中使用的配置副本, 确认后由窗口层提交到启动器主配置
+    /// </summary>
+    public ProxySettings Settings { get; }
 
     public sealed record ProxyTypeOption(ProxyType Type, string Display);
 
@@ -50,8 +53,8 @@ public sealed partial class ProxySettingsWindowViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        this.settings = settings;
-        ConfigFilePath = Paths.GetProxyConfigPath();
+        Settings       = settings;
+        ConfigFilePath = Paths.GetConfigPath();
 
         foreach (var profile in settings.Profiles)
             Profiles.Add(profile);
@@ -116,10 +119,8 @@ public sealed partial class ProxySettingsWindowViewModel : ObservableObject
                 profile.SetPassword(passwordInput);
         }
 
-        settings.Profiles        = Profiles.ToList();
-        settings.ActiveProfileId = profile?.Id;
-
-        ProxySettingsStore.Save(Paths.GetProxyConfigPath(), settings);
+        Settings.Profiles        = Profiles.ToList();
+        Settings.ActiveProfileId = profile?.Id;
     }
 
     private void RebuildSelection()
