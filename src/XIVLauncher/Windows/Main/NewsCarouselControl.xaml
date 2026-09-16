@@ -14,11 +14,7 @@
             VerticalAlignment="Stretch"
             UniformCornerRadius="12"
             materialDesign:ElevationAssist.Elevation="Dp2"
-            IsHitTestVisible="False">
-            <materialDesign:Card.CacheMode>
-                <BitmapCache />
-            </materialDesign:Card.CacheMode>
-        </materialDesign:Card>
+            IsHitTestVisible="False" />
         <Rectangle RadiusX="12" RadiusY="12"
                    Cursor="Hand"
                    MouseUp="BannerCard_MouseUp">
