@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO.Compression;
@@ -96,7 +97,10 @@ public sealed class GamePatchInstaller : IDisposable
 
         Log.Information("[V3Patch] 完整性清单解析完成, 版本 {SourceVersion}, 文件数 {FileCount}", sourceVersion, sourceFiles.Count);
 
-        var reachedTargetFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var reachedTargetFiles = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+        var precheckTicks      = 0L;
+        var extractTicks       = 0L;
+        var mergeTicks         = 0L;
 
         for (var packageIndex = 0; packageIndex < plan.Packages.Count; packageIndex++)
         {
@@ -161,6 +165,7 @@ public sealed class GamePatchInstaller : IDisposable
             long lastDownloadReportTicks = 0;
             var  downloadStartTicks      = Stopwatch.GetTimestamp();
             var  minDownloadReportTicks  = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
+            var  reusedPackageFileCount  = new int[1];
 
             void ReportDownloadProgress
             (
@@ -222,6 +227,7 @@ public sealed class GamePatchInstaller : IDisposable
                         {
                             Log.Information("[V3Patch] 更新包文件已存在且校验通过 {FileName}, 大小 {Size}", fileName, entry.Size);
                             Interlocked.Add(ref downloaded, entry.Size);
+                            Interlocked.Increment(ref reusedPackageFileCount[0]);
                             ReportDownloadProgress(fileName, 0, true);
                             return;
                         }
@@ -299,194 +305,254 @@ public sealed class GamePatchInstaller : IDisposable
                 if (deltaMap == null)
                     throw new InvalidDataException("更新包缺少 patch_delta_direct.dat");
 
-                var applyTotal = deltaMap.Count;
-                var applied    = 0L;
+                var applyTotal           = deltaMap.Count;
+                var applied              = 0L;
+                var verifyExistingFiles  = Volatile.Read(ref reusedPackageFileCount[0]) > 0;
+                var extractGate          = new SemaphoreSlim(1, 1);
+                var lastApplyReportTicks = 0L;
+                var minApplyReportTicks  = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
 
                 Log.Information("[V3Patch] 更新包差分索引解析完成, 差分数 {DeltaCount}, 压缩包数 {ArchiveCount}", applyTotal, packageArchives.Count);
+                Log.Information("[V3Patch] 目标文件预检 {PrecheckTargetFiles}, 包 {PackageName}", verifyExistingFiles, packageName);
 
                 void ReportApplyProgress
                 (
                     string phaseText,
                     string currentFile,
-                    double fileFraction
+                    double fileFraction,
+                    bool   force = false
                 )
                 {
+                    var ticks    = Stopwatch.GetTimestamp();
+                    var previous = Interlocked.Read(ref lastApplyReportTicks);
+
+                    if (!force && ticks - previous < minApplyReportTicks)
+                        return;
+
+                    if (!force && Interlocked.CompareExchange(ref lastApplyReportTicks, ticks, previous) != previous)
+                        return;
+
+                    var currentApplied = Interlocked.Read(ref applied);
                     progress?.Report
                     (
                         new()
                         {
                             PhaseText      = phaseText,
                             CurrentFile    = currentFile,
-                            Progress       = applied + fileFraction,
+                            Progress       = currentApplied + fileFraction,
                             Total          = applyTotal,
-                            StatusText     = $"{applied}/{applyTotal}",
+                            StatusText     = $"{currentApplied}/{applyTotal}",
                             IsByteProgress = false
                         }
                     );
                 }
 
-                for (var deltaIndex = 0; deltaIndex < deltaMap.Count; deltaIndex++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var targetRelativePath = deltaMap[deltaIndex].Key;
-                    var deltaEntryPath     = deltaMap[deltaIndex].Value;
-                    if (!GamePathNormalizer.TryNormalizeGameRelativePath(targetRelativePath, out var gameRelativePath))
-                        throw new InvalidDataException($"更新包目标路径无效: {targetRelativePath}");
-
-                    if (!deltaEntries.TryGetValue(deltaEntryPath.Replace('\\', '/'), out var entryInfo))
-                        throw new FileNotFoundException($"更新包缺少差分文件: {deltaEntryPath}");
-
-                    var deltaEntry = packageArchives[entryInfo.PackageFileIndex].GetEntry(entryInfo.EntryName);
-
-                    if (deltaEntry == null)
-                        throw new FileNotFoundException($"更新包缺少差分文件: {deltaEntryPath}");
-
-                    var targetPath = GamePathNormalizer.CombineWithRootPath(gamePath.FullName, gameRelativePath);
-                    if (!File.Exists(targetPath))
-                        throw new FileNotFoundException($"缺少待更新文件: {targetRelativePath}");
-
-                    if (reachedTargetFiles.Contains(gameRelativePath))
+                await Parallel.ForAsync
+                (
+                    0,
+                    applyTotal,
+                    new ParallelOptions
                     {
-                        applied++;
-                        Log.Information("[V3Patch] 文件已回退至目标版本, 跳过后续差分 {Path}, 进度 {Applied}/{Total}", targetRelativePath, applied, applyTotal);
-                        ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, 0);
-                        continue;
-                    }
-
-                    var expectedTargetMd5  = string.Empty;
-                    var expectedTargetSize = -1L;
-                    var targetDownloadPath = GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath);
-                    var hasTargetFile      = sourceFiles.TryGetValue(gameRelativePath, out var targetFile);
-
-                    if (hasTargetFile)
+                        MaxDegreeOfParallelism = Math.Min(Math.Max(Environment.ProcessorCount, 1), MAX_CONCURRENT_MERGES),
+                        CancellationToken      = cancellationToken
+                    },
+                    async (deltaIndex, token) =>
                     {
-                        expectedTargetMd5  = targetFile.Md5;
-                        expectedTargetSize = targetFile.Size;
-                        targetDownloadPath = targetFile.DownloadPath;
-                    }
-                    else if (string.Equals
-                                 (gameRelativePath, "game/ffxivgame.ver", StringComparison.OrdinalIgnoreCase) &&
-                             !string.IsNullOrWhiteSpace(plan.TargetGameVersion))
-                    {
-                        var targetVersionBytes = Encoding.ASCII.GetBytes(plan.TargetGameVersion);
-                        expectedTargetMd5  = Convert.ToHexString(MD5.HashData(targetVersionBytes));
-                        expectedTargetSize = targetVersionBytes.Length;
-                    }
+                        var targetRelativePath = deltaMap[deltaIndex].Key;
+                        var deltaEntryPath     = deltaMap[deltaIndex].Value;
+                        if (!GamePathNormalizer.TryNormalizeGameRelativePath(targetRelativePath, out var gameRelativePath))
+                            throw new InvalidDataException($"更新包目标路径无效: {targetRelativePath}");
 
-                    if (isFinalHop && (expectedTargetSize < 0 || string.IsNullOrWhiteSpace(expectedTargetMd5)))
-                        throw new InvalidDataException($"目标完整性清单缺少更新文件: {targetRelativePath}");
+                        if (!deltaEntries.TryGetValue(deltaEntryPath.Replace('\\', '/'), out var entryInfo))
+                            throw new FileNotFoundException($"更新包缺少差分文件: {deltaEntryPath}");
 
-                    if (!string.IsNullOrWhiteSpace(expectedTargetMd5))
-                    {
-                        var targetInfo = new FileInfo(targetPath);
+                        var deltaEntry = packageArchives[entryInfo.PackageFileIndex].GetEntry(entryInfo.EntryName);
 
-                        if ((expectedTargetSize < 0 || targetInfo.Length == expectedTargetSize) &&
-                            await IsFileValidAsync(targetPath, expectedTargetMd5, cancellationToken).ConfigureAwait(false))
+                        if (deltaEntry == null)
+                            throw new FileNotFoundException($"更新包缺少差分文件: {deltaEntryPath}");
+
+                        var targetPath = GamePathNormalizer.CombineWithRootPath(gamePath.FullName, gameRelativePath);
+                        if (!File.Exists(targetPath))
+                            throw new FileNotFoundException($"缺少待更新文件: {targetRelativePath}");
+
+                        if (reachedTargetFiles.ContainsKey(gameRelativePath))
                         {
-                            applied++;
-                            reachedTargetFiles.Add(gameRelativePath);
-                            Log.Information("[V3Patch] 更新文件已是目标版本, 跳过 {Path}, 进度 {Applied}/{Total}", targetRelativePath, applied, applyTotal);
-                            ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, 0);
-                            continue;
-                        }
-                    }
-
-                    ReportApplyProgress($"正在准备更新文件{packagePhaseSuffix}", targetRelativePath, 0);
-
-                    if (deltaEntry.Length > int.MaxValue)
-                        throw new InvalidDataException($"V3 差分文件过大: {deltaEntryPath}");
-
-                    var deltaEntryLength = (int)deltaEntry.Length;
-                    ReportApplyProgress($"正在解压更新文件{packagePhaseSuffix}", targetRelativePath, 0);
-                    var deltaProgress = new InlineProgress<(long Progress, long Total)>
-                    (value =>
-                        {
-                            var fileFraction = expectedTargetSize > 0 ?
-                                                   Math.Clamp((double)value.Progress / expectedTargetSize, 0, 1) :
-                                                   0;
-                            ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, fileFraction);
-                        }
-                    );
-
-                    try
-                    {
-                        var verifyMd5 = isFinalHop ?
-                                            expectedTargetMd5 :
-                                            string.Empty;
-                        var verifySize = isFinalHop ?
-                                             expectedTargetSize :
-                                             -1L;
-                        await using var deltaSource = await deltaEntry.OpenAsync(cancellationToken);
-                        await vcdiffClient.ApplyVcdiff
-                                          (
-                                              targetPath,
-                                              deltaSource,
-                                              deltaEntryLength,
-                                              targetPath,
-                                              verifyMd5,
-                                              verifySize,
-                                              null,
-                                              deltaProgress,
-                                              cancellationToken
-                                          )
-                                          .ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when
-                        (!cancellationToken.IsCancellationRequested &&
-                         ex is IOException or InvalidDataException or TimeoutException or InvalidOperationException or Win32Exception)
-                    {
-                        Log.Warning(ex, "[V3Patch] 差分合并失败, 回退下载目标版本完整文件 {Path}", targetRelativePath);
-
-                        if (string.IsNullOrWhiteSpace(sourceBaseUrl) || !hasTargetFile)
-                        {
-                            Log.Error("[V3Patch] 目标清单缺少文件或缺少下载地址, 无法回退 {Path}", targetRelativePath);
-                            throw;
+                            var skipped = Interlocked.Increment(ref applied);
+                            Log.Information("[V3Patch] 文件已回退至目标版本, 跳过后续差分 {Path}, 进度 {Applied}/{Total}", targetRelativePath, skipped, applyTotal);
+                            ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, 0, true);
+                            return;
                         }
 
-                        ReportApplyProgress($"正在修复更新文件{packagePhaseSuffix}", targetRelativePath, 0);
+                        var expectedTargetMd5  = string.Empty;
+                        var expectedTargetSize = -1L;
+                        var targetDownloadPath = GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath);
+                        var hasTargetFile      = sourceFiles.TryGetValue(gameRelativePath, out var targetFile);
 
-                        using var fallbackDownloader = new GameFileDownloader();
-                        fallbackDownloader.ProgressReportInterval = Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds);
-                        fallbackDownloader.Construct
-                        (
-                            [
-                                new IntegrityPathEntry
-                                (
-                                    0,
-                                    targetDownloadPath,
-                                    GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath),
-                                    gameRelativePath,
-                                    gameRelativePath["game/".Length..],
-                                    expectedTargetMd5,
-                                    (ulong)expectedTargetSize
-                                )
-                            ],
-                            sourceBaseUrl,
-                            sourceVersion
+                        if (hasTargetFile)
+                        {
+                            expectedTargetMd5  = targetFile.Md5;
+                            expectedTargetSize = targetFile.Size;
+                            targetDownloadPath = targetFile.DownloadPath;
+                        }
+                        else if (string.Equals
+                                     (gameRelativePath, "game/ffxivgame.ver", StringComparison.OrdinalIgnoreCase) &&
+                                 !string.IsNullOrWhiteSpace(plan.TargetGameVersion))
+                        {
+                            var targetVersionBytes = Encoding.ASCII.GetBytes(plan.TargetGameVersion);
+                            expectedTargetMd5  = Convert.ToHexString(MD5.HashData(targetVersionBytes));
+                            expectedTargetSize = targetVersionBytes.Length;
+                        }
+
+                        if (isFinalHop && (expectedTargetSize < 0 || string.IsNullOrWhiteSpace(expectedTargetMd5)))
+                            throw new InvalidDataException($"目标完整性清单缺少更新文件: {targetRelativePath}");
+
+                        if (verifyExistingFiles && !string.IsNullOrWhiteSpace(expectedTargetMd5))
+                        {
+                            var precheckStartTicks = Stopwatch.GetTimestamp();
+                            var targetInfo         = new FileInfo(targetPath);
+                            var isTargetVersion    = (expectedTargetSize < 0 || targetInfo.Length == expectedTargetSize) &&
+                                                     await IsFileValidAsync(targetPath, expectedTargetMd5, token).ConfigureAwait(false);
+                            Interlocked.Add(ref precheckTicks, Stopwatch.GetTimestamp() - precheckStartTicks);
+
+                            if (isTargetVersion)
+                            {
+                                var skipped = Interlocked.Increment(ref applied);
+                                reachedTargetFiles.TryAdd(gameRelativePath, 0);
+                                Log.Information("[V3Patch] 更新文件已是目标版本, 跳过 {Path}, 进度 {Applied}/{Total}", targetRelativePath, skipped, applyTotal);
+                                ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, 0, true);
+                                return;
+                            }
+                        }
+
+                        ReportApplyProgress($"正在准备更新文件{packagePhaseSuffix}", targetRelativePath, 0, true);
+
+                        if (deltaEntry.Length > int.MaxValue)
+                            throw new InvalidDataException($"V3 差分文件过大: {deltaEntryPath}");
+
+                        var deltaEntryLength = (int)deltaEntry.Length;
+                        ReportApplyProgress($"正在解压更新文件{packagePhaseSuffix}", targetRelativePath, 0, true);
+
+                        byte[] deltaData;
+
+                        await extractGate.WaitAsync(token).ConfigureAwait(false);
+
+                        try
+                        {
+                            var extractStartTicks = Stopwatch.GetTimestamp();
+                            deltaData = GC.AllocateUninitializedArray<byte>(deltaEntryLength);
+                            var readTotal = 0;
+
+                            await using var deltaSource = await deltaEntry.OpenAsync(token).ConfigureAwait(false);
+
+                            while (readTotal < deltaEntryLength)
+                            {
+                                var read = await deltaSource.ReadAsync(deltaData.AsMemory(readTotal, deltaEntryLength - readTotal), token).ConfigureAwait(false);
+                                if (read == 0)
+                                    throw new EndOfStreamException("V3 差分数据提前结束");
+
+                                readTotal += read;
+
+                                var fileFraction = expectedTargetSize > 0 ?
+                                                       Math.Clamp((double)readTotal / expectedTargetSize, 0, 1) :
+                                                       0;
+                                ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, fileFraction);
+                            }
+
+                            Interlocked.Add(ref extractTicks, Stopwatch.GetTimestamp() - extractStartTicks);
+                        }
+                        finally
+                        {
+                            extractGate.Release();
+                        }
+
+                        var deltaProgress = new InlineProgress<(long Progress, long Total)>
+                        (value =>
+                            {
+                                var fileFraction = expectedTargetSize > 0 ?
+                                                       Math.Clamp((double)value.Progress / expectedTargetSize, 0, 1) :
+                                                       0;
+                                ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, fileFraction);
+                            }
                         );
 
-                        await fallbackDownloader.VerifyFiles(gamePath.FullName, false, 1, cancellationToken).ConfigureAwait(false);
-
-                        if (fallbackDownloader.GetBrokenFiles().Count > 0)
+                        try
                         {
-                            fallbackDownloader.QueueInstall(0, targetDownloadPath);
-                            await fallbackDownloader.Install(gamePath.FullName, 1, cancellationToken).ConfigureAwait(false);
+                            var verifyMd5       = isFinalHop ? expectedTargetMd5 : string.Empty;
+                            var verifySize      = isFinalHop ? expectedTargetSize : -1L;
+                            var mergeStartTicks = Stopwatch.GetTimestamp();
+
+                            await vcdiffClient.ApplyVcdiff
+                                              (
+                                                  targetPath,
+                                                  deltaData,
+                                                  targetPath,
+                                                  verifyMd5,
+                                                  verifySize,
+                                                  deltaProgress,
+                                                  token
+                                              )
+                                              .ConfigureAwait(false);
+
+                            Interlocked.Add(ref mergeTicks, Stopwatch.GetTimestamp() - mergeStartTicks);
+                        }
+                        catch (Exception ex) when
+                            (!token.IsCancellationRequested &&
+                             ex is IOException or InvalidDataException or TimeoutException or InvalidOperationException or Win32Exception)
+                        {
+                            Log.Warning(ex, "[V3Patch] 差分合并失败, 回退下载目标版本完整文件 {Path}", targetRelativePath);
+
+                            if (string.IsNullOrWhiteSpace(sourceBaseUrl) || !hasTargetFile)
+                            {
+                                Log.Error("[V3Patch] 目标清单缺少文件或缺少下载地址, 无法回退 {Path}", targetRelativePath);
+                                throw;
+                            }
+
+                            ReportApplyProgress($"正在修复更新文件{packagePhaseSuffix}", targetRelativePath, 0, true);
+
+                            using var fallbackDownloader = new GameFileDownloader();
+                            fallbackDownloader.ProgressReportInterval = Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds);
+                            fallbackDownloader.Construct
+                            (
+                                [
+                                    new IntegrityPathEntry
+                                    (
+                                        0,
+                                        targetDownloadPath,
+                                        GamePathNormalizer.ToCanonicalSdoPathFromGameRelativePath(gameRelativePath),
+                                        gameRelativePath,
+                                        gameRelativePath["game/".Length..],
+                                        expectedTargetMd5,
+                                        (ulong)expectedTargetSize
+                                    )
+                                ],
+                                sourceBaseUrl,
+                                sourceVersion
+                            );
+
+                            await fallbackDownloader.VerifyFiles(gamePath.FullName, false, 1, token).ConfigureAwait(false);
+
+                            if (fallbackDownloader.GetBrokenFiles().Count > 0)
+                            {
+                                fallbackDownloader.QueueInstall(0, targetDownloadPath);
+                                await fallbackDownloader.Install(gamePath.FullName, 1, token).ConfigureAwait(false);
+                            }
+
+                            var repairedInfo = new FileInfo(targetPath);
+                            if (repairedInfo.Length != expectedTargetSize ||
+                                !await IsFileValidAsync(targetPath, expectedTargetMd5, token).ConfigureAwait(false))
+                                throw new InvalidDataException($"完整目标文件回退校验失败: {targetRelativePath}", ex);
+
+                            reachedTargetFiles.TryAdd(gameRelativePath, 0);
+                            Log.Information("[V3Patch] 完整目标文件回退完成 {Path}", targetRelativePath);
                         }
 
-                        var repairedInfo = new FileInfo(targetPath);
-                        if (repairedInfo.Length != expectedTargetSize ||
-                            !await IsFileValidAsync(targetPath, expectedTargetMd5, cancellationToken).ConfigureAwait(false))
-                            throw new InvalidDataException($"完整目标文件回退校验失败: {targetRelativePath}", ex);
-
-                        reachedTargetFiles.Add(gameRelativePath);
-                        Log.Information("[V3Patch] 完整目标文件回退完成 {Path}", targetRelativePath);
+                        var completed = Interlocked.Increment(ref applied);
+                        Log.Information("[V3Patch] 更新文件安装完成 {Path}, 进度 {Applied}/{Total}", targetRelativePath, completed, applyTotal);
+                        ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, 0, true);
                     }
+                );
 
-                    applied++;
-                    Log.Information("[V3Patch] 更新文件安装完成 {Path}, 进度 {Applied}/{Total}", targetRelativePath, applied, applyTotal);
-                    ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, 0);
-                }
+                extractGate.Dispose();
             }
             finally
             {
@@ -503,7 +569,13 @@ public sealed class GamePatchInstaller : IDisposable
             Log.Information("[V3Patch] 更新包处理完成 {PackageName}", packageName);
         }
 
-        Log.Information("[V3Patch] V3 更新安装流程完成");
+        Log.Information
+        (
+            "[V3Patch] V3 更新安装流程完成, 累计预检 {PrecheckMs} ms, 累计解压 {ExtractMs} ms, 累计合并 {MergeMs} ms",
+            ToMilliseconds(Interlocked.Read(ref precheckTicks)),
+            ToMilliseconds(Interlocked.Read(ref extractTicks)),
+            ToMilliseconds(Interlocked.Read(ref mergeTicks))
+        );
     }
 
     internal static string[] BuildPackageFilePaths
@@ -723,49 +795,22 @@ public sealed class GamePatchInstaller : IDisposable
     (
         string            filePath,
         string            expectedMd5,
-        CancellationToken cancellationToken,
-        IProgress<long>?  progress               = null,
-        TimeSpan          progressUpdateInterval = default
+        CancellationToken cancellationToken
     )
     {
         if (string.IsNullOrWhiteSpace(expectedMd5))
             return true;
 
         await using var stream = File.OpenRead(filePath);
-
-        if (progress == null)
-        {
-            var directHash = await MD5.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
-            return string.Equals(Convert.ToHexString(directHash), expectedMd5, StringComparison.OrdinalIgnoreCase);
-        }
-
-        using var incrementalHash = IncrementalHash.CreateHash(HashAlgorithmName.MD5);
-        var       buffer          = new byte[FILE_STREAM_BUFFER_SIZE];
-        var       readTotal       = 0L;
-        var       lastTicks       = Stopwatch.GetTimestamp();
-        var       minTicks        = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
-
-        while (true)
-        {
-            var read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-            if (read == 0)
-                break;
-
-            incrementalHash.AppendData(buffer.AsSpan(0, read));
-            readTotal += read;
-
-            var ticks = Stopwatch.GetTimestamp();
-            if (ticks - lastTicks < minTicks)
-                continue;
-
-            progress.Report(readTotal);
-            lastTicks = ticks;
-        }
-
-        progress.Report(readTotal);
-        var incrementalFileHash = incrementalHash.GetHashAndReset();
-        return string.Equals(Convert.ToHexString(incrementalFileHash), expectedMd5, StringComparison.OrdinalIgnoreCase);
+        var             directHash = await MD5.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
+        return string.Equals(Convert.ToHexString(directHash), expectedMd5, StringComparison.OrdinalIgnoreCase);
     }
+
+    private static double ToMilliseconds
+    (
+        long stopwatchTicks
+    ) =>
+        (double)stopwatchTicks * 1000 / Stopwatch.Frequency;
 
     private sealed class InlineProgress<T>
     (
@@ -783,6 +828,7 @@ public sealed class GamePatchInstaller : IDisposable
 
     private const int    FILE_STREAM_BUFFER_SIZE          = 131072;
     private const int    MAX_PACKAGE_DOWNLOAD_CONCURRENCY = 4;
+    private const int    MAX_CONCURRENT_MERGES            = 4;
     private const string TEMP_EXTENSION                   = ".tmp";
     private const string USER_AGENT                       = "FF14v3autopatch";
 

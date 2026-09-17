@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using Serilog;
 using SharedMemory;
 
@@ -70,10 +69,13 @@ public class VcdiffWorker : IDisposable
         }
     }
 
-    private Task<byte[]> HandleRequestAsync(ulong _, byte[] data)
+    private Task<byte[]> HandleRequestAsync(ulong _, byte[]? data)
     {
         try
         {
+            if (data is null || data.Length == 0)
+                return Task.FromResult(BuildSuccessResponse());
+
             using var reader = new BinaryReader(new MemoryStream(data));
             var       opcode = reader.ReadInt32();
 
@@ -124,21 +126,15 @@ public class VcdiffWorker : IDisposable
 
             var mergeTicks = Stopwatch.GetTimestamp();
             Log.Information("[VcdiffShim] 正在合并差分, 源 {SourcePath}, 临时目标 {TempPath}", sourceFile, tempPath);
-            RunXdeltaHelper(sourceFile, requestData, deltaOffset, deltaSize, tempPath);
+            var digest = RunXdeltaHelper(sourceFile, requestData, deltaOffset, deltaSize, tempPath);
             Log.Information("[VcdiffShim] 差分合并完成, 耗时 {ElapsedMs} ms", Stopwatch.GetElapsedTime(mergeTicks).TotalMilliseconds);
 
             if (expectedSize >= 0 && new FileInfo(tempPath).Length != expectedSize)
                 throw new InvalidDataException("V3 差分产物大小不匹配");
 
-            if (!string.IsNullOrWhiteSpace(expectedMd5))
-            {
-                Log.Information("[VcdiffShim] 正在校验差分合并产物 {TempPath}", tempPath);
-                using var stream = File.OpenRead(tempPath);
-                var       hash   = MD5.HashData(stream);
-
-                if (!string.Equals(Convert.ToHexString(hash), expectedMd5, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("V3 差分产物校验失败");
-            }
+            if (!string.IsNullOrWhiteSpace(expectedMd5) &&
+                !string.Equals(Convert.ToHexString(digest), expectedMd5, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("V3 差分产物校验失败");
 
             File.Move(tempPath, targetFile, true);
 
@@ -162,9 +158,10 @@ public class VcdiffWorker : IDisposable
         }
     }
 
-    private void RunXdeltaHelper(string sourceFile, byte[] requestData, int deltaOffset, int deltaSize, string tempPath)
+    private byte[] RunXdeltaHelper(string sourceFile, byte[] requestData, int deltaOffset, int deltaSize, string tempPath)
     {
         var handle = GCHandle.Alloc(requestData, GCHandleType.Pinned);
+        var digest = new byte[MD5_DIGEST_SIZE];
 
         try
         {
@@ -173,11 +170,12 @@ public class VcdiffWorker : IDisposable
                 sourceFile,
                 IntPtr.Add(handle.AddrOfPinnedObject(), deltaOffset),
                 (nuint)deltaSize,
-                tempPath
+                tempPath,
+                digest
             );
 
             if (result == 0)
-                return;
+                return digest;
 
             var sourceInfo  = new FileInfo(sourceFile);
             var nativeError = Marshal.PtrToStringUTF8(getLastError()) ?? string.Empty;
@@ -205,7 +203,8 @@ public class VcdiffWorker : IDisposable
         [MarshalAs(UnmanagedType.LPUTF8Str)] string sourcePath,
         IntPtr                                      deltaData,
         nuint                                       deltaSize,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string targetPath
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string targetPath,
+        [Out] byte[]                                digest
     );
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -230,10 +229,11 @@ public class VcdiffWorker : IDisposable
 
     #region Constants
 
-    private const int    VCDIFF_OPCODE  = 0;
-    private const int    RESULT_PASS    = 0;
-    private const int    RESULT_ERROR   = 2;
-    private const string TEMP_EXTENSION = ".tmp";
+    private const int    VCDIFF_OPCODE    = 0;
+    private const int    RESULT_PASS      = 0;
+    private const int    RESULT_ERROR     = 2;
+    private const int    MD5_DIGEST_SIZE  = 16;
+    private const string TEMP_EXTENSION   = ".tmp";
 
     #endregion
 }

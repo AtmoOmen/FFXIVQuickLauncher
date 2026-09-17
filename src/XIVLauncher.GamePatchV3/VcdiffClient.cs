@@ -1,21 +1,34 @@
-using System.ComponentModel;
-using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Text;
 using Serilog;
-using SharedMemory;
 
 namespace XIVLauncher.GamePatchV3;
 
-public sealed class VcdiffClient
-(
-    string  workerExecutablePath,
-    string? dotnetRootPath = null,
-    bool    asAdmin        = false
-) : IDisposable
+public sealed class VcdiffClient : IDisposable
 {
-    private Process?   workerProcess;
-    private RpcBuffer? rpcBuffer;
-    private bool       isDisposed;
+    private readonly string                               workerExecutablePath;
+    private readonly string?                              dotnetRootPath;
+    private readonly bool                                 asAdmin;
+    private readonly SemaphoreSlim                        channelGate;
+    private readonly ConcurrentQueue<VcdiffWorkerChannel> idleChannels = new();
+    private readonly ConcurrentBag<VcdiffWorkerChannel>   allChannels  = [];
+    private          bool                                 isDisposed;
+
+    public VcdiffClient
+    (
+        string  workerExecutablePath,
+        string? dotnetRootPath = null,
+        bool    asAdmin        = false
+    )
+    {
+        this.workerExecutablePath = workerExecutablePath;
+        this.dotnetRootPath       = dotnetRootPath;
+        this.asAdmin              = asAdmin;
+
+        var channelCount = Math.Clamp(Environment.ProcessorCount, 1, MAX_CONCURRENT_MERGES);
+
+        channelGate = new(channelCount, channelCount);
+    }
 
     public void Dispose()
     {
@@ -24,63 +37,10 @@ public sealed class VcdiffClient
 
         isDisposed = true;
 
-        try
-        {
-            rpcBuffer?.RemoteRequest([], 100);
-        }
-        catch (Exception ex)
-        {
-            Log.Debug(ex, "[VcdiffClient] 关闭 RPC 通道时远端未响应");
-        }
+        foreach (var channel in allChannels)
+            channel.Dispose();
 
-        if (workerProcess is { HasExited: false })
-        {
-            workerProcess.WaitForExit(1000);
-
-            try
-            {
-                workerProcess.Kill();
-            }
-            catch (Exception ex)
-            {
-                if (!workerProcess.HasExited)
-                    throw;
-
-                Log.Debug(ex, "[VcdiffClient] 差分进程已在终止期间退出");
-            }
-        }
-
-        rpcBuffer?.Dispose();
-        workerProcess?.Dispose();
-        rpcBuffer     = null;
-        workerProcess = null;
-    }
-
-    public async Task ApplyVcdiff
-    (
-        string                                  sourceFile,
-        string                                  deltaFile,
-        string                                  targetFile,
-        string                                  expectedMd5,
-        long                                    expectedSize,
-        IProgress<(long Progress, long Total)>? progress          = null,
-        CancellationToken                       cancellationToken = default
-    )
-    {
-        await using var deltaStream = new FileStream
-        (
-            deltaFile,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            131072,
-            FileOptions.Asynchronous | FileOptions.SequentialScan
-        );
-        if (deltaStream.Length > int.MaxValue)
-            throw new InvalidDataException("V3 差分数据过大");
-
-        await ApplyVcdiff(sourceFile, deltaStream, (int)deltaStream.Length, targetFile, expectedMd5, expectedSize, null, progress, cancellationToken).ConfigureAwait
-            (false);
+        channelGate.Dispose();
     }
 
     public async Task ApplyVcdiff
@@ -98,38 +58,6 @@ public sealed class VcdiffClient
         await ApplyVcdiffRequest(sourceFile, deltaData.Length, targetFile, expectedSize, requestData, progress, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task ApplyVcdiff
-    (
-        string                                  sourceFile,
-        Stream                                  deltaStream,
-        int                                     deltaLength,
-        string                                  targetFile,
-        string                                  expectedMd5,
-        long                                    expectedSize,
-        IProgress<(long Progress, long Total)>? extractionProgress,
-        IProgress<(long Progress, long Total)>? mergeProgress,
-        CancellationToken                       cancellationToken = default
-    )
-    {
-        if (deltaLength < 0)
-            throw new ArgumentOutOfRangeException(nameof(deltaLength));
-
-        var requestData = CreateRequestData(sourceFile, targetFile, expectedMd5, expectedSize, deltaLength, out var deltaOffset);
-        var extracted   = 0;
-
-        while (extracted < deltaLength)
-        {
-            var read = await deltaStream.ReadAsync(requestData.AsMemory(deltaOffset + extracted, deltaLength - extracted), cancellationToken).ConfigureAwait(false);
-            if (read == 0)
-                throw new EndOfStreamException("V3 差分数据提前结束");
-
-            extracted += read;
-            extractionProgress?.Report((extracted, deltaLength));
-        }
-
-        await ApplyVcdiffRequest(sourceFile, deltaLength, targetFile, expectedSize, requestData, mergeProgress, cancellationToken).ConfigureAwait(false);
-    }
-
     private async Task ApplyVcdiffRequest
     (
         string                                  sourceFile,
@@ -144,63 +72,100 @@ public sealed class VcdiffClient
         Log.Information
             ("[VcdiffClient] 请求 V3 差分合并, 源 {SourceFile}, 差分大小 {DeltaSize}, 目标 {TargetFile}, 期望大小 {ExpectedSize}", sourceFile, deltaLength, targetFile, expectedSize);
 
-        EnsureWorkerStarted();
+        var channel  = await AcquireChannelAsync(cancellationToken).ConfigureAwait(false);
+        var tempPath = string.Concat(targetFile, TEMP_EXTENSION);
 
-        var resultTask = rpcBuffer!.RemoteRequestAsync(requestData, 864000000, cancellationToken);
-        var tempPath   = string.Concat(targetFile, ".tmp");
-
-        while (await Task.WhenAny(resultTask, Task.Delay(250, cancellationToken)).ConfigureAwait(false) != resultTask)
+        try
         {
+            var rpcBuffer  = channel.EnsureStarted();
+            var resultTask = rpcBuffer.RemoteRequestAsync(requestData, REQUEST_TIMEOUT_MS, cancellationToken);
+
+            while (await Task.WhenAny(resultTask, Task.Delay(MERGE_POLL_INTERVAL_MS, cancellationToken)).ConfigureAwait(false) != resultTask)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (channel.WorkerProcess is { HasExited: true } exitedWorkerProcess)
+                    throw new IOException($"V3 差分进程已退出，退出码 {exitedWorkerProcess.ExitCode}");
+
+                try
+                {
+                    var current = File.Exists(tempPath) ?
+                                      new FileInfo(tempPath).Length :
+                                      0;
+                    var total = expectedSize > 0 ? expectedSize : current > 0 ? Math.Max(current, 1) : 0;
+                    progress?.Report((current, total));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    Log.Debug(ex, "[VcdiffClient] 无法读取差分临时文件进度 {Path}", tempPath);
+                }
+            }
+
+            var response = await resultTask.ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (workerProcess is { HasExited: true } exitedWorkerProcess)
-                throw new IOException($"V3 差分进程已退出，退出码 {exitedWorkerProcess.ExitCode}");
-
-            try
+            if (!response.Success)
             {
-                var current = File.Exists(tempPath) ?
-                                  new FileInfo(tempPath).Length :
-                                  0;
-                var total = expectedSize > 0 ? expectedSize : current > 0 ? Math.Max(current, 1) : 0;
-                progress?.Report((current, total));
+                if (channel.WorkerProcess is { HasExited: true })
+                    throw new IOException($"V3 差分进程在响应前退出，退出码 {channel.WorkerProcess.ExitCode}");
+
+                throw new TimeoutException("V3 差分进程未在预期时间内返回响应");
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+
+            if (response.Data is null || response.Data.Length < sizeof(int))
+                throw new IOException("V3 差分进程返回了空响应");
+
+            using var reader = new BinaryReader(new MemoryStream(response.Data));
+            var       result = reader.ReadInt32();
+
+            if (result == RESULT_ERROR)
+                throw new IOException($"V3 差分合并失败: {reader.ReadString()}");
+
+            if (result != RESULT_PASS)
+                throw new InvalidOperationException("未知的 V3 差分结果码");
+
+            if (progress != null)
             {
-                Log.Debug(ex, "[VcdiffClient] 无法读取差分临时文件进度 {Path}", tempPath);
+                var completedSize = File.Exists(targetFile) ?
+                                        new FileInfo(targetFile).Length :
+                                        expectedSize;
+                progress.Report((completedSize, completedSize));
             }
+
+            Log.Information("[VcdiffClient] V3 差分合并完成 {TargetFile}", targetFile);
         }
-
-        var response = await resultTask.ConfigureAwait(false);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!response.Success)
+        finally
         {
-            if (workerProcess is { HasExited: true })
-                throw new IOException($"V3 差分进程在响应前退出，退出码 {workerProcess.ExitCode}");
-            throw new TimeoutException("V3 差分进程未在预期时间内返回响应");
+            ReleaseChannel(channel);
         }
+    }
 
-        if (response.Data is null || response.Data.Length < sizeof(int))
-            throw new IOException("V3 差分进程返回了空响应");
+    private async Task<VcdiffWorkerChannel> AcquireChannelAsync
+    (
+        CancellationToken cancellationToken
+    )
+    {
+        await channelGate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        using var reader = new BinaryReader(new MemoryStream(response.Data));
-        var       result = reader.ReadInt32();
+        if (idleChannels.TryDequeue(out var channel))
+            return channel;
 
-        if (result == RESULT_ERROR)
-            throw new IOException($"V3 差分合并失败: {reader.ReadString()}");
+        channel = new VcdiffWorkerChannel(workerExecutablePath, dotnetRootPath, asAdmin);
+        allChannels.Add(channel);
+        return channel;
+    }
 
-        if (result != RESULT_PASS)
-            throw new InvalidOperationException("未知的 V3 差分结果码");
+    private void ReleaseChannel
+    (
+        VcdiffWorkerChannel channel
+    )
+    {
+        if (channel.WorkerProcess is { HasExited: false })
+            idleChannels.Enqueue(channel);
+        else
+            channel.Dispose();
 
-        if (progress != null)
-        {
-            var completedSize = File.Exists(targetFile) ?
-                                    new FileInfo(targetFile).Length :
-                                    expectedSize;
-            progress.Report((completedSize, completedSize));
-        }
-
-        Log.Information("[VcdiffClient] V3 差分合并完成 {TargetFile}", targetFile);
+        channelGate.Release();
     }
 
     internal static byte[] BuildRequestData
@@ -250,48 +215,6 @@ public sealed class VcdiffClient
         return requestData;
     }
 
-    private void EnsureWorkerStarted()
-    {
-        if (workerProcess is { HasExited: false })
-            return;
-
-        if (rpcBuffer != null)
-        {
-            rpcBuffer.Dispose();
-            rpcBuffer = null;
-        }
-
-        if (workerProcess != null)
-        {
-            workerProcess.Dispose();
-            workerProcess = null;
-        }
-
-        var channelName = "VcdiffShim" + Guid.NewGuid();
-        rpcBuffer = new(channelName, (_, _) => { });
-
-        Log.Information("[VcdiffClient] 正在启动 V3 差分进程, 路径 {WorkerExecutablePath}, 提权 {AsAdmin}, 通道 {ChannelName}", workerExecutablePath, asAdmin, channelName);
-
-        workerProcess = new()
-        {
-            StartInfo = CreateProcessStartInfo(workerExecutablePath, $"{Environment.ProcessId} {channelName}")
-        };
-#if !DEBUG
-        workerProcess.StartInfo.CreateNoWindow = true;
-        workerProcess.StartInfo.WindowStyle    = ProcessWindowStyle.Hidden;
-#endif
-        try
-        {
-            workerProcess.Start();
-        }
-        catch (Win32Exception ex) when (ex.HResult == 1223)
-        {
-            throw new OperationCanceledException();
-        }
-
-        Log.Information("[VcdiffClient] V3 差分进程已启动, PID {ProcessId}", workerProcess.Id);
-    }
-
     private static int GetSerializedStringSize
     (
         string value
@@ -309,45 +232,15 @@ public sealed class VcdiffClient
         return checked(prefixSize + byteCount);
     }
 
-    private ProcessStartInfo CreateProcessStartInfo
-    (
-        string executablePath,
-        string arguments
-    )
-    {
-        var workingDirectory = Path.GetDirectoryName(executablePath) ?? string.Empty;
-
-        var startInfo = new ProcessStartInfo(executablePath)
-        {
-            Arguments        = arguments,
-            UseShellExecute  = asAdmin,
-            WorkingDirectory = workingDirectory
-        };
-
-        if (asAdmin)
-        {
-            startInfo.Verb = "runas";
-
-            if (!string.IsNullOrWhiteSpace(dotnetRootPath))
-                Environment.SetEnvironmentVariable("DOTNET_ROOT", dotnetRootPath);
-
-            return startInfo;
-        }
-
-        if (!string.IsNullOrWhiteSpace(dotnetRootPath))
-        {
-            startInfo.Environment["DOTNET_ROOT"]              = dotnetRootPath;
-            startInfo.Environment["DOTNET_MULTILEVEL_LOOKUP"] = "0";
-        }
-
-        return startInfo;
-    }
-
     #region Constants
 
-    private const int VCDIFF_OPCODE = 0;
-    private const int RESULT_PASS   = 0;
-    private const int RESULT_ERROR  = 2;
+    private const int    VCDIFF_OPCODE          = 0;
+    private const int    RESULT_PASS            = 0;
+    private const int    RESULT_ERROR           = 2;
+    private const int    MAX_CONCURRENT_MERGES  = 4;
+    private const int    MERGE_POLL_INTERVAL_MS = 250;
+    private const int    REQUEST_TIMEOUT_MS     = 864000000;
+    private const string TEMP_EXTENSION         = ".tmp";
 
     #endregion
 }
