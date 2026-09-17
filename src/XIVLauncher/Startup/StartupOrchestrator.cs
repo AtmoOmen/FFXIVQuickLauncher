@@ -141,6 +141,8 @@ public class StartupOrchestrator
             if (!string.IsNullOrEmpty(commandLineOptions.RoamingPath))
                 Paths.OverrideRoamingPath(commandLineOptions.RoamingPath);
 
+            XLProxyProvider.Apply(context.Settings.ProxySettings.ToSnapshot());
+
             context.Settings.Update
             (settings =>
                 {

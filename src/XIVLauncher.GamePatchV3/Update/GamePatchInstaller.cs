@@ -11,6 +11,7 @@ using System.Text.Json.Serialization;
 using System.Xml.Linq;
 using Serilog;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Http;
 using XIVLauncher.GamePatchV3.Integrity.Models;
 using XIVLauncher.GamePatchV3.Models;
 using XIVLauncher.GamePatchV3.Update.Models;
@@ -25,7 +26,14 @@ public sealed class GamePatchInstaller : IDisposable
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly HttpClient client = new()
+    private readonly HttpClient client = new
+    (
+        new SocketsHttpHandler
+        {
+            UseProxy = true,
+            Proxy    = XLProxyProvider.Current
+        }
+    )
     {
         DefaultRequestVersion = HttpVersion.Version20,
         DefaultVersionPolicy  = HttpVersionPolicy.RequestVersionOrLower

@@ -25,6 +25,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj"/>
+        <ProjectReference Include="..\XIVLauncher.Common.Http\XIVLauncher.Common.Http.csproj"/>
     </ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="XIVLauncher.Test"/>

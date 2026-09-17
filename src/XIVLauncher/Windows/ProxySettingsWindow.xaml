@@ -1,0 +1,208 @@
+<Window
+    x:Class="XIVLauncher.Windows.ProxySettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
+    xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+    Title="代理配置"
+    Width="640"
+    ResizeMode="NoResize"
+    SizeToContent="Height"
+    WindowStartupLocation="CenterOwner"
+    Background="{DynamicResource MaterialDesign.Brush.Background}"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+    TextElement.FontWeight="Regular"
+    TextElement.FontSize="14"
+    Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+    mc:Ignorable="d"
+    d:DataContext="{d:DesignInstance viewModel:ProxySettingsWindowViewModel}">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="DarkIntegerUpDownStyle" TargetType="xctk:IntegerUpDown">
+                <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Background}" />
+                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Padding" Value="10,0" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard Storyboard="{StaticResource WindowLoadAnimation}" />
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Grid x:Name="WindowAnimationLayer" Opacity="0">
+        <Grid.RenderTransform>
+            <TranslateTransform x:Name="WindowAnimationLayerTransform" Y="20" />
+        </Grid.RenderTransform>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Margin="24,24,24,16">
+                <!-- Header -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,20" VerticalAlignment="Center">
+                    <materialDesign:PackIcon Kind="Network" Width="36" Height="36" VerticalAlignment="Center"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                             Margin="0,0,16,0" />
+                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                               Text="网络代理" VerticalAlignment="Center" FontWeight="SemiBold" />
+                </StackPanel>
+
+                <!-- Card 1: 代理配置条目 -->
+                <materialDesign:Card Margin="0,0,0,16" UniformCornerRadius="8">
+                    <StackPanel Margin="20">
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <materialDesign:PackIcon Kind="FormatListBulleted" VerticalAlignment="Center"
+                                                         Margin="0,0,8,0"
+                                                         Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                <TextBlock Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
+                                           FontWeight="SemiBold" Text="代理配置条目" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,12,0"
+                                        Click="CreateProfileButton_OnClick">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Plus" Width="16" Height="16"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Text="新增" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Click="DeleteProfileButton_OnClick">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Text="删除" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <ComboBox Grid.Column="0"
+                                      materialDesign:HintAssist.Hint="选择代理条目"
+                                      Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                      DisplayMemberPath="DisplayName"
+                                      ItemsSource="{Binding SelectionItems}"
+                                      SelectedItem="{Binding SelectedItem, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBox Grid.Column="2"
+                                     materialDesign:HintAssist.Hint="显示名称"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     IsEnabled="{Binding HasSelectedProfile}"
+                                     Text="{Binding SelectedProfile.Name, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- Card 2: 代理详情 -->
+                <materialDesign:Card Margin="0,0,0,16" UniformCornerRadius="8">
+                    <StackPanel Margin="20" IsEnabled="{Binding HasSelectedProfile}">
+                        <TextBlock Text="代理类型" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                        <ComboBox Margin="0,4,0,16" Width="240" HorizontalAlignment="Left"
+                                  DisplayMemberPath="Display"
+                                  ItemsSource="{Binding ProxyTypeOptions}"
+                                  SelectedValue="{Binding SelectedProfile.ProxyType, UpdateSourceTrigger=PropertyChanged}"
+                                  SelectedValuePath="Type"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}" />
+
+                        <TextBlock Text="代理主机" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                        <TextBox Margin="0,4,0,16"
+                                 Text="{Binding SelectedProfile.ProxyHost, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="例如 127.0.0.1"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+
+                        <TextBlock Text="代理端口" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                        <xctk:IntegerUpDown Margin="0,4,0,16" Width="140" Minimum="1" Maximum="65535"
+                                            Value="{Binding SelectedProfile.ProxyPort, UpdateSourceTrigger=PropertyChanged}"
+                                            Style="{StaticResource DarkIntegerUpDownStyle}"
+                                            Padding="4" />
+
+                        <TextBlock Text="用户名（可选）" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                        <TextBox Margin="0,4,0,16"
+                                 Text="{Binding SelectedProfile.ProxyUsername, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="代理认证用户名，无认证可留空"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+
+                        <TextBlock Text="密码（可选）" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                        <Grid Margin="0,4,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <PasswordBox x:Name="ProxyPasswordBox" Grid.Column="0" Margin="0,0,12,0"
+                                         materialDesign:HintAssist.Hint="{Binding PasswordHint}"
+                                         Style="{StaticResource MaterialDesignOutlinedPasswordBox}" />
+
+                            <Button Grid.Column="1" MinWidth="80" VerticalAlignment="Center"
+                                    IsEnabled="{Binding CanClearPassword}"
+                                    Click="ClearPasswordButton_OnClick"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}" Content="清除密码" />
+                        </Grid>
+
+                        <TextBlock Text="{Binding ConfigFilePath}" Opacity="0.58" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
+                        <TextBlock Margin="0,8,0,0" Opacity="0.58" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
+                                   Text="修改将在重启启动器后生效。配置随启动器配置保存在 Roaming 目录，更新重装不会丢失。" />
+                    </StackPanel>
+                </materialDesign:Card>
+
+            </StackPanel>
+
+            <!-- Bottom Actions -->
+            <Border Grid.Row="1" Background="{DynamicResource MaterialDesign.Brush.Surface}"
+                    BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="0,1,0,0"
+                    Padding="24,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="1" Width="120" Click="ConfirmButton_OnClick">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Check" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <TextBlock Text="确定" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

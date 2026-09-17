@@ -64,6 +64,13 @@ internal sealed class DialogService
         window.ShowDialog();
     }
 
+    public void ShowProxySettings()
+    {
+        var window = new ProxySettingsWindow();
+        PrepareOwner(window);
+        window.ShowDialog();
+    }
+
     public CompanionAppConfiguration? ShowCompanionAppSetup(CompanionAppConfiguration? companionApp = null)
     {
         var window = new CompanionAppSetupWindow(companionApp);
