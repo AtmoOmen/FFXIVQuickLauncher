@@ -768,12 +768,8 @@ public sealed class GameClientFileFlow
     {
         var statusText = progress.StatusText;
 
-        if (string.IsNullOrWhiteSpace(statusText) && progress.Total > 0)
-        {
-            statusText = progress.IsByteProgress ?
-                             $"{APIHelper.BytesToString(progress.Progress)}/{APIHelper.BytesToString(progress.Total)}" :
-                             $"{progress.Progress}/{progress.Total}";
-        }
+        if (string.IsNullOrWhiteSpace(statusText) && progress.IsByteProgress && progress.Total > 0)
+            statusText = $"{APIHelper.BytesToString(progress.Progress)}/{APIHelper.BytesToString(progress.Total)}";
 
         return new()
         {
@@ -791,7 +787,7 @@ public sealed class GameClientFileFlow
                             $"{APIHelper.BytesToString(progress.Speed)}/s" :
                             string.Empty,
             EtaText = progress.IsByteProgress ?
-                          FormatEstimatedTime(progress.Total - progress.Progress, progress.Speed) :
+                          FormatEstimatedTime((long)(progress.Total - progress.Progress), progress.Speed) :
                           string.Empty,
             IsRunning = true
         };

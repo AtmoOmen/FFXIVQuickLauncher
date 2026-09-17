@@ -112,6 +112,10 @@ public sealed class GamePatchInstaller : IDisposable
             var packageDirectory = Path.Combine(packageRoot, packageName);
             Directory.CreateDirectory(packageDirectory);
 
+            var packagePhaseSuffix = plan.Packages.Count > 1 ?
+                                         $"（更新包 {packageIndex + 1}/{plan.Packages.Count}）" :
+                                         string.Empty;
+
             Log.Information
             (
                 "[V3Patch] 开始处理更新包 {PackageIndex}/{PackageCount}, 名称 {PackageName}, 版本 {FromVersion} -> {ToVersion}, 清单 {FileListUrl}",
@@ -127,7 +131,7 @@ public sealed class GamePatchInstaller : IDisposable
             (
                 new()
                 {
-                    PhaseText   = $"正在获取更新清单 {packageIndex + 1}/{plan.Packages.Count}",
+                    PhaseText   = $"正在获取更新清单{packagePhaseSuffix}",
                     CurrentFile = package.FileListUrl
                 }
             );
@@ -185,7 +189,7 @@ public sealed class GamePatchInstaller : IDisposable
                 (
                     new()
                     {
-                        PhaseText      = "正在下载更新包",
+                        PhaseText      = $"正在下载更新包{packagePhaseSuffix}",
                         CurrentFile    = fileName,
                         Progress       = Math.Clamp(current, 0, totalDownload),
                         Total          = totalDownload,
@@ -300,6 +304,27 @@ public sealed class GamePatchInstaller : IDisposable
 
                 Log.Information("[V3Patch] 更新包差分索引解析完成, 差分数 {DeltaCount}, 压缩包数 {ArchiveCount}", applyTotal, packageArchives.Count);
 
+                void ReportApplyProgress
+                (
+                    string phaseText,
+                    string currentFile,
+                    double fileFraction
+                )
+                {
+                    progress?.Report
+                    (
+                        new()
+                        {
+                            PhaseText      = phaseText,
+                            CurrentFile    = currentFile,
+                            Progress       = applied + fileFraction,
+                            Total          = applyTotal,
+                            StatusText     = $"{applied}/{applyTotal}",
+                            IsByteProgress = false
+                        }
+                    );
+                }
+
                 for (var deltaIndex = 0; deltaIndex < deltaMap.Count; deltaIndex++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -325,18 +350,7 @@ public sealed class GamePatchInstaller : IDisposable
                     {
                         applied++;
                         Log.Information("[V3Patch] 文件已回退至目标版本, 跳过后续差分 {Path}, 进度 {Applied}/{Total}", targetRelativePath, applied, applyTotal);
-                        progress?.Report
-                        (
-                            new()
-                            {
-                                PhaseText      = $"正在安装更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                                CurrentFile    = targetRelativePath,
-                                Progress       = applied,
-                                Total          = applyTotal,
-                                StatusText     = $"{applied}/{applyTotal}",
-                                IsByteProgress = false
-                            }
-                        );
+                        ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, 0);
                         continue;
                     }
 
@@ -373,75 +387,26 @@ public sealed class GamePatchInstaller : IDisposable
                             applied++;
                             reachedTargetFiles.Add(gameRelativePath);
                             Log.Information("[V3Patch] 更新文件已是目标版本, 跳过 {Path}, 进度 {Applied}/{Total}", targetRelativePath, applied, applyTotal);
-                            progress?.Report
-                            (
-                                new()
-                                {
-                                    PhaseText      = $"正在安装更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                                    CurrentFile    = targetRelativePath,
-                                    Progress       = applied,
-                                    Total          = applyTotal,
-                                    StatusText     = $"{applied}/{applyTotal}",
-                                    IsByteProgress = false
-                                }
-                            );
+                            ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, 0);
                             continue;
                         }
                     }
 
-                    progress?.Report
-                    (
-                        new()
-                        {
-                            PhaseText      = $"正在准备更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                            CurrentFile    = targetRelativePath,
-                            Progress       = applied,
-                            Total          = applyTotal,
-                            StatusText     = $"{applied}/{applyTotal}",
-                            IsByteProgress = false
-                        }
-                    );
+                    ReportApplyProgress($"正在准备更新文件{packagePhaseSuffix}", targetRelativePath, 0);
 
                     if (deltaEntry.Length > int.MaxValue)
                         throw new InvalidDataException($"V3 差分文件过大: {deltaEntryPath}");
 
                     var deltaEntryLength = (int)deltaEntry.Length;
-                    var lastExtractTicks = 0L;
-                    var minExtractTicks  = Stopwatch.Frequency * Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds) / 1000;
-                    var extractionProgress = new InlineProgress<(long Progress, long Total)>
+                    ReportApplyProgress($"正在解压更新文件{packagePhaseSuffix}", targetRelativePath, 0);
+                    var deltaProgress = new InlineProgress<(long Progress, long Total)>
                     (value =>
                         {
-                            var ticks = Stopwatch.GetTimestamp();
-                            if (value.Progress < value.Total && ticks - lastExtractTicks < minExtractTicks)
-                                return;
-
-                            lastExtractTicks = ticks;
-                            progress?.Report
-                            (
-                                new()
-                                {
-                                    PhaseText      = $"正在解压更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                                    CurrentFile    = targetRelativePath,
-                                    Progress       = value.Progress,
-                                    Total          = value.Total,
-                                    IsByteProgress = true
-                                }
-                            );
+                            var fileFraction = expectedTargetSize > 0 ?
+                                                   Math.Clamp((double)value.Progress / expectedTargetSize, 0, 1) :
+                                                   0;
+                            ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, fileFraction);
                         }
-                    );
-                    var deltaProgress = new InlineProgress<(long Progress, long Total)>
-                    (value => progress?.Report
-                     (
-                         new()
-                         {
-                             PhaseText      = $"正在安装更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                             CurrentFile    = targetRelativePath,
-                             Progress       = value.Progress,
-                             Total          = value.Total,
-                             StatusText     = string.Empty,
-                             IsByteProgress = value.Total > 0
-                         }
-                     )
                     );
 
                     try
@@ -461,7 +426,7 @@ public sealed class GamePatchInstaller : IDisposable
                                               targetPath,
                                               verifyMd5,
                                               verifySize,
-                                              extractionProgress,
+                                              null,
                                               deltaProgress,
                                               cancellationToken
                                           )
@@ -479,18 +444,7 @@ public sealed class GamePatchInstaller : IDisposable
                             throw;
                         }
 
-                        progress?.Report
-                        (
-                            new()
-                            {
-                                PhaseText      = $"正在修复更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                                CurrentFile    = targetRelativePath,
-                                Progress       = applied,
-                                Total          = applyTotal,
-                                StatusText     = $"{applied}/{applyTotal}",
-                                IsByteProgress = false
-                            }
-                        );
+                        ReportApplyProgress($"正在修复更新文件{packagePhaseSuffix}", targetRelativePath, 0);
 
                         using var fallbackDownloader = new GameFileDownloader();
                         fallbackDownloader.ProgressReportInterval = Math.Max(1, (int)progressUpdateInterval.TotalMilliseconds);
@@ -531,18 +485,7 @@ public sealed class GamePatchInstaller : IDisposable
 
                     applied++;
                     Log.Information("[V3Patch] 更新文件安装完成 {Path}, 进度 {Applied}/{Total}", targetRelativePath, applied, applyTotal);
-                    progress?.Report
-                    (
-                        new()
-                        {
-                            PhaseText      = $"正在安装更新文件 {packageIndex + 1}/{plan.Packages.Count}",
-                            CurrentFile    = targetRelativePath,
-                            Progress       = applied,
-                            Total          = applyTotal,
-                            StatusText     = $"{applied}/{applyTotal}",
-                            IsByteProgress = false
-                        }
-                    );
+                    ReportApplyProgress($"正在安装更新文件{packagePhaseSuffix}", targetRelativePath, 0);
                 }
             }
             finally
