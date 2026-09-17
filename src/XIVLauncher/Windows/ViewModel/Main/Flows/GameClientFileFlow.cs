@@ -793,10 +793,7 @@ public sealed class GameClientFileFlow
             EtaText = progress.IsByteProgress ?
                           FormatEstimatedTime(progress.Total - progress.Progress, progress.Speed) :
                           string.Empty,
-            PrimaryButtonText      = "取消",
-            IsPrimaryButtonVisible = true,
-            IsPrimaryButtonEnabled = true,
-            IsRunning              = true
+            IsRunning = true
         };
     }
 
