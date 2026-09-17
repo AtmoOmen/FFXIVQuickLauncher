@@ -8,7 +8,7 @@ namespace XIVLauncher.Windows.ViewModel;
 public sealed partial class ProxySettingsWindowViewModel : ObservableObject
 {
     /// <summary>
-    ///     编辑会话中使用的配置副本, 确认后由窗口层提交到启动器主配置
+    ///     编辑会话使用的配置副本
     /// </summary>
     public ProxySettings Settings { get; }
 
@@ -49,6 +49,10 @@ public sealed partial class ProxySettingsWindowViewModel : ObservableObject
             "留空保持当前密码" :
             "未设置";
 
+    public bool CanClearPassword =>
+        HasSelectedProfile
+        && !string.IsNullOrWhiteSpace(SelectedProfile.ProxyPasswordEncrypted);
+
     public ProxySettingsWindowViewModel(ProxySettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -72,6 +76,17 @@ public sealed partial class ProxySettingsWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedProfile));
         OnPropertyChanged(nameof(HasSelectedProfile));
         OnPropertyChanged(nameof(PasswordHint));
+        OnPropertyChanged(nameof(CanClearPassword));
+    }
+
+    public void ClearPassword()
+    {
+        if (SelectedProfile == null)
+            return;
+
+        SelectedProfile.SetPassword(null);
+        OnPropertyChanged(nameof(PasswordHint));
+        OnPropertyChanged(nameof(CanClearPassword));
     }
 
     public void CreateProfile()

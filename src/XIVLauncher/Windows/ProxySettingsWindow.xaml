@@ -25,6 +25,21 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Xaml/Components/WindowAnimations.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="DarkIntegerUpDownStyle" TargetType="xctk:IntegerUpDown">
+                <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Background}" />
+                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Card.Border}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Padding" Value="10,0" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -134,6 +149,7 @@
                         <TextBlock Text="代理端口" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
                         <xctk:IntegerUpDown Margin="0,4,0,16" Width="140" Minimum="1" Maximum="65535"
                                             Value="{Binding SelectedProfile.ProxyPort, UpdateSourceTrigger=PropertyChanged}"
+                                            Style="{StaticResource DarkIntegerUpDownStyle}"
                                             Padding="4" />
 
                         <TextBlock Text="用户名（可选）" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
@@ -143,15 +159,27 @@
                                  Style="{StaticResource MaterialDesignOutlinedTextBox}" />
 
                         <TextBlock Text="密码（可选）" Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
-                        <PasswordBox x:Name="ProxyPasswordBox" Margin="0,4,0,16"
-                                     materialDesign:HintAssist.Hint="{Binding PasswordHint}"
-                                     Style="{StaticResource MaterialDesignOutlinedPasswordBox}" />
+                        <Grid Margin="0,4,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <PasswordBox x:Name="ProxyPasswordBox" Grid.Column="0" Margin="0,0,12,0"
+                                         materialDesign:HintAssist.Hint="{Binding PasswordHint}"
+                                         Style="{StaticResource MaterialDesignOutlinedPasswordBox}" />
+
+                            <Button Grid.Column="1" MinWidth="80" VerticalAlignment="Center"
+                                    IsEnabled="{Binding CanClearPassword}"
+                                    Click="ClearPasswordButton_OnClick"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}" Content="清除密码" />
+                        </Grid>
 
                         <TextBlock Text="{Binding ConfigFilePath}" Opacity="0.58" TextWrapping="Wrap"
                                    Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}" />
                         <TextBlock Margin="0,8,0,0" Opacity="0.58" TextWrapping="Wrap"
                                    Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
-                                   Text="保存后立即生效。配置随启动器配置保存在 Roaming 目录，更新重装不会丢失。" />
+                                   Text="修改将在重启启动器后生效。配置随启动器配置保存在 Roaming 目录，更新重装不会丢失。" />
                     </StackPanel>
                 </materialDesign:Card>
 

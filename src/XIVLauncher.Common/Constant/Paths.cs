@@ -43,15 +43,6 @@ public static class Paths
     public static string GetConfigPath(string prefix = "launcher") =>
         Path.Join(RoamingPath, $"{prefix}ConfigV3.json");
 
-    public static string GetProxyConfigPath() =>
-        Path.Join(RoamingPath, "proxyConfigV3.json");
-
-    /// <summary>
-    ///     旧版代理配置路径 (启动器安装目录), 用于首次迁移到 Roaming
-    /// </summary>
-    public static string GetLegacyProxyConfigPath() =>
-        Path.Join(AppContext.BaseDirectory, "proxyConfigV3.json");
-
     public static string GetGamePath()
     {
         const string REGISTRY_PATH = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\最终幻想14";

@@ -4,28 +4,8 @@ using Serilog;
 namespace XIVLauncher.Common.Http;
 
 /// <summary>
-///     代理配置快照, 由应用设置层提供, 避免公共库依赖 UI 层类型
-/// </summary>
-public sealed record ProxyConfigSnapshot
-(
-    string  Type,
-    string  Host,
-    int     Port,
-    string? Username = null,
-    string? Password = null
-)
-{
-    public bool IsDisabled =>
-        string.IsNullOrWhiteSpace(Host)
-        || Port is < 1 or > 65535
-        || string.IsNullOrWhiteSpace(Type)
-        || string.Equals(Type, "None", StringComparison.OrdinalIgnoreCase);
-}
-
-/// <summary>
-///     启动器全局代理提供者。
-///     HTTP/HTTPS 与 SOCKS4/4a/5 均通过 SocketsHttpHandler 原生支持, 无需额外依赖。
-///     注意: .NET 的 SOCKS5 实现为本地 DNS 解析 (非 socks5h 远程解析)。
+///     启动器全局代理提供者, 由启动流程根据代理配置构建一次。
+///     HTTP/HTTPS/SOCKS5 由 SocketsHttpHandler 原生支持。
 /// </summary>
 public static class XLProxyProvider
 {

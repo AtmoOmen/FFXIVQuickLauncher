@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
 using Serilog;
-using XIVLauncher.Common.Http;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows;
@@ -50,15 +49,20 @@ public partial class ProxySettingsWindow
         ViewModel.DeleteSelectedProfile();
     }
 
+    private void ClearPasswordButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ClearPassword();
+        ProxyPasswordBox.Password = string.Empty;
+    }
+
     private void ConfirmButton_OnClick(object sender, RoutedEventArgs e)
     {
         try
         {
             ViewModel.Save(ProxyPasswordBox.Password);
 
-            // 提交到启动器主配置并立即应用
+            // 提交到启动器主配置, 下次启动时生效
             App.Settings.Update(settings => settings.ProxySettings = ViewModel.Settings);
-            XLProxyProvider.Apply(App.Settings.ProxySettings.ToSnapshot());
 
             DialogResult = true;
             Close();
