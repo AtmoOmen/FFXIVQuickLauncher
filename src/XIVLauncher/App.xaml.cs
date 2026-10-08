@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using Serilog;
 using XIVLauncher.Account;
@@ -58,6 +60,7 @@ public partial class App
 
     public App()
     {
+        RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
         Timeline.DesiredFrameRateProperty.OverrideMetadata(typeof(Timeline), new(60));
 
         try

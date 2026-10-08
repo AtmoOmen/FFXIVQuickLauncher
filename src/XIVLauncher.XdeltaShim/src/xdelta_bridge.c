@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
+#include <bcrypt.h>
 
 #define XD3_MAIN 1
 #define main xdelta3_embedded_main
@@ -10,6 +11,7 @@
 #undef main
 
 #define XDELTA_BRIDGE_SOURCE_BLOCK_SIZE (1U << 20)
+#define XDELTA_BRIDGE_MD5_SIZE 16
 
 static char xdelta_bridge_last_error_buffer[256];
 
@@ -17,6 +19,12 @@ typedef struct {
     const uint8_t* data;
     xoff_t size;
 } xdelta_bridge_source_context;
+
+typedef struct {
+    BCRYPT_ALG_HANDLE alg;
+    BCRYPT_HASH_HANDLE hash;
+    PUCHAR object;
+} xdelta_bridge_md5;
 
 static int xdelta_bridge_getblk(xd3_stream* stream, xd3_source* source, xoff_t blkno)
 {
@@ -108,7 +116,74 @@ static int write_all(HANDLE handle, const uint8_t* data, usize_t size)
     return 0;
 }
 
-static int decode_delta_memory_to_file(const uint8_t* source_data, xoff_t source_size, const uint8_t* delta_data, usize_t delta_size, HANDLE target_handle)
+static void xdelta_bridge_md5_end(xdelta_bridge_md5* ctx)
+{
+    if (ctx->hash != NULL) {
+        BCryptDestroyHash(ctx->hash);
+        ctx->hash = NULL;
+    }
+
+    if (ctx->object != NULL) {
+        free(ctx->object);
+        ctx->object = NULL;
+    }
+
+    if (ctx->alg != NULL) {
+        BCryptCloseAlgorithmProvider(ctx->alg, 0);
+        ctx->alg = NULL;
+    }
+}
+
+static int xdelta_bridge_md5_begin(xdelta_bridge_md5* ctx)
+{
+    DWORD object_length = 0;
+    DWORD written = 0;
+
+    memset(ctx, 0, sizeof(*ctx));
+
+    if (BCryptOpenAlgorithmProvider(&ctx->alg, BCRYPT_MD5_ALGORITHM, NULL, 0) != 0) {
+        return EIO;
+    }
+
+    if (BCryptGetProperty(ctx->alg, BCRYPT_OBJECT_LENGTH, (PUCHAR)&object_length, sizeof(object_length), &written, 0) != 0) {
+        goto fail;
+    }
+
+    ctx->object = (PUCHAR)malloc(object_length);
+    if (ctx->object == NULL) {
+        goto fail;
+    }
+
+    if (BCryptCreateHash(ctx->alg, &ctx->hash, ctx->object, object_length, NULL, 0, 0) != 0) {
+        goto fail;
+    }
+
+    return 0;
+
+fail:
+    xdelta_bridge_md5_end(ctx);
+    return EIO;
+}
+
+static int xdelta_bridge_md5_update(xdelta_bridge_md5* ctx, const uint8_t* data, usize_t size)
+{
+    if (size == 0) {
+        return 0;
+    }
+
+    return BCryptHashData(ctx->hash, (PUCHAR)data, (ULONG)size, 0) == 0 ? 0 : EIO;
+}
+
+static int xdelta_bridge_md5_finish(xdelta_bridge_md5* ctx, uint8_t* digest_out)
+{
+    int ret = BCryptFinishHash(ctx->hash, digest_out, XDELTA_BRIDGE_MD5_SIZE, 0) == 0 ? 0 : EIO;
+
+    xdelta_bridge_md5_end(ctx);
+    return ret;
+}
+
+static int decode_delta_memory_to_file(const uint8_t* source_data, xoff_t source_size, const uint8_t* delta_data, usize_t delta_size, HANDLE target_handle,
+                                      xdelta_bridge_md5* md5)
 {
     xd3_stream stream;
     xd3_config config;
@@ -176,6 +251,9 @@ static int decode_delta_memory_to_file(const uint8_t* source_data, xoff_t source
         }
         case XD3_OUTPUT:
             ret = write_all(target_handle, stream.next_out, stream.avail_out);
+            if (ret == 0) {
+                ret = xdelta_bridge_md5_update(md5, stream.next_out, stream.avail_out);
+            }
             xd3_consume_output(&stream);
             if (ret != 0) {
                 goto done;
@@ -227,7 +305,7 @@ int xdelta_decode_file(const char* source_path, const char* delta_path, const ch
     return xdelta3_embedded_main(6, (char**)argv);
 }
 
-int xdelta_decode_file_with_delta_memory(const char* source_path, const uint8_t* delta_data, size_t delta_size, const char* target_path)
+int xdelta_decode_file_with_delta_memory(const char* source_path, const uint8_t* delta_data, size_t delta_size, const char* target_path, uint8_t* digest_out)
 {
     wchar_t* source_path_wide = NULL;
     wchar_t* target_path_wide = NULL;
@@ -235,10 +313,12 @@ int xdelta_decode_file_with_delta_memory(const char* source_path, const uint8_t*
     HANDLE target_handle = INVALID_HANDLE_VALUE;
     HANDLE source_mapping = NULL;
     void* source_view = NULL;
+    xdelta_bridge_md5 md5;
+    int md5_active = 0;
     int result;
     int ret;
 
-    if (source_path == NULL || target_path == NULL || (delta_data == NULL && delta_size != 0) || delta_size > UINT32_MAX) {
+    if (source_path == NULL || target_path == NULL || digest_out == NULL || (delta_data == NULL && delta_size != 0) || delta_size > UINT32_MAX) {
         return EINVAL;
     }
 
@@ -285,14 +365,32 @@ int xdelta_decode_file_with_delta_memory(const char* source_path, const uint8_t*
             goto done;
         }
 
-        result = decode_delta_memory_to_file((const uint8_t*)source_view, source_size, delta_data, (usize_t)delta_size, target_handle);
+        if (xdelta_bridge_md5_begin(&md5) != 0) {
+            ret = EIO;
+            goto done;
+        }
+
+        md5_active = 1;
+
+        result = decode_delta_memory_to_file((const uint8_t*)source_view, source_size, delta_data, (usize_t)delta_size, target_handle, &md5);
         if (result != 0) {
             ret = result;
+            goto done;
+        }
+
+        md5_active = 0;
+
+        if (xdelta_bridge_md5_finish(&md5, digest_out) != 0) {
+            ret = EIO;
             goto done;
         }
     }
 
 done:
+    if (md5_active) {
+        xdelta_bridge_md5_end(&md5);
+    }
+
     if (source_view != NULL) {
         UnmapViewOfFile(source_view);
     }

@@ -15,6 +15,7 @@ fn main() {
         .warnings(false)
         .compile("xdelta_bridge");
 
+    println!("cargo:rustc-link-lib=bcrypt");
     println!("cargo:rerun-if-changed=src/xdelta_bridge.c");
     println!("cargo:rerun-if-changed=vendor/xdelta3/xdelta3.c");
     println!("cargo:rerun-if-changed=vendor/xdelta3/xdelta3.h");

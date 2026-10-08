@@ -12,6 +12,7 @@ unsafe extern "C" {
         delta_data: *const c_uchar,
         delta_size: usize,
         target_path: *const c_char,
+        digest_out: *mut c_uchar,
     ) -> c_int;
 
     fn xdelta_bridge_get_last_error() -> *const c_char;
@@ -36,12 +37,13 @@ pub unsafe extern "C" fn xdelta_decode_file_with_delta_memory_utf8(
     delta_data: *const c_uchar,
     delta_size: usize,
     target_path: *const c_char,
+    digest_out: *mut c_uchar,
 ) -> c_int {
-    if source_path.is_null() || target_path.is_null() || (delta_data.is_null() && delta_size != 0) {
+    if source_path.is_null() || target_path.is_null() || digest_out.is_null() || (delta_data.is_null() && delta_size != 0) {
         return 2;
     }
 
-    unsafe { xdelta_decode_file_with_delta_memory(source_path, delta_data, delta_size, target_path) }
+    unsafe { xdelta_decode_file_with_delta_memory(source_path, delta_data, delta_size, target_path, digest_out) }
 }
 
 #[unsafe(no_mangle)]

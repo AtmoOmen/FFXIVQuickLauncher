@@ -31,6 +31,8 @@ public partial class NewsListControl
         if (NewsListView.SelectedItem is not News item)
             return;
 
+        NewsListView.SelectedItem = null;
+
         NewsClicked?.Invoke(item);
     }
 }
