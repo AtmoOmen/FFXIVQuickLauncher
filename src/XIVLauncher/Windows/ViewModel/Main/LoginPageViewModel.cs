@@ -194,9 +194,6 @@ public sealed partial class LoginPageViewModel : ObservableObject
     public void RefreshCommandStates()
     {
         StartLoginCommand.NotifyCanExecuteChanged();
-        LoginNoDalamudCommand.NotifyCanExecuteChanged();
-        LoginNoPluginsCommand.NotifyCanExecuteChanged();
-        LoginNoThirdCommand.NotifyCanExecuteChanged();
         LoginRepairCommand.NotifyCanExecuteChanged();
         RunIntegrityCheckCommand.NotifyCanExecuteChanged();
         LoginCancelCommand.NotifyCanExecuteChanged();
@@ -224,18 +221,6 @@ public sealed partial class LoginPageViewModel : ObservableObject
         requestLoginAction(this, LoginAfterAction.Start);
 
     private bool CanStartLoginExecute() => CanStartLogin;
-
-    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
-    private void LoginNoDalamud() =>
-        requestLoginAction(this, LoginAfterAction.StartWithoutDalamud);
-
-    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
-    private void LoginNoPlugins() =>
-        requestLoginAction(this, LoginAfterAction.StartWithoutPlugins);
-
-    [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
-    private void LoginNoThird() =>
-        requestLoginAction(this, LoginAfterAction.StartWithoutThird);
 
     [RelayCommand(CanExecute = nameof(CanExecuteWhenNotBusy))]
     private Task LoginRepair() =>
