@@ -27,6 +27,8 @@ internal interface IDialogService
 
     void ShowAdvancedSettings();
 
+    void ShowProxySettings();
+
     CompanionAppConfiguration? ShowCompanionAppSetup(CompanionAppConfiguration? companionApp = null);
 
     bool ShowProfilePictureInput(XIVAccount account, out string? profileImagePath);

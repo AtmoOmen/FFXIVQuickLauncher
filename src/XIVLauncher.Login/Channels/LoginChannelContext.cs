@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Login.Client;
 using XIVLauncher.Login.Exceptions;
@@ -29,7 +30,8 @@ public sealed class LoginChannelContext
         var loginHandler = new HttpClientHandler
         {
             UseCookies      = true,
-            CookieContainer = loginCookies
+            CookieContainer = loginCookies,
+            Proxy           = XLProxyProvider.Current
         };
 
         loginHttpClient = new HttpClient(loginHandler);

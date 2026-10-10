@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Serilog;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Http;
 using XIVLauncher.GamePatchV3.Integrity;
 using XIVLauncher.GamePatchV3.Integrity.Models;
 
@@ -27,7 +28,11 @@ public class GameFileDownloader : IDisposable
     private string dataVersion     = null!;
 
     public GameFileDownloader()
-        : this(new SocketsHttpHandler())
+        : this(new SocketsHttpHandler
+               {
+                   UseProxy = true,
+                   Proxy    = XLProxyProvider.Current
+               })
     {
     }
 

@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json.Nodes;
 using Serilog;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Login;
 using XIVLauncher.Login.Workflow;
 
@@ -78,7 +79,8 @@ public partial class DCTravelClient : IDisposable
             CookieContainer        = cookieContainer,
             UseCookies             = true,
             AllowAutoRedirect      = true,
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+            Proxy                  = XLProxyProvider.Current
         };
         httpClient = new HttpClient(handler)
         {

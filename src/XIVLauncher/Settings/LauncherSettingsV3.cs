@@ -274,6 +274,19 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
 
     #endregion
 
+    #region 网络代理配置
+
+    /// <summary>
+    ///     启动器网络代理配置 (与主配置一并存储)
+    /// </summary>
+    public ProxySettings ProxySettings
+    {
+        get;
+        set => Set(ref field, value);
+    } = new();
+
+    #endregion
+
     #region 账户与安全配置
 
     /// <summary>
@@ -480,6 +493,7 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         {
             var json = File.ReadAllText(sourcePath, Encoding.UTF8);
             settings = JsonSerializer.Deserialize<LauncherSettingsV3>(json, JsonOptions) ?? new LauncherSettingsV3();
+            settings.SanitizeProxySettings();
             var migrated = settings.MigrateWeGamePath();
             settings.Attach(attachPath);
             if (migrated)
@@ -502,6 +516,23 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
 
         WeGamePath = gameRoot;
         return true;
+    }
+
+    /// <summary>
+    ///     加载后清理代理配置: 补齐缺失的配置对象并校验密码字段可解密
+    /// </summary>
+    private void SanitizeProxySettings()
+    {
+        ProxySettings ??= new ProxySettings();
+
+        foreach (var profile in ProxySettings.Profiles)
+        {
+            if (!string.IsNullOrWhiteSpace(profile.ProxyPasswordEncrypted) && profile.GetPassword() == null)
+            {
+                Log.Warning("[LauncherSettingsV3] 代理密码解密失败, 已清空密码字段: {ProfileName}", profile.DisplayName);
+                profile.ProxyPasswordEncrypted = string.Empty;
+            }
+        }
     }
 
     private static string? MoveBrokenConfig(string configPath)

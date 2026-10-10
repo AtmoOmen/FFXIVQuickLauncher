@@ -8,12 +8,14 @@ public static class XLHttpClientFactory
     (
         TimeSpan             connectTimeout,
         int                  maxConnectionsPerServer,
-        DecompressionMethods automaticDecompression
+        DecompressionMethods automaticDecompression,
+        IWebProxy?           proxy = null
     )
     {
         var handler = new SocketsHttpHandler
         {
             UseProxy                       = true,
+            Proxy                          = proxy,
             ConnectTimeout                 = connectTimeout,
             MaxConnectionsPerServer        = maxConnectionsPerServer,
             EnableMultipleHttp2Connections = true,
