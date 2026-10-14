@@ -7,10 +7,15 @@ namespace XIVLauncher.Login.Models;
 
 public class LoginArea
 {
-    private static readonly HttpClient Client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(30), int.MaxValue, DecompressionMethods.None);
-
-    static LoginArea() =>
-        Client.Timeout = TimeSpan.FromSeconds(30);
+    private static readonly Lazy<HttpClient> Client = new
+    (
+        () =>
+        {
+            var client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(30), int.MaxValue, DecompressionMethods.None, XLProxyProvider.Current);
+            client.Timeout = TimeSpan.FromSeconds(30);
+            return client;
+        }
+    );
 
     [JsonProperty("Areaid")]
     public string AreaID { get; set; } = null!;
@@ -45,7 +50,7 @@ public class LoginArea
         request.Headers.Add("Accept", "*/*");
         request.Headers.Add("Host",   "ff.dorado.sdo.com");
 
-        using var response = await Client.SendAsync(request);
+        using var response = await Client.Value.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
         var text = await response.Content.ReadAsStringAsync();

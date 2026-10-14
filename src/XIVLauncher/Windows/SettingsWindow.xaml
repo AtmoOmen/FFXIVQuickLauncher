@@ -594,6 +594,21 @@
                                             Click="SharedDeviceProfileButton_Click"
                                             Style="{StaticResource ThemeOutlinedButtonStyle}" Content="管理" />
                                 </Grid>
+                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="代理配置" />
+                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                   Text="启动器网络请求（登录、补丁、超域旅行等）使用的代理，修改后重启启动器生效" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" MinWidth="100" VerticalAlignment="Center"
+                                            Command="{Binding OpenProxySettingsCommand}"
+                                            Style="{StaticResource ThemeOutlinedButtonStyle}" Content="管理" />
+                                </Grid>
                             </StackPanel>
                         </materialDesign:Card>
 

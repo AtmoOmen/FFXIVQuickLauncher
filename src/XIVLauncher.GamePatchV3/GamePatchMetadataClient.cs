@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 using Serilog;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Http;
 using XIVLauncher.GamePatchV3.Integrity.Models;
 using XIVLauncher.GamePatchV3.Models;
 using XIVLauncher.GamePatchV3.Update.Models;
@@ -15,7 +17,14 @@ public sealed class GamePatchMetadataClient : IDisposable
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly HttpClient client = new();
+    private readonly HttpClient client = new
+    (
+        new SocketsHttpHandler
+        {
+            UseProxy = true,
+            Proxy    = XLProxyProvider.Current
+        }
+    );
 
     public void Dispose() =>
         client.Dispose();
