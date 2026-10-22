@@ -10,9 +10,6 @@
     <Style x:Key="LoginActionMenuItemStyle"
            TargetType="{x:Type MenuItem}"
            BasedOn="{StaticResource MaterialDesignMenuItem}" />
-    <Style x:Key="LoginActionSeparatorStyle"
-           TargetType="{x:Type Separator}"
-           BasedOn="{StaticResource MaterialDesignSeparator}" />
 
     <!-- 工具栏按钮 -->
     <Style x:Key="HeaderUtilityButtonStyle"
