@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Quic;
 using System.Runtime.CompilerServices;
 using Microsoft.Win32.SafeHandles;
 using Serilog;
@@ -83,6 +84,10 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
             FileOptions.Asynchronous | FileOptions.RandomAccess
         );
 
+        var initialSegmentSize = httpClient.DefaultRequestVersion.Major >= 3 ?
+                                     64L << 10 :
+                                     SEGMENT_SIZE;
+
         for (var attempt = 0; attempt < MAX_ATTEMPTS; attempt++)
         {
             await DownloadSlots.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -93,7 +98,7 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(RequestTimeout);
                 using var request = CreateRequest(downloads[index].Url);
-                request.Headers.Range = new RangeHeaderValue(0, SEGMENT_SIZE - 1);
+                request.Headers.Range = new RangeHeaderValue(0, initialSegmentSize - 1);
                 using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
                 await response.EnsureSuccessWithDiagnosticsAsync(timeout.Token).ConfigureAwait(false);
 
@@ -102,7 +107,7 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
                 var size = partial ?
                                range?.Length                          ?? -1 :
                                response.Content.Headers.ContentLength ?? -1;
-                if (partial && (size <= 0 || range?.From != 0 || range.To != Math.Min(SEGMENT_SIZE, size) - 1))
+                if (partial && (size <= 0 || range?.From != 0 || range.To != Math.Min(initialSegmentSize, size) - 1))
                     throw new InvalidDataException($"服务器返回了不匹配的分段: {range}");
 
                 if (response.Content.Headers.ContentEncoding.Any(encoding => !string.Equals(encoding, "identity", StringComparison.OrdinalIgnoreCase)))
@@ -140,8 +145,9 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
                 var       cancelAll          = rangesCancellation.CancelAsync;
                 rangesStarted = true;
                 var initialDownload = DownloadRange(index, fileHandle, 0, expectedLength - 1, size, validator, cancelAll, response, rangesToken);
-                var nextPart        = 0;
-                var workers = Enumerable.Range(0, Math.Min(partCount - 1, MAX_PARALLEL_DOWNLOADS))
+                var firstPart       = (int)(expectedLength / SEGMENT_SIZE);
+                var nextPart        = firstPart - 1;
+                var workers = Enumerable.Range(0, Math.Min(partCount - firstPart, MAX_PARALLEL_DOWNLOADS))
                                         .Select
                                         (async _ =>
                                             {
@@ -151,8 +157,8 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
                                                     var part = Interlocked.Increment(ref nextPart);
                                                     if (part >= partCount)
                                                         return;
-                                                    var start = part * SEGMENT_SIZE;
-                                                    var end   = Math.Min(start + SEGMENT_SIZE, size) - 1;
+                                                    var start = Math.Max(part * SEGMENT_SIZE, expectedLength);
+                                                    var end   = Math.Min((part + 1L) * SEGMENT_SIZE, size) - 1;
                                                     await DownloadRange(index, fileHandle, start, end, size, validator, cancelAll, null, rangesToken).ConfigureAwait
                                                         (false);
                                                 }
@@ -351,8 +357,8 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url)
         {
-            Version       = HttpVersion.Version11,
-            VersionPolicy = HttpVersionPolicy.RequestVersionExact
+            Version       = httpClient.DefaultRequestVersion,
+            VersionPolicy = httpClient.DefaultVersionPolicy
         };
 
         if (headers != null)
@@ -388,8 +394,15 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
 
     private static HttpClient CreateHttpClient()
     {
-        var client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(5), MAX_PARALLEL_DOWNLOADS, DecompressionMethods.None);
+        var client        = XLHttpClientFactory.Create(TimeSpan.FromSeconds(5), MAX_PARALLEL_DOWNLOADS, DecompressionMethods.None);
+        var supportsHttp3 = QuicConnection.IsSupported;
         client.Timeout = Timeout.InfiniteTimeSpan;
+        client.DefaultRequestVersion = supportsHttp3 ?
+                                           HttpVersion.Version30 :
+                                           HttpVersion.Version11;
+        client.DefaultVersionPolicy = supportsHttp3 ?
+                                          HttpVersionPolicy.RequestVersionOrLower :
+                                          HttpVersionPolicy.RequestVersionExact;
         client.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
         return client;
     }

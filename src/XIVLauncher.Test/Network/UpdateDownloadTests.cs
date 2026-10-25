@@ -15,6 +15,42 @@ public sealed class UpdateDownloadTests : IDisposable
 {
     private readonly string destination = Path.GetTempFileName();
 
+    [Theory]
+    [InlineData(1 << 20)]
+    [InlineData(3 << 20)]
+    public async Task Download_UsesClientProtocolNegotiation
+    (
+        int size
+    )
+    {
+        var payload = new byte[size];
+        RandomNumberGenerator.Fill(payload);
+        var requests = 0;
+        using var client = new HttpClient
+        (
+            new RequestHandler
+            ((request, _) =>
+                {
+                    Interlocked.Increment(ref requests);
+                    Assert.Equal(HttpVersion.Version30,                   request.Version);
+                    Assert.Equal(HttpVersionPolicy.RequestVersionOrLower, request.VersionPolicy);
+                    var range   = Assert.Single(request.Headers.Range!.Ranges);
+                    var start   = range.From!.Value;
+                    var end     = Math.Min(range.To!.Value, payload.Length - 1);
+                    var content = new ByteArrayContent([.. payload.AsSpan((int)start, (int)(end - start + 1))]);
+                    content.Headers.ContentRange = new ContentRangeHeaderValue(start, end, payload.Length);
+                    return Task.FromResult(new HttpResponseMessage(HttpStatusCode.PartialContent) { Content = content });
+                }
+            )
+        );
+        client.DefaultRequestVersion = HttpVersion.Version30;
+        client.DefaultVersionPolicy  = HttpVersionPolicy.RequestVersionOrLower;
+        using var downloader = new HttpClientDownloadWithProgress([("https://updates.test/package", destination)], client);
+        await downloader.Download();
+        Assert.True(requests > 1);
+        Assert.Equal(SHA256.HashData(payload), SHA256.HashData(await File.ReadAllBytesAsync(destination)));
+    }
+
     [Fact]
     public async Task ServerIgnoringRange_DownloadsFirstResponseWithoutProbe()
     {
@@ -145,11 +181,16 @@ public sealed class UpdateDownloadTests : IDisposable
         Assert.Equal(SHA256.HashData(payload), SHA256.HashData(await File.ReadAllBytesAsync(destination, cancellation.Token)));
     }
 
-    [Fact]
-    public async Task InterruptedInitialRange_ResumesWithoutRestartingCompletedRanges()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public async Task InterruptedInitialRange_ResumesWithoutRestartingCompletedRanges
+    (
+        int protocol
+    )
     {
         const int SEGMENT_LENGTH  = 2  << 20;
-        const int RECEIVED_LENGTH = 64 << 10;
+        const int RECEIVED_LENGTH = 32 << 10;
         var       payload         = new byte[(3 * SEGMENT_LENGTH) + 37];
         RandomNumberGenerator.Fill(payload);
         var  starts     = new ConcurrentBag<long>();
@@ -178,6 +219,13 @@ public sealed class UpdateDownloadTests : IDisposable
                     );
                 }
             )
+        );
+        client.DefaultRequestVersion = new Version
+        (
+            protocol,
+            protocol == 1 ?
+                1 :
+                0
         );
         using var downloader = new HttpClientDownloadWithProgress([("https://updates.test/package", destination)], client);
         downloader.ProgressChanged += (_, bytes, _) => downloaded = bytes;
@@ -329,8 +377,13 @@ public sealed class UpdateDownloadTests : IDisposable
         Assert.Equal(payload,        await File.ReadAllBytesAsync(destination));
     }
 
-    [Fact]
-    public async Task ProtocolFailure_OnlyChangesVersionForAffectedAuthority()
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task ProtocolFailure_OnlyChangesVersionForAffectedAuthority
+    (
+        int protocol
+    )
     {
         var versions = new ConcurrentBag<(string Host, int Version)>();
         var failure  = 0;
@@ -348,7 +401,7 @@ public sealed class UpdateDownloadTests : IDisposable
         );
         using var client       = new HttpMessageInvoker(handler);
         using var firstRequest = new HttpRequestMessage(HttpMethod.Get, "https://broken.test/version");
-        firstRequest.Version = HttpVersion.Version20;
+        firstRequest.Version = new Version(protocol, 0);
         using var secondRequest = new HttpRequestMessage(HttpMethod.Get, "https://healthy.test/version");
         secondRequest.Version = HttpVersion.Version20;
         using var thirdRequest = new HttpRequestMessage(HttpMethod.Get, "https://broken.test/assets");
@@ -357,7 +410,7 @@ public sealed class UpdateDownloadTests : IDisposable
         using var secondResponse = await client.SendAsync(secondRequest, CancellationToken.None);
         using var thirdResponse  = await client.SendAsync(thirdRequest,  CancellationToken.None);
 
-        Assert.Single(versions, item => item == ("broken.test", 2));
+        Assert.Single(versions, item => item == ("broken.test", protocol));
         Assert.Equal(2, versions.Count(item => item == ("broken.test", 1)));
         Assert.Single(versions, item => item == ("healthy.test", 2));
     }
