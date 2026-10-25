@@ -1,30 +1,27 @@
-using System.Buffers;
-using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using Serilog;
 using Velopack.Sources;
 using XIVLauncher.Common.Http;
+using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Support;
 
 public class XLHttpClientFileDownloader : IFileDownloader
 {
-    private const int BUFFER_SIZE = 64 * 1024;
-
     private static readonly TimeSpan ConnectTimeout             = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan MetadataRequestTimeout     = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan DefaultFileDownloadTimeout = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan MinimumFileDownloadTimeout = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan StreamIdleTimeout          = TimeSpan.FromSeconds(45);
 
-    private readonly HttpClient httpClient;
+    private static readonly HttpClient HTTPClient = CreateHttpClient();
 
-    public XLHttpClientFileDownloader()
+    private static HttpClient CreateHttpClient()
     {
-        httpClient         = XLHttpClientFactory.Create(ConnectTimeout, 50, DecompressionMethods.All);
-        httpClient.Timeout = Timeout.InfiniteTimeSpan;
+        var client = XLHttpClientFactory.Create(ConnectTimeout, 8, DecompressionMethods.All);
+        client.Timeout = Timeout.InfiniteTimeSpan;
+        return client;
     }
 
     public async Task DownloadFile
@@ -41,103 +38,28 @@ public class XLHttpClientFileDownloader : IFileDownloader
 
         using var totalTimeoutCts = new CancellationTokenSource(totalTimeout);
         using var requestCts      = CancellationTokenSource.CreateLinkedTokenSource(cancelToken, totalTimeoutCts.Token);
-        using var streamIdleCts   = new CancellationTokenSource();
-        using var readCts         = CancellationTokenSource.CreateLinkedTokenSource(cancelToken, totalTimeoutCts.Token, streamIdleCts.Token);
-
-        byte[]? buffer = null;
 
         try
         {
-            using var request = CreateRequest(HttpMethod.Get, url, headers);
-            using var response = await httpClient.SendAsync
-                                 (
-                                     request,
-                                     HttpCompletionOption.ResponseHeadersRead,
-                                     requestCts.Token
-                                 );
-
-            await response.EnsureSuccessWithDiagnosticsAsync(requestCts.Token);
-
-            var totalBytes        = response.Content.Headers.ContentLength ?? -1L;
-            var canReportProgress = totalBytes > 0;
-
-            using var contentStream = await response.Content.ReadAsStreamAsync(requestCts.Token);
-
-            var directory = Path.GetDirectoryName(targetFile);
-            if (!string.IsNullOrWhiteSpace(directory) && !Directory.Exists(directory))
-                Directory.CreateDirectory(directory);
-
-            using var fileStream = new FileStream
-            (
-                targetFile,
-                new FileStreamOptions
-                {
-                    Mode       = FileMode.Create,
-                    Access     = FileAccess.Write,
-                    Share      = FileShare.None,
-                    BufferSize = BUFFER_SIZE,
-                    Options    = FileOptions.Asynchronous | FileOptions.SequentialScan
-                }
-            );
-
-            buffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE);
-
-            long totalRead    = 0;
-            var  lastProgress = -1;
-
-            while (true)
+            using var downloader   = new HttpClientDownloadWithProgress([(url, targetFile)], headers: headers);
+            var       lastProgress = -1;
+            downloader.ProgressChanged += (_, _, percentage) =>
             {
-                streamIdleCts.CancelAfter(StreamIdleTimeout);
-                var bytesRead = await contentStream.ReadAsync(buffer.AsMemory(0, BUFFER_SIZE), readCts.Token);
-
-                if (bytesRead <= 0)
-                    break;
-
-                streamIdleCts.CancelAfter(StreamIdleTimeout);
-                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), requestCts.Token);
-
-                if (!canReportProgress)
-                    continue;
-
-                totalRead += bytesRead;
-                var currentProgress = (int)(totalRead * 100 / totalBytes);
-
+                if (percentage == null)
+                    return;
+                var currentProgress = Math.Clamp((int)percentage.Value, 0, 100);
                 if (currentProgress <= lastProgress)
-                    continue;
-
+                    return;
                 lastProgress = currentProgress;
-                progress?.Invoke(currentProgress);
-            }
-
-            if (canReportProgress && lastProgress != 100)
-                progress?.Invoke(100);
+                progress.Invoke(currentProgress);
+            };
+            await downloader.Download(requestCts.Token);
+            if (lastProgress != 100)
+                progress.Invoke(100);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException ex) when (!cancelToken.IsCancellationRequested && totalTimeoutCts.IsCancellationRequested)
         {
-            var normalizedException = NormalizeFileDownloadException(ex, totalTimeout, cancelToken, totalTimeoutCts, streamIdleCts);
-            Log.Error(normalizedException, "下载文件失败：{Url} -> {TargetFile}", url, targetFile);
-
-            if (File.Exists(targetFile))
-            {
-                try
-                {
-                    File.Delete(targetFile);
-                }
-                catch
-                {
-                    // 删除临时文件失败不影响后续错误处理。
-                }
-            }
-
-            if (ReferenceEquals(normalizedException, ex))
-                throw;
-
-            throw normalizedException;
-        }
-        finally
-        {
-            if (buffer != null)
-                ArrayPool<byte>.Shared.Return(buffer);
+            throw new TimeoutException($"下载超时，{totalTimeout.TotalMinutes:0} 分钟内未完成。", ex);
         }
     }
 
@@ -154,7 +76,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
         try
         {
             using var request  = CreateRequest(HttpMethod.Get, url, headers);
-            using var response = await httpClient.SendAsync(request, cts.Token);
+            using var response = await HTTPClient.SendAsync(request, cts.Token);
 
             await response.EnsureSuccessWithDiagnosticsAsync(cts.Token);
             return await response.Content.ReadAsByteArrayAsync(cts.Token);
@@ -184,7 +106,7 @@ public class XLHttpClientFileDownloader : IFileDownloader
         try
         {
             using var request  = CreateRequest(HttpMethod.Get, url, headers);
-            using var response = await httpClient.SendAsync(request, cts.Token);
+            using var response = await HTTPClient.SendAsync(request, cts.Token);
 
             await response.EnsureSuccessWithDiagnosticsAsync(cts.Token);
             return await response.Content.ReadAsStringAsync(cts.Token);
@@ -201,16 +123,26 @@ public class XLHttpClientFileDownloader : IFileDownloader
         }
     }
 
-    private static TimeSpan GetMetadataRequestTimeout(double timeout) =>
-        timeout > 0 ? TimeSpan.FromSeconds(timeout) : MetadataRequestTimeout;
+    private static TimeSpan GetMetadataRequestTimeout
+    (
+        double timeout
+    ) =>
+        timeout > 0 ?
+            TimeSpan.FromSeconds(timeout) :
+            MetadataRequestTimeout;
 
-    private static TimeSpan GetFileDownloadTimeout(double timeout)
+    private static TimeSpan GetFileDownloadTimeout
+    (
+        double timeout
+    )
     {
         if (timeout <= 0)
             return DefaultFileDownloadTimeout;
 
         var requestedTimeout = TimeSpan.FromSeconds(timeout);
-        return requestedTimeout < MinimumFileDownloadTimeout ? MinimumFileDownloadTimeout : requestedTimeout;
+        return requestedTimeout < MinimumFileDownloadTimeout ?
+                   MinimumFileDownloadTimeout :
+                   requestedTimeout;
     }
 
     private static Exception NormalizeMetadataException
@@ -226,31 +158,12 @@ public class XLHttpClientFileDownloader : IFileDownloader
         return exception;
     }
 
-    private static Exception NormalizeFileDownloadException
+    private static HttpRequestMessage CreateRequest
     (
-        Exception               exception,
-        TimeSpan                totalTimeout,
-        CancellationToken       externalCancellationToken,
-        CancellationTokenSource totalTimeoutCts,
-        CancellationTokenSource streamIdleCts
+        HttpMethod                   method,
+        string                       url,
+        IDictionary<string, string>? headers
     )
-    {
-        if (exception is not OperationCanceledException)
-            return exception;
-
-        if (externalCancellationToken.IsCancellationRequested)
-            return exception;
-
-        if (streamIdleCts.IsCancellationRequested)
-            return new TimeoutException($"下载连接已中断，连续 {StreamIdleTimeout.TotalSeconds:0} 秒未收到任何数据。", exception);
-
-        if (totalTimeoutCts.IsCancellationRequested)
-            return new TimeoutException($"下载超时，{totalTimeout.TotalMinutes:0} 分钟内未完成。", exception);
-
-        return exception;
-    }
-
-    private static HttpRequestMessage CreateRequest(HttpMethod method, string url, IDictionary<string, string>? headers)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.UserAgent.ParseAdd("XIVLauncherCN");

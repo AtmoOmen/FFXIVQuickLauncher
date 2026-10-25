@@ -4,7 +4,6 @@ using Velopack;
 using Velopack.Sources;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
-using XIVLauncher.Common.Network;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
 using XIVLauncher.Windows;
@@ -13,8 +12,7 @@ namespace XIVLauncher.Update;
 
 internal class UpdateOrchestrator
 (
-    LauncherSettingsV3          settings,
-    INetworkEnvironmentService? networkEnvironmentService = null
+    LauncherSettingsV3 settings
 )
 {
     public async Task<bool> Run
@@ -29,28 +27,23 @@ internal class UpdateOrchestrator
 
         try
         {
-            var networkEnvironmentTask =
-                (networkEnvironmentService ?? NetworkEnvironmentService.Shared).GetCurrentAsync();
             var updateOptions = new UpdateOptions
             {
                 ExplicitChannel       = "win",
                 AllowVersionDowngrade = false
             };
 
-            var downloader         = new XLHttpClientFileDownloader();
-            var networkEnvironment = await networkEnvironmentTask;
-            var updateBaseURL      = Links.LAUNCHER_DISTRIBUTE_BASE_URL;
+            var downloader = new XLHttpClientFileDownloader();
 
             Log.Information
             (
-                "网络区域 {Region}, 使用 XIVLauncher 发行源 {UpdateBaseURL}",
-                networkEnvironment.Region,
-                updateBaseURL
+                "使用 XIVLauncher 发行源 {UpdateBaseUrl}",
+                Links.LAUNCHER_DISTRIBUTE_BASE_URL
             );
 
             var updateSource = new SimpleWebSource
             (
-                updateBaseURL,
+                Links.LAUNCHER_DISTRIBUTE_BASE_URL,
                 downloader
             );
 
@@ -144,7 +137,10 @@ internal class UpdateOrchestrator
         }
     }
 
-    internal static string GetUpdateFailureMessage(Exception exception) =>
+    internal static string GetUpdateFailureMessage
+    (
+        Exception exception
+    ) =>
         exception switch
         {
             TimeoutException timeoutException => timeoutException.Message,

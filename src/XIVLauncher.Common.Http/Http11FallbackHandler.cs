@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 
 namespace XIVLauncher.Common.Http;
@@ -7,11 +8,17 @@ public sealed class Http11FallbackHandler
     HttpMessageHandler innerHandler
 ) : DelegatingHandler(innerHandler)
 {
-    private static int sHTTP2Failed;
+    private readonly ConcurrentDictionary<string, long> http11Authorities = new(StringComparer.OrdinalIgnoreCase);
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync
+    (
+        HttpRequestMessage request,
+        CancellationToken  cancellationToken
+    )
     {
-        if (Volatile.Read(ref sHTTP2Failed) != 0)
+        var authority = request.RequestUri!.GetLeftPart(UriPartial.Authority);
+
+        if (http11Authorities.TryGetValue(authority, out var retryAfter) && Environment.TickCount64 < retryAfter)
         {
             ForceHttp11(request);
             return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -21,27 +28,36 @@ public sealed class Http11FallbackHandler
         {
             return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
-        catch (HttpRequestException) when (Interlocked.Exchange(ref sHTTP2Failed, 1) == 0)
+        catch (HttpRequestException ex) when
+        (
+            request.Version.Major >= 2                                                                            &&
+            (request.Method == HttpMethod.Get || request.Method == HttpMethod.Head)                               &&
+            ex.HttpRequestError is HttpRequestError.HttpProtocolError or HttpRequestError.VersionNegotiationError &&
+            !cancellationToken.IsCancellationRequested
+        )
         {
-            // ignored
-        }
-        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested && Interlocked.Exchange(ref sHTTP2Failed, 1) == 0)
-        {
-            // ignored
+            http11Authorities[authority] = Environment.TickCount64 + (long)TimeSpan.FromMinutes(5).TotalMilliseconds;
         }
 
-        var retryRequest = await CloneHttpRequestMessageAsync(request, cancellationToken).ConfigureAwait(false);
+        using var retryRequest = await CloneHttpRequestMessageAsync(request, cancellationToken).ConfigureAwait(false);
         ForceHttp11(retryRequest);
         return await base.SendAsync(retryRequest, cancellationToken).ConfigureAwait(false);
     }
 
-    private static void ForceHttp11(HttpRequestMessage request)
+    private static void ForceHttp11
+    (
+        HttpRequestMessage request
+    )
     {
         request.Version       = HttpVersion.Version11;
         request.VersionPolicy = HttpVersionPolicy.RequestVersionExact;
     }
 
-    private static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    private static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync
+    (
+        HttpRequestMessage request,
+        CancellationToken  cancellationToken
+    )
     {
         var clone = new HttpRequestMessage(request.Method, request.RequestUri);
 

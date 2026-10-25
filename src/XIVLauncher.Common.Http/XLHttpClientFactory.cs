@@ -24,10 +24,14 @@ public static class XLHttpClientFactory
             PooledConnectionIdleTimeout    = TimeSpan.FromMinutes(1),
             Expect100ContinueTimeout       = TimeSpan.Zero,
             ResponseDrainTimeout           = TimeSpan.FromSeconds(2),
-            AutomaticDecompression         = automaticDecompression,
+            AutomaticDecompression         = automaticDecompression
         };
 
-        return new HttpClient(new Http11FallbackHandler(handler));
+        return new HttpClient(new Http11FallbackHandler(handler))
+        {
+            DefaultRequestVersion = HttpVersion.Version20,
+            DefaultVersionPolicy  = HttpVersionPolicy.RequestVersionOrLower
+        };
     }
 
     #region Constants

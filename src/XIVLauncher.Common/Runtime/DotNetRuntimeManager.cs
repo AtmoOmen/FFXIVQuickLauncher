@@ -10,12 +10,19 @@ namespace XIVLauncher.Common.Runtime;
 
 public static class DotNetRuntimeManager
 {
-    public static DirectoryInfo GetRuntimeDirectory(string runtimeIdentifier) =>
-        string.Equals(runtimeIdentifier, WIN_X64_RUNTIME_IDENTIFIER, StringComparison.OrdinalIgnoreCase)
-            ? new(Path.Combine(Paths.RoamingPath, "runtime"))
-            : new(Path.Combine(Paths.RoamingPath, $"runtime-{runtimeIdentifier}"));
+    public static DirectoryInfo GetRuntimeDirectory
+    (
+        string runtimeIdentifier
+    ) =>
+        string.Equals(runtimeIdentifier, WIN_X64_RUNTIME_IDENTIFIER, StringComparison.OrdinalIgnoreCase) ?
+            new(Path.Combine(Paths.RoamingPath, "runtime")) :
+            new(Path.Combine(Paths.RoamingPath, $"runtime-{runtimeIdentifier}"));
 
-    public static async Task<string> GetLatestVersionAsync(HttpClient httpClient, CancellationToken cancellationToken = default)
+    public static async Task<string> GetLatestVersionAsync
+    (
+        HttpClient        httpClient,
+        CancellationToken cancellationToken = default
+    )
     {
         using var runtimeResponse = await httpClient.GetAsync(Links.DALAMUD_RUNTIME_INFO_URL, cancellationToken).ConfigureAwait(false);
         await runtimeResponse.EnsureSuccessWithDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
@@ -23,9 +30,13 @@ public static class DotNetRuntimeManager
         return runtimeVersion.Trim();
     }
 
-    public static async Task<string> GetLatestVersionAsync(CancellationToken cancellationToken = default)
+    public static async Task<string> GetLatestVersionAsync
+    (
+        CancellationToken cancellationToken = default
+    )
     {
         using var httpClient = XLHttpClientFactory.Create(TimeSpan.FromSeconds(10), 50, DecompressionMethods.All);
+        httpClient.Timeout = TimeSpan.FromSeconds(15);
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("XIVLauncherCN");
         return await GetLatestVersionAsync(httpClient, cancellationToken).ConfigureAwait(false);
     }
@@ -60,30 +71,48 @@ public static class DotNetRuntimeManager
         Log.Information("[Runtime] 需要更新 {DisplayName}: 本地={LocalVersion}, 目标={RemoteVersion}", displayName, localVersion, version);
         setLoadingMessage?.Invoke("正在更新依赖库...");
 
-        if (runtimeDirectory.Exists)
-            runtimeDirectory.Delete(true);
-
-        runtimeDirectory.Create();
-
-        var downloadPath = PlatformHelpers.GetTempFileName();
+        var downloadPath        = PlatformHelpers.GetTempFileName();
+        var desktopDownloadPath = PlatformHelpers.GetTempFileName();
 
         try
         {
             var packageBaseAddress = await GetPackageBaseAddressAsync(cancellationToken).ConfigureAwait(false);
-            var dotnetUrl = $"{packageBaseAddress}/microsoft.netcore.app.runtime.{runtimeIdentifier}/{version}/microsoft.netcore.app.runtime.{runtimeIdentifier}.{version}.nupkg";
-            var desktopUrl = $"{packageBaseAddress}/microsoft.windowsdesktop.app.runtime.{runtimeIdentifier}/{version}/microsoft.windowsdesktop.app.runtime.{runtimeIdentifier}.{version}.nupkg";
+            var dotnetUrl =
+                $"{packageBaseAddress}/microsoft.netcore.app.runtime.{runtimeIdentifier}/{version}/microsoft.netcore.app.runtime.{runtimeIdentifier}.{version}.nupkg";
+            var desktopUrl =
+                $"{packageBaseAddress}/microsoft.windowsdesktop.app.runtime.{runtimeIdentifier}/{version}/microsoft.windowsdesktop.app.runtime.{runtimeIdentifier}.{version}.nupkg";
             var dotnetVersion = version.Split('.')[0];
 
             Log.Information("[Runtime] 正在下载 .NET 运行时 {RuntimeIdentifier} v{Version}", runtimeIdentifier, version);
-            await DownloadFiles([(dotnetUrl, downloadPath)], reportProgress).ConfigureAwait(false);
-            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.NETCore.App", version), $"runtimes/{runtimeIdentifier}/native/");
-            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.NETCore.App", version), $"runtimes/{runtimeIdentifier}/lib/net{dotnetVersion}.0/");
+            using var downloader = new HttpClientDownloadWithProgress([(dotnetUrl, downloadPath), (desktopUrl, desktopDownloadPath)]);
+            if (reportProgress != null)
+                downloader.ProgressChanged += (size, downloaded, progress) => reportProgress(size, downloaded, progress);
+            await downloader.Download(cancellationToken).ConfigureAwait(false);
+            if (runtimeDirectory.Exists)
+                runtimeDirectory.Delete(true);
+            runtimeDirectory.Create();
+            ExtractSpecificDirectory
+                (downloadPath, Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.NETCore.App", version), $"runtimes/{runtimeIdentifier}/native/");
+            ExtractSpecificDirectory
+            (
+                downloadPath,
+                Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.NETCore.App", version),
+                $"runtimes/{runtimeIdentifier}/lib/net{dotnetVersion}.0/"
+            );
 
             Log.Information("[Runtime] 正在下载 .NET 桌面运行时 {RuntimeIdentifier} v{Version}", runtimeIdentifier, version);
-            await DownloadFiles([(desktopUrl, downloadPath)], reportProgress).ConfigureAwait(false);
-            ExtractSpecificDirectory(downloadPath, Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.WindowsDesktop.App", version), $"runtimes/{runtimeIdentifier}/native/");
             ExtractSpecificDirectory
-                (downloadPath, Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.WindowsDesktop.App", version), $"runtimes/{runtimeIdentifier}/lib/net{dotnetVersion}.0/");
+            (
+                desktopDownloadPath,
+                Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.WindowsDesktop.App", version),
+                $"runtimes/{runtimeIdentifier}/native/"
+            );
+            ExtractSpecificDirectory
+            (
+                desktopDownloadPath,
+                Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.WindowsDesktop.App", version),
+                $"runtimes/{runtimeIdentifier}/lib/net{dotnetVersion}.0/"
+            );
 
             Directory.CreateDirectory(Path.Combine(runtimeDirectory.FullName, "host", "fxr", version));
             File.Move
@@ -105,17 +134,26 @@ public static class DotNetRuntimeManager
         {
             if (File.Exists(downloadPath))
                 File.Delete(downloadPath);
+            if (File.Exists(desktopDownloadPath))
+                File.Delete(desktopDownloadPath);
         }
     }
 
-    private static DirectoryInfo[] GetRequiredPaths(DirectoryInfo runtimeDirectory, string version) =>
+    private static DirectoryInfo[] GetRequiredPaths
+    (
+        DirectoryInfo runtimeDirectory,
+        string        version
+    ) =>
     [
         new(Path.Combine(runtimeDirectory.FullName, "host",   "fxr",                          version)),
         new(Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.NETCore.App",        version)),
         new(Path.Combine(runtimeDirectory.FullName, "shared", "Microsoft.WindowsDesktop.App", version))
     ];
 
-    private static string GetLocalRuntimeVersion(FileInfo versionFile)
+    private static string GetLocalRuntimeVersion
+    (
+        FileInfo versionFile
+    )
     {
         try
         {
@@ -130,16 +168,12 @@ public static class DotNetRuntimeManager
         return string.Empty;
     }
 
-    private static async Task DownloadFiles(IReadOnlyList<(string Url, string Path)> files, Action<long?, long, double?>? reportProgress)
-    {
-        using var downloader = new HttpClientDownloadWithProgress(files);
-        if (reportProgress != null)
-            downloader.ProgressChanged += (size, downloaded, progress) => reportProgress(size, downloaded, progress);
-
-        await downloader.Download().ConfigureAwait(false);
-    }
-
-    private static void ExtractSpecificDirectory(string zipPath, string extractPath, string directoryToExtract)
+    private static void ExtractSpecificDirectory
+    (
+        string zipPath,
+        string extractPath,
+        string directoryToExtract
+    )
     {
         using var archive = ZipFile.OpenRead(zipPath);
 
@@ -159,12 +193,15 @@ public static class DotNetRuntimeManager
         }
     }
 
-    private static async Task<string> GetPackageBaseAddressAsync(CancellationToken cancellationToken)
+    private static async Task<string> GetPackageBaseAddressAsync
+    (
+        CancellationToken cancellationToken
+    )
     {
         var networkEnvironment = await NetworkEnvironmentService.Shared.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
-        var packageBaseAddress = networkEnvironment.Region == NetworkRegion.NotChineseMainland
-                                     ? Links.NUGET_V3_FLAT_CONTAINER_URL
-                                     : Links.HUAWEI_NUGET_V3_REMOTE_URL;
+        var packageBaseAddress = networkEnvironment.Region == NetworkRegion.NotChineseMainland ?
+                                     Links.NUGET_V3_FLAT_CONTAINER_URL :
+                                     Links.HUAWEI_NUGET_V3_REMOTE_URL;
 
         Log.Information
         (
