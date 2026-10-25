@@ -83,13 +83,10 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
             FileOptions.Asynchronous | FileOptions.RandomAccess
         );
 
-        long                       size            = -1;
-        long                       firstPartLength = 0;
-        RangeConditionHeaderValue? validator       = null;
-
         for (var attempt = 0; attempt < MAX_ATTEMPTS; attempt++)
         {
             await DownloadSlots.WaitAsync(cancellationToken).ConfigureAwait(false);
+            var rangesStarted = false;
 
             try
             {
@@ -102,9 +99,9 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
 
                 var range   = response.Content.Headers.ContentRange;
                 var partial = response.StatusCode == HttpStatusCode.PartialContent;
-                size = partial ?
-                           range?.Length                          ?? -1 :
-                           response.Content.Headers.ContentLength ?? -1;
+                var size = partial ?
+                               range?.Length                          ?? -1 :
+                               response.Content.Headers.ContentLength ?? -1;
                 if (partial && (size <= 0 || range?.From != 0 || range.To != Math.Min(SEGMENT_SIZE, size) - 1))
                     throw new InvalidDataException($"服务器返回了不匹配的分段: {range}");
 
@@ -121,22 +118,51 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
                 var expectedLength = partial ?
                                          range!.To!.Value + 1 :
                                          size;
-                await CopyResponse(index, response, file.SafeFileHandle, 0, expectedLength, timeout, cancellationToken).ConfigureAwait(false);
 
                 if (!partial || expectedLength == size)
                 {
+                    await CopyResponse(index, response, file.SafeFileHandle, 0, expectedLength, timeout, cancellationToken).ConfigureAwait(false);
                     ReportProgress(true);
                     return;
                 }
 
-                firstPartLength = expectedLength;
+                RangeConditionHeaderValue? validator = null;
                 if (response.Headers.ETag is { IsWeak: false } entityTag)
                     validator = new RangeConditionHeaderValue(entityTag);
                 else if (response.Content.Headers.LastModified is { } lastModified)
                     validator = new RangeConditionHeaderValue(lastModified);
-                break;
+
+                timeout.CancelAfter(Timeout.InfiniteTimeSpan);
+                using var rangesCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                var       partCount          = (int)((size + SEGMENT_SIZE - 1) / SEGMENT_SIZE);
+                var       fileHandle         = file.SafeFileHandle;
+                var       rangesToken        = rangesCancellation.Token;
+                var       cancelAll          = rangesCancellation.CancelAsync;
+                rangesStarted = true;
+                var initialDownload = DownloadRange(index, fileHandle, 0, expectedLength - 1, size, validator, cancelAll, response, rangesToken);
+                var nextPart        = 0;
+                var workers = Enumerable.Range(0, Math.Min(partCount - 1, MAX_PARALLEL_DOWNLOADS))
+                                        .Select
+                                        (async _ =>
+                                            {
+                                                while (true)
+                                                {
+                                                    rangesToken.ThrowIfCancellationRequested();
+                                                    var part = Interlocked.Increment(ref nextPart);
+                                                    if (part >= partCount)
+                                                        return;
+                                                    var start = part * SEGMENT_SIZE;
+                                                    var end   = Math.Min(start + SEGMENT_SIZE, size) - 1;
+                                                    await DownloadRange(index, fileHandle, start, end, size, validator, cancelAll, null, rangesToken).ConfigureAwait
+                                                        (false);
+                                                }
+                                            }
+                                        );
+                await Task.WhenAll(workers.Prepend(initialDownload)).ConfigureAwait(false);
+                ReportProgress(true);
+                return;
             }
-            catch (Exception ex) when (attempt + 1 < MAX_ATTEMPTS && IsTransient(ex, cancellationToken))
+            catch (Exception ex) when (!rangesStarted && attempt + 1 < MAX_ATTEMPTS && IsTransient(ex, cancellationToken))
             {
                 Log.Warning(ex, "[Download] 下载中断，将重试首段: {Url}", downloads[index].Url);
             }
@@ -146,30 +172,13 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
             }
             finally
             {
-                DownloadSlots.Release();
+                if (!rangesStarted)
+                    DownloadSlots.Release();
             }
 
             await Task.Delay(GetRetryDelay(attempt), cancellationToken).ConfigureAwait(false);
         }
 
-        var partCount  = (int)((size - firstPartLength + SEGMENT_SIZE - 1) / SEGMENT_SIZE);
-        var fileHandle = file.SafeFileHandle;
-        await Parallel.ForEachAsync
-        (
-            Enumerable.Range(0, partCount),
-            new ParallelOptions
-            {
-                MaxDegreeOfParallelism = MAX_PARALLEL_DOWNLOADS,
-                CancellationToken      = cancellationToken
-            },
-            async (part, token) =>
-            {
-                var start = firstPartLength                      + (part * SEGMENT_SIZE);
-                var end   = Math.Min(start + SEGMENT_SIZE, size) - 1;
-                await DownloadRange(index, fileHandle, start, end, size, validator, token).ConfigureAwait(false);
-            }
-        ).ConfigureAwait(false);
-        ReportProgress(true);
     }
 
     private async Task DownloadRange
@@ -180,6 +189,8 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
         long                       end,
         long                       size,
         RangeConditionHeaderValue? validator,
+        Func<Task>                 cancelAll,
+        HttpResponseMessage?       initialResponse,
         CancellationToken          cancellationToken
     )
     {
@@ -187,7 +198,8 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
 
         for (var attempt = 0; attempt < MAX_ATTEMPTS; attempt++)
         {
-            await DownloadSlots.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (initialResponse == null)
+                await DownloadSlots.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
@@ -196,7 +208,9 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
                 using var request = CreateRequest(downloads[index].Url);
                 request.Headers.Range   = new RangeHeaderValue(position.Value, end);
                 request.Headers.IfRange = validator;
-                using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+                using var response = initialResponse ??
+                                     await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+                initialResponse = null;
                 await response.EnsureSuccessWithDiagnosticsAsync(timeout.Token).ConfigureAwait(false);
                 var range = response.Content.Headers.ContentRange;
                 if (response.StatusCode != HttpStatusCode.PartialContent || range?.From != position.Value || range.To != end || range.Length != size)
@@ -232,7 +246,13 @@ public sealed class HttpClientDownloadWithProgress : IDisposable
             }
             catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
+                await cancelAll().ConfigureAwait(false);
                 throw new TimeoutException("更新源未在规定时间内返回分段响应", ex);
+            }
+            catch
+            {
+                await cancelAll().ConfigureAwait(false);
+                throw;
             }
             finally
             {

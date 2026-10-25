@@ -102,6 +102,132 @@ public sealed class UpdateDownloadTests : IDisposable
     }
 
     [Fact]
+    public async Task WaitingInitialBody_DoesNotBlockOtherRanges()
+    {
+        const int SEGMENT_LENGTH = 2 << 20;
+        var       payload        = new byte[(3 * SEGMENT_LENGTH) + 37];
+        RandomNumberGenerator.Fill(payload);
+        var       remainderStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation     = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var client = new HttpClient
+        (
+            new RequestHandler
+            ((request, _) =>
+                {
+                    var         range = Assert.Single(request.Headers.Range!.Ranges);
+                    var         start = range.From!.Value;
+                    var         end   = Math.Min(range.To!.Value, payload.Length - 1);
+                    var         bytes = payload.AsSpan((int)start, (int)(end - start + 1)).ToArray();
+                    HttpContent content;
+
+                    if (start == 0)
+                        content = new StreamContent(new GatedStream(bytes, remainderStarted.Task));
+                    else
+                    {
+                        remainderStarted.TrySetResult();
+                        content = new ByteArrayContent(bytes);
+                    }
+
+                    content.Headers.ContentRange = new ContentRangeHeaderValue(start, end, payload.Length);
+                    return Task.FromResult
+                    (
+                        new HttpResponseMessage(HttpStatusCode.PartialContent)
+                        {
+                            Headers = { ETag = new EntityTagHeaderValue("\"version-1\"") },
+                            Content = content
+                        }
+                    );
+                }
+            )
+        );
+        using var downloader = new HttpClientDownloadWithProgress([("https://updates.test/package", destination)], client);
+        await downloader.Download(cancellation.Token);
+        Assert.Equal(SHA256.HashData(payload), SHA256.HashData(await File.ReadAllBytesAsync(destination, cancellation.Token)));
+    }
+
+    [Fact]
+    public async Task InterruptedInitialRange_ResumesWithoutRestartingCompletedRanges()
+    {
+        const int SEGMENT_LENGTH  = 2  << 20;
+        const int RECEIVED_LENGTH = 64 << 10;
+        var       payload         = new byte[(3 * SEGMENT_LENGTH) + 37];
+        RandomNumberGenerator.Fill(payload);
+        var  starts     = new ConcurrentBag<long>();
+        long downloaded = 0;
+        using var client = new HttpClient
+        (
+            new RequestHandler
+            ((request, _) =>
+                {
+                    var range = Assert.Single(request.Headers.Range!.Ranges);
+                    var start = range.From!.Value;
+                    var end   = Math.Min(range.To!.Value, payload.Length - 1);
+                    starts.Add(start);
+                    var bytes = payload.AsSpan((int)start, (int)(end - start + 1)).ToArray();
+                    HttpContent content = start == 0 ?
+                                              new StreamContent(new InterruptedStream(bytes, RECEIVED_LENGTH)) :
+                                              new ByteArrayContent(bytes);
+                    content.Headers.ContentRange = new ContentRangeHeaderValue(start, end, payload.Length);
+                    return Task.FromResult
+                    (
+                        new HttpResponseMessage(HttpStatusCode.PartialContent)
+                        {
+                            Headers = { ETag = new EntityTagHeaderValue("\"version-1\"") },
+                            Content = content
+                        }
+                    );
+                }
+            )
+        );
+        using var downloader = new HttpClientDownloadWithProgress([("https://updates.test/package", destination)], client);
+        downloader.ProgressChanged += (_, bytes, _) => downloaded = bytes;
+        await downloader.Download();
+        Assert.Contains(RECEIVED_LENGTH, starts);
+        Assert.Single(starts, start => start == 0);
+        Assert.Single(starts, start => start == SEGMENT_LENGTH);
+        Assert.Equal(payload.Length,           downloaded);
+        Assert.Equal(SHA256.HashData(payload), SHA256.HashData(await File.ReadAllBytesAsync(destination)));
+    }
+
+    [Fact]
+    public async Task InvalidRange_CancelsOtherBodyReads()
+    {
+        const int SEGMENT_LENGTH = 2 << 20;
+        var       payload        = new byte[(2 * SEGMENT_LENGTH) + 37];
+        var       blocked        = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation   = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var client = new HttpClient
+        (
+            new RequestHandler
+            ((request, _) =>
+                {
+                    var range = Assert.Single(request.Headers.Range!.Ranges);
+                    var start = range.From!.Value;
+                    var end   = Math.Min(range.To!.Value, payload.Length - 1);
+                    var bytes = payload.AsSpan((int)start, (int)(end - start + 1)).ToArray();
+                    HttpContent content = start == 0 ?
+                                              new StreamContent(new GatedStream(bytes, blocked.Task)) :
+                                              new ByteArrayContent(bytes);
+                    content.Headers.ContentRange = start == 0 ?
+                                                       new ContentRangeHeaderValue(start,     end,     payload.Length) :
+                                                       new ContentRangeHeaderValue(start + 1, end + 1, payload.Length + 1);
+                    return Task.FromResult
+                    (
+                        new HttpResponseMessage(HttpStatusCode.PartialContent)
+                        {
+                            Headers = { ETag = new EntityTagHeaderValue("\"version-1\"") },
+                            Content = content
+                        }
+                    );
+                }
+            )
+        );
+        using var downloader = new HttpClientDownloadWithProgress([("https://updates.test/package", destination)], client);
+        await Assert.ThrowsAsync<InvalidDataException>(() => downloader.Download(cancellation.Token));
+        Assert.False(cancellation.IsCancellationRequested);
+    }
+
+    [Fact]
     public async Task MissingFile_DoesNotRetryPermanentStatus()
     {
         var requests = 0;
@@ -287,5 +413,22 @@ public sealed class UpdateDownloadTests : IDisposable
             Position >= available ?
                 throw new IOException("模拟连接中断") :
                 base.ReadAsync(buffer[..Math.Min(buffer.Length, available - (int)Position)], cancellationToken);
+    }
+
+    private sealed class GatedStream
+    (
+        byte[] bytes,
+        Task   ready
+    ) : MemoryStream(bytes)
+    {
+        public override async ValueTask<int> ReadAsync
+        (
+            Memory<byte>      buffer,
+            CancellationToken cancellationToken = default
+        )
+        {
+            await ready.WaitAsync(cancellationToken);
+            return await base.ReadAsync(buffer, cancellationToken);
+        }
     }
 }
