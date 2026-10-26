@@ -1,9 +1,10 @@
 using System.Diagnostics;
 using Serilog;
-using XIVLauncher.Account;
+using XIVLauncher.Account.Cred;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Login.Models;
 using XIVLauncher.Support;
+using XIVLauncher.Windows.ViewModel.Main.Models;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Flows;
 
@@ -16,31 +17,75 @@ internal sealed class StartupFlow
 
     private readonly MainWindowViewModel vm;
 
-    public StartupFlow(MainWindowViewModel vm)
-    {
+    public bool CanRestoreSavedSession =>
+        App.Settings.AutoLoginToLastAccount                                                                     &&
+        vm.AccountManager.CurrentAccount is { QuickLoginEnabled: true, LoginSessionSecret.Length: > 0 } account &&
+        !vm.AccountManager.HasUnavailableSecrets(account)                                                       &&
+        vm.AccountManager.CurrentCredType != CredType.WindowsHello;
+
+    public StartupFlow
+    (
+        MainWindowViewModel vm
+    ) =>
         this.vm = vm;
-    }
 
     public async Task RunStartupTasksAsync()
     {
-        await SetupServersAsync().ConfigureAwait(false);
+        var lastAccountId = App.AccountManager.CurrentAccountID;
+
+        try
+        {
+            await SetupServersAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "获取启动大区信息失败，等待手动登录");
+            return;
+        }
+
+        var loginTask = Task.CompletedTask;
 
         vm.Window.Dispatcher.Invoke
         (() =>
             {
                 vm.LoginPage.IsFastLogin = App.Settings.FastLogin;
                 vm.AccountFlow.RequestSwitchToCurrentAccount?.Invoke();
+
+                var account = App.AccountManager.CurrentAccount;
+
+                if (CanRestoreSavedSession                                                           &&
+                    !string.IsNullOrWhiteSpace(lastAccountId)                                        &&
+                    account is { QuickLoginEnabled: true, LoginSessionSecret.Length: > 0 }           &&
+                    string.Equals(account.ID,            lastAccountId,    StringComparison.Ordinal) &&
+                    string.Equals(vm.LoginPage.Username, account.UserName, StringComparison.Ordinal) &&
+                    vm.LoginPage.Area is { AreaID: not "-1" }                                        &&
+                    vm.CurrentGameLaunchContext   == null                                            &&
+                    vm.LoginCardTransitionerIndex == (int)LoginCardType.MainPage)
+                {
+                    loginTask = vm.LoginFlow.StartLoginAsync
+                    (
+                        account.IsWeGame ?
+                            LoginType.WeGame :
+                            LoginType.Slide,
+                        account.UserName,
+                        string.Empty,
+                        true,
+                        false,
+                        LoginAfterAction.Start,
+                        true
+                    );
+                }
             }
         );
 
-        await vm.NewsFlow.RefreshHeadlinesAsync().ConfigureAwait(false);
+        await loginTask.ConfigureAwait(false);
+        _ = vm.NewsFlow.RefreshHeadlinesAsync();
 
-        var accountType = App.AccountManager.CurrentAccount?.AccountType
-                          ?? App.Settings.SelectedLoginType.ToAccountType(XIVAccountType.Sdo);
+        var accountType = App.AccountManager.CurrentAccount?.AccountType ?? App.Settings.SelectedLoginType.ToAccountType(XIVAccountType.Sdo);
         Troubleshooting.LogTroubleshooting(App.Settings.GetGamePath(accountType));
     }
 
-    public void ApplyStartupDefaults()
+    public static void ApplyStartupDefaults()
     {
         var versionLevel = App.Settings.VersionUpgradeLevel;
 
@@ -54,7 +99,9 @@ internal sealed class StartupFlow
                     {
                         var hasRtss = Process.GetProcesses().Any
                         (x =>
-                             x.ProcessName.ToLowerInvariant().Contains("rtss") || x.ProcessName.ToLowerInvariant().Contains("skifsvc64")
+                             x.ProcessName.Contains
+                                 ("rtss", StringComparison.OrdinalIgnoreCase) ||
+                             x.ProcessName.Contains("skifsvc64", StringComparison.OrdinalIgnoreCase)
                         );
 
                         if (hasRtss)

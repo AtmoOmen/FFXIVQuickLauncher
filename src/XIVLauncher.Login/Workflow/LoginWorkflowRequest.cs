@@ -4,6 +4,8 @@ namespace XIVLauncher.Login.Workflow;
 
 public sealed class LoginWorkflowRequest
 {
+    public bool IsAutomaticLogin { get; init; }
+
     public required LoginType LoginType { get; init; }
 
     public required string Username { get; init; }

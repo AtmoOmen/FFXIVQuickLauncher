@@ -176,14 +176,15 @@
             </Setter>
         </Style>
         <Style x:Key="SettingCardStyle" TargetType="materialDesign:Card"
-               BasedOn="{StaticResource {x:Type materialDesign:Card}}">
+               BasedOn="{StaticResource MaterialDesignElevatedCard}">
             <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Surface}" />
             <Setter Property="Margin" Value="0,0,0,24" />
             <Setter Property="Padding" Value="18" />
             <Setter Property="UniformCornerRadius" Value="8" />
             <Setter Property="materialDesign:ElevationAssist.Elevation" Value="Dp0" />
         </Style>
-        <Style x:Key="PageTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource MaterialDesignHeadline5TextBlock}">
+        <Style x:Key="PageTitleStyle" TargetType="TextBlock"
+               BasedOn="{StaticResource MaterialDesignHeadline5TextBlock}">
             <Setter Property="FontSize" Value="28" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
@@ -279,7 +280,7 @@
 
         <components:TitleBar Grid.Row="0" Grid.ColumnSpan="2" />
 
-        <Border Grid.Row="1"
+        <Border Grid.Row="1" Grid.Column="0"
                 Background="{DynamicResource MaterialDesign.Brush.Surface}"
                 BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" BorderThickness="0,0,1,0">
             <Grid>
@@ -298,62 +299,62 @@
                     <TextBlock Margin="0,0,0,16" FontSize="12" FontWeight="SemiBold" Opacity="0.56" Text="分类" />
                     <ListBox x:Name="SidebarMenu" Style="{StaticResource SidebarListBox}"
                              ItemContainerStyle="{StaticResource SidebarListBoxItem}" SelectedIndex="0">
-                    <ListBoxItem>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="36" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Style="{StaticResource SidebarIconCircleStyle}">
-                                <materialDesign:PackIcon Kind="GamepadVariantOutline"
-                                                         Style="{StaticResource SidebarNavigationIconStyle}" />
-                            </Border>
-                            <TextBlock Grid.Column="1" Margin="12,0,0,0"
-                                       Style="{StaticResource SidebarNavigationTextStyle}" Text="游戏与更新" />
-                        </Grid>
-                    </ListBoxItem>
-                    <ListBoxItem>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="36" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Style="{StaticResource SidebarIconCircleStyle}">
-                                <materialDesign:PackIcon Kind="RocketLaunchOutline"
-                                                         Style="{StaticResource SidebarNavigationIconStyle}" />
-                            </Border>
-                            <TextBlock Grid.Column="1" Margin="12,0,0,0"
-                                       Style="{StaticResource SidebarNavigationTextStyle}" Text="启动与安全" />
-                        </Grid>
-                    </ListBoxItem>
-                    <ListBoxItem>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="36" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Style="{StaticResource SidebarIconCircleStyle}">
-                                <materialDesign:PackIcon Kind="PuzzleOutline"
-                                                         Style="{StaticResource SidebarNavigationIconStyle}" />
-                            </Border>
-                            <TextBlock Grid.Column="1" Margin="12,0,0,0"
-                                       Style="{StaticResource SidebarNavigationTextStyle}" Text="Dalamud" />
-                        </Grid>
-                    </ListBoxItem>
-                    <ListBoxItem>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="36" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Style="{StaticResource SidebarIconCircleStyle}">
-                                <materialDesign:PackIcon Kind="InformationOutline"
-                                                         Style="{StaticResource SidebarNavigationIconStyle}" />
-                            </Border>
-                            <TextBlock Grid.Column="1" Margin="12,0,0,0"
-                                       Style="{StaticResource SidebarNavigationTextStyle}" Text="关于" />
-                        </Grid>
-                    </ListBoxItem>
+                        <ListBoxItem>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource SidebarIconCircleStyle}">
+                                    <materialDesign:PackIcon Kind="GamepadVariantOutline"
+                                                             Style="{StaticResource SidebarNavigationIconStyle}" />
+                                </Border>
+                                <TextBlock Grid.Column="1" Margin="12,0,0,0"
+                                           Style="{StaticResource SidebarNavigationTextStyle}" Text="游戏与更新" />
+                            </Grid>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource SidebarIconCircleStyle}">
+                                    <materialDesign:PackIcon Kind="RocketLaunchOutline"
+                                                             Style="{StaticResource SidebarNavigationIconStyle}" />
+                                </Border>
+                                <TextBlock Grid.Column="1" Margin="12,0,0,0"
+                                           Style="{StaticResource SidebarNavigationTextStyle}" Text="启动与安全" />
+                            </Grid>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource SidebarIconCircleStyle}">
+                                    <materialDesign:PackIcon Kind="PuzzleOutline"
+                                                             Style="{StaticResource SidebarNavigationIconStyle}" />
+                                </Border>
+                                <TextBlock Grid.Column="1" Margin="12,0,0,0"
+                                           Style="{StaticResource SidebarNavigationTextStyle}" Text="Dalamud" />
+                            </Grid>
+                        </ListBoxItem>
+                        <ListBoxItem>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource SidebarIconCircleStyle}">
+                                    <materialDesign:PackIcon Kind="InformationOutline"
+                                                             Style="{StaticResource SidebarNavigationIconStyle}" />
+                                </Border>
+                                <TextBlock Grid.Column="1" Margin="12,0,0,0"
+                                           Style="{StaticResource SidebarNavigationTextStyle}" Text="关于" />
+                            </Grid>
+                        </ListBoxItem>
                     </ListBox>
                 </StackPanel>
 
@@ -368,362 +369,141 @@
             <TabControl x:Name="ContentTabControl" Margin="40,26,40,16" Style="{StaticResource BorderlessTabControl}"
                         SelectedIndex="{Binding ElementName=SidebarMenu, Path=SelectedIndex}">
 
-            <TabItem x:Name="TabGame">
-                <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
-                    <StackPanel MaxWidth="820">
-                        <TextBlock Style="{StaticResource PageTitleStyle}" Text="游戏与更新" />
-                        <TextBlock Margin="0,5,0,28" Style="{StaticResource PageDescriptionStyle}"
-                                   Text="管理游戏安装位置、补丁下载方式与本地存储" />
+                <TabItem x:Name="TabGame">
+                    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+                        <StackPanel MaxWidth="820">
+                            <TextBlock Style="{StaticResource PageTitleStyle}" Text="游戏与更新" />
+                            <TextBlock Margin="0,5,0,28" Style="{StaticResource PageDescriptionStyle}"
+                                       Text="管理游戏安装位置、补丁下载方式与本地存储" />
 
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="游戏位置" />
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SettingTitleStyle}" Text="盛趣" />
-                                <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                           Text="应该包含 game 与 boot 文件夹。如果希望从零下载完整游戏，请仅配置该目录，并指定为任一空文件夹即可。" />
-                                <components:FolderEntry Margin="0,12,0,0" Description="盛趣版本游戏目录"
-                                                        Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
-                                <Border Margin="0,10,0,0" Padding="10,8" Background="#14D32F2F" CornerRadius="4"
-                                        Visibility="{Binding GamePathWarningVisibility}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Width="18" Height="18" Margin="0,1,8,0"
-                                                                 Foreground="#D32F2F" Kind="AlertCircleOutline" />
-                                        <TextBlock Foreground="#D32F2F" Text="{Binding GamePathWarningMessage}"
-                                                   TextWrapping="Wrap" />
-                                    </StackPanel>
-                                </Border>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <TextBlock Style="{StaticResource SettingTitleStyle}" Text="WeGame" />
-                                <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                           Text="应该包含 rail_files 文件夹。" />
-                                <components:FolderEntry Margin="0,12,0,0" Description="WeGame 版本游戏目录"
-                                                        Text="{Binding WeGamePath, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                        </materialDesign:Card>
-
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="更新与存储" />
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <StackPanel>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="更新前确认" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="下载和安装游戏更新前显示确认提示" />
-                                    </StackPanel>
-                                    <ToggleButton Grid.Column="1" VerticalAlignment="Center"
-                                                  IsChecked="{Binding AskBeforePatching}"
-                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}" />
-                                </Grid>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="保留补丁包" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="安装后保留已下载文件，便于备份或重复使用" />
-                                    </StackPanel>
-                                    <ToggleButton Grid.Column="1" VerticalAlignment="Center"
-                                                  IsChecked="{Binding KeepPatches}"
-                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}" />
-                                </Grid>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="下载速度限制" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="设置为 0 时使用全部可用带宽" />
-                                    </StackPanel>
-                                    <TextBox Grid.Column="1" Width="126" VerticalAlignment="Center"
-                                             HorizontalContentAlignment="Right" Text="{Binding SpeedLimitMb}"
-                                             materialDesign:HintAssist.Hint="MB/s"
-                                             materialDesign:HintAssist.IsFloating="True"
-                                             Style="{StaticResource ThemeTextBoxStyle}" />
-                                </Grid>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <TextBlock Style="{StaticResource SettingTitleStyle}" Text="补丁存储目录" />
-                                <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                           Text="用于保存下载中的补丁和已保留的补丁包" />
-                                <components:FolderEntry Margin="0,12,0,0" Description="补丁存储目录"
-                                                        Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" />
-                            </StackPanel>
-                        </materialDesign:Card>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem x:Name="TabStart">
-                <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
-                    <StackPanel MaxWidth="820">
-                        <TextBlock Style="{StaticResource PageTitleStyle}" Text="启动与安全" />
-                        <TextBlock Margin="0,5,0,28" Style="{StaticResource PageDescriptionStyle}"
-                                   Text="配置游戏启动行为、账号凭据和伴随程序" />
-
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="启动行为" />
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <StackPanel>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="160" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="游戏 DPI 修正" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="用于修正高分辨率屏幕上的游戏界面缩放异常" />
-                                    </StackPanel>
-                                    <ComboBox Grid.Column="1" VerticalAlignment="Center"
-                                              Style="{StaticResource ThemeComboBoxStyle}"
-                                              SelectedIndex="{Binding DpiAwarenessIndex}">
-                                        <ComboBoxItem Content="启用" />
-                                        <ComboBoxItem Content="禁用" />
-                                    </ComboBox>
-                                </Grid>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="2*" />
-                                        <ColumnDefinition Width="3*" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="额外启动参数" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="附加到游戏进程的命令行参数" />
-                                    </StackPanel>
-                                    <TextBox Grid.Column="1" Width="320" HorizontalAlignment="Right"
-                                             VerticalAlignment="Center"
-                                             Text="{Binding LaunchArgs, UpdateSourceTrigger=PropertyChanged}"
-                                             materialDesign:HintAssist.Hint="启动参数"
-                                             materialDesign:HintAssist.IsFloating="True"
-                                             Style="{StaticResource ThemeTextBoxStyle}" />
-                                </Grid>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="随游戏退出" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="游戏完全退出后关闭启动器，关闭本项时将重新显示主界面" />
-                                    </StackPanel>
-                                    <ToggleButton Grid.Column="1" VerticalAlignment="Center"
-                                                  IsChecked="{Binding ExitLauncherAfterGameExit}"
-                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}" />
-                                </Grid>
-                            </StackPanel>
-                        </materialDesign:Card>
-
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="账号安全" />
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <StackPanel>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="220" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="凭据加密方式" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="保护本地保存的自动登录凭据" />
-                                    </StackPanel>
-                                    <ComboBox Grid.Column="1" VerticalAlignment="Center" DisplayMemberPath="Display"
-                                              Style="{StaticResource ThemeComboBoxStyle}"
-                                              ItemsSource="{Binding CredTypeOptions}"
-                                              SelectedItem="{Binding SelectedCredTypeOption}">
-                                        <ComboBox.ItemContainerStyle>
-                                            <Style TargetType="ComboBoxItem"
-                                                   BasedOn="{StaticResource MaterialDesignComboBoxItemStyle}">
-                                                <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
-                                            </Style>
-                                        </ComboBox.ItemContainerStyle>
-                                    </ComboBox>
-                                </Grid>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="新账号登录要求设备信息" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="首次登录新账号前要求指定其使用的设备信息" />
-                                    </StackPanel>
-                                    <ToggleButton Grid.Column="1" VerticalAlignment="Center"
-                                                  IsChecked="{Binding RequireDeviceProfileSetupForNewAccountLogin}"
-                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}" />
-                                </Grid>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="二维码扫描要求设备信息" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="扫码登录前要求指定本次使用的设备信息" />
-                                    </StackPanel>
-                                    <ToggleButton Grid.Column="1" VerticalAlignment="Center"
-                                                  IsChecked="{Binding RequireDeviceProfileSetupForQRCodeLogin}"
-                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}" />
-                                </Grid>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="共享设备信息" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="供未配置独立设备信息的账号共同使用" />
-                                    </StackPanel>
-                                    <Button Grid.Column="1" MinWidth="100" VerticalAlignment="Center"
-                                            Click="SharedDeviceProfileButton_Click"
-                                            Style="{StaticResource ThemeOutlinedButtonStyle}" Content="管理" />
-                                </Grid>
-                            </StackPanel>
-                        </materialDesign:Card>
-
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="伴随程序" />
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,16">
-                                    <StackPanel>
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="联动应用" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="游戏启动或结束时自动运行已启用的程序，单击条目可编辑" />
-                                    </StackPanel>
-                                    <Button HorizontalAlignment="Right" VerticalAlignment="Center"
-                                            Command="{Binding AddCompanionAppCommand}"
-                                            Style="{StaticResource ThemeOutlinedButtonStyle}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Width="18" Height="18" Kind="Plus" />
-                                            <TextBlock Margin="7,0,0,0" Text="添加程序" />
-                                        </StackPanel>
-                                    </Button>
-                                </Grid>
-                                <Border MinHeight="104" Background="{DynamicResource MaterialDesign.Brush.Background}"
-                                        CornerRadius="6">
-                                    <Grid>
-                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
-                                                   Text="暂无伴随程序">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding ElementName=CompanionAppListView, Path=Items.Count}"
-                                                                     Value="0">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <ListView x:Name="CompanionAppListView" Background="Transparent" BorderThickness="0"
-                                                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                                  ItemsSource="{Binding CompanionAppEntries}"
-                                                  MouseUp="CompanionAppListView_OnMouseUp"
-                                                  PreviewMouseRightButtonDown="CompanionAppListView_OnPreviewMouseRightButtonDown"
-                                                  SelectedItem="{Binding SelectedCompanionAppEntry}">
-                                            <ListView.ContextMenu>
-                                                <ContextMenu StaysOpen="True" Style="{StaticResource MaterialDesignContextMenu}">
-                                                    <ContextMenu.Resources>
-                                                        <Style TargetType="{x:Type MenuItem}"
-                                                               BasedOn="{StaticResource MaterialDesignMenuItem}" />
-                                                    </ContextMenu.Resources>
-                                                    <MenuItem Command="{Binding RemoveSelectedCompanionAppCommand}" Header="移除" />
-                                                </ContextMenu>
-                                            </ListView.ContextMenu>
-                                            <ListView.ItemTemplate>
-                                                <DataTemplate DataType="{x:Type companionApp:CompanionAppEntry}">
-                                                    <Grid Margin="10,8">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto" />
-                                                            <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="Auto" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <CheckBox VerticalAlignment="Center" IsChecked="{Binding IsEnabled}" />
-                                                        <TextBlock Grid.Column="1" Margin="14,0" VerticalAlignment="Center"
-                                                                   Text="{Binding CompanionApp.Name}" />
-                                                        <materialDesign:PackIcon Grid.Column="2" Width="18" Height="18"
-                                                                                 VerticalAlignment="Center" Opacity="0.5"
-                                                                                 Kind="ChevronRight" />
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ListView.ItemTemplate>
-                                        </ListView>
-                                    </Grid>
-                                </Border>
-                            </StackPanel>
-                        </materialDesign:Card>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem x:Name="TabDalamud">
-                <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
-                    <StackPanel MaxWidth="820">
-                        <TextBlock Style="{StaticResource PageTitleStyle}" Text="Dalamud" />
-                        <TextBlock Margin="0,5,0,28" Style="{StaticResource PageDescriptionStyle}"
-                                   Text="管理游戏内插件框架、注入时机与扩展能力" />
-
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="框架状态" />
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="42" Height="42" Margin="0,0,16,0" VerticalAlignment="Center"
-                                        Background="#142196F3" CornerRadius="6">
-                                    <materialDesign:PackIcon Width="22" Height="22" HorizontalAlignment="Center"
-                                                             VerticalAlignment="Center"
-                                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                                             Kind="PuzzleOutline" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="0,0,24,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="启用 Dalamud" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="游戏位置" />
+                            <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="盛趣" />
                                     <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                               Text="在游戏内加载 Dalamud 框架及已安装的插件" />
+                                               Text="应该包含 game 与 boot 文件夹。如果希望从零下载完整游戏，请仅配置该目录，并指定为任一空文件夹即可。" />
+                                    <components:FolderEntry Margin="0,12,0,0" Description="盛趣版本游戏目录"
+                                                            Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Border Margin="0,10,0,0" Padding="10,8" Background="#14D32F2F" CornerRadius="4"
+                                            Visibility="{Binding GamePathWarningVisibility}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Width="18" Height="18" Margin="0,1,8,0"
+                                                                     Foreground="#D32F2F" Kind="AlertCircleOutline" />
+                                            <TextBlock Foreground="#D32F2F" Text="{Binding GamePathWarningMessage}"
+                                                       TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="WeGame" />
+                                    <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                               Text="应该包含 rail_files 文件夹。" />
+                                    <components:FolderEntry Margin="0,12,0,0" Description="WeGame 版本游戏目录"
+                                                            Text="{Binding WeGamePath, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
-                                <ToggleButton x:Name="EnableHooksCheckBox" Grid.Column="2" VerticalAlignment="Center"
-                                              IsChecked="{Binding EnableHooks}"
-                                              Style="{StaticResource MaterialDesignSwitchToggleButton}" />
-                            </Grid>
-                        </materialDesign:Card>
+                            </materialDesign:Card>
 
-                        <StackPanel IsEnabled="{Binding ElementName=EnableHooksCheckBox, Path=IsChecked}">
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="注入时机" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="更新与存储" />
                             <materialDesign:Card Style="{StaticResource SettingCardStyle}">
                                 <StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="126" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Margin="0,0,24,0">
-                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="自动注入延迟" />
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="更新前确认" />
                                             <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                       Text="通过 XIVLauncher 启动游戏后等待注入的时间" />
+                                                       Text="下载和安装游戏更新前显示确认提示" />
                                         </StackPanel>
-                                        <TextBox Grid.Column="1" VerticalAlignment="Center"
-                                                 HorizontalContentAlignment="Right"
-                                                 Text="{Binding DalamudInjectionDelayMs}"
-                                                 materialDesign:HintAssist.Hint="毫秒"
+                                        <ToggleButton Grid.Column="1" VerticalAlignment="Center"
+                                                      IsChecked="{Binding AskBeforePatching}"
+                                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                    </Grid>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="保留补丁包" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="安装后保留已下载文件，便于备份或重复使用" />
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="1" VerticalAlignment="Center"
+                                                      IsChecked="{Binding KeepPatches}"
+                                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                    </Grid>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="下载速度限制" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="设置为 0 时使用全部可用带宽" />
+                                        </StackPanel>
+                                        <TextBox Grid.Column="1" Width="126" VerticalAlignment="Center"
+                                                 HorizontalContentAlignment="Right" Text="{Binding SpeedLimitMb}"
+                                                 materialDesign:HintAssist.Hint="MB/s"
+                                                 materialDesign:HintAssist.IsFloating="True"
+                                                 Style="{StaticResource ThemeTextBoxStyle}" />
+                                    </Grid>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="补丁存储目录" />
+                                    <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                               Text="用于保存下载中的补丁和已保留的补丁包" />
+                                    <components:FolderEntry Margin="0,12,0,0" Description="补丁存储目录"
+                                                            Text="{Binding PatchPath, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </materialDesign:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem x:Name="TabStart">
+                    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+                        <StackPanel MaxWidth="820">
+                            <TextBlock Style="{StaticResource PageTitleStyle}" Text="启动与安全" />
+                            <TextBlock Margin="0,5,0,28" Style="{StaticResource PageDescriptionStyle}"
+                                       Text="配置游戏启动行为、账号凭据和伴随程序" />
+
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="启动行为" />
+                            <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="160" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="游戏 DPI 修正" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="用于修正高分辨率屏幕上的游戏界面缩放异常" />
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1" VerticalAlignment="Center"
+                                                  Style="{StaticResource ThemeComboBoxStyle}"
+                                                  SelectedIndex="{Binding DpiAwarenessIndex}">
+                                            <ComboBoxItem Content="启用" />
+                                            <ComboBoxItem Content="禁用" />
+                                        </ComboBox>
+                                    </Grid>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2*" />
+                                            <ColumnDefinition Width="3*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="额外启动参数" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="附加到游戏进程的命令行参数" />
+                                        </StackPanel>
+                                        <TextBox Grid.Column="1" Width="320" HorizontalAlignment="Right"
+                                                 VerticalAlignment="Center"
+                                                 Text="{Binding LaunchArgs, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="启动参数"
                                                  materialDesign:HintAssist.IsFloating="True"
                                                  Style="{StaticResource ThemeTextBoxStyle}" />
                                     </Grid>
@@ -731,157 +511,406 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="126" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Margin="0,0,24,0">
-                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="手动注入延迟" />
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="随游戏退出" />
                                             <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                       Text="手动注入模式下发现游戏进程后等待注入的时间" />
+                                                       Text="游戏完全退出后关闭启动器，关闭本项时将重新显示主界面" />
                                         </StackPanel>
-                                        <TextBox Grid.Column="1" VerticalAlignment="Center"
-                                                 HorizontalContentAlignment="Right" Text="{Binding ManualInjectDelayMs}"
-                                                 materialDesign:HintAssist.Hint="毫秒"
-                                                 materialDesign:HintAssist.IsFloating="True"
-                                                 Style="{StaticResource ThemeTextBoxStyle}" />
+                                        <ToggleButton Grid.Column="1" VerticalAlignment="Center"
+                                                      IsChecked="{Binding ExitLauncherAfterGameExit}"
+                                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" />
                                     </Grid>
                                 </StackPanel>
                             </materialDesign:Card>
 
-                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="实验性功能" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="账号安全" />
+                            <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="自动登录至上次账号" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="启动时尝试复用已保存的快速登录凭据，失效后需手动登录" />
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="1" VerticalAlignment="Center"
+                                                      IsChecked="{Binding AutoLoginToLastAccount}"
+                                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                    </Grid>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="220" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="凭据加密方式" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="保护本地保存的自动登录凭据" />
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1" VerticalAlignment="Center"
+                                                  DisplayMemberPath="Display"
+                                                  Style="{StaticResource ThemeComboBoxStyle}"
+                                                  ItemsSource="{Binding CredTypeOptions}"
+                                                  SelectedItem="{Binding SelectedCredTypeOption}">
+                                            <ComboBox.ItemContainerStyle>
+                                                <Style TargetType="ComboBoxItem"
+                                                       BasedOn="{StaticResource MaterialDesignComboBoxItemStyle}">
+                                                    <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
+                                                </Style>
+                                            </ComboBox.ItemContainerStyle>
+                                        </ComboBox>
+                                    </Grid>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="新账号登录要求设备信息" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="首次登录新账号前要求指定其使用的设备信息" />
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="1" VerticalAlignment="Center"
+                                                      IsChecked="{Binding RequireDeviceProfileSetupForNewAccountLogin}"
+                                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                    </Grid>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="二维码扫描要求设备信息" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="扫码登录前要求指定本次使用的设备信息" />
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="1" VerticalAlignment="Center"
+                                                      IsChecked="{Binding RequireDeviceProfileSetupForQRCodeLogin}"
+                                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                    </Grid>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="共享设备信息" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="供未配置独立设备信息的账号共同使用" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" MinWidth="100" VerticalAlignment="Center"
+                                                Click="SharedDeviceProfileButton_Click"
+                                                Style="{StaticResource ThemeOutlinedButtonStyle}" Content="管理" />
+                                    </Grid>
+                                </StackPanel>
+                            </materialDesign:Card>
+
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="伴随程序" />
+                            <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,16">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="联动应用" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="游戏启动或结束时自动运行已启用的程序，单击条目可编辑" />
+                                        </StackPanel>
+                                        <Button HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                Command="{Binding AddCompanionAppCommand}"
+                                                Style="{StaticResource ThemeOutlinedButtonStyle}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Width="18" Height="18" Kind="Plus" />
+                                                <TextBlock Margin="7,0,0,0" Text="添加程序" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <Border MinHeight="104"
+                                            Background="{DynamicResource MaterialDesign.Brush.Background}"
+                                            CornerRadius="6">
+                                        <Grid>
+                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
+                                                       Text="暂无伴随程序">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger
+                                                                Binding="{Binding ElementName=CompanionAppListView, Path=Items.Count}"
+                                                                Value="0">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <ListView x:Name="CompanionAppListView" Background="Transparent"
+                                                      BorderThickness="0"
+                                                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                                      ItemsSource="{Binding CompanionAppEntries}"
+                                                      MouseUp="CompanionAppListView_OnMouseUp"
+                                                      PreviewMouseRightButtonDown="CompanionAppListView_OnPreviewMouseRightButtonDown"
+                                                      SelectedItem="{Binding SelectedCompanionAppEntry}">
+                                                <ListView.ContextMenu>
+                                                    <ContextMenu StaysOpen="True"
+                                                                 Style="{StaticResource MaterialDesignContextMenu}">
+                                                        <ContextMenu.Resources>
+                                                            <Style TargetType="{x:Type MenuItem}"
+                                                                   BasedOn="{StaticResource MaterialDesignMenuItem}" />
+                                                        </ContextMenu.Resources>
+                                                        <MenuItem Command="{Binding RemoveSelectedCompanionAppCommand}"
+                                                                  Header="移除" />
+                                                    </ContextMenu>
+                                                </ListView.ContextMenu>
+                                                <ListView.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type companionApp:CompanionAppEntry}">
+                                                        <Grid Margin="10,8">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <CheckBox VerticalAlignment="Center"
+                                                                      IsChecked="{Binding IsEnabled}" />
+                                                            <TextBlock Grid.Column="1" Margin="14,0"
+                                                                       VerticalAlignment="Center"
+                                                                       Text="{Binding CompanionApp.Name}" />
+                                                            <materialDesign:PackIcon Grid.Column="2" Width="18"
+                                                                    Height="18"
+                                                                    VerticalAlignment="Center" Opacity="0.5"
+                                                                    Kind="ChevronRight" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ListView.ItemTemplate>
+                                            </ListView>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </materialDesign:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem x:Name="TabDalamud">
+                    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+                        <StackPanel MaxWidth="820">
+                            <TextBlock Style="{StaticResource PageTitleStyle}" Text="Dalamud" />
+                            <TextBlock Margin="0,5,0,28" Style="{StaticResource PageDescriptionStyle}"
+                                       Text="管理游戏内插件框架、注入时机与扩展能力" />
+
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="框架状态" />
                             <materialDesign:Card Style="{StaticResource SettingCardStyle}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="游戏内超域传送" />
+                                    <Border Width="42" Height="42" Margin="0,0,16,0" VerticalAlignment="Center"
+                                            Background="#142196F3" CornerRadius="6">
+                                        <materialDesign:PackIcon Width="22" Height="22" HorizontalAlignment="Center"
+                                                                 VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                                 Kind="PuzzleOutline" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="0,0,24,0" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="启用 Dalamud" />
                                         <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="配合 DCTravelerX 插件提供游戏内超域传送功能，不适用于手动注入模式" />
+                                                   Text="在游戏内加载 Dalamud 框架及已安装的插件" />
                                     </StackPanel>
-                                    <ToggleButton Grid.Column="1" VerticalAlignment="Center"
-                                                  IsChecked="{Binding EnableDcTravel}"
+                                    <ToggleButton x:Name="EnableHooksCheckBox" Grid.Column="2"
+                                                  VerticalAlignment="Center"
+                                                  IsChecked="{Binding EnableHooks}"
                                                   Style="{StaticResource MaterialDesignSwitchToggleButton}" />
                                 </Grid>
                             </materialDesign:Card>
+
+                            <StackPanel IsEnabled="{Binding ElementName=EnableHooksCheckBox, Path=IsChecked}">
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="注入时机" />
+                                <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="126" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Margin="0,0,24,0">
+                                                <TextBlock Style="{StaticResource SettingTitleStyle}" Text="自动注入延迟" />
+                                                <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                           Text="通过 XIVLauncher 启动游戏后等待注入的时间" />
+                                            </StackPanel>
+                                            <TextBox Grid.Column="1" VerticalAlignment="Center"
+                                                     HorizontalContentAlignment="Right"
+                                                     Text="{Binding DalamudInjectionDelayMs}"
+                                                     materialDesign:HintAssist.Hint="毫秒"
+                                                     materialDesign:HintAssist.IsFloating="True"
+                                                     Style="{StaticResource ThemeTextBoxStyle}" />
+                                        </Grid>
+                                        <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="126" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Margin="0,0,24,0">
+                                                <TextBlock Style="{StaticResource SettingTitleStyle}" Text="手动注入延迟" />
+                                                <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                           Text="手动注入模式下发现游戏进程后等待注入的时间" />
+                                            </StackPanel>
+                                            <TextBox Grid.Column="1" VerticalAlignment="Center"
+                                                     HorizontalContentAlignment="Right"
+                                                     Text="{Binding ManualInjectDelayMs}"
+                                                     materialDesign:HintAssist.Hint="毫秒"
+                                                     materialDesign:HintAssist.IsFloating="True"
+                                                     Style="{StaticResource ThemeTextBoxStyle}" />
+                                        </Grid>
+                                    </StackPanel>
+                                </materialDesign:Card>
+
+                                <TextBlock Style="{StaticResource SectionTitleStyle}" Text="实验性功能" />
+                                <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="游戏内超域传送" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="配合 DCTravelerX 插件提供游戏内超域传送功能，不适用于手动注入模式" />
+                                        </StackPanel>
+                                        <ToggleButton Grid.Column="1" VerticalAlignment="Center"
+                                                      IsChecked="{Binding EnableDcTravel}"
+                                                      Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                    </Grid>
+                                </materialDesign:Card>
+                            </StackPanel>
                         </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem x:Name="TabAbout">
-                <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
-                    <StackPanel MaxWidth="820">
-                        <TextBlock Style="{StaticResource PageTitleStyle}" Text="关于" />
-                        <TextBlock Margin="0,5,0,28" Style="{StaticResource PageDescriptionStyle}"
-                                   Text="版本信息、项目资源与维护工具" />
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem x:Name="TabAbout">
+                    <ScrollViewer Style="{StaticResource PageScrollViewerStyle}">
+                        <StackPanel MaxWidth="820">
+                            <TextBlock Style="{StaticResource PageTitleStyle}" Text="关于" />
+                            <TextBlock Margin="0,5,0,28" Style="{StaticResource PageDescriptionStyle}"
+                                       Text="版本信息、项目资源与维护工具" />
 
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Image Width="88" Height="88" Margin="2,0,24,0" VerticalAlignment="Top"
-                                       RenderOptions.BitmapScalingMode="HighQuality"
-                                       Source="pack://application:,,,/Resources/logo.png" />
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock x:Name="VersionLabel" Cursor="Hand" FontSize="22" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                               MouseUp="VersionLabel_OnMouseUp" Text="{Binding VersionLabelText}"
-                                               ToolTip="查看更新日志" />
-                                    <TextBlock Margin="0,3,0,0" FontFamily="Consolas" FontSize="12"
-                                               Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
-                                               Text="{Binding CommitLabelText}" />
-                                    <TextBlock Margin="0,14,0,0" Cursor="Hand"
-                                               Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                               MouseUp="LicenseText_OnMouseUp" Text="GPLv3 开源许可"
-                                               TextDecorations="Underline" />
+                            <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Image Width="88" Height="88" Margin="2,0,24,0" VerticalAlignment="Top"
+                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                           Source="pack://application:,,,/Resources/logo.png" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock x:Name="VersionLabel" Cursor="Hand" FontSize="22"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                   MouseUp="VersionLabel_OnMouseUp" Text="{Binding VersionLabelText}"
+                                                   ToolTip="查看更新日志" />
+                                        <TextBlock Margin="0,3,0,0" FontFamily="Consolas" FontSize="12"
+                                                   Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
+                                                   Text="{Binding CommitLabelText}" />
+                                        <TextBlock Margin="0,14,0,0" Cursor="Hand"
+                                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                   MouseUp="LicenseText_OnMouseUp" Text="GPLv3 开源许可"
+                                                   TextDecorations="Underline" />
+                                    </StackPanel>
+                                </Grid>
+                            </materialDesign:Card>
+
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="项目与社区" />
+                            <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                <StackPanel>
+                                    <WrapPanel>
+                                        <Button x:Name="DiscordButton" Height="40" Margin="0,0,10,10"
+                                                Style="{StaticResource ThemeOutlinedButtonStyle}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <mahIcon:PackIconSimpleIcons VerticalAlignment="Center" Kind="Discord" />
+                                                <TextBlock Margin="8,0,0,0" Text="Discord" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Height="40" Margin="0,0,10,10" Command="{Binding OpenGitHubCommand}"
+                                                Style="{StaticResource ThemeOutlinedButtonStyle}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon VerticalAlignment="Center" Kind="Github" />
+                                                <TextBlock Margin="8,0,0,0" Text="GitHub" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Height="40" Margin="0,0,10,10"
+                                                Command="{Binding OpenOriginalLauncherCommand}"
+                                                Style="{StaticResource ThemeOutlinedButtonStyle}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon VerticalAlignment="Center" Kind="OpenInNew" />
+                                                <TextBlock Margin="8,0,0,0" Text="官方启动器" />
+                                            </StackPanel>
+                                        </Button>
+                                    </WrapPanel>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <TextBlock Style="{StaticResource SettingTitleStyle}" Text="贡献者" />
+                                    <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                               Text="原作者 goat；Soil 版维护 AtmoOmen" />
+                                    <TextBlock Margin="0,8,0,0" Style="{StaticResource SettingDescriptionStyle}"
+                                               Text="特别鸣谢 Mino、sky、LeonBlade、Wintermute、Zyian、Roy、Meli、Aida Enna、Aireil、kizer 与 the angry paissa artist" />
                                 </StackPanel>
-                            </Grid>
-                        </materialDesign:Card>
+                            </materialDesign:Card>
 
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="项目与社区" />
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <StackPanel>
-                                <WrapPanel>
-                                    <Button x:Name="DiscordButton" Height="40" Margin="0,0,10,10"
-                                            Style="{StaticResource ThemeOutlinedButtonStyle}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <mahIcon:PackIconSimpleIcons VerticalAlignment="Center" Kind="Discord" />
-                                            <TextBlock Margin="8,0,0,0" Text="Discord" />
+                            <TextBlock Style="{StaticResource SectionTitleStyle}" Text="维护工具" />
+                            <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="首次设置向导" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="重新配置游戏目录与 Dalamud 基础选项" />
                                         </StackPanel>
-                                    </Button>
-                                    <Button Height="40" Margin="0,0,10,10" Command="{Binding OpenGitHubCommand}"
-                                            Style="{StaticResource ThemeOutlinedButtonStyle}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon VerticalAlignment="Center" Kind="Github" />
-                                            <TextBlock Margin="8,0,0,0" Text="GitHub" />
+                                        <Button Grid.Column="1" MinWidth="112" Click="FirstTimeSetupButton_Click"
+                                                Style="{StaticResource ThemeOutlinedButtonStyle}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Width="18" Height="18" Kind="Restart" />
+                                                <TextBlock Margin="7,0,0,0" Text="打开向导" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <Separator Style="{StaticResource SettingSeparatorStyle}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,24,0">
+                                            <TextBlock Style="{StaticResource SettingTitleStyle}" Text="高级设置" />
+                                            <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                       Text="调整诊断、网络和底层兼容选项" />
                                         </StackPanel>
-                                    </Button>
-                                    <Button Height="40" Margin="0,0,10,10"
-                                            Command="{Binding OpenOriginalLauncherCommand}"
-                                            Style="{StaticResource ThemeOutlinedButtonStyle}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon VerticalAlignment="Center" Kind="OpenInNew" />
-                                            <TextBlock Margin="8,0,0,0" Text="官方启动器" />
-                                        </StackPanel>
-                                    </Button>
-                                </WrapPanel>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <TextBlock Style="{StaticResource SettingTitleStyle}" Text="贡献者" />
-                                <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                           Text="原作者 goat；Soil 版维护 AtmoOmen" />
-                                <TextBlock Margin="0,8,0,0" Style="{StaticResource SettingDescriptionStyle}"
-                                           Text="特别鸣谢 Mino、sky、LeonBlade、Wintermute、Zyian、Roy、Meli、Aida Enna、Aireil、kizer 与 the angry paissa artist" />
-                            </StackPanel>
-                        </materialDesign:Card>
-
-                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="维护工具" />
-                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
-                            <StackPanel>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="首次设置向导" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="重新配置游戏目录与 Dalamud 基础选项" />
-                                    </StackPanel>
-                                    <Button Grid.Column="1" MinWidth="112" Click="FirstTimeSetupButton_Click"
-                                            Style="{StaticResource ThemeOutlinedButtonStyle}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Width="18" Height="18" Kind="Restart" />
-                                            <TextBlock Margin="7,0,0,0" Text="打开向导" />
-                                        </StackPanel>
-                                    </Button>
-                                </Grid>
-                                <Separator Style="{StaticResource SettingSeparatorStyle}" />
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,24,0">
-                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="高级设置" />
-                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
-                                                   Text="调整诊断、网络和底层兼容选项" />
-                                    </StackPanel>
-                                    <Button Grid.Column="1" MinWidth="112" Command="{Binding OpenAdvancedSettingsCommand}"
-                                            Style="{StaticResource ThemeOutlinedButtonStyle}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Width="18" Height="18" Kind="TuneVariant" />
-                                            <TextBlock Margin="7,0,0,0" Text="打开设置" />
-                                        </StackPanel>
-                                    </Button>
-                                </Grid>
-                                <Button Visibility="Collapsed" Command="{Binding OpenBackupToolCommand}" />
-                            </StackPanel>
-                        </materialDesign:Card>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
+                                        <Button Grid.Column="1" MinWidth="112"
+                                                Command="{Binding OpenAdvancedSettingsCommand}"
+                                                Style="{StaticResource ThemeOutlinedButtonStyle}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Width="18" Height="18" Kind="TuneVariant" />
+                                                <TextBlock Margin="7,0,0,0" Text="打开设置" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <Button Visibility="Collapsed" Command="{Binding OpenBackupToolCommand}" />
+                                </StackPanel>
+                            </materialDesign:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
 
             </TabControl>
             <Border Grid.Row="1" Padding="24,14" Background="{DynamicResource MaterialDesign.Brush.Surface}">
@@ -891,7 +920,8 @@
                     <Button MinWidth="132" Height="38" Click="AcceptButton_Click" IsDefault="True"
                             Style="{StaticResource ThemeRaisedButtonStyle}">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Width="18" Height="18" VerticalAlignment="Center" Kind="ContentSaveOutline" />
+                            <materialDesign:PackIcon Width="18" Height="18" VerticalAlignment="Center"
+                                                     Kind="ContentSaveOutline" />
                             <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="保存" />
                         </StackPanel>
                     </Button>

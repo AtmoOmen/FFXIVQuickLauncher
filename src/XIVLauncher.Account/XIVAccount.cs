@@ -1,4 +1,3 @@
-using System;
 using SQLite;
 using XIVLauncher.Common.Game;
 
@@ -36,11 +35,15 @@ public class XIVAccount : IEquatable<XIVAccount>
 
     /// <summary>界面和本地查找使用的账号名, 会根据渠道切换到底层字段</summary>
     [Ignore]
-    public string UserName => AccountType == XIVAccountType.Sdo ? SdoLoginAccount : WeGameLoginAccount;
+    public string UserName => AccountType == XIVAccountType.Sdo ?
+                                  SdoLoginAccount :
+                                  WeGameLoginAccount;
 
     /// <summary>界面展示名, 优先显示用户自定义名</summary>
     [Ignore]
-    public string DisplayName => string.IsNullOrWhiteSpace(UserDefinedName) ? UserName : UserDefinedName;
+    public string DisplayName => string.IsNullOrWhiteSpace(UserDefinedName) ?
+                                     UserName :
+                                     UserDefinedName;
 
     /// <summary>用户自定义备注名, 不参与登录</summary>
     public string UserDefinedName { get; set; } = null!;
@@ -66,6 +69,8 @@ public class XIVAccount : IEquatable<XIVAccount>
     /// <summary>WeGame 快速登录凭据, 仅 WeGame 渠道使用</summary>
     [Column("WeGameTokenSecret")]
     public string? WeGameQuickLoginSecret { get; set; }
+
+    public string? LoginSessionSecret { get; set; }
 
     #endregion
 
@@ -96,11 +101,17 @@ public class XIVAccount : IEquatable<XIVAccount>
         ID = $"{UserName}|{AccountType}";
 
     public override int GetHashCode() =>
-        HashCode.Combine(UserName, AccountType);
+        UserName.GetHashCode(StringComparison.Ordinal);
 
-    public bool Equals(XIVAccount? other) =>
+    public bool Equals
+    (
+        XIVAccount? other
+    ) =>
         other is not null && string.Equals(UserName, other.UserName, StringComparison.Ordinal) && AccountType == other.AccountType;
 
-    public override bool Equals(object? obj) =>
+    public override bool Equals
+    (
+        object? obj
+    ) =>
         obj is XIVAccount other && Equals(other);
 }

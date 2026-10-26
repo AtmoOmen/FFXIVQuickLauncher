@@ -5,6 +5,7 @@ using XIVLauncher.Account;
 using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Login.WeGame;
 using XIVLauncher.Windows.ViewModel.Main;
+using XIVLauncher.Windows.ViewModel.Main.Flows;
 using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.Main;
@@ -27,7 +28,7 @@ public partial class MainWindow
         LoginCard.AccountListView.ContextMenu!.DataContext = Model.AccountSwitcher;
 
         Model.NewsFlow.NewsItemsUpdated += items => Dispatcher.Invoke(() => NewsList.SetNewsItems(items));
-        Model.NewsFlow.BannersUpdated   += bitmaps => Dispatcher.Invoke
+        Model.NewsFlow.BannersUpdated += bitmaps => Dispatcher.Invoke
         (() =>
             {
                 NewsCarousel.UpdateBanners(bitmaps);
@@ -36,9 +37,9 @@ public partial class MainWindow
         );
         Model.AccountFlow.LoginPasswordDisplay += password => LoginCard.LoginPassword.Password = password;
 
-        Closed  += MainWindow_OnClosed;
-        Closed  += Model.OnWindowClosed;
-        Closing += Model.OnWindowClosing;
+        Closed       += MainWindow_OnClosed;
+        Closed       += Model.OnWindowClosed;
+        Closing      += Model.OnWindowClosing;
         StateChanged += (_, _) => UpdateBannerActivity();
 
         Model.Activate += () => Dispatcher.Invoke
@@ -70,8 +71,8 @@ public partial class MainWindow
         );
 
         // 订阅控件事件
-        NewsCarousel.BannerClicked += Model.NewsFlow.OpenBanner;
-        NewsList.NewsClicked       += Model.NewsFlow.OpenNews;
+        NewsCarousel.BannerClicked             += Model.NewsFlow.OpenBanner;
+        NewsList.NewsClicked                   += Model.NewsFlow.OpenNews;
         LoginCard.SettingsRequested            += OnSettingsRequested;
         LoginCard.AccountSwitchRequested       += OnAccountSwitchRequested;
         LoginCard.AccountFieldCopyRequested    += OnAccountFieldCopyRequested;
@@ -92,14 +93,14 @@ public partial class MainWindow
         Title += " v" + AppUtil.GetAssemblyVersion();
     }
 
-    public void Initialize()
+    public async Task InitializeAsync()
     {
-        Model.StartupFlow.ApplyStartupDefaults();
+        StartupFlow.ApplyStartupDefaults();
         Model.NewsFlow.Start();
 
-        if (App.Settings.GamePath?.Exists != true
-            && (!WeGamePathValidator.IsValidGameRoot(App.Settings.WeGamePath?.FullName)
-                || !WeGamePathValidator.IsValidSdologinDir(WeGamePathValidator.DeriveSdologinDir(App.Settings.WeGamePath!.FullName))))
+        if (App.Settings.GamePath?.Exists != true &&
+            (!WeGamePathValidator.IsValidGameRoot(App.Settings.WeGamePath?.FullName) ||
+             !WeGamePathValidator.IsValidSdologinDir(WeGamePathValidator.DeriveSdologinDir(App.Settings.WeGamePath!.FullName))))
         {
             var setup = new FirstTimeSetup();
             setup.ShowDialog();
@@ -115,28 +116,41 @@ public partial class MainWindow
 
         Model.GameUpdateMonitor.Start();
 
-        var startupFlow = Model.StartupFlow;
+        var startupFlow               = Model.StartupFlow;
+        var shouldRestoreSavedSession = startupFlow.CanRestoreSavedSession;
+        var startupTask               = Task.Run(startupFlow.RunStartupTasksAsync);
+        if (shouldRestoreSavedSession)
+            await startupTask;
 
-        Task.Run(async () => await startupFlow.RunStartupTasksAsync().ConfigureAwait(false));
-
-        Log.Information("MainWindow initialized.");
+        Log.Information("MainWindow initialized");
 
         Show();
         Activate();
 
         Model.StartupFlow.ShowCredTypeRecoveryMessage();
 
-        everShown = true;
+        everShown =  true;
         Activated += (_, _) => Model.GameUpdateMonitor.QueueCheck();
     }
 
-    private void SwitchAccount(XIVAccount account, bool saveAsCurrent) =>
+    private void SwitchAccount
+    (
+        XIVAccount account,
+        bool       saveAsCurrent
+    ) =>
         SuppressAccountSelectionTracking(() => Model.AccountFlow.SwitchAccount(account, saveAsCurrent));
 
-    private void OnAccountSwitchRequested(object? sender, EventArgs e) =>
+    private void OnAccountSwitchRequested
+    (
+        object?   sender,
+        EventArgs e
+    ) =>
         SuppressAccountSelectionTracking(Model.AccountFlow.SwitchAccountFromSwitcher);
 
-    private void SuppressAccountSelectionTracking(Action switchAction)
+    private void SuppressAccountSelectionTracking
+    (
+        Action switchAction
+    )
     {
         LoginCard.SuppressAccountSelectionTracking = true;
 
@@ -150,13 +164,25 @@ public partial class MainWindow
         }
     }
 
-    private void OnAccountFieldCopyRequested(object? sender, string text) =>
+    private void OnAccountFieldCopyRequested
+    (
+        object? sender,
+        string  text
+    ) =>
         Model.AccountFlow.CopyAccountField(text);
 
-    private void OnClearCurrentAccountRequested(object? sender, EventArgs e) =>
+    private void OnClearCurrentAccountRequested
+    (
+        object?   sender,
+        EventArgs e
+    ) =>
         Model.AccountFlow.ClearCurrentAccount();
 
-    private void OnSettingsRequested(object? sender, EventArgs e)
+    private void OnSettingsRequested
+    (
+        object?   sender,
+        EventArgs e
+    )
     {
         var window = new SettingsWindow(Model.Settings)
         {
@@ -166,7 +192,10 @@ public partial class MainWindow
         window.ShowDialog();
     }
 
-    protected override void OnSourceInitialized(EventArgs e)
+    protected override void OnSourceInitialized
+    (
+        EventArgs e
+    )
     {
         base.OnSourceInitialized(e);
 
@@ -194,7 +223,11 @@ public partial class MainWindow
             NewsCarousel.SuspendRotation();
     }
 
-    private void MainWindow_OnClosing(object sender, CancelEventArgs e)
+    private void MainWindow_OnClosing
+    (
+        object          sender,
+        CancelEventArgs e
+    )
     {
         if (!everShown)
             return;
@@ -209,7 +242,11 @@ public partial class MainWindow
         }
     }
 
-    private void MainWindow_OnClosed(object? sender, EventArgs e)
+    private void MainWindow_OnClosed
+    (
+        object?   sender,
+        EventArgs e
+    )
     {
         Model.NewsFlow.Stop();
         NewsCarousel.StopRotation();

@@ -37,34 +37,35 @@ internal sealed class LoginFlow
     public CancellationToken LoginCancellationToken =>
         loginCancelSource?.Token ?? CancellationToken.None;
 
-    public void StartLogin
+    public Task StartLoginAsync
     (
         LoginType        loginType,
         string           username,
         string           password,
         bool             quickLoginEnabled,
         bool             readWeGameInfo,
-        LoginAfterAction action
+        LoginAfterAction action,
+        bool             isAutomaticLogin = false
     )
     {
         if (vm.Window.Dispatcher != Dispatcher.CurrentDispatcher)
         {
-            vm.Window.Dispatcher.Invoke
-            (() => StartLogin
+            return vm.Window.Dispatcher.Invoke
+            (() => StartLoginAsync
              (
                  loginType,
                  username,
                  password,
                  quickLoginEnabled,
                  readWeGameInfo,
-                 action
+                 action,
+                 isAutomaticLogin
              )
             );
-            return;
         }
 
         if (vm.IsLoggingIn)
-            return;
+            return Task.CompletedTask;
 
         Log.Information("[MainWindow] 尝试开始登录");
 
@@ -75,33 +76,43 @@ internal sealed class LoginFlow
         vm.LoginPage.IsQrCodeExpired           = false;
         loginCancelSource?.Dispose();
         var cancellationSource = new CancellationTokenSource();
+        if (isAutomaticLogin)
+            cancellationSource.CancelAfter(TimeSpan.FromSeconds(15));
+
         loginCancelSource = cancellationSource;
         vm.LoginPage.RefreshCommandStates();
         vm.InjectPage.RefreshCommandStates();
 
         var currentCard = loginCardAfterCompletion ?? (LoginCardType)vm.LoginCardTransitionerIndex;
         loginCardAfterCompletion = null;
-        vm.SwitchCard
-        (
-            loginType == LoginType.QRCode ?
-                LoginCardType.ScanQRCode :
-                LoginCardType.Logining,
-            false
-        );
 
-        _ = Task.Run
-        (() =>
-             RunLoginAsync
-             (
-                 loginType,
-                 username,
-                 password,
-                 quickLoginEnabled,
-                 readWeGameInfo,
-                 action,
-                 currentCard,
-                 cancellationSource
-             )
+        if (!isAutomaticLogin)
+        {
+            vm.SwitchCard
+            (
+                loginType == LoginType.QRCode ?
+                    LoginCardType.ScanQRCode :
+                    LoginCardType.Logining,
+                false
+            );
+        }
+
+        return Task.Run
+        (
+            () =>
+                RunLoginAsync
+                (
+                    loginType,
+                    username,
+                    password,
+                    quickLoginEnabled,
+                    readWeGameInfo,
+                    action,
+                    currentCard,
+                    cancellationSource,
+                    isAutomaticLogin
+                ),
+            CancellationToken.None
         );
     }
 
@@ -114,12 +125,17 @@ internal sealed class LoginFlow
         bool                    readWeGameInfo,
         LoginAfterAction        action,
         LoginCardType           currentCard,
-        CancellationTokenSource cancellationSource
+        CancellationTokenSource cancellationSource,
+        bool                    isAutomaticLogin
     )
     {
         try
         {
-            await LoginAsync(loginType, username, password, quickLoginEnabled, readWeGameInfo, action, cancellationSource).ConfigureAwait(false);
+            await LoginAsync(loginType, username, password, quickLoginEnabled, readWeGameInfo, action, cancellationSource, isAutomaticLogin).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (isAutomaticLogin)
+        {
+            Log.Warning(ex, "[MainWindow] 自动登录未完成，等待手动登录");
         }
         catch (Exception ex)
         {
@@ -154,7 +170,8 @@ internal sealed class LoginFlow
                     vm.InjectPage.RefreshCommandStates();
 
                     vm.NewsFlow.RefreshNow();
-                    vm.Activate();
+                    if (!isAutomaticLogin)
+                        vm.Activate();
                 }
             );
         }
@@ -180,17 +197,21 @@ internal sealed class LoginFlow
         bool                    quickLoginEnabled,
         bool                    readWeGameInfo,
         LoginAfterAction        action,
-        CancellationTokenSource cancellationSource
+        CancellationTokenSource cancellationSource,
+        bool                    isAutomaticLogin = false
     )
     {
         if (isLoginCanceledByUser)
             return;
 
-        if (!TryResolvePatchPath())
+        if (!TryResolvePatchPath(isAutomaticLogin))
             return;
 
         if (vm.LoginPage.Area == null || vm.LoginPage.Area.AreaID == "-1")
         {
+            if (isAutomaticLogin)
+                return;
+
             CustomMessageBox.Show
             (
                 "获取服务器信息失败, 无法登录",
@@ -210,6 +231,7 @@ internal sealed class LoginFlow
 
         var loginRequest = new LoginWorkflowRequest
         {
+            IsAutomaticLogin                        = isAutomaticLogin,
             LoginType                               = loginType,
             Username                                = username,
             Password                                = inputPassword,
@@ -233,6 +255,12 @@ internal sealed class LoginFlow
         }
         catch (Exception ex)
         {
+            if (isAutomaticLogin)
+            {
+                Log.Warning(ex, "[MainWindow] 恢复登录会话失败，等待手动登录");
+                return;
+            }
+
             await HandleLoginWorkflowExceptionAsync
             (
                 ex,
@@ -278,7 +306,7 @@ internal sealed class LoginFlow
                                              await dcTravelRuntimeService.StartAsync(true, false).ConfigureAwait(false) :
                                              0;
 
-        if (await ProcessLoginResultAsync(gameLaunchContext, action).ConfigureAwait(false))
+        if (ProcessLoginResult(gameLaunchContext) && !isAutomaticLogin)
             vm.Activate();
     }
 
@@ -379,21 +407,7 @@ internal sealed class LoginFlow
                 break;
 
             case UnsupportedGameVersionException:
-            {
-                var accountType = loginType.ToAccountType(vm.AccountManager.CurrentAccount?.AccountType ?? XIVAccountType.Sdo);
-
-                if (Repository.Ffxiv.IsBaseVer(App.Settings.GetGamePath(accountType)))
-                {
-                    vm.IsLoggingIn = false;
-                    _              = HandleGameClientFileTask(GameClientFileTaskKind.FreshInstall);
-                    return;
-                }
-
-                msgbox.WithText("无法确认当前游戏版本, 请先运行游戏文件修复后重试");
-                break;
-            }
-
-            case InvalidDataException invalidDataException when invalidDataException.Message.Contains("当前游戏数据版本", StringComparison.Ordinal):
+            case InvalidDataException when ex.Message.Contains("当前游戏数据版本", StringComparison.Ordinal):
             {
                 var accountType = loginType.ToAccountType(vm.AccountManager.CurrentAccount?.AccountType ?? XIVAccountType.Sdo);
 
@@ -440,7 +454,7 @@ internal sealed class LoginFlow
                 break;
 
             case InvalidResponseException iex:
-                Log.Error("[MainWindow] 游戏服务器返回无效响应: {Message}\n{Document}", ex.Message, iex.Document);
+                Log.Error(iex, "[MainWindow] 游戏服务器返回无效响应: {Document}", iex.Document);
                 msgbox.WithText("服务器返回无效响应, 请稍后重试");
                 break;
 
@@ -492,10 +506,9 @@ internal sealed class LoginFlow
     ///     处理登录结果: 检查状态, 若 Ok 则进入 Dashboard。
     ///     不在此处启动游戏——启动游戏由 DashboardFlow 通过 GameLaunchFlow 完成。
     /// </summary>
-    private async Task<bool> ProcessLoginResultAsync
+    private bool ProcessLoginResult
     (
-        GameLaunchContext gameLaunchContext,
-        LoginAfterAction  action
+        GameLaunchContext gameLaunchContext
     )
     {
         var loginResult = gameLaunchContext.LoginResult;
@@ -559,7 +572,7 @@ internal sealed class LoginFlow
         }
 
         if (CustomMessageBox.AssertOrShowError
-                (loginResult.State == LoginState.Ok, "ProcessLoginResultAsync: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: vm.Window))
+                (loginResult.State == LoginState.Ok, "ProcessLoginResult: loginResult.State should have been Launcher.LoginState.Ok", parentWindow: vm.Window))
             return false;
 
         // 防止 StartLogin 的 finally 块切回 MainPage
@@ -574,7 +587,10 @@ internal sealed class LoginFlow
         return true;
     }
 
-    private bool TryResolvePatchPath()
+    private bool TryResolvePatchPath
+    (
+        bool isAutomaticLogin
+    )
     {
         try
         {
@@ -583,6 +599,12 @@ internal sealed class LoginFlow
         }
         catch (Exception ex)
         {
+            if (isAutomaticLogin)
+            {
+                Log.Warning(ex, "[MainWindow] 自动登录时解析更新文件路径失败");
+                return false;
+            }
+
             CustomMessageBox.Builder
                             .NewFrom(ex, nameof(TryResolvePatchPath))
                             .WithAppendText("\n\n")
@@ -609,7 +631,7 @@ internal sealed class LoginFlow
         if (action == LoginAfterAction.Start)
             loginPage.LoginMessage = string.Empty;
 
-        StartLogin(loginPage.LoginTypeOption.LoginType, loginPage.Username, loginPage.Password, loginPage.IsFastLogin, loginPage.IsReadWegameInfo, action);
+        _ = StartLoginAsync(loginPage.LoginTypeOption.LoginType, loginPage.Username, loginPage.Password, loginPage.IsFastLogin, loginPage.IsReadWegameInfo, action);
     }
 
     public async Task HandleGameClientFileTask
@@ -654,7 +676,7 @@ internal sealed class LoginFlow
         if (!result.ShouldLaunchGame)
             return;
 
-        StartLogin
+        await StartLoginAsync
         (
             vm.LoginPage.LoginTypeOption.LoginType,
             vm.LoginPage.Username,
@@ -671,7 +693,7 @@ internal sealed class LoginFlow
     )
     {
         loginCardAfterCompletion = LoginCardType.MainPage;
-        StartLogin
+        _ = StartLoginAsync
         (
             LoginType.QRCode,
             loginPage.Username,

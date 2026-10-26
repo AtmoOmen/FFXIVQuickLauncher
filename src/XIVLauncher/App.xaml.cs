@@ -92,7 +92,7 @@ public partial class App
                 if (StartupContext.IsRestartingForUpdate)
                     return;
 
-                OnStartupCompleted();
+                await OnStartupCompletedAsync();
             }
             catch (Exception ex)
             {
@@ -108,12 +108,12 @@ public partial class App
         }
     }
 
-    private void OnStartupCompleted()
+    private async Task OnStartupCompletedAsync()
     {
         isUseFullExceptionHandler = true;
 
         mainWindow = new MainWindow();
-        mainWindow.Initialize();
+        await mainWindow.InitializeAsync();
 
     }
 
