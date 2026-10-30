@@ -1,3 +1,4 @@
 * 新增配置项“自动登录至上次账号”，默认启用。
 
-> 当前分支仅支持 `Windows 11` 的 `x64` 环境，不提供 `Linux`、`macOS` 与 `SteamDeck` 等环境的相关支持
+> 首次使用请下载 `XIVLauncherCN-win-Portable.zip` 文件并解压缩至非临时文件夹内后，点击运行 `XIVLauncherCN.exe` 即可。
+> 当前分支仅支持 64 位 Windows 11 系统环境。若无法运行程序，请检查系统环境。
