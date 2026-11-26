@@ -5,8 +5,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:data="clr-namespace:System.Windows.Data;assembly=PresentationFramework"
+             xmlns:loginModels="clr-namespace:XIVLauncher.Login.Models;assembly=XIVLauncher.Login"
+             xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel.Main"
              mc:Ignorable="d"
-             d:DesignHeight="400" d:DesignWidth="240">
+             d:DataContext="{d:DesignInstance Type=viewModel:MainWindowViewModel}"
+             d:DesignHeight="492" d:DesignWidth="294">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -15,23 +18,31 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid Margin="20,0,20,0" VerticalAlignment="Center">
-        <StackPanel>
+    <Grid Margin="20,0,20,14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 居中登录核心区 (视觉略偏上) -->
+        <StackPanel Grid.Row="0"
+                    VerticalAlignment="Center"
+                    Margin="0,0,0,12">
             <ComboBox x:Name="LoginTypeSelection"
                       Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                      materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                      materialDesign:TextFieldAssist.TextFieldCornerRadius="10"
                       materialDesign:HintAssist.Hint="登录方式"
+                      Padding="12,12"
                       SelectionChanged="LoginTypeSelection_OnSelectionChanged"
                       SelectedItem="{Binding LoginPage.LoginTypeOption}"
                       SelectedValuePath="LoginType"
                       Tag="SelectionBox"
-                      Margin="0,0,0,8">
+                      Margin="0,0,0,12">
                 <ComboBox.Resources>
                     <CollectionViewSource x:Key="LoginTypeOptionsView"
                                           Source="{Binding LoginPage.LoginTypeOptions}">
                         <CollectionViewSource.GroupDescriptions>
-                            <PropertyGroupDescription
-                                PropertyName="GroupDisplay" />
+                            <PropertyGroupDescription PropertyName="GroupDisplay" />
                         </CollectionViewSource.GroupDescriptions>
                     </CollectionViewSource>
                 </ComboBox.Resources>
@@ -41,8 +52,7 @@
                 <ComboBox.GroupStyle>
                     <GroupStyle>
                         <GroupStyle.HeaderTemplate>
-                            <DataTemplate
-                                DataType="{x:Type data:CollectionViewGroup}">
+                            <DataTemplate DataType="{x:Type data:CollectionViewGroup}">
                                 <Grid Margin="0,6,0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -63,32 +73,27 @@
                     </GroupStyle>
                 </ComboBox.GroupStyle>
                 <ComboBox.ItemTemplate>
-                    <DataTemplate>
+                    <DataTemplate DataType="{x:Type loginModels:LoginTypeOption}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0"
-                                        Orientation="Horizontal">
-                                <Ellipse Width="5" Height="5"
+                            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                <Ellipse Width="5"
+                                         Height="5"
                                          Fill="{DynamicResource MaterialDesign.Brush.Primary}"
                                          VerticalAlignment="Center">
                                     <Ellipse.Style>
                                         <Style TargetType="Ellipse">
-                                            <Setter Property="Visibility"
-                                                    Value="Collapsed" />
-                                            <Setter Property="Margin"
-                                                    Value="0,0,0,0" />
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Setter Property="Margin" Value="0,0,0,0" />
                                             <Style.Triggers>
                                                 <DataTrigger
                                                     Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
                                                     Value="{x:Null}">
-                                                    <Setter
-                                                        Property="Visibility"
-                                                        Value="Visible" />
-                                                    <Setter Property="Margin"
-                                                            Value="0,0,8,0" />
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Setter Property="Margin" Value="0,0,8,0" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -99,27 +104,25 @@
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
 
-                            <Grid Grid.Column="1" Margin="8,0,0,0"
+                            <Grid Grid.Column="1"
+                                  Margin="8,0,0,0"
                                   VerticalAlignment="Center">
                                 <Grid.Style>
                                     <Style TargetType="Grid">
-                                        <Setter Property="Visibility"
-                                                Value="Collapsed" />
+                                        <Setter Property="Visibility" Value="Collapsed" />
                                         <Style.Triggers>
                                             <DataTrigger
                                                 Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
                                                 Value="SelectionBox">
-                                                <Setter Property="Visibility"
-                                                        Value="Visible" />
+                                                <Setter Property="Visibility" Value="Visible" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Grid.Style>
 
-                                <Border
-                                    Background="{DynamicResource MaterialDesign.Brush.Primary}"
-                                    Opacity="0.12"
-                                    CornerRadius="4" />
+                                <Border Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                                        Opacity="0.12"
+                                        CornerRadius="4" />
                                 <TextBlock HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
                                            Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
@@ -133,103 +136,154 @@
                 </ComboBox.ItemTemplate>
             </ComboBox>
 
-            <Grid Margin="0,0,0,8">
+            <Grid Margin="0,0,0,12"
+                  Visibility="{Binding LoginPage.IsUsernameVisible, Converter={StaticResource BoolToVis}}">
                 <TextBox x:Name="LoginUsername"
                          Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                         materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                         materialDesign:TextFieldAssist.TextFieldCornerRadius="10"
                          materialDesign:HintAssist.Hint="{Binding LoginPage.UsernameHint}"
+                         Padding="12,12"
                          TextChanged="LoginUsername_OnTextChanged"
                          ToolTipService.ShowOnDisabled="True"
                          TextWrapping="NoWrap"
                          Text="{Binding LoginPage.Username, UpdateSourceTrigger=PropertyChanged}"
                          ToolTip="{Binding LoginPage.UsernameToolTip}"
                          IsEnabled="{Binding LoginPage.IsUsernameEnabled}"
-                         Visibility="{Binding LoginPage.IsUsernameVisible, Converter={StaticResource BoolToVis}}"
                          Cursor="IBeam" />
                 <Border VerticalAlignment="Center"
                         HorizontalAlignment="Right"
-                        Margin="0,0,12,0"
+                        Margin="0,0,10,0"
                         CornerRadius="4"
                         Padding="6,2"
-                        Background="#30FFFFFF"
+                        Background="#24FF9800"
                         Visibility="{Binding LoginPage.IsNewAccountBadgeVisible, Converter={StaticResource BoolToVis}}">
                     <TextBlock Text="新账号"
                                FontSize="10"
                                FontWeight="SemiBold"
-                               Opacity="0.7" />
+                               Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                 </Border>
             </Grid>
 
             <PasswordBox x:Name="LoginPassword"
                          Style="{StaticResource MaterialDesignOutlinedPasswordBox}"
-                         materialDesign:TextFieldAssist.TextFieldCornerRadius="8"
+                         materialDesign:TextFieldAssist.TextFieldCornerRadius="10"
                          materialDesign:HintAssist.Hint="{Binding LoginPage.PasswordHint}"
+                         Padding="12,12"
                          PasswordChanged="LoginPassword_OnPasswordChanged"
                          Visibility="{Binding LoginPage.IsPasswordVisible, Converter={StaticResource BoolToVis}}"
                          Cursor="IBeam"
-                         Margin="0,0,0,8" />
+                         Margin="0,0,0,12" />
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,10"
-                        HorizontalAlignment="Center">
+            <WrapPanel Orientation="Horizontal"
+                       HorizontalAlignment="Left"
+                       Margin="2,0,0,16">
                 <CheckBox x:Name="FastLoginCheckBox"
                           Content="{Binding LoginPage.FastLoginText}"
                           IsChecked="{Binding LoginPage.IsFastLogin}"
                           IsEnabled="{Binding LoginPage.IsFastLoginEnabled}"
                           Visibility="{Binding LoginPage.IsFastLoginVisible, Converter={StaticResource BoolToVis}}"
                           ToolTip="勾选后, 登录成功会保存账号信息, 下次可免密快速登录"
+                          FontSize="12"
+                          Opacity="0.88"
                           Margin="0,0,16,0" />
                 <CheckBox x:Name="ReadWeGameInfoCheckBox"
                           Content="{Binding LoginPage.ReadWeGameInfoText}"
                           Visibility="{Binding LoginPage.IsReadWegameInfoVisible, Converter={StaticResource BoolToVis}}"
                           ToolTip="{Binding LoginPage.ReadWeGameInfoToolTip}"
+                          FontSize="12"
+                          Opacity="0.88"
                           IsChecked="{Binding LoginPage.IsReadWegameInfo}" />
-            </StackPanel>
+            </WrapPanel>
 
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="8" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+            <Button x:Name="LoginButton"
+                    Content="登录"
+                    Command="{Binding LoginPage.StartLoginCommand}"
+                    IsEnabled="{Binding LoginPage.CanStartLogin}"
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    materialDesign:ButtonAssist.CornerRadius="12"
+                    materialDesign:ElevationAssist.Elevation="Dp2"
+                    Height="44"
+                    FontSize="15"
+                    FontWeight="Bold">
+                <Button.ContextMenu>
+                    <ContextMenu Language="zh-CN"
+                                 DataContext="{Binding PlacementTarget.(FrameworkElement.DataContext), RelativeSource={RelativeSource Self}}"
+                                 d:DataContext="{d:DesignInstance Type=viewModel:MainWindowViewModel}"
+                                 Style="{StaticResource LoginActionContextMenuStyle}">
+                        <ContextMenu.Resources>
+                            <Style TargetType="{x:Type MenuItem}"
+                                   BasedOn="{StaticResource LoginActionMenuItemStyle}" />
+                        </ContextMenu.Resources>
+                        <MenuItem Header="调试用假启动"
+                                  Command="{Binding LoginPage.FakeStartCommand}" />
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
 
-                <Button x:Name="LoginButton"
-                        Grid.Column="0"
-                        Content="登录"
-                        Command="{Binding LoginPage.StartLoginCommand}"
-                        IsEnabled="{Binding LoginPage.CanStartLogin}"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        materialDesign:ButtonAssist.CornerRadius="18"
-                        materialDesign:ElevationAssist.Elevation="Dp2"
-                        Height="32"
-                        FontSize="14"
-                        FontWeight="Bold">
-                    <Button.ContextMenu>
-                        <ContextMenu Language="zh-CN"
-                                     DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
-                                     Style="{StaticResource LoginActionContextMenuStyle}">
-                            <ContextMenu.Resources>
-                                <Style TargetType="{x:Type MenuItem}"
-                                       BasedOn="{StaticResource LoginActionMenuItemStyle}" />
-                            </ContextMenu.Resources>
-                            <MenuItem Header="调试用假启动"
-                                      Command="{Binding LoginPage.FakeStartCommand}" />
-                        </ContextMenu>
-                    </Button.ContextMenu>
-                </Button>
+            <Button x:Name="AccountSwitcherButton"
+                    Style="{StaticResource DashboardActionRowButtonStyle}"
+                    Height="38"
+                    Margin="0,10,0,0"
+                    Command="{Binding AccountSwitcherButtonCommand}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <Button x:Name="AccountSwitcherButton"
-                        Grid.Column="2"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        materialDesign:ButtonAssist.CornerRadius="18"
-                        Width="32" Height="32" Padding="0"
-                        ToolTip="账号"
-                        Command="{Binding AccountSwitcherButtonCommand}">
-                    <materialDesign:PackIcon Kind="AccountGroup" Width="18"
-                                             Height="18" />
-                </Button>
-
-                <Border Grid.Column="0" x:Name="AccountSwitcherPopupPlaceholder" Visibility="Collapsed" />
-            </Grid>
+                    <materialDesign:PackIcon Grid.Column="0"
+                                             Kind="AccountGroupOutline"
+                                             Width="16"
+                                             Height="16"
+                                             Margin="2,0,8,0"
+                                             VerticalAlignment="Center"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                    <TextBlock Grid.Column="1"
+                               Text="已保存账号"
+                               FontSize="12"
+                               FontWeight="Medium"
+                               Opacity="0.88"
+                               VerticalAlignment="Center" />
+                    <Border Grid.Column="2"
+                            CornerRadius="7"
+                            Padding="6,1"
+                            Margin="0,0,4,0"
+                            Background="#14FFFFFF"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding AccountSwitcher.HasAccounts, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding AccountSwitcher.AccountCount}"
+                                   FontSize="10.5"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.68" />
+                    </Border>
+                    <materialDesign:PackIcon Grid.Column="3"
+                                             Kind="ChevronRight"
+                                             Width="16"
+                                             Height="16"
+                                             VerticalAlignment="Center"
+                                             Opacity="0.45" />
+                </Grid>
+            </Button>
         </StackPanel>
+
+        <!-- 底部 Dalamud 状态条 -->
+        <Button Grid.Row="1"
+                HorizontalAlignment="Center"
+                ToolTip="点击刷新 Dalamud 状态"
+                Style="{StaticResource DalamudStatusButtonStyle}"
+                Command="{Binding DalamudStatus.RefreshDalamudInfoCommand}"
+                Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <materialDesign:PackIcon Kind="Refresh"
+                                         Width="12"
+                                         Height="12"
+                                         Margin="0,0,4,0"
+                                         VerticalAlignment="Center"
+                                         Opacity="0.75" />
+                <TextBlock Text="{Binding DalamudStatus.StatusText}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
     </Grid>
 </UserControl>

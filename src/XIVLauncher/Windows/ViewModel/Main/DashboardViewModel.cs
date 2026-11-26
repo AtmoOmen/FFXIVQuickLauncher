@@ -151,6 +151,20 @@ public sealed partial class DashboardViewModel : ObservableObject
         requestOpenAuthenticatedSiteAction(Links.SDO_SUPPLY_STATION_URL, SdoInfos.APP_ID);
 
     [RelayCommand]
-    private static void OpenOfficialAccount() =>
-        Process.Start(new ProcessStartInfo(Links.SDO_BILIBILI_URL) { UseShellExecute = true });
+    private static void OpenExternalSite
+    (
+        string? url
+    )
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return;
+
+        Process.Start
+        (
+            new ProcessStartInfo(url)
+            {
+                UseShellExecute = true
+            }
+        );
+    }
 }

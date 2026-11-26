@@ -34,7 +34,7 @@
 
         <components:TitleBar Grid.Row="0" />
 
-        <Grid Grid.Row="1" Margin="10,6,10,10">
+        <Grid Grid.Row="1" Margin="12,4,12,12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -43,7 +43,7 @@
 
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition />
+                    <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <!-- 新闻轮播 -->
@@ -57,7 +57,7 @@
                 <main:NewsListControl x:Name="NewsList"
                                       Grid.Row="1"
                                       Grid.Column="0"
-                                      Margin="0,12,0,4"
+                                      Margin="0,12,0,0"
                                       Width="{DynamicResource BannerCardWidth}" />
 
                 <!-- 登录卡片 -->
@@ -65,13 +65,15 @@
                                        Grid.Row="0"
                                        Grid.RowSpan="2"
                                        Grid.Column="1"
-                                       Width="280"
-                                       Margin="8,0,0,4" />
+                                       HorizontalAlignment="Stretch"
+                                       Margin="12,0,0,0" />
 
                 <materialDesign:DialogHost
                     Identifier="MaintenanceQueueDialogHost"
                     x:Name="MaintenanceQueueDialogHost"
                     IsOpen="{Binding IsLoadingDialogOpen}"
+                    Grid.Row="0"
+                    Grid.Column="0"
                     Grid.RowSpan="2"
                     Grid.ColumnSpan="2">
                     <materialDesign:DialogHost.DialogContent>

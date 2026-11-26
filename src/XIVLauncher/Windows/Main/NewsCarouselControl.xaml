@@ -26,8 +26,10 @@
 
         <Border HorizontalAlignment="Right"
                 VerticalAlignment="Bottom"
-                Margin="0,0,4,4"
-                Background="Transparent">
+                Margin="0,0,8,8"
+                Padding="5,3"
+                CornerRadius="8"
+                Background="#52000000">
             <ItemsControl x:Name="BannerDot" d:ItemsSource="{d:SampleData ItemCount=5}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -37,19 +39,27 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type models:BannerDotInfo}">
                         <RadioButton GroupName="banner"
+                                     Style="{x:Null}"
                                      IsChecked="{Binding Active, Mode=OneWay}"
                                      Checked="BannerDot_OnChecked"
                                      MouseEnter="RadioButton_MouseEnter"
                                      MouseLeave="RadioButton_MouseLeave"
                                      Margin="0"
-                                     Cursor="Hand"
-                                     Style="{StaticResource {x:Type ToggleButton}}">
+                                     Padding="3,2"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Focusable="False"
+                                     Cursor="Hand">
                             <RadioButton.Template>
                                 <ControlTemplate TargetType="RadioButton">
-                                    <Border x:Name="DotBorder"
-                                            Width="8" Height="8"
-                                            CornerRadius="4"
-                                            Background="#88FFFFFF" />
+                                    <Border Background="Transparent"
+                                            Padding="{TemplateBinding Padding}">
+                                        <Border x:Name="DotBorder"
+                                                Width="5"
+                                                Height="5"
+                                                CornerRadius="2.5"
+                                                Background="#99FFFFFF" />
+                                    </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsChecked" Value="True">
                                             <Setter TargetName="DotBorder" Property="Background"
@@ -60,7 +70,7 @@
                                                         <DoubleAnimation
                                                             Storyboard.TargetName="DotBorder"
                                                             Storyboard.TargetProperty="Width"
-                                                            To="24" Duration="0:0:0.3">
+                                                            To="16" Duration="0:0:0.25">
                                                             <DoubleAnimation.EasingFunction>
                                                                 <CubicEase EasingMode="EaseOut" />
                                                             </DoubleAnimation.EasingFunction>
@@ -74,7 +84,7 @@
                                                         <DoubleAnimation
                                                             Storyboard.TargetName="DotBorder"
                                                             Storyboard.TargetProperty="Width"
-                                                            To="8" Duration="0:0:0.3">
+                                                            To="5" Duration="0:0:0.25">
                                                             <DoubleAnimation.EasingFunction>
                                                                 <CubicEase EasingMode="EaseOut" />
                                                             </DoubleAnimation.EasingFunction>
@@ -89,7 +99,7 @@
                                                 <Condition Property="IsChecked" Value="False" />
                                             </MultiTrigger.Conditions>
                                             <Setter TargetName="DotBorder" Property="Background"
-                                                    Value="#CCFFFFFF" />
+                                                    Value="#DDFFFFFF" />
                                         </MultiTrigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -37,11 +38,23 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
     [ObservableProperty]
     public partial string SearchText { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAccounts))]
+    public partial int AccountCount { get; private set; }
+
+    public bool HasAccounts => AccountCount > 0;
+
+    [ObservableProperty]
+    public partial bool IsEmpty { get; private set; }
+
+    [ObservableProperty]
+    public partial string EmptyStateText { get; private set; } = "暂无已保存账号";
+
     partial void OnSearchTextChanged
     (
         string value
     ) =>
-        ApplySearchFilter();
+        ApplySearchFilter(value);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSelectedAccountPasswordNotSaved))]
@@ -235,25 +248,45 @@ internal sealed partial class AccountSwitcherViewModel : ObservableObject
                             null :
                             Entries.FirstOrDefault(entry => entry.Account.ID == selectedAccountId);
 
-        ApplySearchFilter();
+        ApplySearchFilter(SearchText);
     }
 
     /// <summary>根据 SearchText 过滤 Entries 的默认视图</summary>
-    private void ApplySearchFilter()
+    private void ApplySearchFilter
+    (
+        string? searchText
+    )
     {
         var view = CollectionViewSource.GetDefaultView(Entries);
 
-        if (string.IsNullOrWhiteSpace(SearchText))
+        if (string.IsNullOrWhiteSpace(searchText))
         {
             view.Filter = null;
+            UpdateEmptyState(view);
             return;
         }
 
-        var keyword = SearchText.Trim();
+        var keyword = searchText.Trim();
         view.Filter = obj =>
             obj is AccountSwitcherEntry entry &&
-            (entry.Account.UserName?.Contains(keyword, StringComparison.OrdinalIgnoreCase)        == true ||
-             entry.Account.UserDefinedName?.Contains(keyword, StringComparison.OrdinalIgnoreCase) == true);
+            ((!string.IsNullOrEmpty(entry.Account.UserName) &&
+              entry.Account.UserName.Contains(keyword, StringComparison.OrdinalIgnoreCase)) ||
+             (!string.IsNullOrEmpty(entry.Account.UserDefinedName) &&
+              entry.Account.UserDefinedName.Contains(keyword, StringComparison.OrdinalIgnoreCase)));
+
+        UpdateEmptyState(view);
+    }
+
+    private void UpdateEmptyState
+    (
+        ICollectionView view
+    )
+    {
+        AccountCount = Entries.Count;
+        IsEmpty      = view.IsEmpty;
+        EmptyStateText = Entries.Count == 0 ?
+                             "暂无已保存账号" :
+                             "未找到匹配账号";
     }
 
     public XIVAccount? SelectCurrentAccount() =>

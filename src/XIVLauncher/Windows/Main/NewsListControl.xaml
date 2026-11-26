@@ -36,7 +36,7 @@
                  MouseUp="NewsListView_OnMouseUp"
                  Background="Transparent"
                  BorderThickness="0"
-                 Padding="4,2"
+                 Padding="6,5"
                  ScrollViewer.CanContentScroll="True"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -182,18 +182,18 @@
                         </Grid.ColumnDefinitions>
 
                         <Border Grid.Column="0"
-                                Background="{DynamicResource MaterialDesign.Brush.Primary}"
-                                Opacity="0.12"
+                                Background="#1EFF9800"
                                 CornerRadius="4"
-                                VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="0"
-                                   VerticalAlignment="Center"
-                                   HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
-                                   FontSize="10"
-                                   FontWeight="SemiBold"
-                                   Padding="0 2 4 2"
-                                   Text="{Binding Date, StringFormat={}{0:yyyy-MM-dd}}" />
+                                Padding="5,2"
+                                Margin="0,0,6,0"
+                                VerticalAlignment="Center">
+                            <TextBlock VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Text="{Binding Date, StringFormat={}{0:yyyy-MM-dd}}" />
+                        </Border>
 
                         <TextBlock Grid.Column="1"
                                    Margin="4,0,4,0"

@@ -4,8 +4,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:mahIcon="http://metro.mahapps.com/winfx/xaml/iconpacks"
+             xmlns:constant="clr-namespace:XIVLauncher.Common.Constant;assembly=XIVLauncher.Common"
+             xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel.Main"
              mc:Ignorable="d"
-             d:DesignHeight="400" d:DesignWidth="240">
+             d:DataContext="{d:DesignInstance Type=viewModel:MainWindowViewModel}"
+             d:DesignHeight="492" d:DesignWidth="294">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -14,189 +18,844 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <Grid Margin="24,0,24,0" VerticalAlignment="Center">
-        <StackPanel>
-            <materialDesign:Card Style="{StaticResource DashboardAccountCardStyle}"
-                                 Margin="0,0,0,12"
-                                 MouseLeftButtonUp="AccountCard_OnClick">
-                <materialDesign:Card.ContextMenu>
-                    <ContextMenu Style="{StaticResource LoginActionContextMenuStyle}">
-                        <MenuItem Header="复制账号"
-                                  Style="{StaticResource LoginActionMenuItemStyle}"
-                                  Click="CopyAccountField_OnMenuItemClick" />
-                        <MenuItem Header="设备信息"
-                                  Style="{StaticResource LoginActionMenuItemStyle}"
-                                  Command="{Binding DashboardPage.OpenDeviceProfileCommand}" />
-                    </ContextMenu>
-                </materialDesign:Card.ContextMenu>
-                <StackPanel>
-                    <TextBlock Text="当前账号" FontSize="11" Opacity="0.6" />
-                    <TextBlock Text="{Binding DashboardPage.AccountName}"
-                               FontSize="14" FontWeight="SemiBold"
-                               TextWrapping="Wrap"
-                               Margin="0,2,0,0" />
-                </StackPanel>
-            </materialDesign:Card>
+    <Grid Margin="16,4,16,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="0.55*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-            <TextBlock Text="选择大区" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
+        <!-- 上半区：账号身份 + 大区选择 + 启动主操作 -->
+        <StackPanel Grid.Row="1">
+            <!-- 一体化账号卡片 -->
+            <Border CornerRadius="10"
+                    Background="#0BFFFFFF"
+                    BorderBrush="#16FFFFFF"
+                    BorderThickness="1"
+                    Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-            <ListBox ItemsSource="{Binding DashboardPage.Areas}"
-                     SelectedItem="{Binding DashboardPage.SelectedArea}"
-                     Margin="0,0,0,14">
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <UniformGrid Rows="1" />
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                        <Setter Property="Cursor" Value="Hand" />
-                        <Setter Property="Padding" Value="0" />
-                        <Setter Property="Margin" Value="2,0" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ListBoxItem">
-                                    <Grid>
-                                        <Border x:Name="Bg"
-                                                Background="Transparent"
-                                                CornerRadius="8"
-                                                BorderThickness="1"
-                                                BorderBrush="{DynamicResource MaterialDesign.Brush.Card.Border}" />
-                                        <Border x:Name="ActiveBg"
-                                                Background="{DynamicResource MaterialDesign.Brush.Primary}"
-                                                CornerRadius="8" Opacity="0" />
-                                        <TextBlock x:Name="Txt"
-                                                   Text="{Binding AreaName}"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"
-                                                   FontSize="12" Padding="0,6"
-                                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
-                                    </Grid>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Trigger.EnterActions>
-                                                <BeginStoryboard>
-                                                    <Storyboard>
-                                                        <DoubleAnimation
-                                                            Storyboard.TargetName="ActiveBg"
-                                                            Storyboard.TargetProperty="Opacity"
-                                                            To="0.26" Duration="0:0:0.2">
-                                                            <DoubleAnimation.EasingFunction>
-                                                                <CubicEase EasingMode="EaseOut" />
-                                                            </DoubleAnimation.EasingFunction>
-                                                        </DoubleAnimation>
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </Trigger.EnterActions>
-                                            <Trigger.ExitActions>
-                                                <BeginStoryboard>
-                                                    <Storyboard>
-                                                        <DoubleAnimation
-                                                            Storyboard.TargetName="ActiveBg"
-                                                            Storyboard.TargetProperty="Opacity"
-                                                            To="0" Duration="0:0:0.2">
-                                                            <DoubleAnimation.EasingFunction>
-                                                                <CubicEase EasingMode="EaseOut" />
-                                                            </DoubleAnimation.EasingFunction>
-                                                        </DoubleAnimation>
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </Trigger.ExitActions>
-                                            <Setter TargetName="Bg" Property="BorderBrush"
-                                                    Value="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                            <Setter TargetName="Txt" Property="Foreground"
-                                                    Value="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                            <Setter TargetName="Txt" Property="FontWeight" Value="SemiBold" />
-                                        </Trigger>
-                                        <MultiTrigger>
-                                            <MultiTrigger.Conditions>
-                                                <Condition Property="IsMouseOver" Value="True" />
-                                                <Condition Property="IsSelected" Value="False" />
-                                            </MultiTrigger.Conditions>
-                                            <Setter TargetName="Bg" Property="BorderBrush"
-                                                    Value="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                            <Setter TargetName="Bg" Property="Opacity" Value="0.6" />
-                                        </MultiTrigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </ListBox.ItemContainerStyle>
-            </ListBox>
+                    <!-- 账号信息区 (点击/右键查看账号选项) -->
+                    <Button x:Name="AccountInfoButton"
+                            Grid.Column="0"
+                            Style="{x:Null}"
+                            BorderThickness="0"
+                            Background="Transparent"
+                            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Center"
+                            Focusable="False"
+                            Cursor="Hand"
+                            ToolTip="点击查看账号选项"
+                            Click="AccountInfoButton_OnClick">
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="AccountContextMenu"
+                                         Style="{StaticResource LoginActionContextMenuStyle}">
+                                <MenuItem Header="复制账号"
+                                          Style="{StaticResource LoginActionMenuItemStyle}"
+                                          Click="CopyAccountField_OnMenuItemClick">
+                                    <MenuItem.Icon>
+                                        <materialDesign:PackIcon Kind="ContentCopy" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="设备信息"
+                                          Style="{StaticResource LoginActionMenuItemStyle}"
+                                          Command="{Binding DashboardPage.OpenDeviceProfileCommand}">
+                                    <MenuItem.Icon>
+                                        <materialDesign:PackIcon Kind="Devices" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Button.Template>
+                            <ControlTemplate TargetType="{x:Type Button}">
+                                <Border x:Name="Bd"
+                                        Background="Transparent"
+                                        CornerRadius="9,0,0,9"
+                                        Padding="10,9,8,9">
+                                    <ContentPresenter
+                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#0EFFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#16FFFFFF" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
 
-            <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                    materialDesign:ButtonAssist.CornerRadius="16"
-                    Height="52"
-                    FontSize="16"
-                    FontWeight="SemiBold"
-                    Command="{Binding DashboardPage.StartGameCommand}"
-                    Margin="0,0,0,8">
-                <StackPanel Orientation="Vertical" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <materialDesign:PackIcon Width="20" Height="20" Margin="0,0,8,0"
-                                                 VerticalAlignment="Center">
-                            <materialDesign:PackIcon.Style>
-                                <Style TargetType="materialDesign:PackIcon">
-                                    <Setter Property="Kind" Value="Play" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding DashboardPage.IsGameUpdateAvailable}" Value="True">
-                                            <Setter Property="Kind" Value="Update" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </materialDesign:PackIcon.Style>
-                        </materialDesign:PackIcon>
-                        <TextBlock Text="{Binding DashboardPage.StartGameButtonText}" VerticalAlignment="Center" />
-                        <materialDesign:PackIcon Kind="MenuDown" Width="18" Height="18" Margin="4,0,0,0"
-                                                 VerticalAlignment="Center" Opacity="0.8" />
-                    </StackPanel>
-                    <TextBlock Text="{Binding DashboardPage.GameVersion}"
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0"
+                                    Width="28"
+                                    Height="28"
+                                    CornerRadius="14"
+                                    Background="#1EFF9800"
+                                    Margin="0,0,9,0"
+                                    VerticalAlignment="Center">
+                                <materialDesign:PackIcon Kind="AccountOutline"
+                                                         Width="16"
+                                                         Height="16"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center"
+                                                         Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="当前账号"
+                                               FontSize="10.5"
+                                               Opacity="0.56"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                    <materialDesign:PackIcon Kind="ChevronDown"
+                                                             Width="12"
+                                                             Height="12"
+                                                             Margin="2,1,0,0"
+                                                             VerticalAlignment="Center"
+                                                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                             Opacity="0.4" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding DashboardPage.AccountName}"
+                                           ToolTip="{Binding DashboardPage.AccountName}"
+                                           FontSize="12.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </Button>
+
+                    <Border Grid.Column="1"
+                            Width="1"
+                            Height="24"
+                            Background="#18FFFFFF"
+                            VerticalAlignment="Center" />
+
+                    <!-- 切换账号快捷操作 -->
+                    <Button Grid.Column="2"
+                            Style="{x:Null}"
+                            BorderThickness="0"
+                            Background="Transparent"
+                            Width="36"
+                            VerticalAlignment="Stretch"
+                            Focusable="False"
+                            Cursor="Hand"
+                            ToolTip="切换账号"
+                            Command="{Binding DashboardPage.SwitchAccountCommand}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="{x:Type Button}">
+                                <Border x:Name="Bd"
+                                        Background="Transparent"
+                                        CornerRadius="0,9,9,0">
+                                    <materialDesign:PackIcon x:Name="Icon"
+                                                             Kind="AccountSwitch"
+                                                             Width="17"
+                                                             Height="17"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center"
+                                                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                             Opacity="0.68" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF" />
+                                        <Setter TargetName="Icon" Property="Foreground"
+                                                Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                        <Setter TargetName="Icon" Property="Opacity" Value="1" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#20FFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Opacity" Value="0.4" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- 大区选择 -->
+            <Grid Margin="2,0,2,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="选择大区"
+                           Style="{StaticResource DashboardSectionLabelStyle}"
+                           VerticalAlignment="Center" />
+
+                <Border Grid.Column="1"
+                        CornerRadius="4"
+                        Padding="5,1"
+                        Background="#28FF9800"
+                        Visibility="{Binding DashboardPage.IsAreaMaintenance, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="维护中"
                                FontSize="10"
-                               FontWeight="Normal"
-                               Opacity="0.6"
-                               HorizontalAlignment="Center" />
-                </StackPanel>
-                <Button.ContextMenu>
-                    <ContextMenu Style="{StaticResource LoginActionContextMenuStyle}">
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                </Border>
+            </Grid>
+
+            <Border CornerRadius="10"
+                    Background="#09FFFFFF"
+                    BorderBrush="#14FFFFFF"
+                    BorderThickness="1"
+                    Padding="3"
+                    Margin="0,0,0,14">
+                <ListBox ItemsSource="{Binding DashboardPage.Areas}"
+                         SelectedItem="{Binding DashboardPage.SelectedArea}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="1,0" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Grid Height="30">
+                                            <Border x:Name="HoverBg"
+                                                    Background="#0EFFFFFF"
+                                                    CornerRadius="7"
+                                                    Opacity="0" />
+                                            <Border x:Name="ActiveBg"
+                                                    Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                    CornerRadius="7"
+                                                    Opacity="0" />
+                                            <Border x:Name="ActiveBorder"
+                                                    BorderBrush="{DynamicResource MaterialDesign.Brush.Primary}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="7"
+                                                    Opacity="0" />
+                                            <TextBlock x:Name="Txt"
+                                                       Text="{Binding AreaName}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="12"
+                                                       Opacity="0.72"
+                                                       Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                        </Grid>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="ActiveBg"
+                                                                             Storyboard.TargetProperty="Opacity"
+                                                                             To="0.22" Duration="0:0:0.18">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                            <DoubleAnimation Storyboard.TargetName="ActiveBorder"
+                                                                             Storyboard.TargetProperty="Opacity"
+                                                                             To="0.75" Duration="0:0:0.18">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="ActiveBg"
+                                                                             Storyboard.TargetProperty="Opacity"
+                                                                             To="0" Duration="0:0:0.18">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                            <DoubleAnimation Storyboard.TargetName="ActiveBorder"
+                                                                             Storyboard.TargetProperty="Opacity"
+                                                                             To="0" Duration="0:0:0.18">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.ExitActions>
+                                                <Setter TargetName="Txt" Property="Foreground"
+                                                        Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                                <Setter TargetName="Txt" Property="FontWeight" Value="SemiBold" />
+                                                <Setter TargetName="Txt" Property="Opacity" Value="1" />
+                                            </Trigger>
+                                            <MultiTrigger>
+                                                <MultiTrigger.Conditions>
+                                                    <Condition Property="IsMouseOver" Value="True" />
+                                                    <Condition Property="IsSelected" Value="False" />
+                                                </MultiTrigger.Conditions>
+                                                <Setter TargetName="HoverBg" Property="Opacity" Value="1" />
+                                                <Setter TargetName="Txt" Property="Opacity" Value="0.95" />
+                                            </MultiTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+            </Border>
+
+            <!-- 主操作：分段启动游戏按钮 (SplitButton) -->
+            <materialDesign:Card x:Name="LaunchSplitCard"
+                                 Height="54"
+                                 UniformCornerRadius="12"
+                                 materialDesign:ElevationAssist.Elevation="Dp2"
+                                 Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                                 Margin="0,0,0,8">
+                <materialDesign:Card.ContextMenu>
+                    <ContextMenu x:Name="LaunchOptionsContextMenu"
+                                 Style="{StaticResource LoginActionContextMenuStyle}">
                         <MenuItem Header="无 Dalamud 启动"
                                   Style="{StaticResource LoginActionMenuItemStyle}"
-                                  Command="{Binding DashboardPage.StartGameNoDalamudCommand}" />
+                                  Command="{Binding DashboardPage.StartGameNoDalamudCommand}">
+                            <MenuItem.Icon>
+                                <materialDesign:PackIcon Kind="PowerPlugOffOutline" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="禁用插件启动"
                                   Style="{StaticResource LoginActionMenuItemStyle}"
-                                  Command="{Binding DashboardPage.StartGameNoPluginsCommand}" />
+                                  Command="{Binding DashboardPage.StartGameNoPluginsCommand}">
+                            <MenuItem.Icon>
+                                <materialDesign:PackIcon Kind="PuzzleOutline" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="禁用第三方插件启动"
                                   Style="{StaticResource LoginActionMenuItemStyle}"
-                                  Command="{Binding DashboardPage.StartGameNoThirdCommand}" />
+                                  Command="{Binding DashboardPage.StartGameNoThirdCommand}">
+                            <MenuItem.Icon>
+                                <materialDesign:PackIcon Kind="FilterOffOutline" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                     </ContextMenu>
-                </Button.ContextMenu>
-            </Button>
+                </materialDesign:Card.ContextMenu>
 
-            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                    materialDesign:ButtonAssist.CornerRadius="16"
-                    Height="36"
-                    FontSize="12"
-                    Command="{Binding DashboardPage.SwitchAccountCommand}">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="AccountSwitch" Width="16" Height="16" Margin="0,0,6,0"
-                                             VerticalAlignment="Center" />
-                    <TextBlock Text="切换账号" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="36" />
+                    </Grid.ColumnDefinitions>
 
-            <Button HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Center"
-                    Margin="0,8,0,0"
+                    <!-- 主启动区 -->
+                    <Button Grid.Column="0"
+                            Style="{x:Null}"
+                            BorderThickness="0"
+                            Background="Transparent"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            Focusable="False"
+                            Cursor="Hand"
+                            Command="{Binding DashboardPage.StartGameCommand}"
+                            Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="{x:Type Button}">
+                                <Border x:Name="Bd"
+                                        Background="Transparent"
+                                        CornerRadius="12,0,0,12">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#16000000" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+
+                        <StackPanel Orientation="Vertical"
+                                    VerticalAlignment="Center"
+                                    Margin="14,0,0,0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <materialDesign:PackIcon Width="19"
+                                                         Height="19"
+                                                         Margin="0,0,6,0"
+                                                         VerticalAlignment="Center">
+                                    <materialDesign:PackIcon.Style>
+                                        <Style TargetType="materialDesign:PackIcon">
+                                            <Setter Property="Kind" Value="Play" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DashboardPage.IsGameUpdateAvailable}"
+                                                             Value="True">
+                                                    <Setter Property="Kind" Value="Update" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </materialDesign:PackIcon.Style>
+                                </materialDesign:PackIcon>
+                                <TextBlock Text="{Binding DashboardPage.StartGameButtonText}"
+                                           FontSize="15"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding DashboardPage.GameVersion}"
+                                       FontSize="10"
+                                       FontWeight="Normal"
+                                       Opacity="0.76"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- 分割线 -->
+                    <Border Grid.Column="1"
+                            Width="1"
+                            Margin="0,11"
+                            Background="{DynamicResource MaterialDesign.Brush.Primary.Foreground}"
+                            Opacity="0.22" />
+
+                    <!-- 启动选项下拉按钮 -->
+                    <Button Grid.Column="2"
+                            Style="{x:Null}"
+                            BorderThickness="0"
+                            Background="Transparent"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            Focusable="False"
+                            Cursor="Hand"
+                            ToolTip="更多启动选项"
+                            Foreground="{DynamicResource MaterialDesign.Brush.Primary.Foreground}"
+                            Click="LaunchOptionsButton_OnClick">
+                        <Button.Template>
+                            <ControlTemplate TargetType="{x:Type Button}">
+                                <Border x:Name="Bd"
+                                        Background="Transparent"
+                                        CornerRadius="0,12,12,0">
+                                    <materialDesign:PackIcon Kind="ChevronDown"
+                                                             Width="18"
+                                                             Height="18"
+                                                             HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center"
+                                                             Opacity="0.88" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#1CFFFFFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#1A000000" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </Grid>
+            </materialDesign:Card>
+
+            <!-- Dalamud 状态微交互条 -->
+            <Button HorizontalAlignment="Center"
+                    ToolTip="点击刷新 Dalamud 状态"
                     Style="{StaticResource DalamudStatusButtonStyle}"
                     Command="{Binding DalamudStatus.RefreshDalamudInfoCommand}"
                     Visibility="{Binding Settings.EnableHooks, Converter={StaticResource BoolToVis}}">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <materialDesign:PackIcon Kind="Refresh" Width="12" Height="12" Margin="0,0,4,0"
-                                             VerticalAlignment="Center" Opacity="0.7" />
+                    <materialDesign:PackIcon Kind="Refresh"
+                                             Width="12"
+                                             Height="12"
+                                             Margin="0,0,4,0"
+                                             VerticalAlignment="Center"
+                                             Opacity="0.75" />
                     <TextBlock Text="{Binding DalamudStatus.StatusText}" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
+        </StackPanel>
+
+        <!-- 中间留白与细分割线 -->
+        <Border Grid.Row="2"
+                Height="1"
+                Background="#14FFFFFF"
+                VerticalAlignment="Center"
+                Margin="0,4" />
+
+        <!-- 下半区：内置特色功能 + 官方服务瓷砖网格 -->
+        <StackPanel Grid.Row="3">
+            <!-- 超域传送独立功能条 -->
+            <Button Margin="0,0,0,10"
+                    Command="{Binding DashboardPage.OpenDCTravelCommand}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource DashboardActionRowButtonStyle}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding DashboardPage.IsDCTravelUnderMaintenance}"
+                                         Value="True">
+                                <Setter Property="Opacity" Value="0.55" />
+                                <Setter Property="ToolTip">
+                                    <Setter.Value>
+                                        <ToolTip>
+                                            <TextBlock Text="超域旅行服务维护中，请稍后再试" FontSize="12" />
+                                        </ToolTip>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Width="28"
+                            Height="28"
+                            CornerRadius="8"
+                            Background="#22FF9800"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center">
+                        <materialDesign:PackIcon Kind="RocketLaunchOutline"
+                                                 Width="16"
+                                                 Height="16"
+                                                 HorizontalAlignment="Center"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="超域传送"
+                                   FontSize="12.5"
+                                   FontWeight="SemiBold" />
+                        <TextBlock FontSize="10" Margin="0,1,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="跨大区角色传送" />
+                                    <Setter Property="Opacity" Value="0.52" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DashboardPage.IsDCTravelUnderMaintenance}"
+                                                     Value="True">
+                                            <Setter Property="Text" Value="服务维护中，请稍后再试" />
+                                            <Setter Property="Opacity" Value="0.9" />
+                                            <Setter Property="Foreground"
+                                                    Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <materialDesign:PackIcon Grid.Column="2"
+                                             Kind="ChevronRight"
+                                             Width="16"
+                                             Height="16"
+                                             VerticalAlignment="Center"
+                                             Opacity="0.45" />
+                </Grid>
+            </Button>
+
+            <!-- 官方服务分区 -->
+            <TextBlock Text="官方服务"
+                       Style="{StaticResource DashboardSectionLabelStyle}"
+                       Margin="2,0,0,6" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="6" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- 购卡充值 -->
+                <Button Grid.Row="0" Grid.Column="0"
+                        Style="{StaticResource DashboardServiceTileStyle}"
+                        ToolTip="打开购卡充值（自动登录）"
+                        Command="{Binding DashboardPage.OpenPaymentCommand}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="ClockPlusOutline"
+                                                 Width="17"
+                                                 Height="17"
+                                                 HorizontalAlignment="Center"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                        <TextBlock Text="购卡充值"
+                                   FontSize="11"
+                                   Opacity="0.88"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,5,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <!-- 商城中心 -->
+                <Button Grid.Row="0" Grid.Column="2"
+                        Style="{StaticResource DashboardServiceTileStyle}"
+                        ToolTip="打开道具商城（自动登录）"
+                        Command="{Binding DashboardPage.OpenShopCommand}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="CartOutline"
+                                                 Width="17"
+                                                 Height="17"
+                                                 HorizontalAlignment="Center"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                        <TextBlock Text="商城中心"
+                                   FontSize="11"
+                                   Opacity="0.88"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,5,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <!-- 陆行鸟礼物站 -->
+                <Button Grid.Row="0" Grid.Column="4"
+                        Style="{StaticResource DashboardServiceTileStyle}"
+                        ToolTip="打开陆行鸟礼物站（自动登录）"
+                        Command="{Binding DashboardPage.OpenGiftsStationCommand}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="GiftOutline"
+                                                 Width="17"
+                                                 Height="17"
+                                                 HorizontalAlignment="Center"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                        <TextBlock Text="陆行鸟礼物站"
+                                   FontSize="11"
+                                   Opacity="0.88"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,5,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <!-- 石之家 -->
+                <Button Grid.Row="2" Grid.Column="0"
+                        Style="{StaticResource DashboardServiceTileStyle}"
+                        ToolTip="打开石之家社区（自动登录）"
+                        Command="{Binding DashboardPage.OpenRisingStonesCommand}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="HomeVariantOutline"
+                                                 Width="17"
+                                                 Height="17"
+                                                 HorizontalAlignment="Center"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                        <TextBlock Text="石之家"
+                                   FontSize="11"
+                                   Opacity="0.88"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,5,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <!-- 后勤补给站 -->
+                <Button Grid.Row="2" Grid.Column="2"
+                        Style="{StaticResource DashboardServiceTileStyle}"
+                        ToolTip="打开大国防联军后勤补给站（自动登录）"
+                        Command="{Binding DashboardPage.OpenSupplyStationCommand}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <materialDesign:PackIcon Kind="PackageVariantClosed"
+                                                 Width="17"
+                                                 Height="17"
+                                                 HorizontalAlignment="Center"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                        <TextBlock Text="后勤补给站"
+                                   FontSize="11"
+                                   Opacity="0.88"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,5,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <!-- 官方账号 (弹出社媒列表) -->
+                <Button x:Name="OfficialAccountsButton"
+                        Grid.Row="2" Grid.Column="4"
+                        Style="{StaticResource DashboardServiceTileStyle}"
+                        ToolTip="关注最终幻想14 官方社交账号"
+                        Click="OfficialAccountsButton_OnClick">
+                    <Grid>
+                        <materialDesign:PackIcon Kind="MenuUp"
+                                                 Width="12"
+                                                 Height="12"
+                                                 HorizontalAlignment="Right"
+                                                 VerticalAlignment="Top"
+                                                 Margin="0,-2,1,0"
+                                                 Opacity="0.55" />
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <materialDesign:PackIcon Kind="AccountGroupOutline"
+                                                     Width="17"
+                                                     Height="17"
+                                                     HorizontalAlignment="Center"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            <TextBlock Text="官方账号"
+                                       FontSize="11"
+                                       Opacity="0.88"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,5,0,0" />
+                        </StackPanel>
+                    </Grid>
+                </Button>
+
+                <Popup x:Name="OfficialAccountsPopup"
+                       Grid.Row="2" Grid.Column="4"
+                       AllowsTransparency="True"
+                       Placement="Top"
+                       PlacementTarget="{Binding ElementName=OfficialAccountsButton}"
+                       HorizontalOffset="-57"
+                       VerticalOffset="-6"
+                       PopupAnimation="Fade"
+                       StaysOpen="False"
+                       Closed="OfficialAccountsPopup_OnClosed">
+                    <materialDesign:Card Width="140"
+                                         Background="{DynamicResource MaterialDesign.Brush.Background}"
+                                         BorderBrush="#22FFFFFF"
+                                         BorderThickness="1"
+                                         UniformCornerRadius="10"
+                                         materialDesign:ElevationAssist.Elevation="Dp6">
+                        <StackPanel Margin="5">
+                            <TextBlock Text="官方社媒"
+                                       Style="{StaticResource DashboardSectionLabelStyle}"
+                                       Margin="8,4,8,4" />
+
+                            <Button Style="{StaticResource SocialSiteMenuButtonStyle}"
+                                    Command="{Binding DashboardPage.OpenExternalSiteCommand}"
+                                    CommandParameter="{x:Static constant:Links.SDO_DOUYIN_URL}"
+                                    Click="SocialSiteMenuItem_OnClick">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <mahIcon:PackIconSimpleIcons Grid.Column="0"
+                                                                 Width="14"
+                                                                 Height="14"
+                                                                 Kind="TikTok"
+                                                                 Margin="0,0,8,0"
+                                                                 VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                    <TextBlock Grid.Column="1" Text="抖音" VerticalAlignment="Center" />
+                                    <materialDesign:PackIcon Grid.Column="2"
+                                                             Kind="OpenInNew"
+                                                             Width="11"
+                                                             Height="11"
+                                                             VerticalAlignment="Center"
+                                                             Opacity="0.35" />
+                                </Grid>
+                            </Button>
+
+                            <Button Style="{StaticResource SocialSiteMenuButtonStyle}"
+                                    Command="{Binding DashboardPage.OpenExternalSiteCommand}"
+                                    CommandParameter="{x:Static constant:Links.SDO_XIAOHONGSHU_URL}"
+                                    Click="SocialSiteMenuItem_OnClick">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <mahIcon:PackIconSimpleIcons Grid.Column="0"
+                                                                 Width="14"
+                                                                 Height="14"
+                                                                 Kind="Xiaohongshu"
+                                                                 Margin="0,0,8,0"
+                                                                 VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                    <TextBlock Grid.Column="1" Text="小红书" VerticalAlignment="Center" />
+                                    <materialDesign:PackIcon Grid.Column="2"
+                                                             Kind="OpenInNew"
+                                                             Width="11"
+                                                             Height="11"
+                                                             VerticalAlignment="Center"
+                                                             Opacity="0.35" />
+                                </Grid>
+                            </Button>
+
+                            <Button Style="{StaticResource SocialSiteMenuButtonStyle}"
+                                    Command="{Binding DashboardPage.OpenExternalSiteCommand}"
+                                    CommandParameter="{x:Static constant:Links.SDO_WEIBO_URL}"
+                                    Click="SocialSiteMenuItem_OnClick">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <mahIcon:PackIconSimpleIcons Grid.Column="0"
+                                                                 Width="14"
+                                                                 Height="14"
+                                                                 Kind="SinaWeibo"
+                                                                 Margin="0,0,8,0"
+                                                                 VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                    <TextBlock Grid.Column="1" Text="微博" VerticalAlignment="Center" />
+                                    <materialDesign:PackIcon Grid.Column="2"
+                                                             Kind="OpenInNew"
+                                                             Width="11"
+                                                             Height="11"
+                                                             VerticalAlignment="Center"
+                                                             Opacity="0.35" />
+                                </Grid>
+                            </Button>
+
+                            <Button Style="{StaticResource SocialSiteMenuButtonStyle}"
+                                    Command="{Binding DashboardPage.OpenExternalSiteCommand}"
+                                    CommandParameter="{x:Static constant:Links.SDO_BILIBILI_URL}"
+                                    Click="SocialSiteMenuItem_OnClick">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <mahIcon:PackIconSimpleIcons Grid.Column="0"
+                                                                 Width="14"
+                                                                 Height="14"
+                                                                 Kind="Bilibili"
+                                                                 Margin="0,0,8,0"
+                                                                 VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                    <TextBlock Grid.Column="1" Text="哔哩哔哩" VerticalAlignment="Center" />
+                                    <materialDesign:PackIcon Grid.Column="2"
+                                                             Kind="OpenInNew"
+                                                             Width="11"
+                                                             Height="11"
+                                                             VerticalAlignment="Center"
+                                                             Opacity="0.35" />
+                                </Grid>
+                            </Button>
+                        </StackPanel>
+                    </materialDesign:Card>
+                </Popup>
+            </Grid>
         </StackPanel>
     </Grid>
 </UserControl>

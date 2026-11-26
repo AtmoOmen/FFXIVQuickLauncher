@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -37,7 +38,11 @@ public partial class AccountSwitcherSlide
     public AccountSwitcherSlide() =>
         InitializeComponent();
 
-    private void SearchButton_OnClick(object sender, RoutedEventArgs e)
+    private void SearchButton_OnClick
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         if (ViewModel == null)
             return;
@@ -54,7 +59,11 @@ public partial class AccountSwitcherSlide
         );
     }
 
-    private void CloseSearchButton_OnClick(object sender, RoutedEventArgs e)
+    private void CloseSearchButton_OnClick
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         if (ViewModel == null)
             return;
@@ -63,18 +72,25 @@ public partial class AccountSwitcherSlide
         ViewModel.AccountSwitcher.IsSearchMode = false;
     }
 
-    private void SearchTextBox_OnKeyDown(object sender, KeyEventArgs e)
+    private void SearchTextBox_OnKeyDown
+    (
+        object       sender,
+        KeyEventArgs e
+    )
     {
         if (e.Key != Key.Escape)
             return;
 
         Keyboard.ClearFocus();
-        if (ViewModel != null)
-            ViewModel.AccountSwitcher.IsSearchMode = false;
-        e.Handled = true;
+        ViewModel?.AccountSwitcher.IsSearchMode = false;
+        e.Handled                               = true;
     }
 
-    private void CopyAccountField_OnClick(object sender, RoutedEventArgs e)
+    private void CopyAccountField_OnClick
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
     {
         e.Handled = true;
 
@@ -84,54 +100,93 @@ public partial class AccountSwitcherSlide
         AccountFieldCopyRequested?.Invoke(this, text);
     }
 
-    private void AccountListView_OnMouseUp(object sender, MouseButtonEventArgs e)
+    private void MoreActionsButton_OnClick
+    (
+        object          sender,
+        RoutedEventArgs e
+    )
+    {
+        e.Handled = true;
+
+        if (sender is not Button button || FindAncestor<ListViewItem>(button) is not { } listViewItem || AccountListView.ContextMenu is not { } menu)
+            return;
+
+        ViewModel?.AccountSwitcher.ContextEntry = listViewItem.DataContext as AccountSwitcherEntry;
+
+        menu.PlacementTarget  = button;
+        menu.Placement        = PlacementMode.Bottom;
+        menu.HorizontalOffset = 0;
+        menu.VerticalOffset   = 4;
+        menu.IsOpen           = true;
+    }
+
+    private void AccountListView_OnMouseUp
+    (
+        object               sender,
+        MouseButtonEventArgs e
+    )
     {
         if (e.ChangedButton != MouseButton.Left)
             return;
 
-        // 点击行内复制按钮时不触发账号切换
+        // 点击行内操作按钮时不触发账号切换
         if (FindAncestor<Button>((DependencyObject)e.OriginalSource) != null)
+            return;
+
+        // 仅点击在具体账号项上时才触发切换
+        if (FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) == null)
             return;
 
         AccountSwitchRequested?.Invoke(this, e);
     }
 
-    private void AccountListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void AccountListView_OnPreviewMouseLeftButtonDown
+    (
+        object               sender,
+        MouseButtonEventArgs e
+    )
     {
-        if (ViewModel != null)
-            ViewModel.AccountSwitcher.ContextEntry = null;
+        ViewModel?.AccountSwitcher.ContextEntry = null;
 
         accountSwitcherDragStartPoint = e.GetPosition(null);
         draggedAccountSwitcherItem    = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
 
-        if (draggedAccountSwitcherItem != null)
+        if (draggedAccountSwitcherItem != null && FindAncestor<Button>((DependencyObject)e.OriginalSource) == null)
             draggedAccountSwitcherItem.IsSelected = true;
     }
 
-    private void AccountListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    private void AccountListView_OnPreviewMouseRightButtonDown
+    (
+        object               sender,
+        MouseButtonEventArgs e
+    )
     {
         if (FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not { } listViewItem)
             return;
 
-        if (ViewModel != null)
-            ViewModel.AccountSwitcher.ContextEntry = listViewItem.DataContext as AccountSwitcherEntry;
+        ViewModel?.AccountSwitcher.ContextEntry = listViewItem.DataContext as AccountSwitcherEntry;
 
         e.Handled = true;
 
         if (AccountListView.ContextMenu == null)
             return;
 
+        AccountListView.ContextMenu.Placement       = PlacementMode.MousePoint;
         AccountListView.ContextMenu.PlacementTarget = listViewItem;
         AccountListView.ContextMenu.IsOpen          = true;
     }
 
-    private void AccountListView_OnPreviewMouseMove(object sender, MouseEventArgs e)
+    private void AccountListView_OnPreviewMouseMove
+    (
+        object         sender,
+        MouseEventArgs e
+    )
     {
         var mousePosition = e.GetPosition(null);
         var difference    = accountSwitcherDragStartPoint - mousePosition;
 
         if (sender is not ListView listView                                                                          ||
-            FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not ListViewItem listViewItem          ||
+            FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource) is not { } listViewItem                   ||
             listView.ItemContainerGenerator.ItemFromContainer(listViewItem) is not AccountSwitcherEntry accountEntry ||
             e.LeftButton               != MouseButtonState.Pressed                                                   ||
             draggedAccountSwitcherItem == null)
@@ -144,7 +199,11 @@ public partial class AccountSwitcherSlide
         DragDrop.DoDragDrop(listViewItem, data, DragDropEffects.Move);
     }
 
-    private void AccountListView_OnDrop(object sender, DragEventArgs e)
+    private void AccountListView_OnDrop
+    (
+        object        sender,
+        DragEventArgs e
+    )
     {
         if (draggedAccountSwitcherItem == null)
             return;
@@ -158,13 +217,17 @@ public partial class AccountSwitcherSlide
         ViewModel?.AccountSwitcher.MoveEntry(draggedIndex, targetIndex);
     }
 
-    private void AccountListViewContextMenu_OnClosed(object sender, RoutedEventArgs e)
-    {
-        if (ViewModel != null)
-            ViewModel.AccountSwitcher.ContextEntry = null;
-    }
+    private void AccountListViewContextMenu_OnClosed
+    (
+        object          sender,
+        RoutedEventArgs e
+    ) =>
+        ViewModel?.AccountSwitcher.ContextEntry = null;
 
-    private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
+    private static T? FindAncestor<T>
+    (
+        DependencyObject? current
+    ) where T : DependencyObject
     {
         do
         {
