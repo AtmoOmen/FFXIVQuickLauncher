@@ -39,13 +39,8 @@ public sealed partial class DashboardViewModel : ObservableObject
     public ObservableCollection<LoginArea> Areas { get; }
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SwitchAccountCommand))]
     public partial bool IsSwitchingAccount { get; set; }
-
-    partial void OnIsSwitchingAccountChanged
-    (
-        bool value
-    ) =>
-        SwitchAccountCommand.NotifyCanExecuteChanged();
 
     [ObservableProperty]
     public partial string AccountName { get; set; } = string.Empty;
@@ -140,6 +135,22 @@ public sealed partial class DashboardViewModel : ObservableObject
         requestOpenAuthenticatedSiteAction(Links.SDO_SHOPPING_URL, SdoInfos.SHOPPING_APP_ID);
 
     [RelayCommand]
-    private void OpenOfficialAccount() =>
+    private Task OpenGiftsStation() =>
+        requestOpenAuthenticatedSiteAction(Links.SDO_GIFTS_STATION_URL, SdoInfos.PAYMENT_APP_ID);
+
+    [RelayCommand]
+    private Task OpenRisingStones() =>
+        requestOpenAuthenticatedSiteAction
+        (
+            $"{Links.RISING_STONE_LOGIN_URL}?redirectUrl={Uri.EscapeDataString(Links.RISING_STONE_URL)}",
+            SdoInfos.RISING_STONES_APP_ID
+        );
+
+    [RelayCommand]
+    private Task OpenSupplyStation() =>
+        requestOpenAuthenticatedSiteAction(Links.SDO_SUPPLY_STATION_URL, SdoInfos.APP_ID);
+
+    [RelayCommand]
+    private static void OpenOfficialAccount() =>
         Process.Start(new ProcessStartInfo(Links.SDO_BILIBILI_URL) { UseShellExecute = true });
 }

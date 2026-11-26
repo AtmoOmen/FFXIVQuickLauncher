@@ -8,7 +8,9 @@
              xmlns:transitions="clr-namespace:XIVLauncher.Xaml.Transitions"
              xmlns:constant="clr-namespace:XIVLauncher.Common.Constant;assembly=XIVLauncher.Common"
              xmlns:slides="clr-namespace:XIVLauncher.Windows.Main.Slides"
+             xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel.Main"
              mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=viewModel:MainWindowViewModel}"
              d:DesignHeight="500" d:DesignWidth="280">
     <UserControl.Resources>
         <ResourceDictionary>
@@ -102,7 +104,8 @@
                             Click="GameMaintenanceButton_OnClick">
                         <Button.ContextMenu>
                             <ContextMenu Placement="Bottom"
-                                         DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                         DataContext="{Binding PlacementTarget.(FrameworkElement.DataContext), RelativeSource={RelativeSource Self}}"
+                                         d:DataContext="{d:DesignInstance Type=viewModel:MainWindowViewModel}"
                                          Style="{StaticResource LoginActionContextMenuStyle}">
                                 <MenuItem Header="修复游戏"
                                           Style="{StaticResource LoginActionMenuItemStyle}"
@@ -429,6 +432,10 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="6" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="6" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Button Grid.Row="0" Grid.Column="0"
@@ -488,6 +495,40 @@
                                                      VerticalAlignment="Center"
                                                      Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
                             <TextBlock Text="商城中心" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Row="4" Grid.Column="0"
+                            Style="{StaticResource QuickLinkButtonStyle}"
+                            Command="{Binding DashboardPage.OpenGiftsStationCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Gift" Width="14" Height="14" Margin="0,0,4,0"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            <TextBlock Text="陆行鸟礼物站" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Row="4" Grid.Column="2"
+                            Style="{StaticResource QuickLinkButtonStyle}"
+                            Command="{Binding DashboardPage.OpenRisingStonesCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Home" Width="14" Height="14" Margin="0,0,4,0"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            <TextBlock Text="石之家" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="3"
+                            Style="{StaticResource QuickLinkButtonStyle}"
+                            Command="{Binding DashboardPage.OpenSupplyStationCommand}"
+                            ToolTip="大国防联军后勤补给站">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="PackageVariant" Width="14" Height="14" Margin="0,0,4,0"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                            <TextBlock Text="后勤补给站" VerticalAlignment="Center" FontWeight="SemiBold" />
                         </StackPanel>
                     </Button>
 

@@ -6,16 +6,16 @@ public static class Links
 
     /// <remarks>GitHub 反代</remarks>
     public const string GITHUB_PROXY_BASE_URL = "https://gh.atmoomen.top";
-    
+
     /// <remarks>判断网络出口 (Cloudflare)</remarks>
     public const string CLOUDFLARE_TRACE_URL = "https://www.cloudflare.com/cdn-cgi/trace";
-    
+
     /// <remarks>判断网络出口 (IPIP)</remarks>
     public const string IPIP_LOCATION_URL = "https://myip.ipip.net/json";
 
     #endregion
 
-    
+
     #region 软件官网
 
     /// <remarks>GitHub 仓库页面</remarks>
@@ -25,16 +25,16 @@ public static class Links
     public const string DISCORD_URL = "https://discord.gg/MDvv8Ejntw";
 
     #endregion
-    
+
 
     #region 启动器
 
     /// <remarks>启动器 (Cloudflare R2)</remarks>
     public const string LAUNCHER_DISTRIBUTE_BASE_URL = "https://xl-dis.atmoomen.top";
-    
+
     #endregion
 
-    
+
     #region Dalamud
 
     /// <remarks>Dalamud (Cloudflare R2)</remarks>
@@ -45,18 +45,18 @@ public static class Links
 
     #endregion
 
-    
+
     #region Dalamud 资源
 
     /// <remarks>资源 (Cloudflare R2)</remarks>
     public const string DALAMUD_ASSET_DISTRIBUTE_R2_BASE_URL = $"{DALAMUD_DISTRIBUTE_R2_BASE_URL}/assets";
-    
+
     /// <remarks>资源版本 (Cloudflare R2)</remarks>
     public const string DALAMUD_ASSET_DISTRIBUTE_R2_VERSION_URL = $"{DALAMUD_ASSET_DISTRIBUTE_R2_BASE_URL}/RELEASE";
 
     #endregion
-    
-    
+
+
     #region 运行时环境
 
     /// <remarks>运行时版本</remarks>
@@ -64,7 +64,7 @@ public static class Links
 
     /// <remarks>原始运行时版本</remarks>
     public const string DALAMUD_RUNTIME_INFO_RAW_URL = "https://raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
-    
+
     /// <remarks>微软的 NuGet 源</remarks>
     public const string NUGET_V3_FLAT_CONTAINER_URL = "https://api.nuget.org/v3-flatcontainer";
 
@@ -72,8 +72,8 @@ public static class Links
     public const string HUAWEI_NUGET_V3_REMOTE_URL = "https://repo.huaweicloud.com/artifactory/api/nuget/v3/nuget-remote";
 
     #endregion
-    
-    
+
+
     #region 登录 API
 
     /// <remarks>请求头</remarks>
@@ -86,8 +86,8 @@ public static class Links
     public const string SDO_SERVICE_URL = "http://www.sdo.com";
 
     #endregion
-    
-    
+
+
     #region 新闻 API
 
     /// <remarks>文章正文</remarks>
@@ -97,11 +97,12 @@ public static class Links
     public const string SDO_NEWS_BANNER_API_URL = "https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=5203&pageIndex=0&pageSize=8";
 
     /// <remarks>文章列表</remarks>
-    public const string SDO_NEWS_LIST_API_URL = "https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=8324,8325,8326,8327,5309,5310,5311,5312,5313&pageIndex=0&pageSize=16";
+    public const string SDO_NEWS_LIST_API_URL =
+        "https://cqnews.web.sdo.com/api/news/newsList?gameCode=ff&CategoryCode=8324,8325,8326,8327,5309,5310,5311,5312,5313&pageIndex=0&pageSize=16";
 
     #endregion
-    
-    
+
+
     #region 盛趣官方网站
 
     /// <remarks>超域旅行官网</remarks>
@@ -113,8 +114,14 @@ public static class Links
     /// <remarks>商城官网</remarks>
     public const string SDO_SHOPPING_URL = "https://qu.sdo.com/game/1";
 
+    public const string SDO_GIFTS_STATION_URL = "https://ffpay.sdo.com/pc/giftsStation/index.html#/index";
+
+    public const string SDO_SUPPLY_STATION_URL = "https://actff1.web.sdo.com/project/141028dgf/index.html";
+
     /// <remarks>石之家社区</remarks>
     public const string RISING_STONE_URL = "https://ff14risingstones.web.sdo.com/pc/#/post";
+
+    public const string RISING_STONE_LOGIN_URL = "https://apiff14risingstones.web.sdo.com/api/home/GHome/login";
 
     /// <remarks>官方哔哩哔哩账号</remarks>
     public const string SDO_BILIBILI_URL = "https://space.bilibili.com/6655514";
